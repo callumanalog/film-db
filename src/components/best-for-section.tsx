@@ -33,11 +33,8 @@ export function BestForSection({ items }: BestForSectionProps) {
   if (!items.length) return null;
 
   return (
-    <section className="mb-10">
-      <div className="mb-4 flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-bold tracking-tight">Best for</h2>
-      </div>
+    <section>
+      <h2 className="mb-4 text-xl font-bold tracking-tight">Best for</h2>
       <div className="flex flex-wrap gap-3">
         {items.map((key) => {
           const Icon = BEST_FOR_ICONS[key];

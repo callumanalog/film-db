@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import "./globals.css";
@@ -13,9 +13,10 @@ const advercase = localFont({
   ],
 });
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -40,7 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${advercase.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${advercase.variable} ${dmSans.variable} ${geistMono.variable} antialiased`}
         style={{ pointerEvents: 'auto' }}
       >
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>

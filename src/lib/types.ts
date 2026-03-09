@@ -7,6 +7,8 @@ export type FilmType =
   | "bw_reversal"
   | "instant";
 
+export type PriceTier = 1 | 2 | 3;
+
 export type GrainLevel = "fine" | "medium" | "heavy";
 export type ContrastLevel = "low" | "medium" | "high";
 export type BestFor =
@@ -72,6 +74,8 @@ export interface FilmStock {
   contrast_level: ContrastLevel;
   best_for: BestFor[];
   discontinued: boolean;
+  price_tier: PriceTier | null;
+  base_price_usd: number | null;
   image_url: string | null;
   rating: number;
   featured: boolean;

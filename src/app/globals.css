@@ -22,7 +22,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-dm-sans);
   --font-heading: var(--font-advercase);
   --font-mono: var(--font-geist-mono);
   --color-primary: #FF5B00;
