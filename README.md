@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FilmDB
+
+A comprehensive film photography database and community resource. Browse every film stock, learn the history, get shooting tips, find where to buy, and view sample images.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Next.js 16** (App Router, React Server Components, TypeScript)
+- **Tailwind CSS v4** + **shadcn/ui** components
+- **Supabase** (PostgreSQL, Auth, Storage) — ready to connect
+- Seed data included for 20 film stocks (works without Supabase)
 
-## Learn More
+## Current Features
 
-To learn more about Next.js, take a look at the following resources:
+- Dark theme with warm amber accents
+- 20 film stocks with detailed descriptions, history, shooting tips, and purchase links
+- Film stock browser with filtering by brand, type, format, and search
+- Individual film stock detail pages with specs, history, tips, buy links, and related stocks
+- Brand pages with descriptions and film stock listings
+- Responsive design (mobile-first)
+- Loading skeleton states
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Future Phases
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- User accounts and community image uploads
+- Roll tracking (log your rolls, link to scans)
+- Lab finder with map integration
+- Reviews, ratings, and social features
 
-## Deploy on Vercel
+## Database
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The app currently runs on local seed data. To connect to Supabase:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Create a Supabase project
+2. Run the migration in `src/supabase/migrations/001_initial_schema.sql`
+3. Copy `.env.local.example` to `.env.local` and fill in your credentials
+4. Update `src/lib/supabase/queries.ts` to use the Supabase client instead of seed data
