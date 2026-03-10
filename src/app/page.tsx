@@ -25,7 +25,7 @@ const FEATURES = [
   {
     icon: Users,
     title: "Community",
-    description: "Coming soon: upload sample images, track your rolls, and find labs near you.",
+    description: "Coming soon: upload references, track your rolls, and find labs near you.",
   },
 ];
 
@@ -57,7 +57,7 @@ export default async function HomePage() {
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
               Explore every film stock ever made. Learn the history, get shooting tips,
-              find where to buy, and see sample images — all in one place.
+              find where to buy, and see references — all in one place.
             </p>
 
             <div className="mt-10 flex flex-col items-center gap-4">

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { DM_Sans, Geist_Mono } from "next/font/google";
+import { Outfit, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import "./globals.css";
@@ -13,8 +13,8 @@ const advercase = localFont({
   ],
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
 });
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s | FilmDB",
   },
   description:
-    "The ultimate resource for analog film photography. Explore every film stock, learn shooting tips, discover where to buy, and view sample images.",
+    "The ultimate resource for analog film photography. Explore every film stock, learn shooting tips, discover where to buy, and view references.",
 };
 
 export default function RootLayout({
@@ -39,11 +39,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${advercase.variable} ${dmSans.variable} ${geistMono.variable} antialiased`}
-        style={{ pointerEvents: 'auto' }}
-      >
+    <html lang="en" className={`${advercase.variable} ${outfit.variable} ${geistMono.variable}`}>
+      <body className="antialiased" style={{ pointerEvents: 'auto' }}>
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>
           <Header />
           <main className="flex-1">{children}</main>

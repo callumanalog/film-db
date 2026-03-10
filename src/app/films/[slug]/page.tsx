@@ -1,12 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import {
-  getFilmStockBySlug,
-  getRelatedStocks,
-  getFilmStocks,
-  getMoreFromBrand,
-} from "@/lib/supabase/queries";
+import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand } from "@/lib/supabase/queries";
+import { getFlickrSampleImagesForStock } from "@/lib/flickr";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { FilmCard } from "@/components/film-card";
@@ -29,13 +25,16 @@ import {
   Building2,
   Film,
   Users,
+  FileText,
+  Play,
 } from "lucide-react";
 import { BestForSection } from "@/components/best-for-section";
 import { ExpandableText, InlineExpandableText } from "@/components/expandable-text";
 import { StarRating } from "@/components/star-rating";
 import { CommunitySection, CommunityReviews, CommunityGallery, QuickActions } from "@/components/community-section";
 import { StickyLeftPane, PageTitleHeader, PriceBuyCard, SpecsRightPane } from "@/components/hero-mockups";
-import { FilmPageNav } from "@/components/film-page-tabs";
+import { FilmPageNav, FilmDetailTabs } from "@/components/film-page-tabs";
+import { OverviewTabContent } from "@/components/overview-tab-content";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -74,27 +73,28 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   const specs = slug === "cinestill-800t"
     ? [
-        { label: "Film Format", value: "35mm" },
+        { label: "Film Format", value: "35mm, 120" },
         { label: "Film Colour & Type", value: "Colour Negative (C-41)" },
         { label: "ISO", value: "800" },
         { label: "Grain", value: "Normal and Fine" },
         { label: "Contrast", value: "High" },
         { label: "Colour Balance", value: "Tungsten-Balanced Film (\u2248\u00A03200K)" },
-        { label: "Exposure Latitude", value: "Wide / Very Wide Latitude" },
+        { label: "Exposure Latitude", value: "Wide / Very Wide" },
         { label: "DX Coding", value: "Yes" },
-        { label: "Film Development Process", value: "Colour (C-41)" },
+        { label: "Development Process", value: "Colour (C-41)" },
       ]
     : [
-        { label: "Film Format", value: stock.format.join(", ") },
+        { label: "Film Format", value: (stock.format ?? []).join(", ") },
         { label: "Film Type", value: FILM_TYPE_LABELS[stock.type] },
-        { label: "ISO", value: stock.iso.toString() },
+        { label: "ISO", value: stock.iso?.toString() ?? "" },
         { label: "Grain", value: stock.grain },
         { label: "Contrast", value: stock.contrast },
         { label: "Color Palette", value: stock.color_palette },
         { label: "Latitude", value: stock.latitude },
       ].filter((s) => s.value) as { label: string; value: string }[];
 
-  const sortedLinks = [...stock.purchase_links].sort(
+  const purchaseLinks = stock.purchase_links ?? [];
+  const sortedLinks = [...purchaseLinks].sort(
     (a, b) =>
       (RETAILER_ORDER.indexOf(a.retailer_name) === -1 ? 999 : RETAILER_ORDER.indexOf(a.retailer_name)) -
       (RETAILER_ORDER.indexOf(b.retailer_name) === -1 ? 999 : RETAILER_ORDER.indexOf(b.retailer_name))
@@ -108,7 +108,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       typeLabel: FILM_TYPE_LABELS[stock.type],
       typeColor: typeColor,
       iso: stock.iso,
-      format: stock.format,
+      format: stock.format ?? [],
       image_url: stock.image_url,
       description: stock.description,
       discontinued: stock.discontinued,
@@ -116,7 +116,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       base_price_usd: stock.base_price_usd,
       purchase_links: sortedLinks,
       specs: specs.map(({ label, value }) => ({ label, value })),
-      best_for: (stock.best_for ?? []).map((k: string) => BEST_FOR_LABELS[k as BestFor] ?? k),
+      best_for: stock.best_for ?? [],
     },
   };
 
@@ -125,61 +125,82 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     ...moreFromBrandStocks.filter((s) => !relatedStocks.some((r) => r.id === s.id)),
   ].slice(0, 8);
 
-  const cinestillContent = (
-    <>
-      {/* Description now renders inside PageTitleHeader with float-right actions panel */}
+  const flickrImages = await getFlickrSampleImagesForStock(slug).catch(() => []);
 
-      {/* Gallery */}
-      <section className="mb-10">
-        <CommunityGallery stockName={stock.name} />
-      </section>
+  const reviewsFromWeb =
+    slug === "cinestill-800t"
+      ? [
+          { title: "CineStill 800T Review", site: "Analog Cafe", url: "https://analog.cafe/" },
+          { title: "800T First Impressions", site: "Emulsive", url: "https://emulsive.org/" },
+        ]
+      : [];
 
-      {/* Shooting Tips + Best For */}
-      {(stock.shooting_tips || stock.best_for?.length > 0) && (
-        <section className="mb-10 rounded-xl border border-border/50 bg-card p-5">
+  const videoReviews =
+    slug === "cinestill-800t"
+      ? [
+          { title: "CineStill 800T - Full Review", channel: "YouTube", url: "https://www.youtube.com/" },
+          { title: "Shooting 800T at Night", channel: "YouTube", url: "https://www.youtube.com/" },
+        ]
+      : [];
+
+  const cinestillTabs = [
+    {
+      id: "overview",
+      label: "Overview",
+      content: (
+        <OverviewTabContent
+          description={stock.description}
+          flickrImages={flickrImages}
+          shootingTips={stock.shooting_tips}
+          reviewsFromWeb={reviewsFromWeb}
+          videoReviews={videoReviews}
+          purchaseLinks={stock.purchase_links ?? []}
+          bestFor={stock.best_for ?? []}
+        />
+      ),
+    },
+    {
+      id: "gallery",
+      label: "Example images",
+      content: (
+        <section>
+          <CommunityGallery stockName={stock.name} slug={slug} flickrImages={flickrImages} />
+        </section>
+      ),
+    },
+    {
+      id: "reviews",
+      label: "Notes",
+      content: (
+        <section className="space-y-10">
           {stock.shooting_tips && (
             <>
-              <SectionHeading title="Shooting Tips" />
-              <ul className="mt-1 space-y-2">
-                {stock.shooting_tips
-                  .split(/\.\s+/)
-                  .filter((s) => s.trim().length > 0)
-                  .map((tip, i) => (
-                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/80">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-                      {tip.endsWith(".") ? tip : `${tip}.`}
-                    </li>
-                  ))}
-              </ul>
+              <SectionHeading title="Shooting notes" />
+              <section className="rounded-xl border border-border/50 bg-card p-5">
+                <ul className="space-y-2">
+                  {stock.shooting_tips
+                    .split(/\.\s+/)
+                    .filter((s) => s.trim().length > 0)
+                    .map((tip, i) => (
+                      <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/80">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                        {tip.endsWith(".") ? tip : `${tip}.`}
+                      </li>
+                    ))}
+                </ul>
+              </section>
             </>
           )}
-          {stock.best_for?.length > 0 && (
-            <div className={stock.shooting_tips ? "mt-5 border-t border-border/50 pt-4" : ""}>
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Best for</span>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {stockProps.stock.best_for?.map((label) => (
-                  <span key={label} className="rounded-lg bg-[#e5e5e5] px-3 py-1 text-xs font-medium text-[#444] dark:bg-[#333] dark:text-[#aaa]">
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          <CommunityReviews />
         </section>
-      )}
-
-      {/* Reviews */}
-      <section className="mb-10">
-        <CommunityReviews />
-      </section>
-
-    </>
-  );
+      ),
+    },
+  ];
 
   const mainContent = (
     <>
       {/* Where to Buy */}
-      {stock.purchase_links.length > 0 && (
+      {sortedLinks.length > 0 && (
         <section className="mb-6 rounded-xl border border-border/50 bg-card px-5 py-4">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
@@ -261,10 +282,10 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         </section>
       )}
 
-      {/* Sample Images */}
+      {/* References */}
       {stock.sample_images.length > 0 && (
         <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <SectionHeading title="Sample Images" />
+          <SectionHeading title="References" />
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {stock.sample_images.map((img) => (
               <div
@@ -297,7 +318,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-10 text-center">
           <Camera className="mb-3 h-10 w-10 text-muted-foreground/50" />
           <p className="text-sm font-medium text-muted-foreground">
-            Community sample images coming soon
+            Community references coming soon
           </p>
           <p className="mt-1 text-xs text-muted-foreground/60">
             Users will be able to upload their own shots taken on {stock.name}
@@ -355,34 +376,25 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
             <span className="font-medium text-foreground">{stock.name}</span>
           </nav>
 
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
             <StickyLeftPane {...stockProps} />
-            <div className="min-w-0 flex-1">
-              <div className="flex gap-8">
-                <div className="min-w-0 flex-1">
-                  <PageTitleHeader {...stockProps} />
-                  {cinestillContent}
-                </div>
-                <div className="hidden w-52 shrink-0 self-start lg:block">
-                  <SpecsRightPane specs={stockProps.stock.specs ?? []} />
-                </div>
+            <div className="min-w-0 flex-1 pt-6 sm:pt-8">
+              <PageTitleHeader {...stockProps} />
+              <div className="min-w-0">
+                <FilmDetailTabs
+                  tabs={cinestillTabs}
+                  defaultId="overview"
+                  fullWidthTabBar
+                />
               </div>
             </div>
           </div>
         </div>
 
         {allDiscoveryStocks.length > 0 && (
-          <section className="border-t border-border/50 bg-secondary/30 py-12">
-            <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-xl font-bold tracking-tight">You might also like</h2>
-                <Link
-                  href={`/brands/${stock.brand.slug}`}
-                  className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                >
-                  View all {stock.brand.name} films
-                </Link>
-              </div>
+          <section className="w-full border-t border-border/50 bg-secondary/30 py-12">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+              <h2 className="mb-6 text-xl font-bold tracking-tight">Similar stocks</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {allDiscoveryStocks.map((s) => (
                   <FilmCard key={s.id} stock={s} />
@@ -444,7 +456,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
             </div>
             <div className="flex items-center gap-2">
               <Film className="h-4 w-4 text-muted-foreground/50" />
-              <span className="text-xs font-medium">{stock.format.join(", ")}</span>
+              <span className="text-xs font-medium">{(stock.format ?? []).join(", ")}</span>
             </div>
             <div className="flex items-center gap-2">
               <Gauge className="h-4 w-4 text-muted-foreground/50" />
@@ -481,4 +493,125 @@ function SectionHeading({
   return (
     <h2 className="mb-4 text-xl font-bold tracking-tight">{title}</h2>
   );
+}
+
+type SpecsTableVariant = "a" | "b" | "c" | "d" | "e";
+
+function SpecsTable({
+  specs,
+  variant,
+}: {
+  specs: { label: string; value: string }[];
+  variant: SpecsTableVariant;
+}) {
+  const cells = specs.slice(0, 9);
+  const col = (i: number) => cells.slice(i * 3, i * 3 + 3);
+
+  if (variant === "a") {
+    return (
+      <div className="mb-8">
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Specs</h2>
+        <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+          <div className="grid grid-cols-3 divide-x divide-border/50">
+            {[0, 1, 2].map((c) => (
+              <div key={c} className="divide-y divide-border/50">
+                {col(c).map((spec) => (
+                  <div key={spec.label} className="px-4 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground">{spec.value}</p>
+                  </div>
+                ))}
+                {col(c).length < 3 && Array.from({ length: 3 - col(c).length }).map((_, i) => <div key={i} className="px-4 py-3" />)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "b") {
+    return (
+      <div className="mb-8">
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Specs</h2>
+        <div className="grid grid-cols-3 gap-x-8 gap-y-0">
+          {[0, 1, 2].map((c) => (
+            <div key={c} className="space-y-4 py-2">
+              {col(c).map((spec) => (
+                <div key={spec.label}>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground">{spec.value}</p>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "c") {
+    return (
+      <div className="mb-8">
+        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Specs</h2>
+        <div className="rounded-lg bg-secondary/30 px-5 py-4">
+          <dl className="grid grid-cols-3 gap-x-6 gap-y-4">
+            {cells.map((spec) => (
+              <div key={spec.label} className="flex flex-col">
+                <dt className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</dt>
+                <dd className="mt-0.5 text-sm font-semibold text-foreground">{spec.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "d") {
+    return (
+      <div className="mb-8 overflow-hidden rounded-xl border border-border/50 bg-card">
+        <div className="border-b border-border/50 bg-secondary/40 px-4 py-2.5">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Specs</p>
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-border/50">
+          {[0, 1, 2].map((c) => (
+            <div key={c} className="divide-y divide-border/30">
+              {col(c).map((spec) => (
+                <div key={spec.label} className="px-4 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
+                  <p className="mt-0.5 text-xs font-semibold text-foreground">{spec.value}</p>
+                </div>
+              ))}
+              {col(c).length < 3 && Array.from({ length: 3 - col(c).length }).map((_, i) => <div key={i} className="px-4 py-2.5" />)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (variant === "e") {
+    return (
+      <div className="mb-8">
+        <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h2>
+        <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-5">
+          <div className="grid grid-cols-3 gap-6">
+            {[0, 1, 2].map((c) => (
+              <div key={c} className="space-y-5">
+                {col(c).map((spec) => (
+                  <div key={spec.label} className="border-l-2 border-primary/30 pl-4">
+                    <p className="text-xs font-medium text-muted-foreground">{spec.label}</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{spec.value}</p>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }

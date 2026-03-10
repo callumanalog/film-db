@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start dev server",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}", "env": {} },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "next",
+        "pattern": [{ "regexp": ".", "file": 1, "line": 1, "column": 1, "message": 1 }],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Ready in|Local:.*localhost"
+        }
+      },
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "Open in Cursor Browser",
+      "type": "shell",
+      "command": "echo ${input:openSimpleBrowser}",
+      "problemMatcher": [],
+      "presentation": { "reveal": "never" },
+      "dependsOn": "Start dev server"
+    },
+    {
+      "label": "Dev + Cursor Browser",
+      "dependsOn": ["Start dev server", "Open in Cursor Browser"],
+      "dependsOrder": "sequence"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "openSimpleBrowser",
+      "type": "command",
+      "command": "simpleBrowser.show",
+      "args": ["http://localhost:3000"]
+    }
+  ]
+}

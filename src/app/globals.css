@@ -22,7 +22,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-dm-sans);
+  --font-sans: var(--font-outfit);
   --font-heading: var(--font-advercase);
   --font-mono: var(--font-geist-mono);
   --color-primary: #FF5B00;
@@ -114,10 +114,9 @@
     z-index: 0;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
   html {
-    @apply font-sans;
     scroll-behavior: smooth;
   }
   h1, h2, h3, h4, h5, h6 {

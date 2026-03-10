@@ -27,7 +27,7 @@ export default function AboutPage() {
           Whether you&apos;re a seasoned film photographer looking for detailed technical
           specs, or a beginner trying to choose your first roll, FilmDB has you covered.
           We catalog every film stock with detailed descriptions, shooting tips, purchase
-          links, and sample images.
+          links, and references.
         </p>
 
         <p>
@@ -51,7 +51,7 @@ export default function AboutPage() {
         <ul className="list-inside space-y-2 text-sm">
           <li className="flex items-start gap-2">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-            <span><strong className="text-foreground">Community uploads</strong> — Share your own sample images for each film stock</span>
+            <span><strong className="text-foreground">Community uploads</strong> — Share your own references for each film stock</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />

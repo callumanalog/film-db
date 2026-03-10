@@ -18,9 +18,7 @@ import {
   ExternalLink,
   ShoppingBag,
   NotebookPen,
-  Pencil,
   Plus,
-  CircleCheck,
   CircleX,
   DollarSign,
   Aperture,
@@ -31,8 +29,28 @@ import {
   Thermometer,
   QrCode,
   FlaskConical,
+  UserCircle,
+  Mountain,
+  Plane,
+  Moon,
+  LampDesk,
+  Sun,
+  Check,
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
+import type { BestFor } from "@/lib/types";
+import { BEST_FOR_LABELS } from "@/lib/types";
+
+const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
+  portrait: UserCircle,
+  landscape: Mountain,
+  street: Building2,
+  wedding: Heart,
+  travel: Plane,
+  night: Moon,
+  studio: LampDesk,
+  everyday: Sun,
+};
 
 interface PurchaseLink {
   id: string;
@@ -57,7 +75,7 @@ interface HeroMockupProps {
     base_price_usd: number | null;
     purchase_links?: PurchaseLink[];
     specs?: { label: string; value: string }[];
-    best_for?: string[];
+    best_for?: BestFor[];
   };
 }
 
@@ -83,6 +101,16 @@ function MiniStars({ rating, size = 16 }: { rating: number; size?: number }) {
         ))}
       </div>
       <span className="text-sm font-semibold text-foreground/80">4.3</span>
+    </div>
+  );
+}
+
+/** Single star + "X.X Avg. rating" (reference-style metadata) */
+function AvgRatingStar({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
+      <span>{rating.toFixed(1)} Avg. rating</span>
     </div>
   );
 }
@@ -259,11 +287,21 @@ function OptionC({ stock }: HeroMockupProps) {
 }
 
 /* ─── Interactive Half-Star Rating ─── */
-function UserStarRating() {
-  const [rating, setRating] = useState(0);
+function UserStarRating({
+  value,
+  onChange,
+  rowHover,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  /** When set, clear (X) is shown when this is true and value > 0 (e.g. hover from parent row). */
+  rowHover?: boolean;
+}) {
   const [hover, setHover] = useState(0);
+  const [starsHover, setStarsHover] = useState(false);
 
-  const display = hover || rating;
+  const display = hover || value;
+  const showClear = value > 0 && (rowHover !== undefined ? rowHover : starsHover);
 
   function getValueFromEvent(e: React.MouseEvent<HTMLDivElement>, starIndex: number) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -273,44 +311,113 @@ function UserStarRating() {
   }
 
   return (
-    <div className="flex gap-1" onMouseLeave={() => setHover(0)}>
-      {Array.from({ length: 5 }).map((_, i) => {
-        const full = display >= i + 1;
-        const half = !full && display >= i + 0.5;
-
-        return (
-          <div
-            key={i}
-            className="relative h-7 w-7 cursor-pointer"
-            onMouseMove={(e) => setHover(getValueFromEvent(e, i))}
+    <div
+      className="flex justify-center"
+      onMouseEnter={() => setStarsHover(true)}
+      onMouseLeave={() => { setHover(0); setStarsHover(false); }}
+    >
+      <div className="relative inline-flex">
+        {value > 0 && (
+          <button
+            type="button"
             onClick={(e) => {
-              const val = getValueFromEvent(e, i);
-              setRating(val === rating ? 0 : val);
+              e.stopPropagation();
+              onChange(0);
             }}
+            className={`absolute right-full mr-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+              showClear ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+            aria-label="Clear rating"
+            title="Clear rating"
           >
-            <Star className="absolute inset-0 h-7 w-7 text-muted-foreground/20" />
-            {full && (
-              <Star className="absolute inset-0 h-7 w-7 fill-primary text-primary" />
-            )}
-            {half && (
-              <div className="absolute inset-0 overflow-hidden" style={{ width: "50%" }}>
-                <Star className="h-7 w-7 fill-primary text-primary" />
-              </div>
-            )}
-          </div>
-        );
-      })}
+            <CircleX className="h-4 w-4 text-foreground" />
+          </button>
+        )}
+        <div
+          className="flex gap-1"
+          onMouseLeave={() => setHover(0)}
+        >
+          {Array.from({ length: 5 }).map((_, i) => {
+          const full = display >= i + 1;
+          const half = !full && display >= i + 0.5;
+
+          return (
+            <div
+              key={i}
+              className="relative h-7 w-7 cursor-pointer"
+              onMouseMove={(e) => setHover(getValueFromEvent(e, i))}
+              onClick={(e) => {
+                const val = getValueFromEvent(e, i);
+                onChange(val === value ? 0 : val);
+              }}
+            >
+              <Star className="absolute inset-0 h-7 w-7 text-muted-foreground/20" />
+              {full && (
+                <Star className="absolute inset-0 h-7 w-7 fill-primary text-primary" />
+              )}
+              {half && (
+                <div className="absolute inset-0 overflow-hidden" style={{ width: "50%" }}>
+                  <Star className="h-7 w-7 fill-primary text-primary" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
+  </div>
   );
 }
 
 /* ─── Sticky Left Pane ─── */
-export function StickyLeftPane({ stock }: HeroMockupProps) {
-  const links = stock.purchase_links ?? [];
+
+const LOG_OPTIONS = [
+  { id: "shot", label: "Shot", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
+  { id: "favorite", label: "Favorite", fullLabel: "Add to favourites", Icon: Heart },
+  { id: "shootlist", label: "Shootlist", fullLabel: "I want to shoot this stock — save to shootlist", Icon: Plus },
+] as const;
+
+/** Active Shot: orange circle + white tick */
+function ShotActiveIcon({ className }: { className?: string }) {
   return (
-    <div className="w-full self-start sm:sticky sm:top-24 sm:w-60 sm:shrink-0">
+    <span className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary ${className ?? ""}`} aria-hidden>
+      <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+    </span>
+  );
+}
+
+type LogActionId = (typeof LOG_OPTIONS)[number]["id"];
+
+export function StickyLeftPane({ stock }: HeroMockupProps) {
+  const [selectedIds, setSelectedIds] = useState<Set<LogActionId>>(new Set());
+  const [rating, setRating] = useState(0);
+  const [ratingRowHover, setRatingRowHover] = useState(false);
+
+  const toggleAction = (id: LogActionId) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleRatingChange = (value: number) => {
+    setRating(value);
+    if (value > 0) {
+      setSelectedIds((prev) => new Set(prev).add("shot"));
+    }
+  };
+
+  return (
+    <div className="w-full sm:w-72 sm:shrink-0">
       {/* Image */}
-      <div className="mx-auto w-fit overflow-hidden rounded-xl border border-border/50 bg-white sm:mx-0 sm:w-full">
+      <div className="relative mx-auto w-fit overflow-hidden rounded-xl border border-border/50 bg-white sm:mx-0 sm:w-full">
+        <span
+          className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-sm ${stock.discontinued ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}
+        >
+          {stock.discontinued ? "Discontinued" : "Available"}
+        </span>
         <div className="flex items-center justify-center p-6">
           <div className="h-48 w-40">
             <FilmImage stock={stock} size={192} />
@@ -318,68 +425,150 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         </div>
       </div>
 
-      {/* Action tiles — 3-column grid */}
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        <button className="group flex flex-col items-center gap-2 rounded-xl border border-border/50 bg-card px-2 py-4 transition-all hover:border-primary/40 hover:bg-primary/5" title="Log a roll">
-          <Pencil className="h-6 w-6 text-muted-foreground/50 transition-colors group-hover:text-primary" />
-          <span className="font-advercase text-[11px] font-medium text-muted-foreground">Log</span>
-        </button>
-        <button className="group flex flex-col items-center gap-2 rounded-xl border border-border/50 bg-card px-2 py-4 transition-all hover:border-primary/40 hover:bg-primary/5" title="Track this stock">
-          <Plus className="h-6 w-6 text-muted-foreground/50 transition-colors group-hover:text-primary" />
-          <span className="font-advercase text-[11px] font-medium text-muted-foreground">Track</span>
-        </button>
-        <button className="group flex flex-col items-center gap-2 rounded-xl border border-border/50 bg-card px-2 py-4 transition-all hover:border-primary/40 hover:bg-primary/5" title="Save this stock">
-          <Heart className="h-6 w-6 text-muted-foreground/50 transition-colors group-hover:text-primary" />
-          <span className="font-advercase text-[11px] font-medium text-muted-foreground">Save</span>
-        </button>
+      {/* Shot | Favorite | Shootlist — multiple can be selected; filled icons when active */}
+      <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Film stock actions">
+        {LOG_OPTIONS.map(({ id, label, fullLabel, Icon }) => {
+          const isActive = selectedIds.has(id);
+          const filledIcon = isActive && id === "favorite";
+          const shotActive = isActive && id === "shot";
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => toggleAction(id)}
+              title={fullLabel}
+              aria-pressed={isActive}
+              aria-label={fullLabel}
+              className={`group flex flex-col items-center justify-center gap-2 rounded-xl border px-2 py-6 transition-all ${
+                isActive
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border/50 bg-card text-muted-foreground hover:border-primary/40 hover:bg-primary/5"
+              }`}
+            >
+              {shotActive ? (
+                <ShotActiveIcon />
+              ) : filledIcon ? (
+                <Icon className="h-6 w-6 shrink-0 fill-primary text-primary" aria-hidden />
+              ) : (
+                <Icon className="h-6 w-6 shrink-0" aria-hidden />
+              )}
+              <span className={`text-sm font-medium tracking-wider leading-tight ${isActive ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Your rating */}
-      <div className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-card px-4 py-3">
-        <p className="font-advercase mb-2 text-center text-[10px] font-medium tracking-wide text-muted-foreground">Your rating</p>
+      {/* Your rating — clear X appears when hovering anywhere on this row */}
+      <div
+        className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-card px-4 py-3"
+        onMouseEnter={() => setRatingRowHover(true)}
+        onMouseLeave={() => setRatingRowHover(false)}
+      >
+        <p className="mb-2 text-center text-sm font-medium tracking-wider text-muted-foreground">Your rating</p>
         <div className="flex justify-center">
-          <UserStarRating />
+          <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
         </div>
       </div>
 
-      {links.length > 0 && (
-        <div className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-card">
-          <div className="border-b border-border/50 px-4 py-3">
-            <p className="font-advercase text-sm font-bold tracking-tight">Buy this stock</p>
-          </div>
-          <div className="divide-y divide-border/50">
-            {links.map((link) => (
-              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer sponsored" className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-secondary/30">
-                <span className="text-sm font-medium">{link.retailer_name}</span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40" />
-              </a>
-            ))}
-          </div>
+      {/* Specs card */}
+      {stock.specs && stock.specs.length > 0 && (
+        <div className="mt-8">
+          <SpecsTable specs={stock.specs} />
+        </div>
+      )}
+
+      {/* Buy this stock */}
+      {stock.purchase_links && stock.purchase_links.length > 0 && (
+        <div className="mt-8">
+          <BuyRightPane stock={stock} />
         </div>
       )}
     </div>
   );
 }
 
+/* ─── Buy Right Pane ─── */
+export function BuyRightPane({ stock }: HeroMockupProps) {
+  const links = stock.purchase_links ?? [];
+  if (links.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+      <div className="px-4 py-3">
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Buy this stock</h2>
+      </div>
+      <div className="pb-5">
+        {links.map((link) => (
+          <a
+            key={link.id}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/30"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1 py-0.5">
+              <p className="text-sm leading-tight text-foreground/80 break-words">{link.retailer_name}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Film detail right pane: Buy only (no actions card) ─── */
+export function FilmDetailRightPane({ stock }: HeroMockupProps) {
+  const links = stock.purchase_links ?? [];
+  if (links.length === 0) return null;
+  return (
+    <div className="w-full self-start sm:sticky sm:top-24 sm:w-56 sm:shrink-0">
+      <BuyRightPane stock={stock} />
+    </div>
+  );
+}
+
 /* ─── Page Title Header ─── */
 export function PageTitleHeader({ stock }: HeroMockupProps) {
+  const stats = {
+    avgRating: 4.3,
+    shotByCount: 124,
+    favouritesCount: 89,
+  };
+
   return (
-    <div className="mb-6">
-      <div className="flex items-baseline gap-3">
+    <div className="mb-0 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+      <div className="min-w-0 flex-1">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           {stock.brand.name} {stock.name}
         </h1>
-        <div className="flex items-center gap-1.5">
-          <MiniStars rating={4.3} size={14} />
-          <span className="text-xs text-muted-foreground">4.3</span>
-        </div>
       </div>
 
-      {stock.description && (
-        <p className="mt-4 text-[15px] leading-relaxed text-foreground/80">
-          {stock.description}
-        </p>
-      )}
+      {/* Stats pane — icon + number inline, label below centred */}
+      <div className="flex shrink-0 gap-5 sm:gap-6">
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5">
+            <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
+            <span className="text-base font-semibold tracking-tight text-foreground">{stats.avgRating.toFixed(1)}</span>
+          </div>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avg. rating</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="text-base font-semibold tracking-tight text-foreground">{stats.shotByCount}</span>
+          </div>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot by</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5">
+            <Heart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="text-base font-semibold tracking-tight text-foreground">{stats.favouritesCount}</span>
+          </div>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Favourites</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -399,7 +588,60 @@ const SPEC_ICONS: Record<string, React.ElementType> = {
   "Latitude": Target,
   "DX Coding": QrCode,
   "Film Development Process": FlaskConical,
+  "Development Process": FlaskConical,
 };
+
+const SPEC_LABEL_DISPLAY: Record<string, string> = {
+  "Film Format": "Format",
+  "Film Colour & Type": "Type",
+  "Exposure Latitude": "Latitude",
+  "Development Process": "Development",
+};
+
+function getSpecDisplayLabel(label: string): string {
+  return SPEC_LABEL_DISPLAY[label] ?? label;
+}
+
+/** Specs table for main content — same row style as right pane (icon + label above value), one card */
+export function SpecsTable({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+      <div className="px-4 py-3">
+        <h2 className="text-xl font-bold tracking-tight text-foreground">Specs</h2>
+      </div>
+      <div className="pb-5">
+        {specs.map((spec) => {
+          const Icon = SPEC_ICONS[spec.label];
+          const displayLabel = getSpecDisplayLabel(spec.label);
+          return (
+            <div
+              key={spec.label}
+              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/30"
+            >
+              {Icon ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
+                  <Icon className="h-4 w-4" aria-hidden />
+                </span>
+              ) : (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground text-xs font-medium">
+                  —
+                </span>
+              )}
+              <div className="min-w-0 flex-1 py-0.5">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">
+                  {displayLabel}
+                </p>
+                <p className="mt-px text-sm leading-tight text-foreground/80 break-words">{spec.value}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function SpecsRightPane({ specs }: { specs: { label: string; value: string }[] }) {
   if (specs.length === 0) return null;
@@ -407,8 +649,8 @@ export function SpecsRightPane({ specs }: { specs: { label: string; value: strin
   return (
     <div>
       <div className="overflow-hidden rounded-xl border border-border/50">
-        <div className="bg-card px-4 py-3">
-          <h3 className="text-xs font-bold tracking-tight">Specs</h3>
+        <div className="border-b border-border/50 px-4 py-3">
+          <p className="font-advercase text-sm font-bold tracking-tight">Specs</p>
         </div>
         {specs.map((spec, i) => (
           <div key={spec.label} className={`px-4 py-2 ${i % 2 === 0 ? "bg-secondary/30" : "bg-card"}`}>
@@ -417,6 +659,208 @@ export function SpecsRightPane({ specs }: { specs: { label: string; value: strin
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Film detail right pane: specs with icon + category label above value (small caps) */
+export function FilmDetailSpecsPane({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+
+  return (
+    <div className="w-full sm:w-56 sm:shrink-0">
+      <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h2>
+      <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+        <div className="pb-5">
+          {specs.map((spec) => {
+            const Icon = SPEC_ICONS[spec.label];
+            return (
+              <div
+                key={spec.label}
+                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/30"
+              >
+                {Icon ? (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <Icon className="h-4 w-4" aria-hidden />
+                  </span>
+                ) : (
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+                    —
+                  </span>
+                )}
+                <div className="min-w-0 flex-1 py-0.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">
+                    {spec.label}
+                  </p>
+                  <p className="mt-px text-sm leading-tight text-foreground/80 break-words">{spec.value}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 3×3 specs grid for main content — same icons and language as FilmDetailSpecsPane, all in one card */
+export function SpecsGrid({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-4">
+      <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+        {specs.map((spec) => {
+          const Icon = SPEC_ICONS[spec.label];
+          return (
+            <div
+              key={spec.label}
+              className="flex items-center gap-2.5"
+            >
+              {Icon ? (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                </span>
+              ) : (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground text-[10px] font-medium">
+                  —
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">
+                  {spec.label}
+                </p>
+                <p className="mt-px text-sm leading-tight text-foreground/80 break-words">{spec.value}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Option A: Current — 3×3 grid, icon + label + value per cell */
+export function SpecsGridOptionA({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-4">
+      <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+        {specs.map((spec) => {
+          const Icon = SPEC_ICONS[spec.label];
+          return (
+            <div key={spec.label} className="flex items-center gap-2.5">
+              {Icon ? (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                </span>
+              ) : (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground text-[10px] font-medium">—</span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">{spec.label}</p>
+                <p className="mt-px text-sm leading-tight text-foreground/80 break-words">{spec.value}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Option B: Table — two columns (label | value), no icons, dense rows */
+export function SpecsGridOptionB({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+      <table className="w-full text-left text-sm">
+        <tbody>
+          {specs.map((spec) => (
+            <tr key={spec.label} className="border-b border-border/50 last:border-b-0">
+              <td className="py-2.5 pr-4 font-medium uppercase tracking-wider text-muted-foreground w-40 shrink-0">
+                {spec.label}
+              </td>
+              <td className="py-2.5 text-foreground/80">
+                {spec.value}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Option C: Value-only 3×3 — just value in cell, label as small caps above */
+export function SpecsGridOptionC({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-4">
+      <div className="grid grid-cols-3 gap-4">
+        {specs.map((spec) => (
+          <div key={spec.label} className="flex flex-col items-center text-center">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+              {spec.label}
+            </p>
+            <p className="text-sm font-medium text-foreground/90 break-words">
+              {spec.value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Option D: Definition list — label left (fixed), value right, alternating row bg */
+export function SpecsGridOptionD({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+      <dl className="divide-y divide-border/50">
+        {specs.map((spec, i) => (
+          <div
+            key={spec.label}
+            className={`flex items-baseline gap-4 px-4 py-2.5 ${i % 2 === 1 ? "bg-secondary/20" : ""}`}
+          >
+            <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground w-36 shrink-0">
+              {spec.label}
+            </dt>
+            <dd className="text-sm text-foreground/80 min-w-0">
+              {spec.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+/** Option E: Pills — icon + Label: Value, no card, flex wrap */
+export function SpecsGridOptionE({ specs }: { specs: { label: string; value: string }[] }) {
+  if (specs.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {specs.map((spec) => {
+        const Icon = SPEC_ICONS[spec.label];
+        return (
+          <span
+            key={spec.label}
+            className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-secondary/30 px-3 py-1.5 text-sm"
+          >
+            {Icon ? (
+              <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            ) : (
+              <span className="h-3.5 w-3.5 shrink-0 text-[10px] font-medium text-muted-foreground">—</span>
+            )}
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              {spec.label}:
+            </span>
+            <span className="text-foreground/90">{spec.value}</span>
+          </span>
+        );
+      })}
     </div>
   );
 }
