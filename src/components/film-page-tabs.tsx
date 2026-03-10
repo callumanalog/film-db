@@ -52,7 +52,7 @@ export function FilmPageNav({ sections }: FilmPageNavProps) {
             <button
               key={s.id}
               onClick={() => scrollTo(s.id)}
-              className={`font-advercase relative whitespace-nowrap pb-3 pt-2 text-sm font-semibold transition-colors ${
+              className={`relative whitespace-nowrap pb-3 pt-2 text-sm font-semibold transition-colors ${
                 s.id === activeId
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"

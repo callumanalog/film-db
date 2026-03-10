@@ -439,7 +439,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
               title={fullLabel}
               aria-pressed={isActive}
               aria-label={fullLabel}
-              className={`group flex flex-col items-center justify-center gap-2 rounded-xl border px-2 py-6 transition-all ${
+              className={`group flex flex-col items-center justify-center gap-4 rounded-xl border px-2 py-6 transition-all ${
                 isActive
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/50 bg-card text-muted-foreground hover:border-primary/40 hover:bg-primary/5"
@@ -452,7 +452,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
               ) : (
                 <Icon className="h-6 w-6 shrink-0" aria-hidden />
               )}
-              <span className={`text-sm font-medium tracking-wider leading-tight ${isActive ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+              <span className={`text-[10px] font-semibold uppercase tracking-wider leading-tight ${isActive ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
             </button>
           );
         })}
@@ -464,18 +464,11 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         onMouseEnter={() => setRatingRowHover(true)}
         onMouseLeave={() => setRatingRowHover(false)}
       >
-        <p className="mb-2 text-center text-sm font-medium tracking-wider text-muted-foreground">Your rating</p>
+        <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Your rating</p>
         <div className="flex justify-center">
           <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
         </div>
       </div>
-
-      {/* Specs card */}
-      {stock.specs && stock.specs.length > 0 && (
-        <div className="mt-8">
-          <SpecsTable specs={stock.specs} />
-        </div>
-      )}
 
       {/* Buy this stock */}
       {stock.purchase_links && stock.purchase_links.length > 0 && (
@@ -494,7 +487,7 @@ export function BuyRightPane({ stock }: HeroMockupProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
       <div className="px-4 py-3">
-        <h2 className="text-xl font-bold tracking-tight text-foreground">Buy this stock</h2>
+        <h3 className="text-xl font-bold tracking-tight text-foreground">Buy this stock</h3>
       </div>
       <div className="pb-5">
         {links.map((link) => (
@@ -540,7 +533,7 @@ export function PageTitleHeader({ stock }: HeroMockupProps) {
   return (
     <div className="mb-0 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
       <div className="min-w-0 flex-1">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+        <h1 className="font-advercase text-3xl font-bold tracking-tight sm:text-4xl">
           {stock.brand.name} {stock.name}
         </h1>
       </div>

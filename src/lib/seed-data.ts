@@ -1128,7 +1128,7 @@ export const seedFilmStocks: FilmStock[] = [
     type: "color_negative",
     iso: 800,
     description:
-      "Kodak Vision3 500T motion picture film, adapted for still photography. CineStill 800T is tungsten-balanced, meaning it renders warm artificial light as neutral while giving daylight scenes a cool, blue cast. Its signature feature is the 'halation' -- a red/orange glow around highlights caused by the removal of the remjet anti-halation layer.",
+      "Kodak Vision3 500T motion picture film, adapted for still photography. CineStill 800T is tungsten-balanced, meaning it renders warm artificial light as neutral while giving daylight scenes a cool, blue cast. Its signature feature is the 'halation', a red/orange glow around highlights caused by the removal of the remjet anti-halation layer.",
     history:
       "CineStill was founded in 2012 by brothers Brian and Brandon Wright, who developed a process to remove the remjet backing from Kodak Vision3 motion picture film, making it processable in standard C-41 chemistry. The 800T (based on Vision3 500T, rated at 800) quickly became one of the most popular and recognizable film stocks of the modern era, defining the look of urban night photography.",
     shooting_tips:

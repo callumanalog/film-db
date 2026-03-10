@@ -93,6 +93,12 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         { label: "Latitude", value: stock.latitude },
       ].filter((s) => s.value) as { label: string; value: string }[];
 
+  /** Specs for overview tab: Use case first, then the rest (10 total for CineStill). */
+  const overviewSpecs = [
+    { label: "Use case", value: (stock.best_for ?? []).map((k) => BEST_FOR_LABELS[k]).join(", ") },
+    ...specs,
+  ].filter((s) => s.value);
+
   const purchaseLinks = stock.purchase_links ?? [];
   const sortedLinks = [...purchaseLinks].sort(
     (a, b) =>
@@ -156,6 +162,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           videoReviews={videoReviews}
           purchaseLinks={stock.purchase_links ?? []}
           bestFor={stock.best_for ?? []}
+          specs={overviewSpecs}
         />
       ),
     },
@@ -366,7 +373,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   if (slug === "cinestill-800t") {
     return (
-      <>
+      <div className="work-sans-content">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
             <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
@@ -394,7 +401,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         {allDiscoveryStocks.length > 0 && (
           <section className="w-full border-t border-border/50 bg-secondary/30 py-12">
             <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-              <h2 className="mb-6 text-xl font-bold tracking-tight">Similar stocks</h2>
+              <h3 className="mb-6 text-xl font-bold tracking-tight text-foreground">Similar stocks</h3>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {allDiscoveryStocks.map((s) => (
                   <FilmCard key={s.id} stock={s} />
@@ -403,7 +410,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
             </div>
           </section>
         )}
-      </>
+      </div>
     );
   }
 

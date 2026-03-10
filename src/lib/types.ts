@@ -39,7 +39,7 @@ export const BEST_FOR_LABELS: Record<BestFor, string> = {
   street: "Street",
   wedding: "Weddings",
   travel: "Travel",
-  night: "Night / Low Light",
+  night: "Low light",
   studio: "Studio",
   everyday: "Everyday",
 };

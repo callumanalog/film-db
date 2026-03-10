@@ -22,7 +22,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-outfit);
+  --font-sans: var(--font-work-sans);
   --font-heading: var(--font-advercase);
   --font-mono: var(--font-geist-mono);
   --color-primary: #FF5B00;
@@ -65,7 +65,6 @@
 }
 
 :root {
-  --font-advercase: "Advercase", var(--font-sans), sans-serif;
   --background: oklch(0.985 0.002 75);
   --foreground: oklch(0.15 0.01 60);
   --card: oklch(1 0 0);
@@ -119,14 +118,29 @@
   html {
     scroll-behavior: smooth;
   }
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-advercase) !important;
+  h1, h2, h4, h5, h6 {
+    font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
+  }
+  h3 {
+    font-family: var(--font-sans), sans-serif !important;
   }
   .font-advercase {
-    font-family: var(--font-advercase) !important;
+    font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
   }
 }
 
 @utility font-advercase {
-  font-family: var(--font-advercase) !important;
+  font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
+}
+
+/* Film page: body copy in Work Sans; h2–h6 inherit so they use Work Sans (not Advercase) */
+.work-sans-content {
+  font-family: var(--font-sans), sans-serif;
+}
+.work-sans-content h2,
+.work-sans-content h3,
+.work-sans-content h4,
+.work-sans-content h5,
+.work-sans-content h6 {
+  font-family: inherit !important;
 }
