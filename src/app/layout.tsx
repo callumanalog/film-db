@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import { Work_Sans, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { UserActionsProvider } from "@/context/user-actions-context";
+import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
 const advercase = localFont({
@@ -42,9 +44,13 @@ export default function RootLayout({
     <html lang="en" className={`${advercase.variable} ${workSans.variable} ${geistMono.variable}`}>
       <body className="antialiased" style={{ pointerEvents: 'auto' }}>
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <UserActionsProvider>
+            <ToastProvider>
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </ToastProvider>
+          </UserActionsProvider>
         </div>
       </body>
     </html>

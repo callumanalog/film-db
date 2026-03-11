@@ -109,7 +109,7 @@ function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
 
 export function QuickActions() {
   const [saved, setSaved] = useState(false);
-  const [shootlisted, setShootlisted] = useState(false);
+  const [tracked, setTracked] = useState(false);
   const [shotIt, setShotIt] = useState(false);
 
   return (
@@ -127,15 +127,15 @@ export function QuickActions() {
       </button>
 
       <button
-        onClick={() => setShootlisted(!shootlisted)}
+        onClick={() => setTracked(!tracked)}
         className={`group inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
-          shootlisted
+          tracked
             ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
             : "border-border bg-card text-foreground hover:border-blue-500/30 hover:bg-blue-500/5"
         }`}
       >
-        <Eye className={`h-4 w-4 transition-colors ${shootlisted ? "text-blue-500" : "text-muted-foreground group-hover:text-blue-500"}`} />
-        {shootlisted ? "On Shootlist" : "Add to Shootlist"}
+        <Plus className={`h-4 w-4 transition-colors ${tracked ? "text-blue-500" : "text-muted-foreground group-hover:text-blue-500"}`} />
+        {tracked ? "Tracked" : "Track"}
       </button>
 
       <button

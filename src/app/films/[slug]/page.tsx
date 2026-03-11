@@ -103,6 +103,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   const stockProps = {
     stock: {
+      slug,
       name: stock.name,
       brand: stock.brand,
       type: stock.type,

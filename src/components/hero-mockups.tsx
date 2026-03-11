@@ -38,6 +38,9 @@ import {
   Check,
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
+import { TrackFilmModal } from "@/components/track-film-modal";
+import { showToastViaEvent } from "@/components/toast";
+import { useUserActions } from "@/context/user-actions-context";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
 
@@ -61,6 +64,7 @@ interface PurchaseLink {
 
 interface HeroMockupProps {
   stock: {
+    slug: string;
     name: string;
     brand: { name: string; slug: string };
     type: string;
@@ -374,7 +378,7 @@ function UserStarRating({
 const LOG_OPTIONS = [
   { id: "shot", label: "Shot", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
   { id: "favorite", label: "Favorite", fullLabel: "Add to favourites", Icon: Heart },
-  { id: "shootlist", label: "Shootlist", fullLabel: "I want to shoot this stock — save to shootlist", Icon: Plus },
+  { id: "track", label: "Track", fullLabel: "Track this film stock", Icon: Plus },
 ] as const;
 
 /** Active Shot: orange circle + white tick */
@@ -389,24 +393,60 @@ function ShotActiveIcon({ className }: { className?: string }) {
 type LogActionId = (typeof LOG_OPTIONS)[number]["id"];
 
 export function StickyLeftPane({ stock }: HeroMockupProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<LogActionId>>(new Set());
-  const [rating, setRating] = useState(0);
+  const { slug } = stock;
+  const {
+    shotSlugs,
+    favouriteSlugs,
+    toggleShot,
+    toggleFavourite,
+    addOrUpdateTracked,
+    setRating: persistRating,
+    ratings,
+  } = useUserActions();
+
+  const [trackModalOpen, setTrackModalOpen] = useState(false);
+
+  const isShot = shotSlugs.includes(slug);
+  const isFavourite = favouriteSlugs.includes(slug);
+  const rating = ratings[slug] ?? 0;
+
   const [ratingRowHover, setRatingRowHover] = useState(false);
 
   const toggleAction = (id: LogActionId) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    if (id === "track") {
+      setTrackModalOpen(true);
+      return;
+    }
+    if (id === "shot") {
+      const { added } = toggleShot(slug);
+      showToastViaEvent(added ? "Added to stocks you've shot" : "Removed from Shot");
+      return;
+    }
+    if (id === "favorite") {
+      const { added } = toggleFavourite(slug);
+      showToastViaEvent(added ? "Added to favourite stocks" : "Removed from Favourites");
+      return;
+    }
   };
 
   const handleRatingChange = (value: number) => {
-    setRating(value);
-    if (value > 0) {
-      setSelectedIds((prev) => new Set(prev).add("shot"));
+    persistRating(slug, value);
+    if (value > 0 && !isShot) {
+      toggleShot(slug);
+      showToastViaEvent("Added to stocks you've shot");
     }
+  };
+
+  const handleTrackSave = (entry: { format: string; status: string; expiryDate: string; notes: string }) => {
+    addOrUpdateTracked({
+      slug,
+      format: entry.format,
+      status: entry.status,
+      expiryDate: entry.expiryDate,
+      notes: entry.notes,
+    });
+    showToastViaEvent("Added to Tracked");
+    setTrackModalOpen(false);
   };
 
   return (
@@ -425,10 +465,10 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         </div>
       </div>
 
-      {/* Shot | Favorite | Shootlist */}
+      {/* Shot | Favorite | Track */}
       <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Film stock actions">
         {LOG_OPTIONS.map(({ id, label, fullLabel, Icon }) => {
-          const isActive = selectedIds.has(id);
+          const isActive = id === "shot" ? isShot : id === "favorite" ? isFavourite : false;
           const filledIcon = isActive && id === "favorite";
           const shotActive = isActive && id === "shot";
           return (
@@ -437,7 +477,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
               type="button"
               onClick={() => toggleAction(id)}
               title={fullLabel}
-              aria-pressed={isActive}
+              aria-pressed={id === "track" ? undefined : isActive}
               aria-label={fullLabel}
               className={`group flex flex-col items-center justify-center gap-4 rounded-xl border px-2 py-6 transition-all ${
                 isActive
@@ -452,11 +492,26 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
               ) : (
                 <Icon className="h-6 w-6 shrink-0" aria-hidden />
               )}
-              <span className={`text-[10px] font-semibold uppercase tracking-wider leading-tight ${isActive ? "text-primary" : "text-muted-foreground"}`}>{label}</span>
+              <span className={`text-[10px] font-semibold uppercase tracking-wider leading-tight ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                {id === "favorite" && isFavourite ? "Favourited" : label}
+              </span>
             </button>
           );
         })}
       </div>
+
+      <TrackFilmModal
+        open={trackModalOpen}
+        onOpenChange={setTrackModalOpen}
+        onSave={handleTrackSave}
+        stock={{
+          slug: stock.slug,
+          name: stock.name,
+          brand: stock.brand,
+          format: stock.format ?? [],
+          image_url: stock.image_url,
+        }}
+      />
 
       {/* Your rating — clear X appears when hovering anywhere on this row */}
       <div
@@ -1013,7 +1068,7 @@ function OptionF({ stock }: HeroMockupProps) {
         <div className="shrink-0 sm:w-52">
           <div className="rounded-xl border border-border/50 bg-card divide-y divide-border/50">
             <CommunityActionRow icon={CheckCircle2} label="I've Shot This" activeColor="emerald" />
-            <CommunityActionRow icon={Eye} label="Add to Shootlist" activeColor="blue" />
+            <CommunityActionRow icon={Plus} label="Track" activeColor="blue" />
             <CommunityActionRow icon={Heart} label="Save" activeColor="primary" />
 
             <div className="px-4 py-3">
