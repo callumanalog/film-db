@@ -44,7 +44,7 @@ function StockImage({ stock, size = 80 }: { stock: TrackFilmModalStock; size?: n
     return (
       <Image
         src={stock.image_url}
-        alt={`${stock.brand.name} ${stock.name}`}
+        alt={stock.name}
         width={size}
         height={size}
         className="h-full w-full object-contain"
@@ -96,7 +96,7 @@ export function TrackFilmModal({ open, onOpenChange, onSave, stock }: TrackFilmM
                     id="track-film-title"
                     className="text-lg font-bold tracking-tight text-foreground truncate"
                   >
-                    {stock.brand.name} {stock.name}
+                    {stock.name}
                   </Dialog.Title>
                   <Dialog.Description id="track-film-desc" className="text-sm text-muted-foreground mt-0.5">
                     Track this film stock

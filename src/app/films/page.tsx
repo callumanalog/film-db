@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/queries";
-import { FilmGrid } from "@/components/film-grid";
+import { FilmsListingClient } from "@/app/films/films-listing-client";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { FilmsSortBar } from "@/components/films-sort-bar";
 import { SearchBar } from "@/components/search-bar";
@@ -109,7 +109,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
               </Suspense>
             </div>
           </div>
-          <FilmGrid stocks={stocks} />
+          <FilmsListingClient stocks={stocks} />
         </main>
       </div>
     </div>

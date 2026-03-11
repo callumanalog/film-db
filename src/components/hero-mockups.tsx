@@ -17,7 +17,6 @@ import {
   StarHalf,
   ExternalLink,
   ShoppingBag,
-  NotebookPen,
   Plus,
   CircleX,
   DollarSign,
@@ -36,11 +35,15 @@ import {
   LampDesk,
   Sun,
   Check,
+  Calendar,
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
 import { TrackFilmModal } from "@/components/track-film-modal";
+import { AddReviewModal } from "@/components/add-review-modal";
 import { showToastViaEvent } from "@/components/toast";
 import { useUserActions } from "@/context/user-actions-context";
+import { useAuth } from "@/context/auth-context";
+import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
 
@@ -133,7 +136,7 @@ function FilmImage({ stock, size = 144 }: { stock: HeroMockupProps["stock"]; siz
     return (
       <Image
         src={stock.image_url}
-        alt={`${stock.brand.name} ${stock.name}`}
+        alt={stock.name}
         width={size}
         height={size}
         className="h-full w-full object-contain"
@@ -165,8 +168,8 @@ function OptionA({ stock }: HeroMockupProps) {
             <FilmImage stock={stock} size={128} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-primary uppercase tracking-wider">{stock.brand.name}</p>
-            <h1 className="mt-1 text-4xl font-bold tracking-tight">{stock.brand.name} {stock.name}</h1>
+            <p className="text-xs font-medium text-primary uppercase tracking-wider">{stock.typeLabel}</p>
+            <h1 className="mt-1 text-4xl font-bold tracking-tight">{stock.name}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span className={`inline-flex items-center rounded-full ${stock.typeColor} px-3 py-1 text-xs font-medium text-white`}>
                 {stock.typeLabel}
@@ -175,7 +178,6 @@ function OptionA({ stock }: HeroMockupProps) {
               {stock.format.map((f) => (
                 <StatPill key={f}>{f}</StatPill>
               ))}
-              <StatPill>{stock.brand.name}</StatPill>
             </div>
             <div className="mt-4 flex items-center gap-3">
               <MiniStars rating={4.3} />
@@ -211,7 +213,7 @@ function OptionB({ stock }: HeroMockupProps) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold tracking-tight">{stock.brand.name} {stock.name}</h1>
+              <h1 className="text-xl font-bold tracking-tight">{stock.name}</h1>
               <div className="flex items-center gap-1.5">
                 <MiniStars rating={4.3} size={13} />
               </div>
@@ -252,7 +254,7 @@ function OptionC({ stock }: HeroMockupProps) {
           <FilmImage stock={stock} size={176} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-primary uppercase tracking-wider">{stock.brand.name}</p>
+          <p className="text-xs font-medium text-primary uppercase tracking-wider">{stock.typeLabel}</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">{stock.name}</h1>
 
           <div className="my-4 h-px bg-border/60" />
@@ -376,8 +378,8 @@ function UserStarRating({
 /* ─── Sticky Left Pane ─── */
 
 const LOG_OPTIONS = [
-  { id: "shot", label: "Shot", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
-  { id: "favorite", label: "Favorite", fullLabel: "Add to favourites", Icon: Heart },
+  { id: "shot", label: "Shot it", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
+  { id: "favorite", label: "Favourite", fullLabel: "Add to favourites", Icon: Heart },
   { id: "track", label: "Track", fullLabel: "Track this film stock", Icon: Plus },
 ] as const;
 
@@ -403,8 +405,11 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
     setRating: persistRating,
     ratings,
   } = useUserActions();
+  const { user } = useAuth();
 
   const [trackModalOpen, setTrackModalOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
 
   const isShot = shotSlugs.includes(slug);
   const isFavourite = favouriteSlugs.includes(slug);
@@ -465,39 +470,73 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         </div>
       </div>
 
-      {/* Shot | Favorite | Track */}
-      <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Film stock actions">
-        {LOG_OPTIONS.map(({ id, label, fullLabel, Icon }) => {
-          const isActive = id === "shot" ? isShot : id === "favorite" ? isFavourite : false;
-          const filledIcon = isActive && id === "favorite";
-          const shotActive = isActive && id === "shot";
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => toggleAction(id)}
-              title={fullLabel}
-              aria-pressed={id === "track" ? undefined : isActive}
-              aria-label={fullLabel}
-              className={`group flex flex-col items-center justify-center gap-4 rounded-xl border px-2 py-6 transition-all ${
-                isActive
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border/50 bg-card text-muted-foreground hover:border-primary/40 hover:bg-primary/5"
-              }`}
-            >
-              {shotActive ? (
-                <ShotActiveIcon />
-              ) : filledIcon ? (
-                <Icon className="h-6 w-6 shrink-0 fill-primary text-primary" aria-hidden />
-              ) : (
-                <Icon className="h-6 w-6 shrink-0" aria-hidden />
-              )}
-              <span className={`text-[10px] font-semibold uppercase tracking-wider leading-tight ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                {id === "favorite" && isFavourite ? "Favourited" : label}
-              </span>
-            </button>
-          );
-        })}
+      {/* One card: 3 actions (side by side) + Rate + Write review + Upload images */}
+      <div className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-card divide-y divide-border/50">
+        {/* Top row: Shot | Favourite | Track — icon above label, only icons coloured */}
+        <div className="grid grid-cols-3 gap-0" role="group" aria-label="Film stock actions">
+          {LOG_OPTIONS.map(({ id, label, fullLabel, Icon }) => {
+            const isActive = id === "shot" ? isShot : id === "favorite" ? isFavourite : false;
+            const filledIcon = isActive && id === "favorite";
+            const shotActive = isActive && id === "shot";
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => toggleAction(id)}
+                title={fullLabel}
+                aria-pressed={id === "track" ? undefined : isActive}
+                aria-label={fullLabel}
+                className="group flex flex-col items-center justify-center gap-2 px-2 py-5 text-sm font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground"
+              >
+                {shotActive ? (
+                  <ShotActiveIcon />
+                ) : filledIcon ? (
+                  <Icon className="h-6 w-6 shrink-0 fill-primary text-primary" aria-hidden />
+                ) : (
+                  <Icon className="h-6 w-6 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-primary" aria-hidden />
+                )}
+                <span className="text-inherit font-medium transition-colors group-hover:text-foreground">
+                  {id === "favorite" && isFavourite ? "Favourited" : label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          className="px-4 py-3 text-center"
+          onMouseEnter={() => setRatingRowHover(true)}
+          onMouseLeave={() => setRatingRowHover(false)}
+        >
+          <p className="mb-2 text-sm font-medium text-muted-foreground">Rate</p>
+          <div className="flex justify-center">
+            <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
+          </div>
+        </div>
+
+        {/* Row: Write review */}
+        <button
+          type="button"
+          onClick={() => {
+            setReviewModalMode("review");
+            setReviewModalOpen(true);
+          }}
+          className="group flex w-full items-center justify-center gap-3 px-4 py-3 text-center text-sm font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+        >
+          <span className="text-sm font-medium transition-colors group-hover:text-foreground">Write review</span>
+        </button>
+
+        {/* Row: Upload images */}
+        <button
+          type="button"
+          onClick={() => {
+            setReviewModalMode("upload");
+            setReviewModalOpen(true);
+          }}
+          className="group flex w-full items-center justify-center gap-3 px-4 py-3 text-center text-sm font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+        >
+          <span className="text-sm font-medium transition-colors group-hover:text-foreground">Upload images</span>
+        </button>
       </div>
 
       <TrackFilmModal
@@ -513,17 +552,65 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         }}
       />
 
-      {/* Your rating — clear X appears when hovering anywhere on this row */}
-      <div
-        className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-card px-4 py-3"
-        onMouseEnter={() => setRatingRowHover(true)}
-        onMouseLeave={() => setRatingRowHover(false)}
-      >
-        <p className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Your rating</p>
-        <div className="flex justify-center">
-          <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
-        </div>
-      </div>
+      <AddReviewModal
+        open={reviewModalOpen}
+        onOpenChange={setReviewModalOpen}
+        mode={reviewModalMode}
+        initialRating={rating}
+        stock={{
+          slug: stock.slug,
+          name: stock.name,
+          brand: stock.brand,
+          format: stock.format ?? [],
+          image_url: stock.image_url,
+        }}
+        onSubmit={async (payload: AddReviewModalPayload) => {
+          if (user) {
+            const formData = new FormData();
+            formData.set("film_stock_slug", slug);
+            formData.set("mode", reviewModalMode);
+            formData.set("rating", String(payload.rating));
+            if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
+            if (payload.reviewText) formData.set("review_text", payload.reviewText);
+            if (payload.camera) formData.set("camera", payload.camera);
+            if (payload.format) formData.set("format", payload.format);
+            if (payload.location) formData.set("location", payload.location);
+            if (payload.iso) formData.set("iso", payload.iso);
+            if (payload.pushPull) formData.set("push_pull", payload.pushPull);
+            payload.files.forEach((file, i) => formData.append(`file_${i}`, file));
+            try {
+              const res = await fetch("/api/user/reviews", {
+                method: "POST",
+                body: formData,
+              });
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                showToastViaEvent(err.error || "Failed to submit");
+                return;
+              }
+              showToastViaEvent(
+                reviewModalMode === "upload"
+                  ? (payload.files.length > 0 ? "Thanks! Your images have been uploaded." : "Done.")
+                  : payload.files.length > 0
+                    ? "Thanks! Your photos and review have been submitted."
+                    : "Thanks! Your review has been submitted."
+              );
+            } catch {
+              showToastViaEvent("Failed to submit");
+              return;
+            }
+          } else {
+            if (payload.rating > 0) persistRating(slug, payload.rating);
+            showToastViaEvent(
+              reviewModalMode === "upload"
+                ? (payload.files.length > 0 ? "Sign in to save your uploads." : "Done.")
+                : payload.files.length > 0
+                  ? "Sign in to save your photos and review."
+                  : "Your rating was saved locally. Sign in to save reviews and uploads."
+            );
+          }
+        }}
+      />
     </div>
   );
 }
@@ -579,10 +666,10 @@ export function PageTitleHeader({ stock }: HeroMockupProps) {
   };
 
   return (
-    <div className="mb-0 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+      <div className="mb-0 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
       <div className="min-w-0 flex-1">
         <h1 className="font-advercase text-3xl font-bold tracking-tight sm:text-4xl">
-          {stock.brand.name} {stock.name}
+          {stock.name}
         </h1>
       </div>
 
@@ -618,6 +705,8 @@ export function PageTitleHeader({ stock }: HeroMockupProps) {
 
 const SPEC_ICONS: Record<string, React.ElementType> = {
   "Film Format": Aperture,
+  "Format": Aperture,
+  "Release Date": Calendar,
   "Film Colour & Type": Palette,
   "Film Type": Palette,
   "ISO": Gauge,
@@ -968,7 +1057,7 @@ function OptionE({ stock }: HeroMockupProps) {
           <FilmImage stock={stock} size={56} />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{stock.brand.name} {stock.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{stock.name}</h1>
         </div>
         <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
           <span className={`inline-flex items-center rounded-full ${stock.typeColor} px-2.5 py-0.5 text-[11px] font-medium text-white`}>
@@ -1033,10 +1122,6 @@ function OptionF({ stock }: HeroMockupProps) {
                   <span className="text-[11px] font-medium">{stock.typeLabel}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Building2 className="h-3.5 w-3.5 text-muted-foreground/50" />
-                  <span className="text-[11px] font-medium">{stock.brand.name}</span>
-                </div>
-                <div className="flex items-center gap-2">
                   <Film className="h-3.5 w-3.5 text-muted-foreground/50" />
                   <span className="text-[11px] font-medium">{stock.format.join(", ")}</span>
                 </div>
@@ -1051,13 +1136,7 @@ function OptionF({ stock }: HeroMockupProps) {
 
         {/* Middle: Title + description */}
         <div className="min-w-0 flex-1">
-          <Link
-            href={`/brands/${stock.brand.slug}`}
-            className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-          >
-            {stock.brand.name}
-          </Link>
-          <h1 className="mt-0.5 text-4xl font-bold tracking-tight sm:text-5xl font-advercase">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl font-advercase">
             {stock.name}
           </h1>
 

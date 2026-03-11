@@ -63,7 +63,6 @@ export function FilmCanister({ stock, size = "md", className = "" }: FilmCaniste
   const labelPad = canW * 0.08;
 
   const displayName = stock.name.length > 16 ? stock.name.slice(0, 15) + "…" : stock.name;
-  const brandName = stock.brand?.name || "";
 
   return (
     <svg
@@ -73,7 +72,7 @@ export function FilmCanister({ stock, size = "md", className = "" }: FilmCaniste
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label={`${brandName} ${stock.name} film canister`}
+      aria-label={`${stock.name} film canister`}
     >
       {/* Top cap */}
       <rect
@@ -140,25 +139,9 @@ export function FilmCanister({ stock, size = "md", className = "" }: FilmCaniste
         opacity={0.7}
       />
 
-      {/* Brand name (rotated vertically on left stripe) */}
+      {/* Film name (main text, rotated — only label shown on canister) */}
       <text
-        x={canX + labelPad + canW * 0.075}
-        y={canY + canH * 0.5}
-        fill={colors.text}
-        fontSize={s.brandSize}
-        fontFamily="system-ui, -apple-system, sans-serif"
-        fontWeight="600"
-        textAnchor="middle"
-        dominantBaseline="central"
-        transform={`rotate(-90, ${canX + labelPad + canW * 0.075}, ${canY + canH * 0.5})`}
-        letterSpacing="0.5"
-      >
-        {brandName.toUpperCase()}
-      </text>
-
-      {/* Film name (main text, rotated) */}
-      <text
-        x={canX + labelPad + canW * 0.58}
+        x={canX + labelPad + canW * 0.5}
         y={canY + canH * 0.5}
         fill="#FFFFFF"
         fontSize={s.fontSize}
@@ -166,7 +149,7 @@ export function FilmCanister({ stock, size = "md", className = "" }: FilmCaniste
         fontWeight="700"
         textAnchor="middle"
         dominantBaseline="central"
-        transform={`rotate(-90, ${canX + labelPad + canW * 0.58}, ${canY + canH * 0.5})`}
+        transform={`rotate(-90, ${canX + labelPad + canW * 0.5}, ${canY + canH * 0.5})`}
         letterSpacing="0.3"
       >
         {displayName}

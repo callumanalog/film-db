@@ -4,6 +4,7 @@ import { Work_Sans, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { UserActionsProvider } from "@/context/user-actions-context";
+import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/toast";
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default function RootLayout({
     <html lang="en" className={`${advercase.variable} ${workSans.variable} ${geistMono.variable}`}>
       <body className="antialiased" style={{ pointerEvents: 'auto' }}>
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>
+          <AuthProvider>
           <UserActionsProvider>
             <ToastProvider>
               <Header />
@@ -51,6 +53,7 @@ export default function RootLayout({
               <Footer />
             </ToastProvider>
           </UserActionsProvider>
+          </AuthProvider>
         </div>
       </body>
     </html>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -9,6 +10,9 @@ import {
   Star,
   StarHalf,
   Camera,
+  Plus,
+  NotebookPen,
+  ImagePlus,
 } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
@@ -46,6 +50,8 @@ export interface ProfileData {
   favouriteSlugs: string[];
   tracked: TrackedEntry[];
   ratings: Record<string, number>;
+  reviewCount?: number;
+  uploadCount?: number;
 }
 
 interface ProfileViewProps {
@@ -57,25 +63,85 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
   const shotStocks = profile.shotSlugs.map((s) => stocksBySlug.get(s)).filter(Boolean) as StockWithBrand[];
   const favouriteStocks = profile.favouriteSlugs.map((s) => stocksBySlug.get(s)).filter(Boolean) as StockWithBrand[];
   const ratingsList = Object.entries(profile.ratings).map(([slug, rating]) => ({ slug, rating }));
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!actionsOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setActionsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [actionsOpen]);
 
   const stats = [
     { label: "Films shot", value: profile.shotSlugs.length, icon: CheckCircle2 },
     { label: "Favourites", value: profile.favouriteSlugs.length, icon: Heart },
     { label: "Tracked", value: profile.tracked.length, icon: ListTodo },
     { label: "Rated", value: ratingsList.length, icon: Star },
+    ...(typeof profile.reviewCount === "number" && profile.reviewCount > 0
+      ? [{ label: "Reviews", value: profile.reviewCount, icon: NotebookPen }]
+      : []),
+    ...(typeof profile.uploadCount === "number" && profile.uploadCount > 0
+      ? [{ label: "Uploads", value: profile.uploadCount, icon: ImagePlus }]
+      : []),
   ];
 
   return (
     <div className="space-y-8">
       {/* Profile header */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
+        <div className="relative flex flex-1 items-center gap-4">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-2xl font-bold text-primary">
             {profile.displayName.charAt(0)}
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold tracking-tight font-advercase">{profile.displayName}</h1>
             <p className="text-sm text-muted-foreground">FilmDB member</p>
+          </div>
+          {/* Plus icon — top right of left section — dropdown */}
+          <div className="absolute right-0 top-0" ref={actionsRef}>
+            <button
+              type="button"
+              onClick={() => setActionsOpen((o) => !o)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+              aria-expanded={actionsOpen}
+              aria-haspopup="true"
+              aria-label="Add or create"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            {actionsOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-lg border border-border/50 bg-card py-1 shadow-lg">
+                <Link
+                  href="/films"
+                  onClick={() => setActionsOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
+                >
+                  <ListTodo className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  Track a roll
+                </Link>
+                <Link
+                  href="/films"
+                  onClick={() => setActionsOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
+                >
+                  <NotebookPen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  Write review
+                </Link>
+                <Link
+                  href="/films"
+                  onClick={() => setActionsOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
+                >
+                  <ImagePlus className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  Upload images
+                </Link>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -105,7 +171,12 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
               >
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                   {shotStocks.map((stock) => (
-                    <FilmCard key={stock.id} stock={stock} />
+                    <FilmCard
+                      key={stock.id}
+                      stock={stock}
+                      useWorkSansTitle
+                      favouriteSlugs={profile.favouriteSlugs}
+                    />
                   ))}
                 </div>
               </ProfileSection>
@@ -123,7 +194,12 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
               >
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
                   {favouriteStocks.map((stock) => (
-                    <FilmCard key={stock.id} stock={stock} />
+                    <FilmCard
+                      key={stock.id}
+                      stock={stock}
+                      useWorkSansTitle
+                      favouriteSlugs={profile.favouriteSlugs}
+                    />
                   ))}
                 </div>
               </ProfileSection>
@@ -167,7 +243,7 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="font-semibold text-foreground">
-                                {stock.brand.name} {stock.name}
+                                {stock.name}
                               </p>
                               <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                                 {entry.format && <span>Format: {entry.format}</span>}
@@ -223,7 +299,7 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
                           </div>
                           <div className="min-w-0 flex-1">
                             <span className="font-semibold text-foreground">
-                              {stock.brand.name} {stock.name}
+                              {stock.name}
                             </span>
                           </div>
                           <MiniStars rating={r.rating} size={18} />

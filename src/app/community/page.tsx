@@ -28,7 +28,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
   const brands = [...new Set(stocks.map((s) => s.brand.name))].sort();
   const stockOptions: StockOption[] = stocks.map((s) => ({
     slug: s.slug,
-    name: `${s.brand.name} ${s.name}`,
+    name: s.name,
     brandName: s.brand.name,
   }));
 

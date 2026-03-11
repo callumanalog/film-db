@@ -3,15 +3,16 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand } from "@/lib/supabase/queries";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
-import { FilmCard } from "@/components/film-card";
-import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS } from "@/lib/types";
-import type { LatitudeLevel, DevelopmentProcess, ColorBalanceType } from "@/lib/types";
+import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
+import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS } from "@/lib/types";
+import type { LatitudeLevel, DevelopmentProcess } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
 import { CommunityReviews, CommunityGallery } from "@/components/community-section";
 import { StickyLeftPane, PageTitleHeader } from "@/components/hero-mockups";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import { OverviewTabContent } from "@/components/overview-tab-content";
-import { reviewsFromWebBySlug, videoReviewsBySlug } from "@/lib/seed-film-reviews";
+import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
+import { getReviewsForSlug } from "@/lib/seed-film-reviews";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -28,8 +29,8 @@ export async function generateMetadata({
   if (!stock) return { title: "Film Stock Not Found" };
 
   return {
-    title: `${stock.brand.name} ${stock.name}`,
-    description: stock.description || `Learn about ${stock.brand.name} ${stock.name} film stock.`,
+    title: stock.name,
+    description: stock.description || `Learn about ${stock.name} film stock.`,
   };
 }
 
@@ -52,13 +53,9 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   const developmentProcessValue: DevelopmentProcess | null =
     stock.development_process ?? (stock.type === "color_negative" ? "c41" : stock.type === "color_reversal" ? "e6" : stock.type === "instant" ? "c41" : "bw");
 
-  /** Color Balance: only for color films; show "X-Balanced (≈xxxxK)". B&W has no color balance — omit. */
-  const colorBalanceValue: string | null =
-    (stock.type !== "bw_negative" && stock.type !== "bw_reversal" &&
-      stock.color_balance_type != null &&
-      stock.color_balance_kelvin != null)
-      ? `${COLOR_BALANCE_LABELS[stock.color_balance_type as ColorBalanceType]}-Balanced (≈${stock.color_balance_kelvin}K)`
-      : null;
+  /** Color Balance: use open-text field when set; otherwise show — (e.g. B&W). */
+  const colorBalanceValue: string =
+    (stock.color_balance && stock.color_balance.trim()) ? stock.color_balance.trim() : "—";
 
   /** Latitude: only one of the 5 categories when we have latitude_level; otherwise omit. */
   const latitudeValue: string | null =
@@ -67,32 +64,49 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   /** DX coding: default true if 35mm in format. */
   const dxCoding = stock.dx_coding ?? (stock.format ?? []).includes("35mm");
 
-  /** Build specs in display order:
-   * Row 1: Film Format | Use case
+  /** Release date: year only from year_introduced. */
+  const releaseDateValue = stock.year_introduced != null ? String(stock.year_introduced) : "—";
+
+  /** Build specs for overview tab:
+   * Row 1: Format | Release Date
    * Row 2: Film Type | Latitude
    * Row 3: ISO | Color Balance
    * Row 4: Grain | DX Coding
    * Row 5: Contrast | Development Process
+   * Row 6: Use case (full width, no dividing line)
    */
-  const leftCol: { label: string; value: string }[] = [
-    { label: "Film Format", value: (stock.format ?? []).join(", ") },
-    { label: "Film Type", value: FILM_TYPE_LABELS[stock.type] },
-    { label: "ISO", value: stock.iso?.toString() ?? "" },
-    { label: "Grain", value: GRAIN_LABELS[stock.grain_level] },
-    { label: "Contrast", value: CONTRAST_LABELS[stock.contrast_level] },
+  const pairedSpecsRows: { label: string; value: string }[][] = [
+    [
+      { label: "Format", value: (stock.format ?? []).join(", ") },
+      { label: "Release Date", value: releaseDateValue },
+    ],
+    [
+      { label: "Film Type", value: FILM_TYPE_LABELS[stock.type] },
+      { label: "Latitude", value: latitudeValue ?? "—" },
+    ],
+    [
+      { label: "ISO", value: stock.iso?.toString() ?? "" },
+      { label: "Color Balance", value: colorBalanceValue },
+    ],
+    [
+      { label: "Grain", value: GRAIN_LABELS[stock.grain_level] },
+      { label: "DX Coding", value: dxCoding ? "Yes" : "No" },
+    ],
+    [
+      { label: "Contrast", value: CONTRAST_LABELS[stock.contrast_level] },
+      { label: "Development Process", value: developmentProcessValue ? DEVELOPMENT_PROCESS_LABELS[developmentProcessValue] : "—" },
+    ],
   ];
-  const rightCol: { label: string; value: string }[] = [
-    { label: "Use case", value: (stock.best_for ?? []).map((k) => BEST_FOR_LABELS[k]).join(", ") },
-    { label: "Latitude", value: latitudeValue ?? "—" },
-    { label: "Color Balance", value: colorBalanceValue ?? "—" },
-    { label: "DX Coding", value: dxCoding ? "Yes" : "No" },
-    { label: "Development Process", value: developmentProcessValue ? DEVELOPMENT_PROCESS_LABELS[developmentProcessValue] : "—" },
-  ];
-  /** Interleave for grid: row i = leftCol[i] | rightCol[i]. */
-  const overviewSpecs = leftCol.flatMap((l, i) => [l, rightCol[i]]);
+  const useCaseSpec: { label: string; value: string } = {
+    label: "Use case",
+    value: (stock.best_for ?? []).map((k) => BEST_FOR_LABELS[k]).join(", ") || "—",
+  };
 
-  /** Specs for sticky pane: same row order as overview, omit placeholder "—". */
-  const specs = overviewSpecs.filter((s) => s.value != null && s.value !== "" && s.value !== "—") as { label: string; value: string }[];
+  /** Flat list for sticky pane (all specs in order, then filtered for "—"). */
+  const overviewSpecsFlat = pairedSpecsRows.flatMap((row) => row).concat([useCaseSpec]);
+
+  /** Specs for sticky pane: same order, omit placeholder "—". */
+  const specs = overviewSpecsFlat.filter((s) => s.value != null && s.value !== "" && s.value !== "—") as { label: string; value: string }[];
 
   const purchaseLinks = stock.purchase_links ?? [];
   const sortedLinks = [...purchaseLinks].sort(
@@ -129,8 +143,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   const flickrImages = await getFlickrSampleImagesForStock(slug).catch(() => []);
 
-  const reviewsFromWeb = reviewsFromWebBySlug[slug] ?? [];
-  const videoReviews = videoReviewsBySlug[slug] ?? [];
+  const { web: reviewsFromWeb, video: videoReviews } = getReviewsForSlug(slug);
 
   const filmTabs = [
     {
@@ -144,9 +157,11 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           reviewsFromWeb={reviewsFromWeb}
           videoReviews={videoReviews}
           purchaseLinks={sortedLinks}
-          stockName={`${stock.brand.name} ${stock.name}`}
+          stockName={stock.name}
           bestFor={stock.best_for ?? []}
-          specs={overviewSpecs}
+          specs={overviewSpecsFlat}
+          pairedSpecsRows={pairedSpecsRows}
+          useCaseSpec={useCaseSpec}
         />
       ),
     },
@@ -173,6 +188,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   // All film stocks use the same template: sticky left pane + tabs (Overview, Example images, Reviews)
   return (
     <div className="work-sans-content">
+      <ScrollToTopOnRouteChange />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
           <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
@@ -201,11 +217,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         <section className="w-full border-t border-border/50 bg-secondary/30 py-12">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <h3 className="mb-6 text-xl font-bold tracking-tight text-foreground">Similar stocks</h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-              {allDiscoveryStocks.map((s) => (
-                <FilmCard key={s.id} stock={s} />
-              ))}
-            </div>
+            <SimilarStocksGrid stocks={allDiscoveryStocks} />
           </div>
         </section>
       )}

@@ -1,0 +1,222 @@
+[
+  {
+    "id": "brand-kodak",
+    "name": "Kodak",
+    "slug": "kodak",
+    "logo_url": "/brands/kodak.png",
+    "description": "Founded in 1888 by George Eastman, Kodak is the most iconic name in photography. From the Brownie camera to Kodachrome, Kodak democratized photography and remains the largest manufacturer of photographic film in the world.",
+    "website_url": "https://www.kodak.com",
+    "created_at": "2026-03-11T13:17:55.219Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-fujifilm",
+    "name": "Fujifilm",
+    "slug": "fujifilm",
+    "logo_url": "/brands/fujifilm.png",
+    "description": "Japan's premier film manufacturer, Fujifilm has been producing photographic film since 1934. Known for vivid greens and blues, Fuji films have a devoted following. While many stocks have been discontinued, their remaining lineup is highly sought after.",
+    "website_url": "https://www.fujifilm.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-ilford",
+    "name": "Ilford",
+    "slug": "ilford",
+    "logo_url": "/brands/ilford.png",
+    "description": "Founded in 1879 in Ilford, England, Ilford Photo is the world's premier manufacturer of black and white photographic materials. They remain fiercely committed to analog photography and continue to innovate in the B&W space.",
+    "website_url": "https://www.ilfordphoto.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-cinestill",
+    "name": "CineStill",
+    "slug": "cinestill",
+    "logo_url": "/brands/cinestill.png",
+    "description": "CineStill takes Kodak's legendary motion picture film stocks and makes them available for still photography by removing the remjet layer. Founded in 2012, they've become one of the most exciting names in modern film photography.",
+    "website_url": "https://cinestillfilm.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-lomography",
+    "name": "Lomography",
+    "slug": "lomography",
+    "logo_url": null,
+    "description": "Founded in 1992 by a group of Viennese students who discovered the Lomo LC-A camera, Lomography has grown into a global community and company dedicated to experimental, creative analog photography. They produce a wide range of unique film stocks, cameras, and accessories, championing a spontaneous, rule-free approach to photography.",
+    "website_url": "https://www.lomography.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-foma",
+    "name": "Foma Bohemia",
+    "slug": "foma",
+    "logo_url": null,
+    "description": "Foma Bohemia is a Czech manufacturer based in Hradec Králové with roots dating back to 1921, making it one of the oldest photographic materials producers in the world. They have continuously manufactured black-and-white films, papers, and chemicals throughout their history, surviving both World War II and the Communist era.",
+    "website_url": "https://www.foma.cz",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-rollei",
+    "name": "Rollei",
+    "slug": "rollei",
+    "logo_url": null,
+    "description": "A legendary German camera brand founded in 1920, famous for the iconic Rolleiflex twin-lens reflex cameras. The Rollei analog film line continues under the brand, offering a range of high-quality black-and-white films including specialty emulsions with infrared and extended red sensitivity.",
+    "website_url": "https://www.rolleianalog.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-adox",
+    "name": "ADOX",
+    "slug": "adox",
+    "logo_url": null,
+    "description": "One of the oldest photographic brand names in the world, originally founded in 1860 in Frankfurt, Germany. Revived in 2003 by Fotoimpex in Berlin, ADOX now manufactures films, papers, and chemistry in Bad Saarow, Germany, producing some of the highest-resolution and most technically advanced black-and-white emulsions available.",
+    "website_url": "https://www.adox.de",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-kentmere",
+    "name": "Kentmere",
+    "slug": "kentmere",
+    "logo_url": null,
+    "description": "A budget-friendly black and white film brand manufactured by Harman Technology, the same company behind Ilford Photo. Originally an independent company based in Kentmere, England's Lake District, it was acquired by Ilford in 2007 and offers accessible entry points into analog photography.",
+    "website_url": "https://www.kentmere.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-bergger",
+    "name": "Bergger",
+    "slug": "bergger",
+    "logo_url": null,
+    "description": "A French artisan photographic company founded in 1996, specializing in high-quality black and white films, papers, and chemistry. Bergger draws on deep European photographic traditions to produce materials prized by fine art photographers for their tonal richness and silver-rich emulsions.",
+    "website_url": "https://www.bergger.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-agfa",
+    "name": "Agfa",
+    "slug": "agfa",
+    "logo_url": null,
+    "description": "A historic German photographic brand founded in 1867. Once one of the world's largest photographic manufacturers alongside Kodak and Fuji, Agfa went through bankruptcy in 2005. The AgfaPhoto brand has since been licensed and revived, with films produced under the Agfa name.",
+    "website_url": "https://www.agfaphoto.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-jch",
+    "name": "JCH",
+    "slug": "jch",
+    "logo_url": null,
+    "description": "Created by Bellamy Hunt, a British photographer and camera dealer based in Tokyo. Originally known as a popular blog and camera sourcing service, JCH expanded into film production with their StreetPan film, adapted from surveillance film stock for street photography.",
+    "website_url": "https://www.japancamerahunter.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-washi",
+    "name": "Film Washi",
+    "slug": "washi",
+    "logo_url": null,
+    "description": "A French artisan film company founded by Lomig Perrotin in 2013, producing highly experimental photographic films coated on unconventional bases including traditional Japanese Washi paper and sound recording film. Each roll is essentially a handcrafted product.",
+    "website_url": "https://www.filmwashi.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-silberra",
+    "name": "Silberra",
+    "slug": "silberra",
+    "logo_url": null,
+    "description": "A Russian artisan film brand based in Saint Petersburg, producing black and white films and photographic chemistry. Silberra uses ultrathin film bases and proprietary emulsion formulations that draw on Russia's long history of photographic manufacturing.",
+    "website_url": "https://www.silberra.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-orwo",
+    "name": "ORWO",
+    "slug": "orwo",
+    "logo_url": null,
+    "description": "A historic German film brand originating from the Wolfen film factory in Saxony-Anhalt, part of the former East Germany. Originally an Agfa facility separated after WWII, ORWO was the primary film supplier for Eastern Bloc countries. The brand was relaunched in the 2020s with new productions.",
+    "website_url": "https://www.orwo.de",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-harman",
+    "name": "Harman",
+    "slug": "harman",
+    "logo_url": null,
+    "description": "The parent organization behind Ilford Photo, based in Mobberley, Cheshire, England. Harman has manufactured photographic materials at the same site since 1928. In 2024, they launched Phoenix 200, their first-ever color negative film, marking a historic expansion beyond black and white.",
+    "website_url": "https://www.harman-technology.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-dubblefilm",
+    "name": "Dubblefilm",
+    "slug": "dubblefilm",
+    "logo_url": null,
+    "description": "A creative film brand based in Barcelona, Spain, founded in 2015. Dubblefilm specializes in pre-exposed color negative films that produce distinctive light leaks, color shifts, and experimental effects without any post-processing required.",
+    "website_url": "https://www.dubblefilm.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-revolog",
+    "name": "Revolog",
+    "slug": "revolog",
+    "logo_url": null,
+    "description": "An Austrian special effects film company founded in 2010 in Vienna by Hanna Pribitzer. Revolog produces color negative films pre-exposed with specific patterns, textures, and color effects, offering one of the widest ranges of effects films available.",
+    "website_url": "https://www.revolog.net",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-street-candy",
+    "name": "Street Candy",
+    "slug": "street-candy",
+    "logo_url": null,
+    "description": "A niche film brand that repurposes industrial surveillance and CCTV film stock for creative photographic use. Street Candy takes high-contrast monitoring film and repackages it for street and documentary photographers seeking an authentic, lo-fi look.",
+    "website_url": "https://streetcandyfilm.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-ferrania",
+    "name": "Film Ferrania",
+    "slug": "ferrania",
+    "logo_url": null,
+    "description": "An Italian film manufacturer based in Cairo Montenotte, reviving the legacy of the original Ferrania company that produced photographic materials from 1923 until closure in 2010. A crowdfunded effort launched in 2014 raised over $300,000 to restart production.",
+    "website_url": "https://www.filmferrania.it",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-kosmo-foto",
+    "name": "Kosmo Foto",
+    "slug": "kosmo-foto",
+    "logo_url": null,
+    "description": "A film photography brand created by Stephen Dowling, a London-based journalist who runs the popular Kosmo Foto analog photography blog. Launched via Kickstarter in 2018, the brand's Mono 100 film became one of the most successful film crowdfunding campaigns.",
+    "website_url": "https://kosmofoto.com",
+    "created_at": "2026-03-11T13:17:55.244Z",
+    "updated_at": "2026-03-11T13:17:55.244Z"
+  },
+  {
+    "id": "brand-ztest-1773238665324",
+    "name": "zTest",
+    "slug": "ztest",
+    "logo_url": null,
+    "description": null,
+    "website_url": null,
+    "created_at": "2026-03-11T14:17:45.324Z",
+    "updated_at": "2026-03-11T14:17:45.324Z"
+  }
+]

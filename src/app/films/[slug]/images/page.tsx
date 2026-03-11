@@ -13,8 +13,8 @@ export async function generateMetadata({ params }: FilmImagesPageProps): Promise
   const stock = await getFilmStockBySlug(slug);
   if (!stock) return { title: "Film Stock Not Found" };
   return {
-    title: `${stock.brand.name} ${stock.name} — References`,
-    description: `References shot on ${stock.brand.name} ${stock.name}, from Flickr and community.`,
+    title: `${stock.name} — References`,
+    description: `References shot on ${stock.name}, from Flickr and community.`,
   };
 }
 
@@ -29,7 +29,7 @@ export default async function FilmSampleImagesPage({ params }: FilmImagesPagePro
   if (!stock) notFound();
 
   const images = getSampleImagesForPage(slug);
-  const stockDisplayName = `${stock.brand.name} ${stock.name}`;
+  const stockDisplayName = stock.name;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">

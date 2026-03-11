@@ -109,6 +109,8 @@ export interface FilmStock {
   latitude_level?: LatitudeLevel | null;
   color_balance_type?: ColorBalanceType | null;
   color_balance_kelvin?: number | null;
+  /** Open-text color balance for specs (e.g. "Daylight-Balanced (≈5500K)"). Empty/null shows "—" on specs. */
+  color_balance?: string | null;
   dx_coding?: boolean;
   development_process?: DevelopmentProcess | null;
   best_for: BestFor[];
@@ -116,6 +118,8 @@ export interface FilmStock {
   price_tier: PriceTier | null;
   base_price_usd: number | null;
   image_url: string | null;
+  /** Year the stock was introduced/released (e.g. 1998). Sourced for reference; not yet displayed. */
+  year_introduced: number | null;
   rating: number;
   featured: boolean;
   created_at: string;

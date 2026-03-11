@@ -1,7 +1,10 @@
 /**
  * Reviews from the web and video reviews per film stock (by slug).
  * Real URLs where available; stock-specific placeholder entries for smaller stocks.
+ * When data/film-reviews.json exists, it overrides per-slug entries.
  */
+
+import { getFilmReviewsFromFile } from "@/lib/editable-film-reviews";
 
 export type WebReview = { title: string; site: string; url: string };
 export type VideoReview = { title: string; channel: string; url: string };
@@ -164,4 +167,16 @@ for (const slug of ALL_FILM_SLUGS) {
       { title: `Shooting ${name}`, channel: "YouTube", url: "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " film") },
     ];
   }
+}
+
+/** Returns web and video reviews for a slug. Uses data/film-reviews.json when present, else seed. */
+export function getReviewsForSlug(slug: string): { web: WebReview[]; video: VideoReview[] } {
+  const fromFile = getFilmReviewsFromFile();
+  if (fromFile && fromFile[slug]) {
+    return { web: fromFile[slug].web ?? [], video: fromFile[slug].video ?? [] };
+  }
+  return {
+    web: reviewsFromWebBySlug[slug] ?? [],
+    video: videoReviewsBySlug[slug] ?? [],
+  };
 }

@@ -76,7 +76,7 @@ export function getGalleryImages(stocks: StockForGallery[]): GalleryImage[] {
   const out: GalleryImage[] = [];
   for (const stock of stocks) {
     const images = getSampleImagesForPage(stock.slug);
-    const stockName = `${stock.brand.name} ${stock.name}`;
+    const stockName = stock.name;
     for (const img of images) {
       out.push({
         ...img,

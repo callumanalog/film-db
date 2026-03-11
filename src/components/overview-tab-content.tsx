@@ -2,12 +2,14 @@
 
 import type { FlickrPhoto } from "@/lib/flickr";
 import type { BestFor } from "@/lib/types";
-import { ExternalLink, Play, Aperture, Palette, Gauge, ScanLine, Thermometer, Target, QrCode, FlaskConical, Contrast as ContrastIcon, Image, Lightbulb } from "lucide-react";
+import { ExternalLink, Play, Aperture, Palette, Gauge, ScanLine, Thermometer, Target, QrCode, FlaskConical, Contrast as ContrastIcon, Image, Lightbulb, Calendar } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /** Icons for spec labels (match hero-mockups SpecsTable). */
 const SPEC_ICONS: Record<string, LucideIcon> = {
   "Use case": Image,
+  "Format": Aperture,
+  "Release Date": Calendar,
   "Film Format": Aperture,
   "Film Colour & Type": Palette,
   "Film Type": Palette,
@@ -106,6 +108,8 @@ interface OverviewTabContentProps {
   stockName?: string;
   bestFor?: BestFor[];
   specs?: { label: string; value: string }[];
+  pairedSpecsRows?: { label: string; value: string }[][];
+  useCaseSpec?: { label: string; value: string };
 }
 
 export function OverviewTabContent({
@@ -118,6 +122,8 @@ export function OverviewTabContent({
   stockName,
   bestFor = [],
   specs = [],
+  pairedSpecsRows,
+  useCaseSpec,
 }: OverviewTabContentProps) {
   return (
     <div className="space-y-14">
@@ -134,56 +140,70 @@ export function OverviewTabContent({
           <h3 className="mb-3 text-xl font-bold tracking-tight text-foreground">Example images</h3>
           <OverviewImageGrid flickrImages={flickrImages} />
         </section>
-        {specs.length > 0 && (
-          <section aria-labelledby="overview-specs-heading">
-            <h3 id="overview-specs-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h3>
-            <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
-              <div className="divide-y divide-border/50">
-                {(() => {
-                  const list = specs.slice(0, 10);
-                  const rows: { label: string; value: string }[][] = [];
-                  for (let i = 0; i < list.length; i += 2) {
-                    rows.push(list.slice(i, i + 2));
-                  }
-                  return rows.map((row, rowIndex) => (
-                    <div key={rowIndex} className="grid grid-cols-2 divide-x divide-border/50">
-                      {row.map((spec) => {
-                        const Icon = SPEC_ICONS[spec.label];
-                        return (
-                          <div key={spec.label} className="flex items-center gap-3 px-4 py-3">
-                            {Icon ? (
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
-                                <Icon className="h-4 w-4" aria-hidden />
-                              </span>
-                            ) : (
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground text-xs font-medium">
-                                —
-                              </span>
-                            )}
-                            <div className="min-w-0 flex-1 py-0.5">
-                              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
-                              {spec.label === "Use case" ? (
-                                <div className="mt-0.5 flex flex-wrap gap-1.5">
-                                  {spec.value.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
-                                    <span key={tag} className="inline-flex rounded-full bg-muted px-2 py-0.5 text-sm leading-tight text-muted-foreground">
-                                      {tag}
-                                    </span>
-                                  ))}
-                                </div>
+        {specs.length > 0 && (() => {
+            const list = specs;
+            const pairedCount = Math.min(10, list.length);
+            const derivedPairedRows: { label: string; value: string }[][] = [];
+            for (let i = 0; i < pairedCount; i += 2) {
+              derivedPairedRows.push(list.slice(i, i + 2));
+            }
+            const derivedUseCaseSpec = list.length > 10 && list[10].label === "Use case" ? list[10] : null;
+            const pairedRows = pairedSpecsRows ?? derivedPairedRows;
+            const effectiveUseCaseSpec = useCaseSpec ?? derivedUseCaseSpec;
+
+            return (
+              <section aria-labelledby="overview-specs-heading">
+                <h3 id="overview-specs-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h3>
+                <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+                  <div className="divide-y divide-border/50">
+                    {pairedRows.map((row, rowIndex) => (
+                      <div key={rowIndex} className="grid grid-cols-2 divide-x divide-border/50">
+                        {row.map((spec) => {
+                          const Icon = SPEC_ICONS[spec.label];
+                          return (
+                            <div key={spec.label} className="flex items-center gap-3 px-4 py-3">
+                              {Icon ? (
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
+                                  <Icon className="h-4 w-4" aria-hidden />
+                                </span>
                               ) : (
-                                <p className="mt-0.5 text-sm leading-tight text-foreground/90">{spec.value}</p>
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground text-xs font-medium">
+                                  —
+                                </span>
                               )}
+                              <div className="min-w-0 flex-1 py-0.5">
+                                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
+                                <p className="mt-0.5 text-sm leading-tight text-foreground/90">{spec.value}</p>
+                              </div>
                             </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                    {effectiveUseCaseSpec && (
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
+                          <Image className="h-4 w-4" aria-hidden />
+                        </span>
+                        <div className="min-w-0 flex-1 py-0.5">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{effectiveUseCaseSpec.label}</p>
+                          <div className="mt-0.5 flex flex-wrap gap-1.5">
+                            {effectiveUseCaseSpec.value && effectiveUseCaseSpec.value !== "—"
+                              ? effectiveUseCaseSpec.value.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                                  <span key={tag} className="inline-flex rounded-full bg-muted px-2 py-0.5 text-sm leading-tight text-muted-foreground">
+                                    {tag}
+                                  </span>
+                                ))
+                              : <span className="text-sm text-foreground/90">—</span>}
                           </div>
-                        );
-                      })}
-                    </div>
-                  ));
-                })()}
-              </div>
-            </div>
-          </section>
-        )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
         {shootingTips && (
           <section aria-labelledby="shooting-notes-heading">
             <h3 id="shooting-notes-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Shooting notes</h3>

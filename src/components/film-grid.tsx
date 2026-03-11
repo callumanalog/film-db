@@ -4,11 +4,17 @@ import { FilmCard } from "@/components/film-card";
 interface FilmGridProps {
   stocks: (FilmStock & { brand: FilmBrand })[];
   emptyMessage?: string;
+  /** Use Work Sans for card titles (e.g. on films listing page). */
+  useWorkSansForTitles?: boolean;
+  /** Slugs of films the user has favourited — show heart icon on matching cards. */
+  favouriteSlugs?: string[];
 }
 
 export function FilmGrid({
   stocks,
   emptyMessage = "No film stocks found matching your filters.",
+  useWorkSansForTitles = false,
+  favouriteSlugs,
 }: FilmGridProps) {
   if (stocks.length === 0) {
     return (
@@ -21,7 +27,12 @@ export function FilmGrid({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
       {stocks.map((stock) => (
-        <FilmCard key={stock.id} stock={stock} />
+        <FilmCard
+          key={stock.id}
+          stock={stock}
+          useWorkSansTitle={useWorkSansForTitles}
+          favouriteSlugs={favouriteSlugs}
+        />
       ))}
     </div>
   );
