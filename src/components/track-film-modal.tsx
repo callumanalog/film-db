@@ -120,7 +120,7 @@ export function TrackFilmModal({ open, onOpenChange, onSave, stock }: TrackFilmM
                 <label htmlFor="track-format" className="mb-1.5 block text-sm font-medium text-foreground">
                   Format
                 </label>
-                <Select value={format} onValueChange={setFormat} name="format">
+                <Select value={format} onValueChange={(v) => setFormat(v ?? "")} name="format">
                   <SelectTrigger id="track-format" className="w-full">
                     <SelectValue placeholder="Select format" />
                   </SelectTrigger>
@@ -138,7 +138,7 @@ export function TrackFilmModal({ open, onOpenChange, onSave, stock }: TrackFilmM
                 <label htmlFor="track-status" className="mb-1.5 block text-sm font-medium text-foreground">
                   Status
                 </label>
-                <Select value={status} onValueChange={setStatus} name="status">
+                <Select value={status} onValueChange={(v) => setStatus(v ?? "")} name="status">
                   <SelectTrigger id="track-status" className="w-full">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>

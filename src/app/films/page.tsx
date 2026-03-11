@@ -38,7 +38,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   const brands = (await getBrands()).sort((a, b) =>
     a.name.localeCompare(b.name)
   );
-  const filterOptions = getFilmFilterOptions();
+  const filterOptions = await getFilmFilterOptions();
 
   const brandArr = parseMultiParam(params.brand);
   const typeArr = parseMultiParam(params.type) as FilmType[];
