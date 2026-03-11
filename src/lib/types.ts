@@ -9,8 +9,20 @@ export type FilmType =
 
 export type PriceTier = 1 | 2 | 3;
 
-export type GrainLevel = "fine" | "medium" | "heavy";
+export type GrainLevel = "fine" | "medium" | "strong";
 export type ContrastLevel = "low" | "medium" | "high";
+
+export type LatitudeLevel =
+  | "very_narrow"
+  | "narrow"
+  | "moderate"
+  | "wide"
+  | "very_wide";
+
+export type DevelopmentProcess = "c41" | "e6" | "bw" | "ecn2";
+
+export type ColorBalanceType = "daylight" | "tungsten" | "neutral" | "daylight_balanced";
+
 export type BestFor =
   | "portrait"
   | "landscape"
@@ -24,13 +36,35 @@ export type BestFor =
 export const GRAIN_LABELS: Record<GrainLevel, string> = {
   fine: "Fine",
   medium: "Medium",
-  heavy: "Heavy",
+  strong: "Strong",
 };
 
 export const CONTRAST_LABELS: Record<ContrastLevel, string> = {
   low: "Low",
   medium: "Medium",
   high: "High",
+};
+
+export const LATITUDE_LABELS: Record<LatitudeLevel, string> = {
+  very_narrow: "Very Narrow",
+  narrow: "Narrow",
+  moderate: "Moderate",
+  wide: "Wide",
+  very_wide: "Very Wide",
+};
+
+export const DEVELOPMENT_PROCESS_LABELS: Record<DevelopmentProcess, string> = {
+  c41: "C-41",
+  e6: "E-6",
+  bw: "B&W",
+  ecn2: "ECN-2",
+};
+
+export const COLOR_BALANCE_LABELS: Record<ColorBalanceType, string> = {
+  daylight: "Daylight",
+  tungsten: "Tungsten",
+  neutral: "Neutral",
+  daylight_balanced: "Daylight",
 };
 
 export const BEST_FOR_LABELS: Record<BestFor, string> = {
@@ -72,6 +106,11 @@ export interface FilmStock {
   color_palette: string | null;
   grain_level: GrainLevel;
   contrast_level: ContrastLevel;
+  latitude_level?: LatitudeLevel | null;
+  color_balance_type?: ColorBalanceType | null;
+  color_balance_kelvin?: number | null;
+  dx_coding?: boolean;
+  development_process?: DevelopmentProcess | null;
   best_for: BestFor[];
   discontinued: boolean;
   price_tier: PriceTier | null;

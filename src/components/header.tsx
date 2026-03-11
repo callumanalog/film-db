@@ -2,16 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Film, Menu, X } from "lucide-react";
+import { Film, Menu, X, User } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/films", label: "Film Stocks" },
-  { href: "/references", label: "References" },
-  { href: "/cameras", label: "Cameras" },
-  { href: "/brands", label: "Brands" },
-  { href: "/about", label: "About" },
+  { href: "/cameras", label: "Film Cameras" },
+  { href: "/labs", label: "Labs" },
+  { href: "/community", label: "Community" },
 ];
 
 export function Header() {
@@ -28,42 +27,14 @@ export function Header() {
           <span className="text-lg font-bold tracking-tight">FilmDB</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={cn(
-                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                pathname === link.href || pathname.startsWith(link.href + "/")
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-              )}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <button
-          className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
-
-      {mobileOpen && (
-        <div className="border-t border-border/50 bg-background/95 backdrop-blur-xl md:hidden">
-          <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
+        <div className="flex items-center gap-1">
+          <nav className="hidden items-center gap-1 font-sans text-xs font-medium uppercase tracking-wider md:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                  "rounded-md px-3 py-2 transition-colors",
                   pathname === link.href || pathname.startsWith(link.href + "/")
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -72,6 +43,54 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
+          </nav>
+
+          <Link
+            href="/profile"
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Profile"
+          >
+            <User className="h-5 w-5" />
+          </Link>
+
+          <button
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </div>
+
+      {mobileOpen && (
+        <div className="border-t border-border/50 bg-background/95 backdrop-blur-xl font-sans text-xs font-medium uppercase tracking-wider md:hidden">
+          <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "rounded-md px-3 py-2.5 transition-colors",
+                  pathname === link.href || pathname.startsWith(link.href + "/")
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link
+              href="/profile"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "rounded-md px-3 py-2.5 transition-colors",
+                pathname === "/profile" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              Profile
+            </Link>
           </nav>
         </div>
       )}

@@ -1,330 +1,223 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useState } from "react";
 import type { FilmBrand, FilmType, FilmFormat, GrainLevel, ContrastLevel, BestFor } from "@/lib/types";
+import type { FilmFilterOptions } from "@/lib/supabase/queries";
 import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, BEST_FOR_LABELS } from "@/lib/types";
-import { X, ChevronDown, SlidersHorizontal } from "lucide-react";
+import {
+  ChevronDown,
+  Palette,
+  Gauge,
+  ScanLine,
+  Contrast as ContrastIcon,
+  Building2,
+  UserCircle,
+  Mountain,
+  Heart,
+  Plane,
+  Moon,
+  LampDesk,
+  Sun,
+  Aperture,
+  Film,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-interface FilterBarProps {
+const BEST_FOR_ICONS: Record<BestFor, LucideIcon> = {
+  portrait: UserCircle,
+  landscape: Mountain,
+  street: Building2,
+  wedding: Heart,
+  travel: Plane,
+  night: Moon,
+  studio: LampDesk,
+  everyday: Sun,
+};
+
+const TYPE_ICONS: Record<FilmType, LucideIcon> = {
+  color_negative: Palette,
+  color_reversal: Palette,
+  bw_negative: ContrastIcon,
+  bw_reversal: ContrastIcon,
+  instant: Film,
+};
+
+interface FilterSidebarProps {
   brands: FilmBrand[];
+  filterOptions: FilmFilterOptions;
 }
 
-const FORMATS: FilmFormat[] = ["35mm", "120", "4x5", "8x10"];
-const FILM_TYPES: FilmType[] = [
-  "color_negative",
-  "color_reversal",
-  "bw_negative",
-  "bw_reversal",
-];
-const GRAIN_LEVELS: GrainLevel[] = ["fine", "medium", "heavy"];
-const CONTRAST_LEVELS: ContrastLevel[] = ["low", "medium", "high"];
-const BEST_FOR_OPTIONS: BestFor[] = [
-  "portrait",
-  "landscape",
-  "street",
-  "wedding",
-  "travel",
-  "night",
-  "studio",
-  "everyday",
-];
-const ISO_RANGES = [
-  { label: "50–100", min: "50", max: "100" },
-  { label: "200", min: "200", max: "200" },
-  { label: "400", min: "400", max: "400" },
-  { label: "800+", min: "800", max: "3200" },
-];
+function getParamArray(searchParams: URLSearchParams, key: string): string[] {
+  const v = searchParams.get(key);
+  if (!v) return [];
+  return v.split(",").map((s) => s.trim()).filter(Boolean);
+}
 
-export function FilterSidebar({ brands }: FilterBarProps) {
+export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const currentBrand = searchParams.get("brand") || "";
-  const currentType = searchParams.get("type") || "";
-  const currentFormat = searchParams.get("format") || "";
-  const currentGrain = searchParams.get("grain") || "";
-  const currentContrast = searchParams.get("contrast") || "";
-  const currentBestFor = searchParams.get("bestFor") || "";
-  const currentIsoMin = searchParams.get("isoMin") || "";
-  const currentIsoMax = searchParams.get("isoMax") || "";
-  const currentSearch = searchParams.get("search") || "";
+  const selectedBrands = getParamArray(searchParams, "brand");
+  const selectedTypes = getParamArray(searchParams, "type");
+  const selectedFormats = getParamArray(searchParams, "format");
+  const selectedGrains = getParamArray(searchParams, "grain");
+  const selectedContrasts = getParamArray(searchParams, "contrast");
+  const selectedBestFor = getParamArray(searchParams, "bestFor");
+  const selectedIsos = getParamArray(searchParams, "iso");
 
-  const updateFilter = useCallback(
+  const toggleMulti = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set(key, value);
-      } else {
+      const current = getParamArray(params, key);
+      const next = current.includes(value)
+        ? current.filter((x) => x !== value)
+        : [...current, value];
+      if (next.length === 0) {
         params.delete(key);
+      } else {
+        params.set(key, next.join(","));
       }
       router.push(`/films?${params.toString()}`);
     },
     [router, searchParams]
   );
-
-  const updateMultipleFilters = useCallback(
-    (updates: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      for (const [key, value] of Object.entries(updates)) {
-        if (value) {
-          params.set(key, value);
-        } else {
-          params.delete(key);
-        }
-      }
-      router.push(`/films?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
-
-  const clearAll = useCallback(() => {
-    router.push("/films");
-  }, [router]);
-
-  const activeFilters: { key: string; label: string }[] = [];
-  if (currentBrand) {
-    const brand = brands.find((b) => b.slug === currentBrand);
-    activeFilters.push({ key: "brand", label: brand?.name || currentBrand });
-  }
-  if (currentType) activeFilters.push({ key: "type", label: FILM_TYPE_LABELS[currentType as FilmType] || currentType });
-  if (currentFormat) activeFilters.push({ key: "format", label: currentFormat });
-  if (currentGrain) activeFilters.push({ key: "grain", label: `${GRAIN_LABELS[currentGrain as GrainLevel]} grain` });
-  if (currentContrast) activeFilters.push({ key: "contrast", label: `${CONTRAST_LABELS[currentContrast as ContrastLevel]} contrast` });
-  if (currentBestFor) activeFilters.push({ key: "bestFor", label: BEST_FOR_LABELS[currentBestFor as BestFor] || currentBestFor });
-  if (currentIsoMin || currentIsoMax) {
-    const isoRange = ISO_RANGES.find((r) => r.min === currentIsoMin && r.max === currentIsoMax);
-    activeFilters.push({ key: "iso", label: `ISO ${isoRange?.label || `${currentIsoMin}–${currentIsoMax}`}` });
-  }
-  if (currentSearch) activeFilters.push({ key: "search", label: `"${currentSearch}"` });
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mr-1">
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Filters</span>
-        </div>
+    <div className="space-y-1">
+      <nav className="flex flex-col gap-0" aria-label="Filters">
+        <FilterAccordion defaultOpen twoColumns={false} title="Type">
+          <FilterPillGrid>
+            {filterOptions.types.map((type) => (
+              <FilterPill
+                key={type}
+                icon={TYPE_ICONS[type]}
+                label={FILM_TYPE_LABELS[type]}
+                selected={selectedTypes.includes(type)}
+                onToggle={() => toggleMulti("type", type)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
 
-        <FilterDropdown
-          label="Brand"
-          active={!!currentBrand}
-        >
-          <DropdownOption
-            selected={!currentBrand}
-            onClick={() => updateFilter("brand", "")}
-          >
-            All Brands
-          </DropdownOption>
-          {brands.map((brand) => (
-            <DropdownOption
-              key={brand.slug}
-              selected={currentBrand === brand.slug}
-              onClick={() => updateFilter("brand", brand.slug)}
-            >
-              {brand.name}
-            </DropdownOption>
-          ))}
-        </FilterDropdown>
+        <FilterAccordion defaultOpen={false} twoColumns={false} title="Format">
+          <FilterPillGrid>
+            {filterOptions.formats.map((format) => (
+              <FilterPill
+                key={format}
+                icon={Aperture}
+                label={format}
+                selected={selectedFormats.includes(format)}
+                onToggle={() => toggleMulti("format", format)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
 
-        <FilterDropdown
-          label="Type"
-          active={!!currentType}
-        >
-          <DropdownOption
-            selected={!currentType}
-            onClick={() => updateFilter("type", "")}
-          >
-            All Types
-          </DropdownOption>
-          {FILM_TYPES.map((type) => (
-            <DropdownOption
-              key={type}
-              selected={currentType === type}
-              onClick={() => updateFilter("type", type)}
-            >
-              {FILM_TYPE_LABELS[type]}
-            </DropdownOption>
-          ))}
-        </FilterDropdown>
+        <FilterAccordion defaultOpen={false} twoColumns={true} title="ISO">
+          <FilterPillGrid>
+            {filterOptions.isos.map((iso) => (
+              <FilterPill
+                key={iso}
+                icon={Gauge}
+                label={String(iso)}
+                selected={selectedIsos.includes(String(iso))}
+                onToggle={() => toggleMulti("iso", String(iso))}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
 
-        <FilterDropdown
-          label="Format"
-          active={!!currentFormat}
-        >
-          <DropdownOption
-            selected={!currentFormat}
-            onClick={() => updateFilter("format", "")}
-          >
-            All Formats
-          </DropdownOption>
-          {FORMATS.map((format) => (
-            <DropdownOption
-              key={format}
-              selected={currentFormat === format}
-              onClick={() => updateFilter("format", format)}
-            >
-              {format}
-            </DropdownOption>
-          ))}
-        </FilterDropdown>
+        <FilterAccordion defaultOpen={false} twoColumns={false} title="Grain">
+          <FilterPillGrid>
+            {filterOptions.grains.map((level) => (
+              <FilterPill
+                key={level}
+                icon={ScanLine}
+                label={GRAIN_LABELS[level]}
+                selected={selectedGrains.includes(level)}
+                onToggle={() => toggleMulti("grain", level)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
 
-        <FilterDropdown
-          label="Best For"
-          active={!!currentBestFor}
-        >
-          <DropdownOption
-            selected={!currentBestFor}
-            onClick={() => updateFilter("bestFor", "")}
-          >
-            Any Use
-          </DropdownOption>
-          {BEST_FOR_OPTIONS.map((bf) => (
-            <DropdownOption
-              key={bf}
-              selected={currentBestFor === bf}
-              onClick={() => updateFilter("bestFor", bf)}
-            >
-              {BEST_FOR_LABELS[bf]}
-            </DropdownOption>
-          ))}
-        </FilterDropdown>
+        <FilterAccordion defaultOpen={false} twoColumns={false} title="Contrast">
+          <FilterPillGrid>
+            {filterOptions.contrasts.map((level) => (
+              <FilterPill
+                key={level}
+                icon={ContrastIcon}
+                label={CONTRAST_LABELS[level]}
+                selected={selectedContrasts.includes(level)}
+                onToggle={() => toggleMulti("contrast", level)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
 
-        <FilterDropdown
-          label="ISO"
-          active={!!(currentIsoMin || currentIsoMax)}
-        >
-          <DropdownOption
-            selected={!currentIsoMin && !currentIsoMax}
-            onClick={() => updateMultipleFilters({ isoMin: "", isoMax: "" })}
-          >
-            Any ISO
-          </DropdownOption>
-          {ISO_RANGES.map((range) => (
-            <DropdownOption
-              key={range.label}
-              selected={currentIsoMin === range.min && currentIsoMax === range.max}
-              onClick={() => updateMultipleFilters({ isoMin: range.min, isoMax: range.max })}
-            >
-              ISO {range.label}
-            </DropdownOption>
-          ))}
-        </FilterDropdown>
+        <FilterAccordion defaultOpen={false} twoColumns={false} title="Brand">
+          <FilterPillGrid>
+            {brands.map((brand) => (
+              <FilterPill
+                key={brand.slug}
+                icon={Building2}
+                label={brand.name}
+                selected={selectedBrands.includes(brand.slug)}
+                onToggle={() => toggleMulti("brand", brand.slug)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
 
-        <FilterDropdown
-          label="Grain"
-          active={!!currentGrain}
-        >
-          <DropdownOption
-            selected={!currentGrain}
-            onClick={() => updateFilter("grain", "")}
-          >
-            Any Grain
-          </DropdownOption>
-          {GRAIN_LEVELS.map((level) => (
-            <DropdownOption
-              key={level}
-              selected={currentGrain === level}
-              onClick={() => updateFilter("grain", level)}
-            >
-              {GRAIN_LABELS[level]}
-            </DropdownOption>
-          ))}
-        </FilterDropdown>
-
-        <FilterDropdown
-          label="Contrast"
-          active={!!currentContrast}
-        >
-          <DropdownOption
-            selected={!currentContrast}
-            onClick={() => updateFilter("contrast", "")}
-          >
-            Any Contrast
-          </DropdownOption>
-          {CONTRAST_LEVELS.map((level) => (
-            <DropdownOption
-              key={level}
-              selected={currentContrast === level}
-              onClick={() => updateFilter("contrast", level)}
-            >
-              {CONTRAST_LABELS[level]}
-            </DropdownOption>
-          ))}
-        </FilterDropdown>
-      </div>
-
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {activeFilters.map((filter) => (
-            <button
-              key={filter.key}
-              onClick={() => {
-                if (filter.key === "iso") {
-                  updateMultipleFilters({ isoMin: "", isoMax: "" });
-                } else {
-                  updateFilter(filter.key, "");
-                }
-              }}
-              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-            >
-              {filter.label}
-              <X className="h-3 w-3" />
-            </button>
-          ))}
-          {activeFilters.length > 1 && (
-            <button
-              onClick={clearAll}
-              className="px-2 py-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-      )}
+        <FilterAccordion defaultOpen={false} twoColumns={false} title="Use case">
+          <FilterPillGrid>
+            {filterOptions.bestFor.map((bf) => (
+              <FilterPill
+                key={bf}
+                icon={BEST_FOR_ICONS[bf]}
+                label={BEST_FOR_LABELS[bf]}
+                selected={selectedBestFor.includes(bf)}
+                onToggle={() => toggleMulti("bestFor", bf)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
+      </nav>
     </div>
   );
 }
 
-function FilterDropdown({
-  label,
-  active,
+function FilterAccordion({
+  title,
+  defaultOpen,
+  twoColumns,
   children,
 }: {
-  label: string;
-  active: boolean;
+  title: string;
+  defaultOpen: boolean;
+  twoColumns: boolean;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [open]);
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div ref={ref} className="relative">
+    <div className="border-b border-border/50 last:border-b-0">
       <button
-        onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-          active
-            ? "border-primary/40 bg-primary/10 text-primary"
-            : "border-border bg-card text-foreground hover:bg-accent"
-        }`}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        aria-expanded={open}
       >
-        {label}
-        <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        {title}
+        <ChevronDown
+          className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-[160px] rounded-lg border border-border bg-card p-1 shadow-lg">
+        <div
+          className={`grid gap-2 pb-4 ${twoColumns ? "grid-cols-2" : "grid-cols-1"}`}
+        >
           {children}
         </div>
       )}
@@ -332,25 +225,33 @@ function FilterDropdown({
   );
 }
 
-function DropdownOption({
-  children,
+function FilterPillGrid({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
+
+function FilterPill({
+  icon: Icon,
+  label,
   selected,
-  onClick,
+  onToggle,
 }: {
-  children: React.ReactNode;
+  icon: LucideIcon;
+  label: string;
   selected: boolean;
-  onClick: () => void;
+  onToggle: () => void;
 }) {
   return (
     <button
-      onClick={onClick}
-      className={`block w-full rounded-md px-3 py-1.5 text-left text-xs transition-colors ${
+      type="button"
+      onClick={onToggle}
+      className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors ${
         selected
-          ? "bg-primary/15 font-medium text-primary"
-          : "text-foreground hover:bg-accent"
+          ? "border-primary bg-primary/10 text-primary"
+          : "border-border/60 bg-secondary/30 text-foreground hover:border-primary/40 hover:bg-primary/5"
       }`}
     >
-      {children}
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span className="truncate">{label}</span>
     </button>
   );
 }

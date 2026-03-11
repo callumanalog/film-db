@@ -5,6 +5,11 @@ import Link from "next/link";
 import { Camera, Heart, ChevronDown, X } from "lucide-react";
 import type { GalleryImage, SampleImageSource } from "@/lib/sample-images";
 
+/** Strip aperture (e.g. " f/2", " f/1.4") from camera string for display. */
+function cameraWithoutAperture(camera: string): string {
+  return camera.replace(/\s+f\/[\d.]+$/i, "").trim() || camera;
+}
+
 type SortOption = "newest" | "most-liked";
 
 export interface StockOption {
@@ -251,7 +256,7 @@ export function GalleryGrid({
         {filteredAndSorted.map((img) => (
           <div
             key={img.galleryId}
-            className="group overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30 hover:shadow-md"
+            className="group overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             <div className="relative aspect-[4/3] bg-muted">
               {img.imageUrl ? (
@@ -267,26 +272,26 @@ export function GalleryGrid({
                   <Camera className="h-8 w-8 text-white/20" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
-              <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
-                  {img.settings}
-                </span>
-                <div className="flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5">
-                  <Heart className="h-3 w-3 text-white" />
-                  <span className="text-[10px] font-medium text-white">{img.likes}</span>
-                </div>
-              </div>
             </div>
-            <div className="p-3">
-              <Link
-                href={`/films/${img.stockSlug}/images`}
-                className="text-xs font-medium text-primary hover:underline"
+            <div className="relative flex items-start justify-between gap-2 p-3">
+              <div className="min-w-0 flex-1">
+                <Link
+                  href={`/films/${img.stockSlug}/images`}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {img.stockName}
+                </Link>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{img.username}</p>
+                <p className="text-[11px] text-muted-foreground">{cameraWithoutAperture(img.camera)}</p>
+              </div>
+              <button
+                type="button"
+                className="flex shrink-0 items-center gap-1.5 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                aria-label={`Like (${img.likes})`}
               >
-                {img.stockName}
-              </Link>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{img.username}</p>
-              <p className="text-[11px] text-muted-foreground">{img.camera}</p>
+                <Heart className="h-6 w-6" />
+                <span className="text-sm font-medium tabular-nums">{img.likes}</span>
+              </button>
             </div>
           </div>
         ))}

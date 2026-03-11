@@ -410,11 +410,11 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
   };
 
   return (
-    <div className="w-full sm:w-72 sm:shrink-0">
-      {/* Image */}
-      <div className="relative mx-auto w-fit overflow-hidden rounded-xl border border-border/50 bg-white sm:mx-0 sm:w-full">
+    <div className="w-full min-w-0 sm:w-72 sm:min-w-[18rem] sm:shrink-0 sm:self-start sm:sticky sm:top-20 sm:overflow-visible">
+      {/* Image card — full border and content visible */}
+      <div className="relative mx-auto w-full max-w-full overflow-hidden rounded-xl border border-border/50 bg-white sm:mx-0 sm:w-full">
         <span
-          className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-sm ${stock.discontinued ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}
+          className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${stock.discontinued ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}
         >
           {stock.discontinued ? "Discontinued" : "Available"}
         </span>
@@ -425,7 +425,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         </div>
       </div>
 
-      {/* Shot | Favorite | Shootlist — multiple can be selected; filled icons when active */}
+      {/* Shot | Favorite | Shootlist */}
       <div className="mt-2 grid grid-cols-3 gap-2" role="group" aria-label="Film stock actions">
         {LOG_OPTIONS.map(({ id, label, fullLabel, Icon }) => {
           const isActive = selectedIds.has(id);
@@ -469,13 +469,6 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
           <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
         </div>
       </div>
-
-      {/* Buy this stock */}
-      {stock.purchase_links && stock.purchase_links.length > 0 && (
-        <div className="mt-8">
-          <BuyRightPane stock={stock} />
-        </div>
-      )}
     </div>
   );
 }
@@ -576,6 +569,7 @@ const SPEC_ICONS: Record<string, React.ElementType> = {
   "Grain": ScanLine,
   "Contrast": ContrastIcon,
   "Colour Balance": Thermometer,
+  "Color Balance": Thermometer,
   "Color Palette": Palette,
   "Exposure Latitude": Target,
   "Latitude": Target,

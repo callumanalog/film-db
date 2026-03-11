@@ -11,16 +11,19 @@ import type {
 import { seedBrands, seedFilmStocks, seedPurchaseLinks } from "@/lib/seed-data";
 
 export interface FilmStockFilters {
-  brand?: string;
-  type?: FilmType;
-  format?: FilmFormat;
+  search?: string;
+  brand?: string | string[];
+  type?: FilmType | FilmType[];
+  format?: FilmFormat | FilmFormat[];
+  iso?: number[];
   isoMin?: number;
   isoMax?: number;
-  grain?: GrainLevel;
-  contrast?: ContrastLevel;
-  bestFor?: BestFor;
+  grain?: GrainLevel | GrainLevel[];
+  contrast?: ContrastLevel | ContrastLevel[];
+  bestFor?: BestFor | BestFor[];
   discontinued?: boolean;
-  search?: string;
+  /** "popular" (default) = by featured then rating then name; "alphabetical" = by brand + name */
+  sort?: "popular" | "alphabetical";
 }
 
 function getAllBrands(): FilmBrand[] {
@@ -41,24 +44,47 @@ export async function getFilmStocks(
 
   if (filters) {
     if (filters.search) {
-      const q = filters.search.toLowerCase();
-      stocks = stocks.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.brand.name.toLowerCase().includes(q) ||
-          (s.description && s.description.toLowerCase().includes(q))
-      );
+      const q = filters.search.toLowerCase().trim();
+      const words = q.split(/\s+/).filter(Boolean);
+      stocks = stocks.filter((s) => {
+        const searchable = [
+          s.name,
+          s.brand.name,
+          s.description,
+          s.grain,
+          s.contrast,
+          s.latitude,
+          s.color_palette,
+          s.shooting_tips,
+          s.history,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return words.every((w) => searchable.includes(w));
+      });
     }
-    if (filters.brand) {
-      stocks = stocks.filter(
-        (s) => s.brand.slug === filters.brand
-      );
+    if (filters.brand !== undefined && filters.brand !== "") {
+      const brands = Array.isArray(filters.brand) ? filters.brand : [filters.brand];
+      if (brands.length > 0) {
+        stocks = stocks.filter((s) => brands.includes(s.brand.slug));
+      }
     }
-    if (filters.type) {
-      stocks = stocks.filter((s) => s.type === filters.type);
+    if (filters.type !== undefined) {
+      const types = Array.isArray(filters.type) ? filters.type : [filters.type];
+      if (types.length > 0) {
+        stocks = stocks.filter((s) => types.includes(s.type));
+      }
     }
-    if (filters.format) {
-      stocks = stocks.filter((s) => s.format.includes(filters.format!));
+    if (filters.format !== undefined) {
+      const formats = Array.isArray(filters.format) ? filters.format : [filters.format];
+      if (formats.length > 0) {
+        stocks = stocks.filter((s) => formats.some((f) => s.format.includes(f)));
+      }
+    }
+    if (filters.iso !== undefined && filters.iso.length > 0) {
+      const isoSet = new Set(filters.iso);
+      stocks = stocks.filter((s) => isoSet.has(s.iso));
     }
     if (filters.isoMin !== undefined) {
       stocks = stocks.filter((s) => s.iso >= filters.isoMin!);
@@ -66,27 +92,102 @@ export async function getFilmStocks(
     if (filters.isoMax !== undefined) {
       stocks = stocks.filter((s) => s.iso <= filters.isoMax!);
     }
-    if (filters.grain) {
-      stocks = stocks.filter((s) => s.grain_level === filters.grain);
+    if (filters.grain !== undefined) {
+      const grains = Array.isArray(filters.grain) ? filters.grain : [filters.grain];
+      if (grains.length > 0) {
+        stocks = stocks.filter((s) => grains.includes(s.grain_level));
+      }
     }
-    if (filters.contrast) {
-      stocks = stocks.filter((s) => s.contrast_level === filters.contrast);
+    if (filters.contrast !== undefined) {
+      const contrasts = Array.isArray(filters.contrast) ? filters.contrast : [filters.contrast];
+      if (contrasts.length > 0) {
+        stocks = stocks.filter((s) => contrasts.includes(s.contrast_level));
+      }
     }
-    if (filters.bestFor) {
-      stocks = stocks.filter((s) => s.best_for.includes(filters.bestFor!));
+    if (filters.bestFor !== undefined) {
+      const bestFor = Array.isArray(filters.bestFor) ? filters.bestFor : [filters.bestFor];
+      if (bestFor.length > 0) {
+        stocks = stocks.filter((s) => bestFor.some((bf) => s.best_for.includes(bf)));
+      }
     }
     if (filters.discontinued !== undefined) {
       stocks = stocks.filter((s) => s.discontinued === filters.discontinued);
     }
   }
 
-  stocks.sort((a, b) => {
-    const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
-    const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
-    return keyA.localeCompare(keyB);
-  });
+  const sortBy = filters?.sort ?? "popular";
+  if (sortBy === "popular") {
+    stocks.sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      if (a.rating !== b.rating) return b.rating - a.rating;
+      const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
+      const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
+      return keyA.localeCompare(keyB);
+    });
+  } else {
+    stocks.sort((a, b) => {
+      const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
+      const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
+      return keyA.localeCompare(keyB);
+    });
+  }
 
   return stocks;
+}
+
+export interface FilmFilterOptions {
+  types: FilmType[];
+  isos: number[];
+  formats: FilmFormat[];
+  grains: GrainLevel[];
+  contrasts: ContrastLevel[];
+  bestFor: BestFor[];
+}
+
+/** Desired display order for filter dropdowns (only include types that exist in data). */
+const TYPE_ORDER: FilmType[] = [
+  "color_negative",
+  "bw_negative",
+  "color_reversal",
+  "bw_reversal",
+  "instant",
+];
+const FORMAT_ORDER: FilmFormat[] = ["35mm", "120", "4x5", "8x10", "110", "instant"];
+const GRAIN_ORDER: GrainLevel[] = ["fine", "medium", "strong"];
+const CONTRAST_ORDER: ContrastLevel[] = ["low", "medium", "high"];
+
+function sortByOrder<T>(arr: T[], order: T[]): T[] {
+  return [...arr].sort((a, b) => {
+    const i = order.indexOf(a);
+    const j = order.indexOf(b);
+    if (i === -1 && j === -1) return 0;
+    if (i === -1) return 1;
+    if (j === -1) return -1;
+    return i - j;
+  });
+}
+
+export function getFilmFilterOptions(): FilmFilterOptions {
+  const stocks = getAllFilmStocks();
+  const types = sortByOrder(
+    [...new Set(stocks.map((s) => s.type))],
+    TYPE_ORDER
+  );
+  const isos = [...new Set(stocks.map((s) => s.iso))].sort((a, b) => a - b);
+  const formats = sortByOrder(
+    [...new Set(stocks.flatMap((s) => s.format))],
+    FORMAT_ORDER
+  );
+  const grains = sortByOrder(
+    [...new Set(stocks.map((s) => s.grain_level))],
+    GRAIN_ORDER
+  );
+  const contrasts = sortByOrder(
+    [...new Set(stocks.map((s) => s.contrast_level))],
+    CONTRAST_ORDER
+  );
+  const bestFor = [...new Set(stocks.flatMap((s) => s.best_for))].sort();
+  return { types, isos, formats, grains, contrasts, bestFor };
 }
 
 export async function getFilmStockBySlug(
@@ -155,6 +256,15 @@ export async function getFilmStocksByBrand(
 ): Promise<(FilmStock & { brand: FilmBrand })[]> {
   const stocks = getAllFilmStocks();
   return stocks.filter((s) => s.brand.slug === brandSlug);
+}
+
+/** Return stocks for the given slugs; order matches slug order; missing slugs omitted. */
+export async function getFilmStocksBySlugs(
+  slugs: string[]
+): Promise<(FilmStock & { brand: FilmBrand })[]> {
+  const all = getAllFilmStocks();
+  const bySlug = new Map(all.map((s) => [s.slug, s]));
+  return slugs.map((slug) => bySlug.get(slug)).filter((s): s is FilmStock & { brand: FilmBrand } => s != null);
 }
 
 /** Up to `limit` other stocks from the same brand, excluding the given stock. For "More from [Brand]" recirculation. */

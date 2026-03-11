@@ -3,38 +3,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand } from "@/lib/supabase/queries";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { FilmCard } from "@/components/film-card";
-import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, type BestFor } from "@/lib/types";
-import Image from "next/image";
-import {
-  Camera,
-  ChevronRight,
-  ExternalLink,
-  Lightbulb,
-  BookOpen,
-  ShoppingBag,
-  Aperture,
-  Gauge,
-  Palette,
-  Contrast,
-  Target,
-  ScanLine,
-  Grid2x2,
-  Building2,
-  Film,
-  Users,
-  FileText,
-  Play,
-} from "lucide-react";
-import { BestForSection } from "@/components/best-for-section";
-import { ExpandableText, InlineExpandableText } from "@/components/expandable-text";
-import { StarRating } from "@/components/star-rating";
-import { CommunitySection, CommunityReviews, CommunityGallery, QuickActions } from "@/components/community-section";
-import { StickyLeftPane, PageTitleHeader, PriceBuyCard, SpecsRightPane } from "@/components/hero-mockups";
-import { FilmPageNav, FilmDetailTabs } from "@/components/film-page-tabs";
+import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS } from "@/lib/types";
+import type { LatitudeLevel, DevelopmentProcess, ColorBalanceType } from "@/lib/types";
+import { ChevronRight } from "lucide-react";
+import { CommunityReviews, CommunityGallery } from "@/components/community-section";
+import { StickyLeftPane, PageTitleHeader } from "@/components/hero-mockups";
+import { FilmDetailTabs } from "@/components/film-page-tabs";
 import { OverviewTabContent } from "@/components/overview-tab-content";
+import { reviewsFromWebBySlug, videoReviewsBySlug } from "@/lib/seed-film-reviews";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -71,33 +48,51 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   const moreFromBrandStocks = await getMoreFromBrand(stock, 6);
   const typeColor = FILM_TYPE_COLORS[stock.type];
 
-  const specs = slug === "cinestill-800t"
-    ? [
-        { label: "Film Format", value: "35mm, 120" },
-        { label: "Film Colour & Type", value: "Colour Negative (C-41)" },
-        { label: "ISO", value: "800" },
-        { label: "Grain", value: "Normal and Fine" },
-        { label: "Contrast", value: "High" },
-        { label: "Colour Balance", value: "Tungsten-Balanced Film (\u2248\u00A03200K)" },
-        { label: "Exposure Latitude", value: "Wide / Very Wide" },
-        { label: "DX Coding", value: "Yes" },
-        { label: "Development Process", value: "Colour (C-41)" },
-      ]
-    : [
-        { label: "Film Format", value: (stock.format ?? []).join(", ") },
-        { label: "Film Type", value: FILM_TYPE_LABELS[stock.type] },
-        { label: "ISO", value: stock.iso?.toString() ?? "" },
-        { label: "Grain", value: stock.grain },
-        { label: "Contrast", value: stock.contrast },
-        { label: "Color Palette", value: stock.color_palette },
-        { label: "Latitude", value: stock.latitude },
-      ].filter((s) => s.value) as { label: string; value: string }[];
+  /** Development process: from stock or derive from type (C-41, E-6, B&W). CineStill films are C-41. */
+  const developmentProcessValue: DevelopmentProcess | null =
+    stock.development_process ?? (stock.type === "color_negative" ? "c41" : stock.type === "color_reversal" ? "e6" : stock.type === "instant" ? "c41" : "bw");
 
-  /** Specs for overview tab: Use case first, then the rest (10 total for CineStill). */
-  const overviewSpecs = [
+  /** Color Balance: only for color films; show "X-Balanced (≈xxxxK)". B&W has no color balance — omit. */
+  const colorBalanceValue: string | null =
+    (stock.type !== "bw_negative" && stock.type !== "bw_reversal" &&
+      stock.color_balance_type != null &&
+      stock.color_balance_kelvin != null)
+      ? `${COLOR_BALANCE_LABELS[stock.color_balance_type as ColorBalanceType]}-Balanced (≈${stock.color_balance_kelvin}K)`
+      : null;
+
+  /** Latitude: only one of the 5 categories when we have latitude_level; otherwise omit. */
+  const latitudeValue: string | null =
+    stock.latitude_level != null ? LATITUDE_LABELS[stock.latitude_level as LatitudeLevel] : null;
+
+  /** DX coding: default true if 35mm in format. */
+  const dxCoding = stock.dx_coding ?? (stock.format ?? []).includes("35mm");
+
+  /** Build specs in display order:
+   * Row 1: Film Format | Use case
+   * Row 2: Film Type | Latitude
+   * Row 3: ISO | Color Balance
+   * Row 4: Grain | DX Coding
+   * Row 5: Contrast | Development Process
+   */
+  const leftCol: { label: string; value: string }[] = [
+    { label: "Film Format", value: (stock.format ?? []).join(", ") },
+    { label: "Film Type", value: FILM_TYPE_LABELS[stock.type] },
+    { label: "ISO", value: stock.iso?.toString() ?? "" },
+    { label: "Grain", value: GRAIN_LABELS[stock.grain_level] },
+    { label: "Contrast", value: CONTRAST_LABELS[stock.contrast_level] },
+  ];
+  const rightCol: { label: string; value: string }[] = [
     { label: "Use case", value: (stock.best_for ?? []).map((k) => BEST_FOR_LABELS[k]).join(", ") },
-    ...specs,
-  ].filter((s) => s.value);
+    { label: "Latitude", value: latitudeValue ?? "—" },
+    { label: "Color Balance", value: colorBalanceValue ?? "—" },
+    { label: "DX Coding", value: dxCoding ? "Yes" : "No" },
+    { label: "Development Process", value: developmentProcessValue ? DEVELOPMENT_PROCESS_LABELS[developmentProcessValue] : "—" },
+  ];
+  /** Interleave for grid: row i = leftCol[i] | rightCol[i]. */
+  const overviewSpecs = leftCol.flatMap((l, i) => [l, rightCol[i]]);
+
+  /** Specs for sticky pane: same row order as overview, omit placeholder "—". */
+  const specs = overviewSpecs.filter((s) => s.value != null && s.value !== "" && s.value !== "—") as { label: string; value: string }[];
 
   const purchaseLinks = stock.purchase_links ?? [];
   const sortedLinks = [...purchaseLinks].sort(
@@ -133,23 +128,10 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   const flickrImages = await getFlickrSampleImagesForStock(slug).catch(() => []);
 
-  const reviewsFromWeb =
-    slug === "cinestill-800t"
-      ? [
-          { title: "CineStill 800T Review", site: "Analog Cafe", url: "https://analog.cafe/" },
-          { title: "800T First Impressions", site: "Emulsive", url: "https://emulsive.org/" },
-        ]
-      : [];
+  const reviewsFromWeb = reviewsFromWebBySlug[slug] ?? [];
+  const videoReviews = videoReviewsBySlug[slug] ?? [];
 
-  const videoReviews =
-    slug === "cinestill-800t"
-      ? [
-          { title: "CineStill 800T - Full Review", channel: "YouTube", url: "https://www.youtube.com/" },
-          { title: "Shooting 800T at Night", channel: "YouTube", url: "https://www.youtube.com/" },
-        ]
-      : [];
-
-  const cinestillTabs = [
+  const filmTabs = [
     {
       id: "overview",
       label: "Overview",
@@ -160,7 +142,8 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           shootingTips={stock.shooting_tips}
           reviewsFromWeb={reviewsFromWeb}
           videoReviews={videoReviews}
-          purchaseLinks={stock.purchase_links ?? []}
+          purchaseLinks={sortedLinks}
+          stockName={`${stock.brand.name} ${stock.name}`}
           bestFor={stock.best_for ?? []}
           specs={overviewSpecs}
         />
@@ -171,454 +154,61 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       label: "Example images",
       content: (
         <section>
-          <CommunityGallery stockName={stock.name} slug={slug} flickrImages={flickrImages} />
+          <CommunityGallery stockName={stock.name} slug={slug} flickrImages={flickrImages} variant="tab" />
         </section>
       ),
     },
     {
       id: "reviews",
-      label: "Notes",
+      label: "Reviews",
       content: (
         <section className="space-y-10">
-          {stock.shooting_tips && (
-            <>
-              <SectionHeading title="Shooting notes" />
-              <section className="rounded-xl border border-border/50 bg-card p-5">
-                <ul className="space-y-2">
-                  {stock.shooting_tips
-                    .split(/\.\s+/)
-                    .filter((s) => s.trim().length > 0)
-                    .map((tip, i) => (
-                      <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/80">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-                        {tip.endsWith(".") ? tip : `${tip}.`}
-                      </li>
-                    ))}
-                </ul>
-              </section>
-            </>
-          )}
           <CommunityReviews />
         </section>
       ),
     },
   ];
 
-  const mainContent = (
-    <>
-      {/* Where to Buy */}
-      {sortedLinks.length > 0 && (
-        <section className="mb-6 rounded-xl border border-border/50 bg-card px-5 py-4">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <ShoppingBag className="h-3.5 w-3.5" />
-              Buy:
-            </span>
-            {sortedLinks.map((link, i) => (
-              <span key={link.id} className="flex items-center">
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/70"
-                >
-                  {link.retailer_name}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-                {i < sortedLinks.length - 1 && (
-                  <span className="ml-2 text-border">·</span>
-                )}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Technical Specs */}
-      {specs.length > 0 && (
-        <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <SectionHeading title="Specs" />
-          <div className="divide-y divide-border/50">
-            {specs.map((spec) => (
-              <div
-                key={spec.label}
-                className="flex items-baseline gap-4 py-2.5 first:pt-0 last:pb-0"
-              >
-                <span className="w-28 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {spec.label}
-                </span>
-                <span className="text-sm font-medium">{spec.value}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* About */}
-      {stock.description && (
-        <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <SectionHeading title="About" />
-          <p className="leading-relaxed text-muted-foreground">{stock.description}</p>
-        </section>
-      )}
-
-      {/* Best for */}
-      {stock.best_for?.length > 0 && (
-        <div className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <BestForSection items={stock.best_for} />
-        </div>
-      )}
-
-      {/* History */}
-      {stock.history && (
-        <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <SectionHeading title="History" />
-          <p className="leading-relaxed text-muted-foreground whitespace-pre-line">
-            {stock.history}
-          </p>
-        </section>
-      )}
-
-      {/* Shooting Tips */}
-      {stock.shooting_tips && (
-        <section className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-5">
-          <SectionHeading title="Shooting Tips" />
-          <p className="leading-relaxed text-foreground/80 whitespace-pre-line">
-            {stock.shooting_tips}
-          </p>
-        </section>
-      )}
-
-      {/* References */}
-      {stock.sample_images.length > 0 && (
-        <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <SectionHeading title="References" />
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-            {stock.sample_images.map((img) => (
-              <div
-                key={img.id}
-                className="overflow-hidden rounded-lg border border-border/50"
-              >
-                <div className="aspect-[4/3] bg-muted" />
-                {(img.caption || img.camera_used) && (
-                  <div className="p-3">
-                    {img.caption && (
-                      <p className="text-sm">{img.caption}</p>
-                    )}
-                    {img.camera_used && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Shot on {img.camera_used}
-                        {img.lens_used && ` with ${img.lens_used}`}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Community placeholder */}
-      <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-        <SectionHeading title="Community" />
-        <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-10 text-center">
-          <Camera className="mb-3 h-10 w-10 text-muted-foreground/50" />
-          <p className="text-sm font-medium text-muted-foreground">
-            Community references coming soon
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground/60">
-            Users will be able to upload their own shots taken on {stock.name}
-          </p>
-        </div>
-      </section>
-
-      {/* Related Stocks */}
-      {relatedStocks.length > 0 && (
-        <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <h2 className="mb-4 text-xl font-bold tracking-tight">
-            Similar Film Stocks
-          </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {relatedStocks.map((related) => (
-              <FilmCard key={related.id} stock={related} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* More from [Brand] */}
-      {moreFromBrandStocks.length > 0 && (
-        <section className="mb-6 rounded-xl border border-border/50 bg-card p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-bold tracking-tight">
-              More from {stock.brand.name}
-            </h2>
-            <Link
-              href={`/brands/${stock.brand.slug}`}
-              className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-            >
-              View all {stock.brand.name} films
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {moreFromBrandStocks.map((s) => (
-              <FilmCard key={s.id} stock={s} />
-            ))}
-          </div>
-        </section>
-      )}
-    </>
-  );
-
-  if (slug === "cinestill-800t") {
-    return (
-      <div className="work-sans-content">
-        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="font-medium text-foreground">{stock.name}</span>
-          </nav>
-
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-            <StickyLeftPane {...stockProps} />
-            <div className="min-w-0 flex-1 pt-6 sm:pt-8">
-              <PageTitleHeader {...stockProps} />
-              <div className="min-w-0">
-                <FilmDetailTabs
-                  tabs={cinestillTabs}
-                  defaultId="overview"
-                  fullWidthTabBar
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {allDiscoveryStocks.length > 0 && (
-          <section className="w-full border-t border-border/50 bg-secondary/30 py-12">
-            <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-              <h3 className="mb-6 text-xl font-bold tracking-tight text-foreground">Similar stocks</h3>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-                {allDiscoveryStocks.map((s) => (
-                  <FilmCard key={s.id} stock={s} />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-      </div>
-    );
-  }
-
+  // All film stocks use the same template: sticky left pane + tabs (Overview, Example images, Reviews)
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-medium text-foreground">{stock.name}</span>
-      </nav>
+    <div className="work-sans-content">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="font-medium text-foreground">{stock.name}</span>
+        </nav>
 
-      <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-        <div className="shrink-0 rounded-2xl border border-border/50 bg-card p-5 sm:w-64">
-          <div className="flex h-40 items-center justify-center overflow-hidden">
-            {stock.image_url ? (
-              <Image
-                src={stock.image_url}
-                alt={`${stock.brand.name} ${stock.name}`}
-                width={160}
-                height={160}
-                className="h-full w-full object-contain p-3"
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+          <StickyLeftPane {...stockProps} />
+          <div className="min-w-0 flex-1 pt-6 sm:pt-8">
+            <PageTitleHeader {...stockProps} />
+            <div className="min-w-0">
+              <FilmDetailTabs
+                tabs={filmTabs}
+                defaultId="overview"
+                fullWidthTabBar
               />
-            ) : (
-              <Camera className="h-14 w-14 text-muted-foreground/40" />
-            )}
-          </div>
-          <h1 className="mt-4 text-xl font-bold tracking-tight">
-            {stock.brand.name} {stock.name}
-          </h1>
-          {stock.discontinued && (
-            <Badge variant="secondary" className="mt-1.5 text-xs">
-              Discontinued
-            </Badge>
-          )}
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
-            <div className="flex items-center gap-2">
-              <Grid2x2 className="h-4 w-4 text-muted-foreground/50" />
-              <span className="text-xs font-medium">{FILM_TYPE_LABELS[stock.type]}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground/50" />
-              <Link
-                href={`/brands/${stock.brand.slug}`}
-                className="text-xs font-medium transition-colors hover:text-primary"
-              >
-                {stock.brand.name}
-              </Link>
-            </div>
-            <div className="flex items-center gap-2">
-              <Film className="h-4 w-4 text-muted-foreground/50" />
-              <span className="text-xs font-medium">{(stock.format ?? []).join(", ")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Gauge className="h-4 w-4 text-muted-foreground/50" />
-              <span className="text-xs font-medium">ISO {stock.iso}</span>
             </div>
           </div>
-        </div>
-        <div className="min-w-0 flex-1">
-          {stock.description && (
-            <>
-              <div className="mb-4 flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-bold tracking-tight">Description</h2>
-              </div>
-              <p className="leading-relaxed text-muted-foreground">
-                {stock.description}
-              </p>
-            </>
-          )}
         </div>
       </div>
 
-      {mainContent}
+      {allDiscoveryStocks.length > 0 && (
+        <section className="w-full border-t border-border/50 bg-secondary/30 py-12">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <h3 className="mb-6 text-xl font-bold tracking-tight text-foreground">Similar stocks</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+              {allDiscoveryStocks.map((s) => (
+                <FilmCard key={s.id} stock={s} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
 
-function SectionHeading({
-  title,
-}: {
-  icon?: React.ElementType;
-  title: string;
-}) {
-  return (
-    <h2 className="mb-4 text-xl font-bold tracking-tight">{title}</h2>
-  );
-}
-
-type SpecsTableVariant = "a" | "b" | "c" | "d" | "e";
-
-function SpecsTable({
-  specs,
-  variant,
-}: {
-  specs: { label: string; value: string }[];
-  variant: SpecsTableVariant;
-}) {
-  const cells = specs.slice(0, 9);
-  const col = (i: number) => cells.slice(i * 3, i * 3 + 3);
-
-  if (variant === "a") {
-    return (
-      <div className="mb-8">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Specs</h2>
-        <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
-          <div className="grid grid-cols-3 divide-x divide-border/50">
-            {[0, 1, 2].map((c) => (
-              <div key={c} className="divide-y divide-border/50">
-                {col(c).map((spec) => (
-                  <div key={spec.label} className="px-4 py-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-foreground">{spec.value}</p>
-                  </div>
-                ))}
-                {col(c).length < 3 && Array.from({ length: 3 - col(c).length }).map((_, i) => <div key={i} className="px-4 py-3" />)}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === "b") {
-    return (
-      <div className="mb-8">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Specs</h2>
-        <div className="grid grid-cols-3 gap-x-8 gap-y-0">
-          {[0, 1, 2].map((c) => (
-            <div key={c} className="space-y-4 py-2">
-              {col(c).map((spec) => (
-                <div key={spec.label}>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
-                  <p className="mt-0.5 text-sm font-semibold text-foreground">{spec.value}</p>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === "c") {
-    return (
-      <div className="mb-8">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">Specs</h2>
-        <div className="rounded-lg bg-secondary/30 px-5 py-4">
-          <dl className="grid grid-cols-3 gap-x-6 gap-y-4">
-            {cells.map((spec) => (
-              <div key={spec.label} className="flex flex-col">
-                <dt className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</dt>
-                <dd className="mt-0.5 text-sm font-semibold text-foreground">{spec.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === "d") {
-    return (
-      <div className="mb-8 overflow-hidden rounded-xl border border-border/50 bg-card">
-        <div className="border-b border-border/50 bg-secondary/40 px-4 py-2.5">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Specs</p>
-        </div>
-        <div className="grid grid-cols-3 divide-x divide-border/50">
-          {[0, 1, 2].map((c) => (
-            <div key={c} className="divide-y divide-border/30">
-              {col(c).map((spec) => (
-                <div key={spec.label} className="px-4 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
-                  <p className="mt-0.5 text-xs font-semibold text-foreground">{spec.value}</p>
-                </div>
-              ))}
-              {col(c).length < 3 && Array.from({ length: 3 - col(c).length }).map((_, i) => <div key={i} className="px-4 py-2.5" />)}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (variant === "e") {
-    return (
-      <div className="mb-8">
-        <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h2>
-        <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-5">
-          <div className="grid grid-cols-3 gap-6">
-            {[0, 1, 2].map((c) => (
-              <div key={c} className="space-y-5">
-                {col(c).map((spec) => (
-                  <div key={spec.label} className="border-l-2 border-primary/30 pl-4">
-                    <p className="text-xs font-medium text-muted-foreground">{spec.label}</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{spec.value}</p>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}

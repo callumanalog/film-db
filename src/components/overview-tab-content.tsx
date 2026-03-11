@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { SwitchToTabButton } from "@/components/film-page-tabs";
 import type { FlickrPhoto } from "@/lib/flickr";
 import type { BestFor } from "@/lib/types";
-import { ExternalLink, FileText, Play, Aperture, Palette, Gauge, ScanLine, Thermometer, Target, QrCode, FlaskConical, Contrast as ContrastIcon, Image } from "lucide-react";
+import { ExternalLink, Play, Aperture, Palette, Gauge, ScanLine, Thermometer, Target, QrCode, FlaskConical, Contrast as ContrastIcon, Image, Lightbulb } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /** Icons for spec labels (match hero-mockups SpecsTable). */
@@ -17,6 +15,7 @@ const SPEC_ICONS: Record<string, LucideIcon> = {
   "Grain": ScanLine,
   "Contrast": ContrastIcon,
   "Colour Balance": Thermometer,
+  "Color Balance": Thermometer,
   "Color Palette": Palette,
   "Exposure Latitude": Target,
   "Latitude": Target,
@@ -25,20 +24,36 @@ const SPEC_ICONS: Record<string, LucideIcon> = {
   "Development Process": FlaskConical,
 };
 
-/** Placeholder image paths when Flickr images are missing. */
-const OVERVIEW_PLACEHOLDER_IMAGES = [
-  "/placeholders/placeholder-1.png",
-  "/placeholders/placeholder-2.png",
-  "/placeholders/placeholder-3.png",
+/** Placeholder image paths and usernames for overview grid (same style as example cards, no heart/camera). */
+const OVERVIEW_PLACEHOLDER_ITEMS = [
+  { src: "/placeholders/placeholder-1.png", username: "nightcrawler_35mm" },
+  { src: "/placeholders/placeholder-2.png", username: "analog.sara" },
+  { src: "/placeholders/placeholder-3.png", username: "filmvault" },
 ] as const;
 
-/** Grid of 3 images (Flickr or placeholders) under the description — one row. */
+/** Extract YouTube video ID from watch or youtu.be URL for thumbnails. */
+function getYouTubeVideoId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "www.youtube.com" || u.hostname === "youtube.com") {
+      return u.searchParams.get("v");
+    }
+    if (u.hostname === "youtu.be") {
+      return u.pathname.slice(1) || null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/** Grid of 3 images (Flickr or placeholders) — card style with username only under image, same size. */
 function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
   const images = flickrImages.slice(0, 3);
 
   return (
     <div className="grid grid-cols-3 gap-3">
-      {OVERVIEW_PLACEHOLDER_IMAGES.map((placeholderSrc, i) => {
+      {OVERVIEW_PLACEHOLDER_ITEMS.map((item, i) => {
         const flickr = images[i];
         if (flickr) {
           return (
@@ -47,17 +62,27 @@ function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
               href={flickr.flickrPhotoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block overflow-hidden rounded-xl border border-border/50 bg-card aspect-[4/3]"
+              className="block overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={flickr.imageUrl} alt={flickr.title || ""} className="h-full w-full object-cover" />
+              <div className="aspect-[4/3] bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={flickr.imageUrl} alt={flickr.title || ""} className="h-full w-full object-cover" />
+              </div>
+              <div className="p-3">
+                <p className="text-xs font-medium">{flickr.ownerName}</p>
+              </div>
             </a>
           );
         }
         return (
-          <div key={i} className="overflow-hidden rounded-xl border border-border/50 bg-card aspect-[4/3]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={placeholderSrc} alt="" className="h-full w-full object-cover" aria-hidden />
+          <div key={i} className="overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30">
+            <div className="aspect-[4/3] bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={item.src} alt="" className="h-full w-full object-cover" aria-hidden />
+            </div>
+            <div className="p-3">
+              <p className="text-xs font-medium">{item.username}</p>
+            </div>
           </div>
         );
       })}
@@ -76,8 +101,9 @@ interface OverviewTabContentProps {
   flickrImages: FlickrPhoto[];
   shootingTips: string | null;
   reviewsFromWeb: { title: string; site: string; url: string }[];
-  videoReviews: { title: string; channel: string; url: string }[];
+  videoReviews: { title: string; channel: string; url: string; videoId?: string }[];
   purchaseLinks?: PurchaseLink[];
+  stockName?: string;
   bestFor?: BestFor[];
   specs?: { label: string; value: string }[];
 }
@@ -89,12 +115,13 @@ export function OverviewTabContent({
   reviewsFromWeb,
   videoReviews,
   purchaseLinks = [],
+  stockName,
   bestFor = [],
   specs = [],
 }: OverviewTabContentProps) {
   return (
     <div className="space-y-14">
-      {/* Description card, then carousel, then Specs (2 cols x 5), then Shooting notes */}
+      {/* Description, then Example images, Specs, Shooting notes */}
       <div className="min-w-0 space-y-10">
         {description && (
           <section>
@@ -104,10 +131,7 @@ export function OverviewTabContent({
           </section>
         )}
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xl font-bold tracking-tight text-foreground">Example images</h3>
-            <SwitchToTabButton tabId="gallery">View all</SwitchToTabButton>
-          </div>
+          <h3 className="mb-3 text-xl font-bold tracking-tight text-foreground">Example images</h3>
           <OverviewImageGrid flickrImages={flickrImages} />
         </section>
         {specs.length > 0 && (
@@ -163,22 +187,28 @@ export function OverviewTabContent({
         {shootingTips && (
           <section aria-labelledby="shooting-notes-heading">
             <h3 id="shooting-notes-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Shooting notes</h3>
-            <ul className="space-y-2 text-[15px] leading-relaxed text-black">
-              {shootingTips.split(/\.\s+/).filter((s) => s.trim().length > 0).map((tip, i) => (
-                <li key={i} className="flex items-start gap-2.5">
-                  <span className="mt-[0.6em] h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                  {tip.endsWith(".") ? tip : `${tip}.`}
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+              <div className="divide-y divide-border/50">
+                {shootingTips.split(/\.\s+/).filter((s) => s.trim().length > 0).map((tip, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
+                      <Lightbulb className="h-4 w-4" aria-hidden />
+                    </span>
+                    <p className="min-w-0 flex-1 text-[15px] leading-relaxed text-black">
+                      {tip.endsWith(".") ? tip : `${tip}.`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
         )}
       </div>
 
-      {/* Reviews from the web */}
+      {/* Reviews from the web — no dividing line */}
       {reviewsFromWeb.length > 0 && (
-        <div className="border-t border-border/50 pt-12">
-          <h3 className="mb-4 text-xl font-bold tracking-tight text-foreground">
+        <section aria-labelledby="reviews-from-web-heading">
+          <h3 id="reviews-from-web-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">
             Reviews from the web
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -190,9 +220,6 @@ export function OverviewTabContent({
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-card/80"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                </span>
                 <div className="min-w-0 flex-1">
                   <span className="block font-medium text-foreground">{review.title}</span>
                   <span className="text-sm text-muted-foreground">{review.site}</span>
@@ -201,36 +228,89 @@ export function OverviewTabContent({
               </a>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Video reviews */}
+      {/* Video reviews — no dividing line, YouTube-style cards */}
       {videoReviews.length > 0 && (
-        <div className="border-t border-border/50 pt-12">
-          <h3 className="mb-4 text-xl font-bold tracking-tight text-foreground">
+        <section aria-labelledby="video-reviews-heading">
+          <h3 id="video-reviews-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">
             Video reviews
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {videoReviews.map((video) => (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {videoReviews.map((video) => {
+              const videoId = video.videoId ?? getYouTubeVideoId(video.url);
+              const thumbnailUrl = videoId
+                ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+                : null;
+              return (
+                <a
+                  key={video.url + video.title}
+                  href={video.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group block overflow-hidden rounded-xl border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-card/80"
+                >
+                  <div className="relative aspect-video bg-muted">
+                    {thumbnailUrl ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={thumbnailUrl}
+                          alt=""
+                          className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                          aria-hidden
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors group-hover:bg-black/30">
+                          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110">
+                            <Play className="h-7 w-7 fill-current pl-1" aria-hidden />
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <Play className="h-12 w-12 text-muted-foreground" aria-hidden />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-sm font-medium text-foreground group-hover:text-primary">
+                      {video.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{video.channel}</p>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Where to buy — 2x2 grid, no dividing line */}
+      {purchaseLinks.length > 0 && (
+        <section aria-labelledby="overview-buy-heading">
+          <h3 id="overview-buy-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">
+            {stockName ? `Where to buy ${stockName}` : "Where to buy"}
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {purchaseLinks.map((link) => (
               <a
-                key={video.url + video.title}
-                href={video.url}
+                key={link.id}
+                href={link.url}
                 target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-card/80"
+                rel="noopener noreferrer sponsored"
+                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-secondary/30"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <Play className="h-5 w-5 text-muted-foreground" />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <ExternalLink className="h-4 w-4" aria-hidden />
                 </span>
-                <div className="min-w-0 flex-1">
-                  <span className="block font-medium text-foreground">{video.title}</span>
-                  <span className="text-sm text-muted-foreground">{video.channel}</span>
-                </div>
-                <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="min-w-0 truncate text-sm font-medium text-foreground/90">
+                  {link.retailer_name}
+                </p>
               </a>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
     </div>

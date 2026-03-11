@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { SAMPLE_GALLERY } from "@/lib/sample-images";
 import type { FlickrPhoto } from "@/lib/flickr";
+import { ReviewsTabContent } from "@/components/reviews-tab-content";
 import {
   Camera,
   Heart,
@@ -13,11 +14,9 @@ import {
   StarHalf,
   ThumbsUp,
   Eye,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
   ExternalLink,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 
 interface CommunityReview {
   id: string;
@@ -161,13 +160,73 @@ interface CommunitySectionProps {
 /* ─── Community Notes (standalone export for tab use) ─── */
 
 export function CommunityReviews() {
-  const [showAllReviews, setShowAllReviews] = useState(false);
-  const [likedReviews, setLikedReviews] = useState<Set<string>>(new Set());
+  return <ReviewsTabContent />;
+}
 
-  const visibleReviews = showAllReviews ? SAMPLE_REVIEWS : SAMPLE_REVIEWS.slice(0, 3);
+/* ─── References (Flickr-tagged + from reviews; standalone export for tab use) ─── */
+
+/** Strip aperture (e.g. " f/2", " f/1.4") from camera string for display. */
+function cameraWithoutAperture(camera: string): string {
+  return camera.replace(/\s+f\/[\d.]+$/i, "").trim() || camera;
+}
+
+const EXAMPLE_TAB_PLACEHOLDERS: { src: string; username: string; camera: string; likes: number }[] = [
+  { src: "/placeholders/placeholder-1.png", username: "nightcrawler_35mm", camera: "Contax G2 · 45mm", likes: 0 },
+  { src: "/placeholders/placeholder-2.png", username: "analog.sara", camera: "Nikon FM2 · 50mm", likes: 0 },
+  { src: "/placeholders/placeholder-3.png", username: "filmvault", camera: "Canon AE-1 · 50mm", likes: 0 },
+  { src: "/placeholders/placeholder-4.png", username: "tokyoframes", camera: "Olympus OM-1 · 28mm", likes: 0 },
+];
+
+/** 50 placeholder cards for Flickr toggle on Example images tab — same styling as other image cards. */
+const FLICKR_TAB_PLACEHOLDERS: { id: string; src: string; username: string; camera: string; likes: number }[] = Array.from(
+  { length: 50 },
+  (_, i) => {
+    const placeholders = [
+      { src: "/placeholders/placeholder-1.png", username: "nightcrawler_35mm", camera: "Contax G2 · 45mm" },
+      { src: "/placeholders/placeholder-2.png", username: "analog.sara", camera: "Nikon FM2 · 50mm" },
+      { src: "/placeholders/placeholder-3.png", username: "filmvault", camera: "Canon AE-1 · 50mm" },
+      { src: "/placeholders/placeholder-4.png", username: "tokyoframes", camera: "Olympus OM-1 · 28mm" },
+    ];
+    const p = placeholders[i % 4];
+    return { id: `flickr-placeholder-${i + 1}`, src: p.src, username: p.username, camera: p.camera, likes: Math.floor((i * 7) % 50) };
+  }
+);
+
+type GalleryView = "flickr" | "community" | "you";
+
+const GALLERY_SORT_OPTIONS = [
+  { value: "newest", label: "Newest" },
+  { value: "popular", label: "Popular" },
+];
+
+export function CommunityGallery({
+  stockName,
+  slug,
+  flickrImages = [],
+  variant,
+}: {
+  stockName: string;
+  slug?: string;
+  flickrImages?: FlickrPhoto[];
+  /** When "tab", show the Example images tab header (Flickr | Community | You + count + sort). */
+  variant?: "tab";
+}) {
+  const useFlickr = flickrImages.length > 0;
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [view, setView] = useState<GalleryView>(useFlickr ? "flickr" : "community");
+  const [sort, setSort] = useState<string>("newest");
+
+  const isTab = variant === "tab";
+  const communityItemsCount = EXAMPLE_TAB_PLACEHOLDERS.length + SAMPLE_GALLERY.length;
+  const flickrCount = isTab ? FLICKR_TAB_PLACEHOLDERS.length : flickrImages.length;
+  const yourImagesCount = EXAMPLE_TAB_PLACEHOLDERS.filter((p) => p.username === "nightcrawler_35mm").length
+    + SAMPLE_GALLERY.filter((s) => s.username === "nightcrawler_35mm").length;
+  const displayTotal = view === "flickr" ? flickrCount : view === "community" ? communityItemsCount : yourImagesCount;
+  const displayStart = displayTotal === 0 ? 0 : 1;
+  const displayEnd = displayTotal;
 
   function toggleLike(id: string) {
-    setLikedReviews((prev) => {
+    setLikedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -177,120 +236,170 @@ export function CommunityReviews() {
 
   return (
     <div className="space-y-6">
-      {/* Header + Add a Note */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold tracking-tight">Community Notes</h2>
-        <button className="font-advercase inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-          <Plus className="h-4 w-4" />
-          Add a Note
-        </button>
-      </div>
-
-      <p className="text-sm text-muted-foreground">
-        Tips and advice for shooting this stock — how to get the best results, what to watch for, and what worked for others. You can rate it too if you like.
-      </p>
-
-      {/* Individual Notes */}
-      <div className="space-y-4">
-        {visibleReviews.map((review) => (
+      {isTab && (
+        <>
           <div
-            key={review.id}
-            className="rounded-xl border border-border/50 bg-card p-5 transition-colors hover:border-border"
+            className="inline-flex rounded-lg border border-border/60 bg-secondary/30 p-0.5"
+            role="tablist"
+            aria-label="Image source"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                  {review.avatar}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{review.username}</p>
-                  <div className="flex items-center gap-2">
-                    <MiniStars rating={review.rating} size={12} />
-                    <span className="text-xs text-muted-foreground">{review.date}</span>
-                  </div>
-                </div>
-              </div>
-              {review.camera && (
-                <div className="hidden items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 sm:flex">
-                  <Camera className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{review.camera}</span>
-                </div>
-              )}
-            </div>
-
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              {review.text}
-            </p>
-
-            <div className="mt-3 flex items-center gap-4">
+            {(["flickr", "community", "you"] as const).map((v) => (
               <button
-                onClick={() => toggleLike(review.id)}
-                className={`inline-flex items-center gap-1.5 text-xs transition-colors ${
-                  likedReviews.has(review.id)
-                    ? "font-medium text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                onClick={() => setView(v)}
+                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                  view === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <ThumbsUp className={`h-3.5 w-3.5 ${likedReviews.has(review.id) ? "fill-primary" : ""}`} />
-                {review.likes + (likedReviews.has(review.id) ? 1 : 0)}
+                {v === "flickr" ? "Flickr" : v === "community" ? "Community" : "You"}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">
+              {displayTotal === 0 ? "No images yet" : `Showing ${displayStart}–${displayEnd} of ${displayTotal} images`}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sort by:</span>
+              <Select value={sort} onValueChange={(v) => setSort(v ?? "newest")}>
+                <SelectTrigger className="w-[140px]" size="sm">
+                  <span>{GALLERY_SORT_OPTIONS.find((o) => o.value === sort)?.label ?? "Newest"}</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {GALLERY_SORT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </>
+      )}
+
+      {!isTab && (
+        <p className="text-sm text-muted-foreground">
+          Photos tagged with this film on Flickr and from community reviews.
+        </p>
+      )}
+
+      {isTab && view === "you" && yourImagesCount === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-secondary/20 py-12 text-center">
+          <p className="text-sm font-medium text-muted-foreground">You haven’t added any images yet.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Your uploads will appear here.</p>
+          <button
+            type="button"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Add image
+          </button>
+        </div>
+      ) : (
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 lg:gap-6">
+        {(() => {
+          const showFlickrOnly = isTab && view === "flickr";
+          const showCommunity = !isTab || view === "community";
+          const showYouOnly = isTab && view === "you";
+          const placeholdersToShow = showYouOnly
+            ? EXAMPLE_TAB_PLACEHOLDERS.filter((p) => p.username === "nightcrawler_35mm")
+            : showCommunity ? [...EXAMPLE_TAB_PLACEHOLDERS] : [];
+          /** When tab + Flickr view: 50 placeholder cards; otherwise real flickr when community has flickr. */
+          const flickrToShow = showFlickrOnly
+            ? FLICKR_TAB_PLACEHOLDERS
+            : (showCommunity && useFlickr) ? flickrImages : [];
+          const sampleToShow = showYouOnly
+            ? SAMPLE_GALLERY.filter((s) => s.username === "nightcrawler_35mm")
+            : showCommunity && !useFlickr ? SAMPLE_GALLERY : [];
+
+          return (
+            <>
+        {/* Placeholder cards */}
+        {placeholdersToShow.map((item, i) => {
+          const cardId = `placeholder-${i}`;
+          const liked = likedIds.has(cardId);
+          const displayCount = item.likes + (liked ? 1 : 0);
+          return (
+          <div
+            key={cardId}
+            className="group overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30"
+          >
+            <div className="relative aspect-[4/3] bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.src}
+                alt=""
+                className="h-full w-full object-cover"
+                aria-hidden
+              />
+            </div>
+            <div className="relative flex items-start justify-between gap-2 p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium">{item.username}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{item.camera}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleLike(cardId)}
+                className="flex shrink-0 items-center gap-1.5 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                aria-label={`Like (${displayCount})`}
+              >
+                <Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />
+                <span className="text-sm font-medium tabular-nums">{displayCount}</span>
               </button>
             </div>
           </div>
-        ))}
-      </div>
-
-      {SAMPLE_REVIEWS.length > 3 && (
-        <button
-          onClick={() => setShowAllReviews(!showAllReviews)}
-          className="font-advercase flex w-full items-center justify-center gap-1.5 rounded-xl border border-border/50 bg-card py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          {showAllReviews ? (
-            <>Show Less <ChevronUp className="h-4 w-4" /></>
+          );
+        })}
+        {/* Flickr: 50 placeholder cards (tab) or real Flickr images */}
+        {flickrToShow.length > 0 &&
+          (showFlickrOnly ? (
+            FLICKR_TAB_PLACEHOLDERS.map((item) => {
+              const liked = likedIds.has(item.id);
+              const displayCount = item.likes + (liked ? 1 : 0);
+              return (
+                <div
+                  key={item.id}
+                  className="group overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30"
+                >
+                  <div className="relative aspect-[4/3] bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.src} alt="" className="h-full w-full object-cover" aria-hidden />
+                  </div>
+                  <div className="relative flex items-start justify-between gap-2 p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium">{item.username}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{item.camera}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleLike(item.id)}
+                      className="flex shrink-0 items-center gap-1.5 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      aria-label={`Like (${displayCount})`}
+                    >
+                      <Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />
+                      <span className="text-sm font-medium tabular-nums">{displayCount}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
           ) : (
-            <>Show All {SAMPLE_REVIEWS.length} Notes <ChevronDown className="h-4 w-4" /></>
-          )}
-        </button>
-      )}
-    </div>
-  );
-}
-
-/* ─── References (Flickr-tagged + from reviews; standalone export for tab use) ─── */
-
-export function CommunityGallery({
-  stockName,
-  slug,
-  flickrImages = [],
-}: {
-  stockName: string;
-  slug?: string;
-  flickrImages?: FlickrPhoto[];
-}) {
-  const useFlickr = flickrImages.length > 0;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold tracking-tight">Sample Images</h2>
-        <button className="font-advercase inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
-          <Plus className="h-4 w-4" />
-          Upload your own
-        </button>
-      </div>
-
-      <p className="text-sm text-muted-foreground">
-        Photos tagged with this film on Flickr and from community reviews.
-      </p>
-
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 lg:gap-6">
-        {useFlickr
-          ? flickrImages.map((img) => (
+          flickrToShow.map((item) => {
+              const img = item as FlickrPhoto;
+              const liked = likedIds.has(img.id);
+              const displayCount = 0 + (liked ? 1 : 0);
+              return (
               <a
                 key={img.id}
                 href={img.flickrPhotoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30 hover:shadow-md"
+                className="group block overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30"
               >
                 <div className="relative aspect-[4/3] bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -300,72 +409,90 @@ export function CommunityGallery({
                     className="h-full w-full object-cover"
                     sizes="(max-width: 1024px) 50vw, 33vw"
                   />
-                  <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
                 </div>
-                <div className="p-3">
-                  <p className="text-xs font-medium line-clamp-1">{img.title || "Untitled"}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    By{" "}
-                    <a
-                      href={img.ownerProfileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline decoration-primary/50 underline-offset-2 hover:no-underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {img.ownerName}
-                    </a>
-                  </p>
-                  <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <ExternalLink className="h-3 w-3" />
-                    View on Flickr
-                  </p>
+                <div className="relative flex items-start justify-between gap-2 p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium line-clamp-1">{img.title || "Untitled"}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      By{" "}
+                      <a
+                        href={img.ownerProfileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline decoration-primary/50 underline-offset-2 hover:no-underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {img.ownerName}
+                      </a>
+                    </p>
+                    <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <ExternalLink className="h-3 w-3" />
+                      View on Flickr
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleLike(img.id); }}
+                    className="flex shrink-0 items-center gap-1.5 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    aria-label={`Like (${displayCount})`}
+                  >
+                    <Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />
+                    <span className="text-sm font-medium tabular-nums">{displayCount}</span>
+                  </button>
                 </div>
               </a>
-            ))
-          : SAMPLE_GALLERY.map((img) => (
+              );
+            })
+          )
+          )}
+        {sampleToShow.length > 0 &&
+          sampleToShow.map((img) => {
+              const liked = likedIds.has(img.id);
+              const displayCount = img.likes + (liked ? 1 : 0);
+              return (
               <div
                 key={img.id}
-                className="group cursor-pointer overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30 hover:shadow-md"
+                className="group overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30"
               >
-                <div className="relative aspect-[4/3] bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-red-900/40">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Camera className="h-8 w-8 text-white/20" />
-                  </div>
-                  <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
-                    <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
-                      {img.settings}
-                    </span>
-                    <div className="flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5">
-                      <Heart className="h-3 w-3 text-white" />
-                      <span className="text-[10px] font-medium text-white">{img.likes}</span>
+                <div className="relative aspect-[4/3] bg-muted">
+                  {img.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={img.imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      sizes="(max-width: 1024px) 50vw, 33vw"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-red-900/40">
+                      <Camera className="h-8 w-8 text-white/20" />
                     </div>
-                  </div>
+                  )}
                 </div>
-                <div className="p-3">
-                  <p className="text-xs font-medium">{img.username}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{img.camera}</p>
+                <div className="relative flex items-start justify-between gap-2 p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium">{img.username}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">{cameraWithoutAperture(img.camera)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleLike(img.id)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    aria-label={`Like (${displayCount})`}
+                  >
+                    <Heart className={`h-6 w-6 ${liked ? "fill-primary text-primary" : ""}`} />
+                    <span className="text-sm font-medium tabular-nums">{displayCount}</span>
+                  </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
+            </>
+          );
+        })()}
       </div>
-
-      {slug && (
-        <div className="flex justify-center pt-2">
-          <Link
-            href={`/references?stock=${encodeURIComponent(slug)}`}
-            className="font-advercase inline-flex items-center gap-1.5 rounded-xl border border-border/50 bg-card px-5 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:border-primary/30"
-          >
-            View all references
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
       )}
 
-      <p className="text-center text-xs text-muted-foreground">
-        References are sourced from Flickr and community reviews.
-      </p>
       {useFlickr && (
         <p className="text-center text-[10px] text-muted-foreground/80">
           This product uses the Flickr API but is not endorsed or certified by SmugMug, Inc.
