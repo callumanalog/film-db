@@ -33,6 +33,9 @@ import {
   Moon,
   LampDesk,
   Sun,
+  SunDim,
+  Trophy,
+  Sparkles,
   Check,
   Image as ImageIcon,
   Pencil,
@@ -65,6 +68,9 @@ const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
   night: Moon,
   studio: LampDesk,
   everyday: Sun,
+  sports: Trophy,
+  sunny_conditions: SunDim,
+  creative: Sparkles,
 };
 
 interface PurchaseLink {

@@ -19,6 +19,9 @@ import {
   Moon,
   LampDesk,
   Sun,
+  SunDim,
+  Trophy,
+  Sparkles,
   Aperture,
   Film,
 } from "lucide-react";
@@ -33,6 +36,9 @@ const BEST_FOR_ICONS: Record<BestFor, LucideIcon> = {
   night: Moon,
   studio: LampDesk,
   everyday: Sun,
+  sports: Trophy,
+  sunny_conditions: SunDim,
+  creative: Sparkles,
 };
 
 const TYPE_ICONS: Record<FilmType, LucideIcon> = {

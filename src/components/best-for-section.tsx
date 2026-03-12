@@ -11,6 +11,8 @@ import {
   Moon,
   LampDesk,
   Sun,
+  SunDim,
+  Trophy,
   Sparkles,
 } from "lucide-react";
 
@@ -23,6 +25,9 @@ const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
   night: Moon,
   studio: LampDesk,
   everyday: Sun,
+  sports: Trophy,
+  sunny_conditions: SunDim,
+  creative: Sparkles,
 };
 
 interface BestForSectionProps {
