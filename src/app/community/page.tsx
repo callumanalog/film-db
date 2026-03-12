@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { getFilmStocks } from "@/lib/supabase/queries";
 import { getGalleryImages } from "@/lib/sample-images";
+import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { GalleryGrid, type StockOption } from "@/components/gallery-grid";
+import type { GalleryImage } from "@/lib/sample-images";
 
 export const metadata: Metadata = {
   title: "Community",
@@ -23,7 +25,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
       : [];
 
   const stocks = await getFilmStocks();
-  const images = getGalleryImages(stocks);
+  const realUploads = await getAllCommunityUploadsForGallery(stocks);
+  const dummyImages = getGalleryImages(stocks);
+  const flickrOnly = dummyImages.filter((img) => img.source === "flickr");
+  const images: GalleryImage[] = [...realUploads, ...flickrOnly];
 
   const brands = [...new Set(stocks.map((s) => s.brand.name))].sort();
   const stockOptions: StockOption[] = stocks.map((s) => ({

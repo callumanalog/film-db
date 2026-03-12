@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SAMPLE_GALLERY } from "@/lib/sample-images";
 import type { FlickrPhoto } from "@/lib/flickr";
 import { ReviewsTabContent } from "@/components/reviews-tab-content";
+import {
+  getUploadsForFilmStock,
+  getMyUploadsForFilmStock,
+  type FilmUploadRow,
+} from "@/app/actions/uploads";
 import {
   Camera,
   Heart,
@@ -159,8 +164,8 @@ interface CommunitySectionProps {
 
 /* ─── Community Notes (standalone export for tab use) ─── */
 
-export function CommunityReviews() {
-  return <ReviewsTabContent />;
+export function CommunityReviews({ slug }: { slug?: string }) {
+  return <ReviewsTabContent slug={slug} />;
 }
 
 /* ─── References (Flickr-tagged + from reviews; standalone export for tab use) ─── */
@@ -215,12 +220,50 @@ export function CommunityGallery({
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [view, setView] = useState<GalleryView>(useFlickr ? "flickr" : "community");
   const [sort, setSort] = useState<string>("newest");
+  const [communityUploads, setCommunityUploads] = useState<FilmUploadRow[]>([]);
+  const [myUploads, setMyUploads] = useState<FilmUploadRow[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(!!slug);
+
+  useEffect(() => {
+    if (!slug) {
+      setCommunityUploads([]);
+      setMyUploads([]);
+      setGalleryLoading(false);
+      return;
+    }
+    setGalleryLoading(true);
+    Promise.all([getUploadsForFilmStock(slug), getMyUploadsForFilmStock(slug)])
+      .then(([community, my]) => {
+        setCommunityUploads(community);
+        setMyUploads(my);
+      })
+      .finally(() => setGalleryLoading(false));
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug) return;
+    const handler = (e: CustomEvent<{ slug: string }>) => {
+      if (e.detail?.slug === slug) {
+        setGalleryLoading(true);
+        Promise.all([getUploadsForFilmStock(slug), getMyUploadsForFilmStock(slug)])
+          .then(([community, my]) => {
+            setCommunityUploads(community);
+            setMyUploads(my);
+          })
+          .finally(() => setGalleryLoading(false));
+      }
+    };
+    window.addEventListener("film-upload-complete", handler as EventListener);
+    return () => window.removeEventListener("film-upload-complete", handler as EventListener);
+  }, [slug]);
 
   const isTab = variant === "tab";
-  const communityItemsCount = EXAMPLE_TAB_PLACEHOLDERS.length + SAMPLE_GALLERY.length;
+  const communityItemsCount = slug ? communityUploads.length : EXAMPLE_TAB_PLACEHOLDERS.length + SAMPLE_GALLERY.length;
   const flickrCount = isTab ? FLICKR_TAB_PLACEHOLDERS.length : flickrImages.length;
-  const yourImagesCount = EXAMPLE_TAB_PLACEHOLDERS.filter((p) => p.username === "nightcrawler_35mm").length
-    + SAMPLE_GALLERY.filter((s) => s.username === "nightcrawler_35mm").length;
+  const yourImagesCount = slug
+    ? myUploads.length
+    : EXAMPLE_TAB_PLACEHOLDERS.filter((p) => p.username === "nightcrawler_35mm").length
+      + SAMPLE_GALLERY.filter((s) => s.username === "nightcrawler_35mm").length;
   const displayTotal = view === "flickr" ? flickrCount : view === "community" ? communityItemsCount : yourImagesCount;
   const displayStart = displayTotal === 0 ? 0 : 1;
   const displayEnd = displayTotal;
@@ -260,7 +303,7 @@ export function CommunityGallery({
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm text-muted-foreground">
-              {displayTotal === 0 ? "No images yet" : `Showing ${displayStart}–${displayEnd} of ${displayTotal} images`}
+              {galleryLoading ? "Loading…" : displayTotal === 0 ? "No images yet" : `Showing ${displayStart}–${displayEnd} of ${displayTotal} images`}
             </span>
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sort by:</span>
@@ -287,7 +330,7 @@ export function CommunityGallery({
         </p>
       )}
 
-      {isTab && view === "you" && yourImagesCount === 0 ? (
+      {isTab && view === "you" && yourImagesCount === 0 && !galleryLoading ? (
         <div className="rounded-xl border border-dashed border-border bg-secondary/20 py-12 text-center">
           <p className="text-sm font-medium text-muted-foreground">You haven’t added any images yet.</p>
           <p className="mt-1 text-xs text-muted-foreground">Your uploads will appear here.</p>
@@ -299,26 +342,101 @@ export function CommunityGallery({
             Add image
           </button>
         </div>
+      ) : galleryLoading ? (
+        <div className="rounded-xl border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
+          Loading images…
+        </div>
       ) : (
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 lg:gap-6">
         {(() => {
           const showFlickrOnly = isTab && view === "flickr";
           const showCommunity = !isTab || view === "community";
           const showYouOnly = isTab && view === "you";
-          const placeholdersToShow = showYouOnly
-            ? EXAMPLE_TAB_PLACEHOLDERS.filter((p) => p.username === "nightcrawler_35mm")
-            : showCommunity ? [...EXAMPLE_TAB_PLACEHOLDERS] : [];
+          const useRealUploads = !!slug;
+          const placeholdersToShow = useRealUploads
+            ? []
+            : showYouOnly
+              ? EXAMPLE_TAB_PLACEHOLDERS.filter((p) => p.username === "nightcrawler_35mm")
+              : showCommunity
+                ? [...EXAMPLE_TAB_PLACEHOLDERS]
+                : [];
           /** When tab + Flickr view: 50 placeholder cards; otherwise real flickr when community has flickr. */
           const flickrToShow = showFlickrOnly
             ? FLICKR_TAB_PLACEHOLDERS
             : (showCommunity && useFlickr) ? flickrImages : [];
-          const sampleToShow = showYouOnly
-            ? SAMPLE_GALLERY.filter((s) => s.username === "nightcrawler_35mm")
-            : showCommunity && !useFlickr ? SAMPLE_GALLERY : [];
+          const sampleToShow = useRealUploads
+            ? []
+            : showYouOnly
+              ? SAMPLE_GALLERY.filter((s) => s.username === "nightcrawler_35mm")
+              : showCommunity && !useFlickr
+                ? SAMPLE_GALLERY
+                : [];
+          const communityUploadsToShow = useRealUploads && showCommunity ? communityUploads : [];
+          const myUploadsToShow = useRealUploads && showYouOnly ? myUploads : [];
 
           return (
             <>
-        {/* Placeholder cards */}
+        {/* Real community uploads (when slug and Community tab) */}
+        {communityUploadsToShow.map((u) => (
+          <Link
+            key={u.id}
+            href={`/films/${u.film_stock_slug}`}
+            className="group block overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30"
+          >
+            <div className="relative aspect-[4/3] bg-muted">
+              {u.image_url ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={u.image_url}
+                  alt={u.caption ?? ""}
+                  className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                  sizes="(max-width: 1024px) 50vw, 33vw"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <Camera className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <div className="relative flex items-start justify-between gap-2 p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium">{u.display_name ?? "Member"}</p>
+                {u.caption && <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{u.caption}</p>}
+              </div>
+            </div>
+          </Link>
+        ))}
+        {/* Real user uploads (when slug and You tab) */}
+        {myUploadsToShow.map((u) => (
+          <Link
+            key={u.id}
+            href={`/films/${u.film_stock_slug}`}
+            className="group block overflow-hidden rounded-xl border border-border/50 transition-all hover:border-primary/30"
+          >
+            <div className="relative aspect-[4/3] bg-muted">
+              {u.image_url ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={u.image_url}
+                  alt={u.caption ?? ""}
+                  className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                  sizes="(max-width: 1024px) 50vw, 33vw"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <Camera className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <div className="relative flex items-start justify-between gap-2 p-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium">You</p>
+                {u.caption && <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{u.caption}</p>}
+              </div>
+            </div>
+          </Link>
+        ))}
+        {/* Placeholder cards (when no slug) */}
         {placeholdersToShow.map((item, i) => {
           const cardId = `placeholder-${i}`;
           const liked = likedIds.has(cardId);

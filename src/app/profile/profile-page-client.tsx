@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getStocksBySlugs } from "@/app/actions/get-film-stocks";
+import { getStocksBySlugs, getStatsForSlugs } from "@/app/actions/get-film-stocks";
 import { getProfileFromSupabase } from "@/app/actions/get-profile";
 import { ProfileView, type ProfileData } from "@/components/profile-view";
 import { useUserActions } from "@/context/user-actions-context";
@@ -17,6 +17,7 @@ export function ProfilePageClient() {
   const { shotSlugs, favouriteSlugs, tracked, ratings } = useUserActions();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stocksBySlug, setStocksBySlug] = useState<Map<string, StockWithBrand>>(new Map());
+  const [statsBySlug, setStatsBySlug] = useState<Record<string, { avgRating: number | null }>>({});
   const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +39,8 @@ export function ProfilePageClient() {
             ratings: p.ratings,
             reviewCount: p.reviewCount,
             uploadCount: p.uploadCount,
+            reviews: p.reviews,
+            uploads: p.uploads,
           });
         } else if (!cancelled) {
           setProfile({
@@ -63,6 +66,8 @@ export function ProfilePageClient() {
         ...profile.favouriteSlugs,
         ...profile.tracked.map((t) => t.slug),
         ...Object.keys(profile.ratings),
+        ...(profile.reviews?.map((r) => r.film_stock_slug) ?? []),
+        ...(profile.uploads?.map((u) => u.film_stock_slug) ?? []),
       ]
     : [...shotSlugs, ...favouriteSlugs, ...tracked.map((t) => t.slug), ...Object.keys(ratings)];
   const uniqueSlugs = [...new Set(allSlugs)];
@@ -70,12 +75,18 @@ export function ProfilePageClient() {
   useEffect(() => {
     if (uniqueSlugs.length === 0) {
       setStocksBySlug(new Map());
+      setStatsBySlug({});
       return;
     }
-    getStocksBySlugs(uniqueSlugs).then((stocks) => {
+    Promise.all([getStocksBySlugs(uniqueSlugs), getStatsForSlugs(uniqueSlugs)]).then(([stocks, stats]) => {
       const map = new Map<string, StockWithBrand>();
       stocks.forEach((s) => map.set(s.slug, s));
       setStocksBySlug(map);
+      const statsMap: Record<string, { avgRating: number | null }> = {};
+      Object.entries(stats).forEach(([slug, s]) => {
+        statsMap[slug] = { avgRating: s.avgRating };
+      });
+      setStatsBySlug(statsMap);
     });
   }, [uniqueSlugs.join(",")]);
 
@@ -92,7 +103,7 @@ export function ProfilePageClient() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <ProfileView profile={profile} stocksBySlug={stocksBySlug} />
+      <ProfileView profile={profile} stocksBySlug={stocksBySlug} statsBySlug={statsBySlug} />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   Plus,
   NotebookPen,
   ImagePlus,
+  ChevronRight,
 } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
@@ -20,6 +21,18 @@ import type { FilmStock, FilmBrand } from "@/lib/types";
 import type { TrackedEntry } from "@/lib/user-store";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
+
+function formatReviewDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const days = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (days < 1) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) return `${Math.floor(days / 7)} week(s) ago`;
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
 
 function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
   const full = Math.floor(rating);
@@ -52,14 +65,18 @@ export interface ProfileData {
   ratings: Record<string, number>;
   reviewCount?: number;
   uploadCount?: number;
+  reviews?: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
+  uploads?: { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[];
 }
 
 interface ProfileViewProps {
   profile: ProfileData;
   stocksBySlug: Map<string, StockWithBrand>;
+  /** Optional map of slug -> stats so cards show real avg rating. */
+  statsBySlug?: Record<string, { avgRating: number | null }>;
 }
 
-export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
+export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: ProfileViewProps) {
   const shotStocks = profile.shotSlugs.map((s) => stocksBySlug.get(s)).filter(Boolean) as StockWithBrand[];
   const favouriteStocks = profile.favouriteSlugs.map((s) => stocksBySlug.get(s)).filter(Boolean) as StockWithBrand[];
   const ratingsList = Object.entries(profile.ratings).map(([slug, rating]) => ({ slug, rating }));
@@ -176,6 +193,7 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
                       stock={stock}
                       useWorkSansTitle
                       favouriteSlugs={profile.favouriteSlugs}
+                      avgRating={statsBySlug[stock.slug]?.avgRating ?? null}
                     />
                   ))}
                 </div>
@@ -199,6 +217,7 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
                       stock={stock}
                       useWorkSansTitle
                       favouriteSlugs={profile.favouriteSlugs}
+                      avgRating={statsBySlug[stock.slug]?.avgRating ?? null}
                     />
                   ))}
                 </div>
@@ -311,6 +330,101 @@ export function ProfileView({ profile, stocksBySlug }: ProfileViewProps) {
               </ProfileSection>
             ),
           },
+          ...(typeof profile.reviewCount === "number"
+            ? [
+                {
+                  id: "reviews",
+                  label: "Your reviews",
+                  content: (
+                    <ProfileSection
+                      title="Your reviews"
+                      description="Reviews you've written. Click through to the film to read or edit."
+                      emptyMessage="You haven't written any reviews yet."
+                      isEmpty={!profile.reviews || profile.reviews.length === 0}
+                    >
+                      <ul className="space-y-3">
+                        {(profile.reviews ?? []).map((r) => {
+                          const stock = stocksBySlug.get(r.film_stock_slug);
+                          const stockName = stock?.name ?? r.film_stock_slug;
+                          const dateLabel = formatReviewDate(r.created_at);
+                          return (
+                            <li key={r.id}>
+                              <Link
+                                href={`/films/${r.film_stock_slug}`}
+                                className="flex items-center gap-4 rounded-xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-semibold text-foreground">{stockName}</span>
+                                  {r.review_title && (
+                                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
+                                  )}
+                                  <p className="mt-1 text-xs text-muted-foreground">{dateLabel}</p>
+                                </div>
+                                {r.rating != null && r.rating > 0 && (
+                                  <MiniStars rating={r.rating} size={18} />
+                                )}
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </ProfileSection>
+                  ),
+                },
+              ]
+            : []),
+          ...(typeof profile.uploadCount === "number"
+            ? [
+                {
+                  id: "uploads",
+                  label: "Your uploads",
+                  content: (
+                    <ProfileSection
+                      title="Your uploads"
+                      description="Images you've uploaded for films. Click through to the film page."
+                      emptyMessage="You haven't uploaded any images yet."
+                      isEmpty={!profile.uploads || profile.uploads.length === 0}
+                    >
+                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                        {(profile.uploads ?? []).map((u) => {
+                          const stock = stocksBySlug.get(u.film_stock_slug);
+                          const stockName = stock?.name ?? u.film_stock_slug;
+                          return (
+                            <Link
+                              key={u.id}
+                              href={`/films/${u.film_stock_slug}`}
+                              className="group overflow-hidden rounded-xl border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
+                            >
+                              <div className="relative aspect-[4/3] bg-muted">
+                                {u.image_url ? (
+                                  /* eslint-disable-next-line @next/next/no-img-element */
+                                  <img
+                                    src={u.image_url}
+                                    alt={u.caption ?? ""}
+                                    className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    <Camera className="h-8 w-8 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-3">
+                                <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
+                                {u.caption && (
+                                  <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{u.caption}</p>
+                                )}
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </ProfileSection>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </div>

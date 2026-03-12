@@ -8,6 +8,8 @@ interface FilmGridProps {
   useWorkSansForTitles?: boolean;
   /** Slugs of films the user has favourited — show heart icon on matching cards. */
   favouriteSlugs?: string[];
+  /** Optional map of slug -> avgRating so cards show real community rating. */
+  statsBySlug?: Record<string, { avgRating: number | null }>;
 }
 
 export function FilmGrid({
@@ -15,6 +17,7 @@ export function FilmGrid({
   emptyMessage = "No film stocks found matching your filters.",
   useWorkSansForTitles = false,
   favouriteSlugs,
+  statsBySlug,
 }: FilmGridProps) {
   if (stocks.length === 0) {
     return (
@@ -32,6 +35,7 @@ export function FilmGrid({
           stock={stock}
           useWorkSansTitle={useWorkSansForTitles}
           favouriteSlugs={favouriteSlugs}
+          avgRating={statsBySlug?.[stock.slug]?.avgRating ?? null}
         />
       ))}
     </div>

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand } from "@/lib/supabase/queries";
+import { getFilmStockStats, getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
 import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
 import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS } from "@/lib/types";
@@ -16,6 +17,9 @@ import { getReviewsForSlug } from "@/lib/seed-film-reviews";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
+
+/** Always fetch fresh stats (shot by, favourites, avg rating) when the page is loaded or refreshed. */
+export const dynamic = "force-dynamic";
 
 interface FilmDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -45,8 +49,11 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   if (!stock) notFound();
 
-  const relatedStocks = await getRelatedStocks(stock, 6);
-  const moreFromBrandStocks = await getMoreFromBrand(stock, 6);
+  const [stats, relatedStocks, moreFromBrandStocks] = await Promise.all([
+    getFilmStockStats(slug),
+    getRelatedStocks(stock, 6),
+    getMoreFromBrand(stock, 6),
+  ]);
   const typeColor = FILM_TYPE_COLORS[stock.type];
 
   /** Development process: from stock or derive from type (C-41, E-6, B&W). CineStill films are C-41. */
@@ -134,12 +141,20 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       specs: specs.map(({ label, value }) => ({ label, value })),
       best_for: stock.best_for ?? [],
     },
+    stats: {
+      avgRating: stats.avgRating,
+      shotByCount: stats.shotByCount,
+      favouritesCount: stats.favouritesCount,
+    },
   };
 
   const allDiscoveryStocks = [
     ...relatedStocks,
     ...moreFromBrandStocks.filter((s) => !relatedStocks.some((r) => r.id === s.id)),
   ].slice(0, 8);
+
+  const discoverySlugs = allDiscoveryStocks.map((s) => s.slug);
+  const discoveryStatsBySlug = discoverySlugs.length > 0 ? await getFilmStockStatsForSlugs(discoverySlugs) : {};
 
   const flickrImages = await getFlickrSampleImagesForStock(slug).catch(() => []);
 
@@ -179,7 +194,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       label: "Reviews",
       content: (
         <section className="space-y-10">
-          <CommunityReviews />
+          <CommunityReviews slug={slug} />
         </section>
       ),
     },
@@ -217,7 +232,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         <section className="w-full border-t border-border/50 bg-secondary/30 py-12">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <h3 className="mb-6 text-xl font-bold tracking-tight text-foreground">Similar stocks</h3>
-            <SimilarStocksGrid stocks={allDiscoveryStocks} />
+            <SimilarStocksGrid stocks={allDiscoveryStocks} statsBySlug={discoveryStatsBySlug} />
           </div>
         </section>
       )}

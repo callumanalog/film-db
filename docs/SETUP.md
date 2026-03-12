@@ -25,17 +25,24 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
+For one-off admin scripts (e.g. creating a user without the sign-up flow), also set:
+
+```env
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+Get it from **Supabase Dashboard → Settings → API → service_role**. Never expose this in client code or commit it.
+
 Without these, the app still runs using local/seed data, but sign-in and profile/reviews/uploads will not work.
 
 ## 3. Run database migrations
 
 In the Supabase Dashboard go to **SQL Editor** and run the migrations in order:
 
-1. **First:** `supabase/migrations/001_initial_schema.sql`  
-   - Creates tables: `profiles`, `user_shot`, `user_favourites`, `user_shootlist`, `user_tracked`, `user_ratings`, `reviews`, `user_uploads`, `brands`, `film_stocks`, `film_stock_purchase_links`, and the trigger to create a profile on sign-up.
-
-2. **Second:** `supabase/migrations/002_storage_buckets.sql`  
-   - Creates storage buckets `user-uploads` and `film-stocks` and their RLS policies.
+1. **First:** `src/supabase/migrations/001_initial_schema.sql` (if you use Supabase for the catalog).
+2. **Second:** `src/supabase/migrations/002_storage_buckets.sql` (for user uploads and film images).
+3. **Required for actions and stats:** `src/supabase/migrations/003_user_actions_and_stats.sql`  
+   - Creates `profiles`, `user_shot`, `user_favourites`, `user_tracked`, `user_ratings`, `user_shootlist`, `reviews`, `user_uploads`, and the `get_film_stock_stats` RPC. Without this, Shot it / Favourite / Rate won’t persist and film page stats will stay at zero.
 
 If you use the Supabase CLI instead:
 
@@ -52,7 +59,20 @@ In Supabase: **Authentication → Providers**:
 - Optionally enable **Confirm email** (recommended for production). If you enable it, users must click the confirmation link before signing in.
 - You can also enable **Google** or other providers later.
 
-## 5. (Optional) Use Supabase for the film catalog
+## 5. (Optional) Create a user without the sign-up flow
+
+To create an auth user directly in Supabase (e.g. for your own account without going through sign-up/email confirmation):
+
+1. Add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (see step 2).
+2. Run:
+   ```bash
+   npx tsx scripts/create-auth-user.ts "YourChosenPassword"
+   ```
+3. Sign in at **/auth/sign-in** with the same email and password. The script creates the user with email and display name; the password is the one you pass to the script.
+
+You can edit `scripts/create-auth-user.ts` to change the email and display name, or pass them as arguments if you extend the script.
+
+## 6. (Optional) Use Supabase for the film catalog
 
 By default the app reads brands and film stocks from local files / seed data. To use Supabase for the catalog as well (Option B — catalog in Supabase Storage):
 
@@ -65,7 +85,7 @@ By default the app reads brands and film stocks from local files / seed data. To
 
 Until `brands` and `film_stocks` are populated in Supabase, the app keeps using the existing file/seed catalog.
 
-## 6. Deploy (e.g. Vercel)
+## 7. Deploy (e.g. Vercel)
 
 Add the same env vars in your hosting provider:
 

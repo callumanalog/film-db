@@ -8,10 +8,10 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 
-type SortValue = "popular" | "alphabetical";
+type SortValue = "highest-rated" | "alphabetical";
 
 const SORT_OPTIONS: { value: SortValue; label: string }[] = [
-  { value: "popular", label: "Popular" },
+  { value: "highest-rated", label: "Highest rated" },
   { value: "alphabetical", label: "Alphabetical" },
 ];
 
@@ -25,7 +25,7 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
 
   function setSort(value: SortValue) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === "popular") {
+    if (value === "highest-rated") {
       params.delete("sort");
     } else {
       params.set("sort", value);
@@ -43,7 +43,7 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
         <SelectTrigger className="w-[140px]" size="sm">
           <span>
             {SORT_OPTIONS.find((o) => o.value === currentSort)?.label ??
-              "Popular"}
+              "Highest rated"}
           </span>
         </SelectTrigger>
         <SelectContent>

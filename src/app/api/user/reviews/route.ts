@@ -58,11 +58,18 @@ export async function POST(request: Request) {
       .from(BUCKET)
       .upload(path, file, { upsert: true });
     if (uploadError) {
-      console.error("[reviews] upload error:", uploadError);
+      console.error("[reviews] storage upload error:", uploadError);
       continue;
     }
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(uploadData.path);
     uploadedUrls.push(urlData.publicUrl);
+  }
+
+  if (files.length > 0 && uploadedUrls.length === 0) {
+    return NextResponse.json(
+      { error: "Image upload failed. Check that the 'user-uploads' storage bucket exists and allows uploads." },
+      { status: 500 }
+    );
   }
 
   if (mode === "review" && (rating > 0 || reviewTitle || reviewText)) {
@@ -91,6 +98,7 @@ export async function POST(request: Request) {
     );
   }
 
+  let uploadInsertErrors = 0;
   for (const url of uploadedUrls) {
     const { error: insertError } = await supabase.from("user_uploads").insert({
       user_id: user.id,
@@ -98,7 +106,17 @@ export async function POST(request: Request) {
       image_url: url,
       caption: null,
     });
-    if (insertError) console.error("[reviews] user_uploads insert error:", insertError);
+    if (insertError) {
+      console.error("[reviews] user_uploads insert error:", insertError);
+      uploadInsertErrors++;
+    }
+  }
+
+  if (uploadedUrls.length > 0 && uploadInsertErrors === uploadedUrls.length) {
+    return NextResponse.json(
+      { error: "Images were uploaded but could not be saved. Ensure migrations 004 and 005 are applied (user_uploads columns and RLS)." },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({

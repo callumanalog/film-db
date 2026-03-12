@@ -4,13 +4,16 @@ import Link from "next/link";
 import Image from "next/image";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import { Camera, Heart, Star } from "lucide-react";
+import { useUserActions } from "@/context/user-actions-context";
 
 interface FilmCardProps {
   stock: FilmStock & { brand: FilmBrand };
   /** When true, use Work Sans for the title (e.g. on films listing page). */
   useWorkSansTitle?: boolean;
-  /** Slugs of films the user has favourited. If stock.slug is in this set, show a heart icon on the card. */
+  /** Slugs of films the user has favourited. If not passed, uses context so the heart always reflects current state. */
   favouriteSlugs?: string[];
+  /** Real average rating from stats (user ratings). When passed, overrides stock.rating on the card. */
+  avgRating?: number | null;
 }
 
 const TYPE_ACCENT: Record<string, string> = {
@@ -24,12 +27,16 @@ const TYPE_ACCENT: Record<string, string> = {
 export function FilmCard({
   stock,
   useWorkSansTitle = false,
-  favouriteSlugs,
+  favouriteSlugs: favouriteSlugsProp,
+  avgRating: avgRatingProp,
 }: FilmCardProps) {
+  const { favouriteSlugs: contextFavouriteSlugs } = useUserActions();
+  const favouriteSlugs = favouriteSlugsProp ?? contextFavouriteSlugs;
   const accent = TYPE_ACCENT[stock.type] || TYPE_ACCENT.color_negative;
   const displayName = stock.name;
 
   const isFavourite = favouriteSlugs?.includes(stock.slug);
+  const displayRating = avgRatingProp != null ? avgRatingProp : (stock as { rating?: number }).rating;
 
   return (
     <div className="group relative block">
@@ -79,8 +86,8 @@ export function FilmCard({
             </h3>
             <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
               <Star className="size-[0.875rem] fill-amber-400 text-amber-400" strokeWidth={0} aria-hidden />
-              <span className="text-xs font-semibold tracking-tight tabular-nums text-foreground" aria-label={`Average rating ${stock.rating} out of 5`}>
-                {stock.rating.toFixed(1)}
+              <span className="text-xs font-semibold tracking-tight tabular-nums text-foreground" aria-label={displayRating != null ? `Average rating ${displayRating} out of 5` : "No average rating yet"}>
+                {displayRating != null ? displayRating.toFixed(1) : "—"}
               </span>
             </div>
           </div>

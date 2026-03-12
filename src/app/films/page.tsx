@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/queries";
+import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { FilmsListingClient } from "@/app/films/films-listing-client";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { FilmsSortBar } from "@/components/films-sort-bar";
@@ -48,7 +49,9 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   const bestForArr = parseMultiParam(params.bestFor) as BestFor[];
   const isoArr = parseMultiParam(params.iso).map((s) => Number(s)).filter((n) => !Number.isNaN(n));
 
-  const stocks = await getFilmStocks({
+  const sortParam = params.sort === "alphabetical" ? "alphabetical" : "highest-rated";
+
+  const stocksUnsorted = await getFilmStocks({
     search: params.search,
     brand: brandArr.length ? brandArr : undefined,
     type: typeArr.length ? typeArr : undefined,
@@ -57,8 +60,22 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
     contrast: contrastArr.length ? contrastArr : undefined,
     bestFor: bestForArr.length ? bestForArr : undefined,
     iso: isoArr.length ? isoArr : undefined,
-    sort: params.sort === "alphabetical" ? "alphabetical" : "popular",
+    sort: "alphabetical",
   });
+
+  const statsBySlug = stocksUnsorted.length > 0 ? await getFilmStockStatsForSlugs(stocksUnsorted.map((s) => s.slug)) : {};
+
+  const stocks =
+    sortParam === "highest-rated"
+      ? [...stocksUnsorted].sort((a, b) => {
+          const ra = statsBySlug[a.slug]?.avgRating ?? null;
+          const rb = statsBySlug[b.slug]?.avgRating ?? null;
+          if (ra == null && rb == null) return 0;
+          if (ra == null) return 1;
+          if (rb == null) return -1;
+          return rb - ra;
+        })
+      : stocksUnsorted;
 
   const activeFilterCount = [
     params.search,
@@ -98,7 +115,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
           <div className="mb-2 flex min-h-10 items-center justify-end">
             <Suspense>
               <FilmsSortBar
-                currentSort={params.sort === "alphabetical" ? "alphabetical" : "popular"}
+                currentSort={params.sort === "alphabetical" ? "alphabetical" : "highest-rated"}
               />
             </Suspense>
           </div>
@@ -109,7 +126,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
               </Suspense>
             </div>
           </div>
-          <FilmsListingClient stocks={stocks} />
+          <FilmsListingClient stocks={stocks} statsBySlug={statsBySlug} />
         </main>
       </div>
     </div>

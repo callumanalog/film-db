@@ -583,10 +583,13 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
                 method: "POST",
                 body: formData,
               });
+              const data = await res.json().catch(() => ({}));
               if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                showToastViaEvent(err.error || "Failed to submit");
+                showToastViaEvent(data.error || "Failed to submit");
                 return;
+              }
+              if (payload.files.length > 0 && data.uploaded > 0) {
+                window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
               }
               showToastViaEvent(
                 reviewModalMode === "upload"
@@ -658,11 +661,20 @@ export function FilmDetailRightPane({ stock }: HeroMockupProps) {
 }
 
 /* ─── Page Title Header ─── */
-export function PageTitleHeader({ stock }: HeroMockupProps) {
-  const stats = {
-    avgRating: 4.3,
-    shotByCount: 124,
-    favouritesCount: 89,
+export interface FilmStockStatsProp {
+  avgRating: number | null;
+  shotByCount: number;
+  favouritesCount: number;
+}
+
+export function PageTitleHeader({
+  stock,
+  stats,
+}: HeroMockupProps & { stats?: FilmStockStatsProp | null }) {
+  const display = {
+    avgRating: stats?.avgRating ?? null,
+    shotByCount: stats?.shotByCount ?? 0,
+    favouritesCount: stats?.favouritesCount ?? 0,
   };
 
   return (
@@ -674,25 +686,27 @@ export function PageTitleHeader({ stock }: HeroMockupProps) {
       </div>
 
       {/* Stats pane — icon + number inline, label below centred */}
-      <div className="flex shrink-0 gap-5 sm:gap-6">
+        <div className="flex shrink-0 gap-5 sm:gap-6">
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1.5">
             <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">{stats.avgRating.toFixed(1)}</span>
+            <span className="text-base font-semibold tracking-tight text-foreground">
+              {display.avgRating != null ? display.avgRating.toFixed(1) : "—"}
+            </span>
           </div>
           <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avg. rating</span>
         </div>
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">{stats.shotByCount}</span>
+            <span className="text-base font-semibold tracking-tight text-foreground">{display.shotByCount}</span>
           </div>
           <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot by</span>
         </div>
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1.5">
             <Heart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">{stats.favouritesCount}</span>
+            <span className="text-base font-semibold tracking-tight text-foreground">{display.favouritesCount}</span>
           </div>
           <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Favourites</span>
         </div>

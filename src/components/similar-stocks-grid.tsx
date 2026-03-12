@@ -6,13 +6,15 @@ import { useUserActions } from "@/context/user-actions-context";
 
 interface SimilarStocksGridProps {
   stocks: (FilmStock & { brand: FilmBrand })[];
+  /** Optional map of slug -> stats so cards can show real avg rating. */
+  statsBySlug?: Record<string, { avgRating: number | null }>;
 }
 
 /**
  * Renders the similar stocks grid with the same FilmCard styling as the film stocks
- * landing page (Work Sans title, favourite heart icon).
+ * landing page (Work Sans title, favourite heart icon, avg rating).
  */
-export function SimilarStocksGrid({ stocks }: SimilarStocksGridProps) {
+export function SimilarStocksGrid({ stocks, statsBySlug }: SimilarStocksGridProps) {
   const { favouriteSlugs } = useUserActions();
 
   return (
@@ -23,6 +25,7 @@ export function SimilarStocksGrid({ stocks }: SimilarStocksGridProps) {
           stock={s}
           useWorkSansTitle
           favouriteSlugs={favouriteSlugs}
+          avgRating={statsBySlug?.[s.slug]?.avgRating ?? null}
         />
       ))}
     </div>
