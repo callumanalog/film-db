@@ -211,18 +211,36 @@ const FLICKR_TAB_PLACEHOLDERS: { id: string; src: string; username: string; came
 
 type GalleryView = "flickr" | "community" | "you";
 
-/** Lightbox: image left, details panel right (mock layout from reference). */
+/** Initials for avatar (e.g. "analog.sara" → "AS", "You" → "YO"). */
+function getInitials(name: string): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/[.\s_]+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
+  return name.slice(0, 2).toUpperCase();
+}
+
+/** Lightbox: image left, details panel right. Shows real metadata when from user upload. */
 function GalleryLightbox({
   imageUrl,
   alt = "",
   caption,
   username = "filumbycallum",
+  metadata,
   onClose,
 }: {
   imageUrl: string;
   alt?: string;
   caption?: string | null;
   username?: string;
+  metadata?: {
+    camera?: string | null;
+    shot_iso?: string | null;
+    lens?: string | null;
+    lab?: string | null;
+    filter?: string | null;
+    scanner?: string | null;
+    push_pull?: string | null;
+  };
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -290,101 +308,67 @@ function GalleryLightbox({
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{username}</p>
-            <p className="text-xs text-muted-foreground">and 2 others</p>
           </div>
-          <p className="text-xs text-muted-foreground">Deal, Kent</p>
         </div>
 
-        {/* Caption & content */}
+        {/* Caption & metadata */}
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          <p className="text-sm">
-            <span className="rounded bg-primary/10 px-1 font-semibold text-primary">{username}</span>{" "}
-            {caption || "My first time using Kodacolor 200. So is it any good?"}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Really pleased with the natural warmth and nice skin tones. The blues in these scans came out great — shot
-            mostly in daylight with a bit of blue hour. For the price it’s hard to beat. Have you shot Kodacolor 200?
-            What did you think?
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">Development and scans by @analoguewonderland</p>
-          <p className="mt-3 text-xs text-muted-foreground">
-            #madewithkodak #kodacolor200 #kodacolor #35mm #shotonfilm
-          </p>
-          <p className="mt-2 text-[10px] text-muted-foreground">2 w</p>
-
-          {/* Comments (mock) */}
-          <div className="mt-4 space-y-3 border-t border-border/40 pt-4">
-            <div>
-              <p className="text-sm">
-                <span className="font-semibold">_dunyaph</span>{" "}
-                <span className="text-muted-foreground">Nice work ✨</span>
-              </p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">2 w · 1 like · Reply</p>
-            </div>
-            <div>
-              <p className="text-sm">
-                <span className="font-semibold">oopsbyg</span>{" "}
-                <span className="text-muted-foreground">Great shots 👋</span>
-              </p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">2 w · 1 like · Reply</p>
-            </div>
-          </div>
+          {caption ? (
+            <p className="text-sm">
+              <span className="rounded bg-primary/10 px-1 font-semibold text-primary">{username}</span>{" "}
+              {caption}
+            </p>
+          ) : null}
+          {metadata && (metadata.camera || metadata.shot_iso || metadata.lens || metadata.lab || metadata.filter || metadata.scanner || metadata.push_pull) ? (
+            <dl className="mt-3 space-y-2 border-t border-border/40 pt-3">
+              {metadata.camera ? (
+                <div>
+                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Camera</dt>
+                  <dd className="text-sm">{metadata.camera}</dd>
+                </div>
+              ) : null}
+              {metadata.shot_iso ? (
+                <div>
+                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot at ISO</dt>
+                  <dd className="text-sm">{metadata.shot_iso}</dd>
+                </div>
+              ) : null}
+              {metadata.lens ? (
+                <div>
+                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Lens</dt>
+                  <dd className="text-sm">{metadata.lens}</dd>
+                </div>
+              ) : null}
+              {metadata.lab ? (
+                <div>
+                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Lab / Processing</dt>
+                  <dd className="text-sm">{metadata.lab}</dd>
+                </div>
+              ) : null}
+              {metadata.push_pull ? (
+                <div>
+                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Push/Pull</dt>
+                  <dd className="text-sm">{metadata.push_pull}</dd>
+                </div>
+              ) : null}
+              {metadata.filter ? (
+                <div>
+                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Filter</dt>
+                  <dd className="text-sm">{metadata.filter}</dd>
+                </div>
+              ) : null}
+              {metadata.scanner ? (
+                <div>
+                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Scanner</dt>
+                  <dd className="text-sm">{metadata.scanner}</dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : caption ? null : (
+            <p className="text-sm text-muted-foreground">No details for this shot.</p>
+          )}
         </div>
 
-        {/* Action buttons */}
-        <div className="border-t border-border/40 px-4 py-2">
-          <div className="flex gap-4 text-xs text-muted-foreground">
-            <button type="button" className="hover:text-foreground">
-              View Insights
-            </button>
-            <button
-              type="button"
-              className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Boost Post
-            </button>
-          </div>
-        </div>
-
-        {/* Interaction bar */}
-        <div className="flex items-center gap-4 border-t border-border/40 px-4 py-3">
-          <div className="flex items-center gap-4">
-            <button type="button" className="text-foreground hover:opacity-80" aria-label="Like">
-              <Heart className="h-6 w-6 fill-primary text-primary" />
-            </button>
-            <button type="button" className="text-foreground hover:opacity-80" aria-label="Comment">
-              <MessageCircle className="h-6 w-6" />
-            </button>
-            <button type="button" className="text-foreground hover:opacity-80" aria-label="Share">
-              <Send className="h-6 w-6" />
-            </button>
-            <button type="button" className="text-foreground hover:opacity-80" aria-label="Save">
-              <Bookmark className="h-6 w-6" />
-            </button>
-          </div>
-        </div>
-        <p className="px-4 pb-1 text-xs text-muted-foreground">Liked by maelsark and others</p>
-        <p className="px-4 pb-3 text-[10px] text-muted-foreground">25 February</p>
-
-        {/* Add comment */}
-        <div className="flex items-center gap-2 border-t border-border/40 px-4 py-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-            🙂
-          </span>
-          <input
-            type="text"
-            placeholder="Add a comment..."
-            className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            readOnly
-            aria-label="Add a comment"
-          />
-          <button
-            type="button"
-            className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
-          >
-            Post
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -418,6 +402,15 @@ export function CommunityGallery({
     alt?: string;
     caption?: string | null;
     username?: string;
+    metadata?: {
+      camera?: string | null;
+      shot_iso?: string | null;
+      lens?: string | null;
+      lab?: string | null;
+      filter?: string | null;
+      scanner?: string | null;
+      push_pull?: string | null;
+    };
   } | null>(null);
 
   useEffect(() => {
@@ -519,7 +512,7 @@ export function CommunityGallery({
 
       {isTab && view === "you" && yourImagesCount === 0 && !galleryLoading ? (
         <div className="rounded-xl border border-dashed border-border bg-secondary/20 py-12 text-center">
-          <p className="text-sm font-medium text-muted-foreground">You haven’t added any images yet.</p>
+          <p className="text-sm font-medium text-muted-foreground">You haven't added any images yet.</p>
           <p className="mt-1 text-xs text-muted-foreground">Your uploads will appear here.</p>
           <button
             type="button"
@@ -534,7 +527,7 @@ export function CommunityGallery({
           Loading images…
         </div>
       ) : (
-      <div className="columns-2 gap-1 md:columns-3 lg:columns-3">
+      <div className="columns-2 gap-1.5 md:columns-3 lg:columns-3">
         {(() => {
           const showFlickrOnly = isTab && view === "flickr";
           const showCommunity = !isTab || view === "community";
@@ -564,12 +557,14 @@ export function CommunityGallery({
           return (
             <>
         {/* Real community uploads (when slug and Community tab) */}
-        {communityUploadsToShow.map((u) => (
+        {communityUploadsToShow.map((u) => {
+          const displayName = u.display_name ?? "Member";
+          return (
           <button
             type="button"
             key={u.id}
-            onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: u.display_name ?? undefined })}
-            className="group block w-full cursor-pointer break-inside-avoid mb-1 text-left"
+            onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: u.display_name ?? undefined, metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
+            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -584,15 +579,30 @@ export function CommunityGallery({
                 <Camera className="h-8 w-8 text-muted-foreground" />
               </div>
             )}
+            <div className="flex items-center gap-2 p-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
+                {getInitials(displayName)}
+              </span>
+              <p className="min-w-0 flex-1 truncate text-xs font-medium">{displayName}</p>
+              <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
+                  <Heart className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
+                  <Bookmark className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </div>
           </button>
-        ))}
+          );
+        })}
         {/* Real user uploads (when slug and You tab) */}
         {myUploadsToShow.map((u) => (
           <button
             type="button"
             key={u.id}
-            onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: "You" })}
-            className="group block w-full cursor-pointer break-inside-avoid mb-1 text-left"
+            onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: "You", metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
+            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
               /* eslint-disable-next-line @next/next/no-img-element */
@@ -607,6 +617,20 @@ export function CommunityGallery({
                 <Camera className="h-8 w-8 text-muted-foreground" />
               </div>
             )}
+            <div className="flex items-center gap-2 p-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
+                {getInitials("You")}
+              </span>
+              <p className="min-w-0 flex-1 truncate text-xs font-medium">You</p>
+              <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
+                  <Heart className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
+                  <Bookmark className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </div>
           </button>
         ))}
         {/* Placeholder cards (when no slug) */}
@@ -617,7 +641,7 @@ export function CommunityGallery({
             key={cardId}
             type="button"
             onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
-            className="group block w-full cursor-pointer break-inside-avoid mb-1 text-left"
+            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -626,6 +650,20 @@ export function CommunityGallery({
               className="block w-full h-auto"
               aria-hidden
             />
+            <div className="flex items-center gap-2 p-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
+                {getInitials(item.username)}
+              </span>
+              <p className="min-w-0 flex-1 truncate text-xs font-medium">{item.username}</p>
+              <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
+                  <Heart className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
+                  <Bookmark className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </div>
           </button>
           );
         })}
@@ -638,10 +676,24 @@ export function CommunityGallery({
                   key={item.id}
                   type="button"
                   onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
-                  className="group block w-full cursor-pointer break-inside-avoid mb-1 text-left"
+                  className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.src} alt="" className="block w-full h-auto" aria-hidden />
+                  <div className="flex items-center gap-2 p-2.5">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
+                      {getInitials(item.username)}
+                    </span>
+                    <p className="min-w-0 flex-1 truncate text-xs font-medium">{item.username}</p>
+                    <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
+                        <Heart className="h-3.5 w-3.5" />
+                      </button>
+                      <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
+                        <Bookmark className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  </div>
                 </button>
               );
             })
@@ -653,7 +705,7 @@ export function CommunityGallery({
                 key={img.id}
                 type="button"
                 onClick={() => setLightboxImage({ imageUrl: img.imageUrl, alt: img.title || "", username: img.ownerName })}
-                className="group block w-full cursor-pointer break-inside-avoid mb-1 text-left"
+                className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -662,6 +714,20 @@ export function CommunityGallery({
                   className="block w-full h-auto"
                   sizes="(max-width: 768px) 50vw, 33vw"
                 />
+                <div className="flex items-center gap-2 p-2.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
+                    {getInitials(img.ownerName)}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-xs font-medium">{img.ownerName}</p>
+                  <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
+                      <Heart className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
+                      <Bookmark className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </div>
               </button>
               );
             })
@@ -674,7 +740,7 @@ export function CommunityGallery({
                 key={img.id}
                 type="button"
                 onClick={() => img.imageUrl && setLightboxImage({ imageUrl: img.imageUrl!, username: img.username })}
-                className="group block w-full cursor-pointer break-inside-avoid mb-1 text-left"
+                className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
               >
                 {img.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -689,6 +755,20 @@ export function CommunityGallery({
                     <Camera className="h-8 w-8 text-white/20" />
                   </div>
                 )}
+                <div className="flex items-center gap-2 p-2.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
+                    {getInitials(img.username)}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-xs font-medium">{img.username}</p>
+                  <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
+                      <Heart className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
+                      <Bookmark className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </div>
               </button>
               );
             })}
@@ -710,6 +790,7 @@ export function CommunityGallery({
           alt={lightboxImage.alt ?? ""}
           caption={lightboxImage.caption}
           username={lightboxImage.username}
+          metadata={lightboxImage.metadata}
           onClose={() => setLightboxImage(null)}
         />
       )}

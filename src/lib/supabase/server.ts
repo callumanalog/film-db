@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -43,5 +44,21 @@ export async function createClient() {
         }
       },
     },
+  });
+}
+
+/**
+ * Server-only client using the service_role key. Bypasses RLS.
+ * Use only for operations that should be allowed without auth (e.g. public read of user_uploads).
+ * Requires SUPABASE_SERVICE_ROLE_KEY in env. If not set, returns null.
+ */
+export async function createServiceRoleClient() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? getEnvFromLocal("NEXT_PUBLIC_SUPABASE_URL");
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? getEnvFromLocal("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) return null;
+  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 }

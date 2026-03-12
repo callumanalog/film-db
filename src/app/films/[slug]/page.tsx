@@ -213,7 +213,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     <div className="work-sans-content">
       <ScrollToTopOnRouteChange />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
+        <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
           <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
@@ -221,17 +221,20 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           <span className="font-medium text-foreground">{stock.name}</span>
         </nav>
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-          <StickyLeftPane {...stockProps} />
-          <div className="min-w-0 flex-1 pt-6 sm:pt-8">
+        {/* Mobile: Title → Stats → Sidebar (2-col) → Tabs. md+: Sidebar left, Title+Tabs right. */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
+          <div className="order-2 min-w-0 md:order-1 md:row-span-2">
+            <StickyLeftPane {...stockProps} />
+          </div>
+          <div className="order-1 min-w-0 pt-0 md:order-2 md:pt-8">
             <PageTitleHeader {...stockProps} />
-            <div className="min-w-0">
-              <FilmDetailTabs
-                tabs={filmTabs}
-                defaultId="overview"
-                fullWidthTabBar
-              />
-            </div>
+          </div>
+          <div className="order-3 min-w-0 -mt-2 md:mt-0">
+            <FilmDetailTabs
+              tabs={filmTabs}
+              defaultId="overview"
+              fullWidthTabBar
+            />
           </div>
         </div>
       </div>

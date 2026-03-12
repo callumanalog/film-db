@@ -40,42 +40,55 @@ export async function POST(request: Request) {
   const location = (formData.get("location") as string) || null;
   const iso = (formData.get("iso") as string) || null;
   const pushPull = (formData.get("push_pull") as string) || null;
+  const caption = (formData.get("caption") as string) || null;
+  const shotIso = (formData.get("shot_iso") as string) || null;
+  const lens = (formData.get("lens") as string) || null;
+  const lab = (formData.get("lab") as string) || null;
+  const filter = (formData.get("filter") as string) || null;
+  const scanner = (formData.get("scanner") as string) || null;
 
-  const files: File[] = [];
-  for (let i = 0; i < MAX_FILES; i++) {
-    const f = formData.get(`file_${i}`) ?? formData.get("files");
-    if (f instanceof File && f.size > 0) files.push(f);
-  }
-  if (files.length === 0) {
-    const allFiles = formData.getAll("files");
-    for (const f of allFiles) {
+  // Pre-upload flow (shot sheet): image_url already in storage, only INSERT
+  const preUploadedImageUrl = (formData.get("image_url") as string) || null;
+  let uploadedUrls: string[] = [];
+
+  if (mode === "upload" && preUploadedImageUrl && preUploadedImageUrl.trim().length > 0) {
+    uploadedUrls = [preUploadedImageUrl.trim()];
+  } else {
+    const files: File[] = [];
+    for (let i = 0; i < MAX_FILES; i++) {
+      const f = formData.get(`file_${i}`) ?? formData.get("files");
       if (f instanceof File && f.size > 0) files.push(f);
     }
-  }
-
-  const uploadedUrls: string[] = [];
-  const prefix = `${user.id}/${slug}`;
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (!file.type.startsWith("image/")) continue;
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${prefix}/${Date.now()}-${i}.${ext}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(path, file, { upsert: true });
-    if (uploadError) {
-      console.error("[reviews] storage upload error:", uploadError);
-      continue;
+    if (files.length === 0) {
+      const allFiles = formData.getAll("files");
+      for (const f of allFiles) {
+        if (f instanceof File && f.size > 0) files.push(f);
+      }
     }
-    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(uploadData.path);
-    uploadedUrls.push(urlData.publicUrl);
-  }
 
-  if (files.length > 0 && uploadedUrls.length === 0) {
-    return NextResponse.json(
-      { error: "Image upload failed. Check that the 'user-uploads' storage bucket exists and allows uploads." },
-      { status: 500 }
-    );
+    const prefix = `${user.id}/${slug}`;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) continue;
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${prefix}/${Date.now()}-${i}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { upsert: true });
+      if (uploadError) {
+        console.error("[reviews] storage upload error:", uploadError);
+        continue;
+      }
+      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(uploadData.path);
+      uploadedUrls.push(urlData.publicUrl);
+    }
+
+    if (files.length > 0 && uploadedUrls.length === 0) {
+      return NextResponse.json(
+        { error: "Image upload failed. Check that the 'user-uploads' storage bucket exists and allows uploads." },
+        { status: 500 }
+      );
+    }
   }
 
   if (mode === "review" && (rating > 0 || reviewTitle || reviewText)) {
@@ -105,12 +118,23 @@ export async function POST(request: Request) {
   }
 
   let uploadInsertErrors = 0;
+  const captionToUse = caption || null;
+  const metadata = {
+    camera: camera || null,
+    shot_iso: shotIso || null,
+    lens: lens || null,
+    lab: lab || null,
+    filter: filter || null,
+    scanner: scanner || null,
+    push_pull: pushPull || null,
+  };
   for (const url of uploadedUrls) {
     const { error: insertError } = await supabase.from("user_uploads").insert({
       user_id: user.id,
       film_stock_slug: slug,
       image_url: url,
-      caption: null,
+      caption: captionToUse,
+      ...metadata,
     });
     if (insertError) {
       console.error("[reviews] user_uploads insert error:", insertError);

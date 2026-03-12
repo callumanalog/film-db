@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 export interface FilmUploadRow {
   id: string;
@@ -10,6 +10,13 @@ export interface FilmUploadRow {
   caption: string | null;
   created_at: string;
   display_name?: string | null;
+  camera?: string | null;
+  shot_iso?: string | null;
+  lens?: string | null;
+  lab?: string | null;
+  filter?: string | null;
+  scanner?: string | null;
+  push_pull?: string | null;
 }
 
 /** Shape for Community page gallery: one row per upload with stock/brand labels. */
@@ -27,14 +34,25 @@ export interface CommunityGalleryUpload {
   imageUrl: string | null;
 }
 
-/** All community uploads for the global Community page gallery. */
-export async function getAllCommunityUploadsForGallery(stocks: { slug: string; name: string; brand: { name: string } }[]): Promise<CommunityGalleryUpload[]> {
+/** All community uploads for the global Community page gallery. Optional search filters by caption and metadata. */
+export async function getAllCommunityUploadsForGallery(
+  stocks: { slug: string; name: string; brand: { name: string } }[],
+  search?: string
+): Promise<CommunityGalleryUpload[]> {
   const supabase = await createClient();
-  const { data: rows, error } = await supabase
+  let query = supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at")
+    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull")
     .not("image_url", "is", null)
     .order("created_at", { ascending: false });
+  const term = search?.trim();
+  if (term) {
+    const pattern = `%${term}%`;
+    query = query.or(
+      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern}`
+    );
+  }
+  const { data: rows, error } = await query;
 
   if (error) {
     console.error("[getAllCommunityUploadsForGallery]", error.message);
@@ -56,9 +74,10 @@ export async function getAllCommunityUploadsForGallery(stocks: { slug: string; n
   }
 
   const out: CommunityGalleryUpload[] = [];
-  for (const r of rows as { id: string; user_id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[]) {
+  for (const r of rows as FilmUploadRow[]) {
     const stock = stockBySlug.get(r.film_stock_slug);
     if (!stock) continue;
+    const settingsParts = [r.shot_iso, r.lens, r.lab, r.push_pull, r.filter, r.scanner].filter(Boolean);
     out.push({
       id: r.id,
       galleryId: `upload-${r.id}`,
@@ -66,8 +85,8 @@ export async function getAllCommunityUploadsForGallery(stocks: { slug: string; n
       stockName: stock.name,
       brandName: stock.brand.name,
       username: nameByUserId.get(r.user_id) ?? "Member",
-      camera: r.caption ?? "",
-      settings: "",
+      camera: r.camera ?? "",
+      settings: settingsParts.join(" · "),
       likes: 0,
       source: "community",
       imageUrl: r.image_url,
@@ -76,10 +95,10 @@ export async function getAllCommunityUploadsForGallery(stocks: { slug: string; n
   return out;
 }
 export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRow[]> {
-  const supabase = await createClient();
+  const supabase = (await createServiceRoleClient()) ?? (await createClient());
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at")
+    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull")
     .eq("film_stock_slug", slug)
     .order("created_at", { ascending: false });
 
@@ -100,7 +119,7 @@ export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRo
     nameByUserId.set(p.id, p.display_name ?? null);
   }
 
-  return (rows as { id: string; user_id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[]).map((r) => ({
+  return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
     ...r,
     display_name: nameByUserId.get(r.user_id) ?? null,
   }));
@@ -114,7 +133,7 @@ export async function getMyUploadsForFilmStock(slug: string): Promise<FilmUpload
 
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at")
+    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull")
     .eq("film_stock_slug", slug)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -128,7 +147,7 @@ export async function getMyUploadsForFilmStock(slug: string): Promise<FilmUpload
   const displayName =
     (await supabase.from("profiles").select("display_name").eq("id", user.id).single()).data?.display_name ?? null;
 
-  return (rows as { id: string; user_id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[]).map((r) => ({
+  return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
     ...r,
     display_name: displayName,
   }));

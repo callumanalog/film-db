@@ -121,6 +121,10 @@
   h1, h2, h4, h5, h6 {
     font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
   }
+  /* Modal dialog titles use Work Sans via .font-work-sans; exclude so base doesn't override */
+  h1#add-review-title, h2#add-review-title, h4#add-review-title, h5#add-review-title, h6#add-review-title {
+    font-family: unset !important;
+  }
   h3 {
     font-family: var(--font-sans), sans-serif !important;
   }
@@ -143,6 +147,19 @@
 .work-sans-content h5,
 .work-sans-content h6 {
   font-family: inherit !important;
+}
+
+/* Force Work Sans for modal titles (reliable when inheritance fails) */
+.font-work-sans {
+  font-family: var(--font-work-sans), var(--font-sans), ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Override base h2 Advercase for add-review modal title. In layer so it wins over @layer base. */
+@layer utilities {
+  #add-review-title.font-work-sans,
+  #add-review-title[class*="font-work-sans"] {
+    font-family: var(--font-work-sans), var(--font-sans), ui-sans-serif, system-ui, sans-serif !important;
+  }
 }
 
 /* Shot it icon: tick draws in on hover (record.club-style) */

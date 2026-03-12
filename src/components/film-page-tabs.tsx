@@ -144,12 +144,14 @@ export function FilmDetailTabs({
 
   return (
     <FilmDetailTabsContext.Provider value={{ activeId, setActiveId }}>
-      {/* Large gap between pills and tabs */}
-      <div className="mt-10">
+      {/* Gap between title/stats and tab bar */}
+      <div className="mt-4">
         {fullWidthTabBar ? (
-          <div className="flex border-b border-border/50">
-            {tabNav}
-            <div className="min-w-0 flex-1" aria-hidden />
+          <div className="w-full border-b border-border/50">
+            <div className="flex max-w-sm justify-center mx-auto md:max-w-none md:mx-0 md:justify-start">
+              {tabNav}
+              <div className="min-w-0 flex-1 md:block hidden" aria-hidden />
+            </div>
           </div>
         ) : (
           tabNav
