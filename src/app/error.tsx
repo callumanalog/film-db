@@ -24,7 +24,7 @@ export default function GlobalError({
       <p className="mt-2 max-w-md text-muted-foreground">
         The page hit an error. You can try again or go back home.
       </p>
-      {isDev && error?.message && (
+      {(isDev || error?.message?.includes("Supabase") || error?.message?.includes("configured")) && error?.message && (
         <pre className="mt-4 max-w-2xl overflow-auto rounded-lg border border-border bg-muted/50 p-4 text-left text-sm text-foreground">
           {error.message}
         </pre>
