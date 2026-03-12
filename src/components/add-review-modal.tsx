@@ -235,7 +235,7 @@ export function AddReviewModal({
               className="flex-1 text-lg font-bold tracking-tight text-foreground min-w-0"
               style={{ fontFamily: "var(--font-work-sans), var(--font-sans), sans-serif" }}
             >
-              {mode === "upload" ? "Upload images" : "Add review & photos"}
+              {mode === "upload" ? "Post shots" : "Add review & photos"}
               <span className="block text-sm font-normal text-muted-foreground mt-0.5">{stock.name}</span>
             </Dialog.Title>
             <Button

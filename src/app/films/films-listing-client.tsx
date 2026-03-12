@@ -12,17 +12,17 @@ interface FilmsListingClientProps {
 }
 
 /**
- * Client wrapper that reads the user's shot/favourite state from UserActionsContext
- * and renders the film grid with Work Sans titles and state badges on cards.
+ * Client wrapper that reads the user's shot state from UserActionsContext
+ * and renders the film grid with Work Sans titles and shot tick on cards.
  */
 export function FilmsListingClient({ stocks, statsBySlug }: FilmsListingClientProps) {
-  const { favouriteSlugs } = useUserActions();
+  const { shotSlugs } = useUserActions();
 
   return (
     <FilmGrid
       stocks={stocks}
       useWorkSansForTitles
-      favouriteSlugs={favouriteSlugs}
+      shotSlugs={shotSlugs}
       statsBySlug={statsBySlug}
     />
   );

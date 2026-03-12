@@ -13,13 +13,15 @@ import {
 import {
   Camera,
   Heart,
-  CheckCircle2,
+  Film,
   Plus,
   Star,
   StarHalf,
   ThumbsUp,
   Eye,
   ExternalLink,
+  CheckCircle2,
+  CirclePlus,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 
@@ -127,8 +129,8 @@ export function QuickActions() {
             : "border-border bg-card text-foreground hover:border-emerald-500/30 hover:bg-emerald-500/5"
         }`}
       >
-        <CheckCircle2 className={`h-4 w-4 transition-colors ${shotIt ? "text-emerald-500" : "text-muted-foreground group-hover:text-emerald-500"}`} />
-        {shotIt ? "Shot It" : "I've Shot This"}
+        <CheckCircle2 className={`h-4 w-4 transition-colors ${shotIt ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground group-hover:text-emerald-500"}`} />
+        {shotIt ? "Shot it" : "Shot"}
       </button>
 
       <button
@@ -139,7 +141,7 @@ export function QuickActions() {
             : "border-border bg-card text-foreground hover:border-blue-500/30 hover:bg-blue-500/5"
         }`}
       >
-        <Plus className={`h-4 w-4 transition-colors ${tracked ? "text-blue-500" : "text-muted-foreground group-hover:text-blue-500"}`} />
+        <Film className={`h-4 w-4 transition-colors ${tracked ? "text-blue-500" : "text-muted-foreground group-hover:text-blue-500"}`} />
         {tracked ? "Tracked" : "Track"}
       </button>
 
@@ -151,8 +153,14 @@ export function QuickActions() {
             : "border-border bg-card text-foreground hover:border-primary/30 hover:bg-primary/5"
         }`}
       >
-        <Heart className={`h-4 w-4 transition-all ${saved ? "text-primary fill-primary" : "text-muted-foreground group-hover:text-primary"}`} />
-        {saved ? "Saved" : "Save"}
+        {saved ? (
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary" aria-hidden>
+            <Plus className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+          </span>
+        ) : (
+          <CirclePlus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+        )}
+        {saved ? "In shootlist" : "Shootlist"}
       </button>
     </div>
   );

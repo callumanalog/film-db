@@ -145,6 +145,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       avgRating: stats.avgRating,
       shotByCount: stats.shotByCount,
       favouritesCount: stats.favouritesCount,
+      shotsCount: stats.shotsCount,
     },
   };
 

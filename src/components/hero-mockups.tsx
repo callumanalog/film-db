@@ -17,7 +17,6 @@ import {
   StarHalf,
   ExternalLink,
   ShoppingBag,
-  Plus,
   CircleX,
   DollarSign,
   Aperture,
@@ -35,7 +34,11 @@ import {
   LampDesk,
   Sun,
   Check,
+  Image as ImageIcon,
+  Pencil,
   Calendar,
+  CirclePlus,
+  Plus,
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
 import { TrackFilmModal } from "@/components/track-film-modal";
@@ -378,9 +381,8 @@ function UserStarRating({
 /* ─── Sticky Left Pane ─── */
 
 const LOG_OPTIONS = [
-  { id: "shot", label: "Shot it", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
-  { id: "favorite", label: "Favourite", fullLabel: "Add to favourites", Icon: Heart },
-  { id: "track", label: "Track", fullLabel: "Track this film stock", Icon: Plus },
+  { id: "shot", labelInactive: "Shot it", labelActive: "Shot it", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
+  { id: "favorite", labelInactive: "Shootlist", labelActive: "Shootlist", fullLabel: "Add to shootlist", Icon: CirclePlus },
 ] as const;
 
 /** Active Shot: orange circle + white tick */
@@ -388,6 +390,15 @@ function ShotActiveIcon({ className }: { className?: string }) {
   return (
     <span className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary ${className ?? ""}`} aria-hidden>
       <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+    </span>
+  );
+}
+
+/** Active Shootlist: orange circle + white plus (same treatment as Shot) */
+function ShootlistActiveIcon({ className }: { className?: string }) {
+  return (
+    <span className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary ${className ?? ""}`} aria-hidden>
+      <Plus className="h-3.5 w-3.5 text-white" strokeWidth={3} />
     </span>
   );
 }
@@ -418,10 +429,6 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
   const [ratingRowHover, setRatingRowHover] = useState(false);
 
   const toggleAction = (id: LogActionId) => {
-    if (id === "track") {
-      setTrackModalOpen(true);
-      return;
-    }
     if (id === "shot") {
       const { added } = toggleShot(slug);
       showToastViaEvent(added ? "Added to stocks you've shot" : "Removed from Shot");
@@ -429,7 +436,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
     }
     if (id === "favorite") {
       const { added } = toggleFavourite(slug);
-      showToastViaEvent(added ? "Added to favourite stocks" : "Removed from Favourites");
+      showToastViaEvent(added ? "Added to shootlist" : "Removed from shootlist");
       return;
     }
   };
@@ -455,8 +462,8 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
   };
 
   return (
-    <div className="w-full min-w-0 sm:w-72 sm:min-w-[18rem] sm:shrink-0 sm:self-start sm:sticky sm:top-20 sm:overflow-visible">
-      {/* Image card — full border and content visible */}
+    <div className="w-full min-w-0 sm:w-56 sm:min-w-[14rem] sm:shrink-0 sm:self-start sm:overflow-visible">
+      {/* Image card */}
       <div className="relative mx-auto w-full max-w-full overflow-hidden rounded-xl border border-border/50 bg-white sm:mx-0 sm:w-full">
         <span
           className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${stock.discontinued ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}
@@ -470,12 +477,12 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         </div>
       </div>
 
-      {/* One card: 3 actions (side by side) + Rate + Write review + Upload images */}
+      {/* Card 1: Shot | Shootlist, then Log a roll (still connected) */}
       <div className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-card divide-y divide-border/50">
-        {/* Top row: Shot | Favourite | Track — icon above label, only icons coloured */}
-        <div className="grid grid-cols-3 gap-0" role="group" aria-label="Film stock actions">
-          {LOG_OPTIONS.map(({ id, label, fullLabel, Icon }) => {
-            const isActive = id === "shot" ? isShot : id === "favorite" ? isFavourite : false;
+        <div className="grid grid-cols-2 gap-0" role="group" aria-label="Film stock actions">
+          {LOG_OPTIONS.map(({ id, fullLabel, Icon }) => {
+            const label = id === "shot" ? "Shot it" : "Shootlist";
+            const isActive = id === "shot" ? isShot : isFavourite;
             const filledIcon = isActive && id === "favorite";
             const shotActive = isActive && id === "shot";
             return (
@@ -484,58 +491,70 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
                 type="button"
                 onClick={() => toggleAction(id)}
                 title={fullLabel}
-                aria-pressed={id === "track" ? undefined : isActive}
+                aria-pressed={isActive}
                 aria-label={fullLabel}
-                className="group flex flex-col items-center justify-center gap-2 px-2 py-5 text-sm font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground"
+                className="group flex flex-col items-center justify-center gap-2 px-2 py-5 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground"
               >
                 {shotActive ? (
                   <ShotActiveIcon />
                 ) : filledIcon ? (
-                  <Icon className="h-6 w-6 shrink-0 fill-primary text-primary" aria-hidden />
+                  <ShootlistActiveIcon />
                 ) : (
                   <Icon className="h-6 w-6 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-primary" aria-hidden />
                 )}
                 <span className="text-inherit font-medium transition-colors group-hover:text-foreground">
-                  {id === "favorite" && isFavourite ? "Favourited" : label}
+                  {label}
                 </span>
               </button>
             );
           })}
         </div>
 
+        {/* Log a roll — text only, centered */}
+        <button
+          type="button"
+          onClick={() => setTrackModalOpen(true)}
+          className="group flex w-full items-center justify-center px-4 py-4 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+        >
+          <span className="font-medium transition-colors group-hover:text-foreground">Log a roll</span>
+        </button>
+      </div>
+
+      {/* Card 2: Rate + Write review + Post shots (gap above) */}
+      <div className="mt-4 overflow-hidden rounded-xl border border-border/50 bg-card divide-y divide-border/50">
         <div
           className="px-4 py-3 text-center"
           onMouseEnter={() => setRatingRowHover(true)}
           onMouseLeave={() => setRatingRowHover(false)}
         >
-          <p className="mb-2 text-sm font-medium text-muted-foreground">Rate</p>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Rate</p>
           <div className="flex justify-center">
             <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
           </div>
         </div>
 
-        {/* Row: Write review */}
+        {/* Row: Write review — text only, centered */}
         <button
           type="button"
           onClick={() => {
             setReviewModalMode("review");
             setReviewModalOpen(true);
           }}
-          className="group flex w-full items-center justify-center gap-3 px-4 py-3 text-center text-sm font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+          className="group flex w-full items-center justify-center px-4 py-4 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
         >
-          <span className="text-sm font-medium transition-colors group-hover:text-foreground">Write review</span>
+          <span className="font-medium transition-colors group-hover:text-foreground">Write review</span>
         </button>
 
-        {/* Row: Upload images */}
+        {/* Row: Post shots — text only, centered */}
         <button
           type="button"
           onClick={() => {
             setReviewModalMode("upload");
             setReviewModalOpen(true);
           }}
-          className="group flex w-full items-center justify-center gap-3 px-4 py-3 text-center text-sm font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+          className="group flex w-full items-center justify-center px-4 py-4 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
         >
-          <span className="text-sm font-medium transition-colors group-hover:text-foreground">Upload images</span>
+          <span className="font-medium transition-colors group-hover:text-foreground">Post shots</span>
         </button>
       </div>
 
@@ -665,6 +684,7 @@ export interface FilmStockStatsProp {
   avgRating: number | null;
   shotByCount: number;
   favouritesCount: number;
+  shotsCount: number;
 }
 
 export function PageTitleHeader({
@@ -675,6 +695,7 @@ export function PageTitleHeader({
     avgRating: stats?.avgRating ?? null,
     shotByCount: stats?.shotByCount ?? 0,
     favouritesCount: stats?.favouritesCount ?? 0,
+    shotsCount: stats?.shotsCount ?? 0,
   };
 
   return (
@@ -685,8 +706,15 @@ export function PageTitleHeader({
         </h1>
       </div>
 
-      {/* Stats pane — icon + number inline, label below centred */}
+      {/* Stats pane — order: Shooters (left) | Avg. rating (middle) | Shots (right) */}
         <div className="flex shrink-0 gap-5 sm:gap-6">
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="text-base font-semibold tracking-tight text-foreground">{display.shotByCount}</span>
+          </div>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shooters</span>
+        </div>
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1.5">
             <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
@@ -698,17 +726,10 @@ export function PageTitleHeader({
         </div>
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">{display.shotByCount}</span>
+            <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="text-base font-semibold tracking-tight text-foreground">{display.shotsCount}</span>
           </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot by</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-1.5">
-            <Heart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">{display.favouritesCount}</span>
-          </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Favourites</span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shots</span>
         </div>
       </div>
     </div>
@@ -1161,8 +1182,8 @@ function OptionF({ stock }: HeroMockupProps) {
         <div className="shrink-0 sm:w-52">
           <div className="rounded-xl border border-border/50 bg-card divide-y divide-border/50">
             <CommunityActionRow icon={CheckCircle2} label="I've Shot This" activeColor="emerald" />
-            <CommunityActionRow icon={Plus} label="Track" activeColor="blue" />
-            <CommunityActionRow icon={Heart} label="Save" activeColor="primary" />
+            <CommunityActionRow icon={Film} label="Track" activeColor="blue" />
+            <CommunityActionRow icon={CirclePlus} label="Shootlist" activeColor="primary" />
 
             <div className="px-4 py-3">
               <p className="text-xs font-medium text-muted-foreground mb-2">Rate</p>

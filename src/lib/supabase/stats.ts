@@ -5,25 +5,27 @@ export interface FilmStockStats {
   favouritesCount: number;
   avgRating: number | null;
   ratingCount: number;
+  shotsCount: number;
 }
 
-/** Fetches real stats from Supabase (user_shot, user_favourites, user_ratings). */
+/** Fetches real stats from Supabase (user_shot, user_favourites, user_ratings, user_uploads). */
 export async function getFilmStockStats(slug: string): Promise<FilmStockStats> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_film_stock_stats", { p_slug: slug });
   if (error) {
     console.error("[getFilmStockStats]", slug, error);
-    return { shotByCount: 0, favouritesCount: 0, avgRating: null, ratingCount: 0 };
+    return { shotByCount: 0, favouritesCount: 0, avgRating: null, ratingCount: 0, shotsCount: 0 };
   }
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) {
-    return { shotByCount: 0, favouritesCount: 0, avgRating: null, ratingCount: 0 };
+    return { shotByCount: 0, favouritesCount: 0, avgRating: null, ratingCount: 0, shotsCount: 0 };
   }
   return {
     shotByCount: Number(row.shot_by_count ?? 0),
     favouritesCount: Number(row.favourites_count ?? 0),
     avgRating: row.avg_rating != null ? Number(row.avg_rating) : null,
     ratingCount: Number(row.rating_count ?? 0),
+    shotsCount: Number(row.shots_count ?? 0),
   };
 }
 

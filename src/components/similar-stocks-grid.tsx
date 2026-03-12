@@ -15,7 +15,7 @@ interface SimilarStocksGridProps {
  * landing page (Work Sans title, favourite heart icon, avg rating).
  */
 export function SimilarStocksGrid({ stocks, statsBySlug }: SimilarStocksGridProps) {
-  const { favouriteSlugs } = useUserActions();
+  const { shotSlugs } = useUserActions();
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
@@ -24,7 +24,7 @@ export function SimilarStocksGrid({ stocks, statsBySlug }: SimilarStocksGridProp
           key={s.id}
           stock={s}
           useWorkSansTitle
-          favouriteSlugs={favouriteSlugs}
+          shotSlugs={shotSlugs}
           avgRating={statsBySlug?.[s.slug]?.avgRating ?? null}
         />
       ))}

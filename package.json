@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:supabase": "tsx scripts/seed-supabase.ts"
+    "seed:supabase": "tsx scripts/seed-supabase.ts",
+    "upload:film-images": "tsx scripts/upload-film-stock-images.ts",
+    "fix:film-image-urls": "tsx scripts/fix-film-stock-image-urls.ts",
+    "replace:film-images": "tsx scripts/replace-film-stock-images.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

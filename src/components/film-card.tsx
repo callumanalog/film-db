@@ -3,15 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { FilmStock, FilmBrand } from "@/lib/types";
-import { Camera, Heart, Star } from "lucide-react";
+import { Camera, CheckCircle2, Star } from "lucide-react";
 import { useUserActions } from "@/context/user-actions-context";
 
 interface FilmCardProps {
   stock: FilmStock & { brand: FilmBrand };
   /** When true, use Work Sans for the title (e.g. on films listing page). */
   useWorkSansTitle?: boolean;
-  /** Slugs of films the user has favourited. If not passed, uses context so the heart always reflects current state. */
-  favouriteSlugs?: string[];
+  /** Slugs of films the user has shot. If not passed, uses context. Shows tick at bottom-left when included. */
+  shotSlugs?: string[];
   /** Real average rating from stats (user ratings). When passed, overrides stock.rating on the card. */
   avgRating?: number | null;
 }
@@ -27,15 +27,15 @@ const TYPE_ACCENT: Record<string, string> = {
 export function FilmCard({
   stock,
   useWorkSansTitle = false,
-  favouriteSlugs: favouriteSlugsProp,
+  shotSlugs: shotSlugsProp,
   avgRating: avgRatingProp,
 }: FilmCardProps) {
-  const { favouriteSlugs: contextFavouriteSlugs } = useUserActions();
-  const favouriteSlugs = favouriteSlugsProp ?? contextFavouriteSlugs;
+  const { shotSlugs: contextShotSlugs } = useUserActions();
+  const shotSlugs = shotSlugsProp ?? contextShotSlugs;
   const accent = TYPE_ACCENT[stock.type] || TYPE_ACCENT.color_negative;
   const displayName = stock.name;
 
-  const isFavourite = favouriteSlugs?.includes(stock.slug);
+  const hasShot = shotSlugs?.includes(stock.slug);
   const displayRating = avgRatingProp != null ? avgRatingProp : (stock as { rating?: number }).rating;
 
   return (
@@ -51,11 +51,11 @@ export function FilmCard({
                 Discontinued
               </span>
             )}
-            {isFavourite && (
-              <Heart
-                className="absolute right-2 top-2 z-10 h-4 w-4 text-primary fill-primary"
+            {hasShot && (
+              <CheckCircle2
+                className="absolute left-2 bottom-2 z-10 h-4 w-4 text-primary fill-primary"
                 strokeWidth={2}
-                aria-label="In your favourites"
+                aria-label="You've shot this stock"
               />
             )}
             {stock.image_url ? (

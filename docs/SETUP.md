@@ -80,8 +80,22 @@ By default the app reads brands and film stocks from local files / seed data. To
    You can insert rows via the Supabase Table Editor, or run a one-time seed script that reads from `data/film-stocks.json` (and brands) and inserts into Supabase. The app’s queries will use Supabase when these tables have data.
 
 2. **Catalog images in Storage**  
-   - Put images in the **film-stocks** bucket (e.g. under paths like `portra-400.jpg` or `kodak/portra-400.jpg`).
-   - Set each film stock’s `image_url` in the `film_stocks` table to the **public URL** of that image (e.g. `https://your-project.supabase.co/storage/v1/object/public/film-stocks/portra-400.jpg`).
+   - Create the **film-stocks** bucket by running `src/supabase/migrations/008_film_stocks_storage_bucket.sql` in the SQL Editor (or run `npx supabase db push` if you use the CLI).
+   - Either upload images manually in the Dashboard (Storage → film-stocks) and set each `film_stocks.image_url` to the image’s public URL, or use the automated script:
+     - Put your image files in a folder (e.g. `film-stock-images/`) with **filenames matching film stock slugs** (e.g. `portra-400.jpg`, `adox-chs-100-ii.jpg`).
+     - In `.env.local` set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+     - Run: `npx tsx scripts/upload-film-stock-images.ts film-stock-images`  
+     The script uploads each file to the bucket and updates `film_stocks.image_url` for the matching slug.
+   - Public URL form: `https://<project>.supabase.co/storage/v1/object/public/film-stocks/<filename>`.
+
+3. **Replacing placeholder images**  
+   When you have new images (e.g. background-removed or reshot) for existing stocks:
+   - **Option A — Match bucket filenames (easiest):** Name each new file exactly as it appears in Storage (e.g. `adox-chs-100.jpg`, `portra-400.jpg`). Put them in a folder (e.g. `public/films`) and run:
+     ```bash
+     npx tsx scripts/replace-film-stock-images.ts public/films
+     ```
+     This uploads each file (overwriting the object in the bucket) and updates any `film_stocks` row that points to that filename. No slug list needed.
+   - **Option B — Name by slug:** Name files by `film_stocks.slug` (e.g. `adox-chs-100-ii.jpg`, `kodak-gold-200.jpg`). Run `npx tsx scripts/upload-film-stock-images.ts <folder>`. Use this when adding new stocks or when you prefer slug-based filenames.
 
 Until `brands` and `film_stocks` are populated in Supabase, the app keeps using the existing file/seed catalog.
 

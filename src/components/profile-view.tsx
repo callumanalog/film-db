@@ -4,16 +4,16 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  CheckCircle2,
-  Heart,
+  Camera,
   ListTodo,
   Star,
   StarHalf,
-  Camera,
   Plus,
   NotebookPen,
   ImagePlus,
   ChevronRight,
+  CheckCircle2,
+  Bookmark,
 } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
@@ -96,7 +96,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
 
   const stats = [
     { label: "Films shot", value: profile.shotSlugs.length, icon: CheckCircle2 },
-    { label: "Favourites", value: profile.favouriteSlugs.length, icon: Heart },
+    { label: "Shootlist", value: profile.favouriteSlugs.length, icon: Bookmark },
     { label: "Tracked", value: profile.tracked.length, icon: ListTodo },
     { label: "Rated", value: ratingsList.length, icon: Star },
     ...(typeof profile.reviewCount === "number" && profile.reviewCount > 0
@@ -155,7 +155,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                   className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                 >
                   <ImagePlus className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  Upload images
+                  Post shots
                 </Link>
               </div>
             )}
@@ -192,7 +192,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                       key={stock.id}
                       stock={stock}
                       useWorkSansTitle
-                      favouriteSlugs={profile.favouriteSlugs}
+                      shotSlugs={profile.shotSlugs}
                       avgRating={statsBySlug[stock.slug]?.avgRating ?? null}
                     />
                   ))}
@@ -201,13 +201,13 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
             ),
           },
           {
-            id: "favourites",
-            label: "Favourites",
+            id: "shootlist",
+            label: "Shootlist",
             content: (
               <ProfileSection
-                title="Favourite films"
-                description="Stocks you've saved as favourites."
-                emptyMessage="No favourites yet. Heart a film on its page to add it here."
+                title="Shootlist"
+                description="Stocks you've added to your shootlist."
+                emptyMessage="No shootlist yet. Add a film on its page with the + button to add it here."
                 isEmpty={favouriteStocks.length === 0}
               >
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
@@ -216,7 +216,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                       key={stock.id}
                       stock={stock}
                       useWorkSansTitle
-                      favouriteSlugs={profile.favouriteSlugs}
+                      shotSlugs={profile.shotSlugs}
                       avgRating={statsBySlug[stock.slug]?.avgRating ?? null}
                     />
                   ))}
