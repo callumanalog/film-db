@@ -28,7 +28,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
   const realUploads = await getAllCommunityUploadsForGallery(stocks);
   const dummyImages = getGalleryImages(stocks);
   const flickrOnly = dummyImages.filter((img) => img.source === "flickr");
-  const images: GalleryImage[] = [...realUploads, ...flickrOnly];
+  const uploadsAsGalleryImages: GalleryImage[] = realUploads
+    .filter((u): u is typeof u & { imageUrl: string } => u.imageUrl != null)
+    .map((u) => ({ ...u, imageUrl: u.imageUrl }));
+  const images: GalleryImage[] = [...uploadsAsGalleryImages, ...flickrOnly];
 
   const brands = [...new Set(stocks.map((s) => s.brand.name))].sort();
   const stockOptions: StockOption[] = stocks.map((s) => ({

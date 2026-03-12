@@ -144,3 +144,16 @@
 .work-sans-content h6 {
   font-family: inherit !important;
 }
+
+/* Shot it icon: tick draws in on hover (record.club-style) */
+@keyframes shot-tick-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.group:hover .shot-tick-draw .tick-draw-path {
+  animation: shot-tick-draw 0.25s ease-out forwards;
+}

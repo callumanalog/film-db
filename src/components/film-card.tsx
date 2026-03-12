@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { FilmStock, FilmBrand } from "@/lib/types";
-import { Camera, CheckCircle2, Star } from "lucide-react";
+import { Camera, Check, Star } from "lucide-react";
 import { useUserActions } from "@/context/user-actions-context";
 
 interface FilmCardProps {
@@ -52,11 +52,12 @@ export function FilmCard({
               </span>
             )}
             {hasShot && (
-              <CheckCircle2
-                className="absolute left-2 bottom-2 z-10 h-4 w-4 text-primary fill-primary"
-                strokeWidth={2}
+              <span
+                className="absolute left-2 bottom-2 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white"
                 aria-label="You've shot this stock"
-              />
+              >
+                <Check className="h-3 w-3" strokeWidth={3} />
+              </span>
             )}
             {stock.image_url ? (
               <Image

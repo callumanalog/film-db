@@ -14,8 +14,14 @@ export async function POST(request: Request) {
   let formData: FormData;
   try {
     formData = await request.formData();
-  } catch {
-    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const isSizeError = /limit|size|length|exceeded/i.test(message);
+    console.error("[reviews] formData error:", message, e);
+    return NextResponse.json(
+      { error: isSizeError ? "Upload too large. Try fewer or smaller images." : "Invalid form data" },
+      { status: 400 }
+    );
   }
 
   const filmStockSlug = formData.get("film_stock_slug");

@@ -31,7 +31,10 @@ export type BestFor =
   | "travel"
   | "night"
   | "studio"
-  | "everyday";
+  | "everyday"
+  | "sports"
+  | "sunny_conditions"
+  | "creative";
 
 export const GRAIN_LABELS: Record<GrainLevel, string> = {
   fine: "Fine",
@@ -76,6 +79,9 @@ export const BEST_FOR_LABELS: Record<BestFor, string> = {
   night: "Low light",
   studio: "Studio",
   everyday: "Everyday",
+  sports: "Sports",
+  sunny_conditions: "Sunny Conditions",
+  creative: "Creative",
 };
 
 export interface FilmBrand {
@@ -103,14 +109,13 @@ export interface FilmStock {
   grain: string | null;
   contrast: string | null;
   latitude: string | null;
-  color_palette: string | null;
+  /** Open-text color balance for specs (e.g. "Daylight (5500K)" or "Warm, natural skin tones"). */
+  color_balance: string | null;
   grain_level: GrainLevel;
   contrast_level: ContrastLevel;
   latitude_level?: LatitudeLevel | null;
   color_balance_type?: ColorBalanceType | null;
   color_balance_kelvin?: number | null;
-  /** Open-text color balance for specs (e.g. "Daylight-Balanced (≈5500K)"). Empty/null shows "—" on specs. */
-  color_balance?: string | null;
   dx_coding?: boolean;
   development_process?: DevelopmentProcess | null;
   best_for: BestFor[];

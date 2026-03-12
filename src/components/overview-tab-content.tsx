@@ -4,6 +4,7 @@ import type { FlickrPhoto } from "@/lib/flickr";
 import type { BestFor } from "@/lib/types";
 import { ExternalLink, Play, Aperture, Palette, Gauge, ScanLine, Thermometer, Target, QrCode, FlaskConical, Contrast as ContrastIcon, Image, Lightbulb, Calendar } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { SwitchToTabButton } from "@/components/film-page-tabs";
 
 /** Icons for spec labels (match hero-mockups SpecsTable). */
 const SPEC_ICONS: Record<string, LucideIcon> = {
@@ -127,7 +128,7 @@ export function OverviewTabContent({
 }: OverviewTabContentProps) {
   return (
     <div className="space-y-14">
-      {/* Description, then Example images, Specs, Shooting notes */}
+      {/* Description, then Gallery section, Specs, Shooting notes */}
       <div className="min-w-0 space-y-10">
         {description && (
           <section>
@@ -137,7 +138,14 @@ export function OverviewTabContent({
           </section>
         )}
         <section>
-          <h3 className="mb-3 text-xl font-bold tracking-tight text-foreground">Example images</h3>
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <h3 className="text-xl font-bold tracking-tight text-foreground">
+              {stockName ? `Shot on ${stockName}` : "Gallery"}
+            </h3>
+            <SwitchToTabButton tabId="gallery" className="text-sm font-medium text-primary hover:underline">
+              View all
+            </SwitchToTabButton>
+          </div>
           <OverviewImageGrid flickrImages={flickrImages} />
         </section>
         {specs.length > 0 && (() => {

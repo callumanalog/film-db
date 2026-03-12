@@ -15,6 +15,8 @@ export default function GlobalError({
     console.error("App error:", error);
   }, [error]);
 
+  const isDev = process.env.NODE_ENV === "development";
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-24 text-center">
       <AlertCircle className="mb-6 h-16 w-16 text-destructive/70" aria-hidden />
@@ -22,6 +24,11 @@ export default function GlobalError({
       <p className="mt-2 max-w-md text-muted-foreground">
         The page hit an error. You can try again or go back home.
       </p>
+      {isDev && error?.message && (
+        <pre className="mt-4 max-w-2xl overflow-auto rounded-lg border border-border bg-muted/50 p-4 text-left text-sm text-foreground">
+          {error.message}
+        </pre>
+      )}
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"

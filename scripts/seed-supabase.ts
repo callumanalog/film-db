@@ -86,7 +86,7 @@ async function main() {
         grain: s.grain,
         contrast: s.contrast,
         latitude: s.latitude,
-        color_palette: s.color_palette,
+        color_balance: s.color_balance,
         discontinued: s.discontinued,
         image_url: s.image_url,
         featured: s.featured,

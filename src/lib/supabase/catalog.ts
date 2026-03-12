@@ -13,6 +13,14 @@ import type {
 } from "@/lib/types";
 import type { FilmStockPurchaseLink } from "@/lib/types";
 
+const LATITUDE_VALUES: string[] = ["very_narrow", "narrow", "moderate", "wide", "very_wide"];
+
+function parseLatitudeLevel(value: unknown): LatitudeLevel | null {
+  if (value == null || String(value).trim() === "") return null;
+  const s = String(value).trim();
+  return LATITUDE_VALUES.includes(s) ? (s as LatitudeLevel) : null;
+}
+
 function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
   return {
     id: row.id as string,
@@ -43,13 +51,12 @@ function mapRowToStock(row: Record<string, unknown>, brand: FilmBrand): FilmStoc
     grain: (row.grain as string) || null,
     contrast: (row.contrast as string) || null,
     latitude: (row.latitude as string) || null,
-    color_palette: (row.color_palette as string) || null,
-    grain_level: (row.grain_level as GrainLevel) ?? "medium",
-    contrast_level: (row.contrast_level as ContrastLevel) ?? "medium",
-    latitude_level: (row.latitude_level as LatitudeLevel) || null,
+    color_balance: row.color_balance != null && String(row.color_balance).trim() !== "" ? String(row.color_balance).trim() : null,
+    grain_level: (row.grain_level as GrainLevel) ?? (row.grain as GrainLevel) ?? "medium",
+    contrast_level: (row.contrast_level as ContrastLevel) ?? (row.contrast as ContrastLevel) ?? "medium",
+    latitude_level: parseLatitudeLevel(row.latitude_level ?? row.latitude),
     color_balance_type: (row.color_balance_type as ColorBalanceType) || null,
     color_balance_kelvin: row.color_balance_kelvin != null ? Number(row.color_balance_kelvin) : null,
-    color_balance: (row.color_balance as string) || null,
     dx_coding: Boolean(row.dx_coding),
     development_process: (row.development_process as DevelopmentProcess) || null,
     best_for,

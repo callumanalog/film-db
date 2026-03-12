@@ -171,7 +171,7 @@ export default function AdminFilmsPage() {
       grain: null,
       contrast: null,
       latitude: null,
-      color_palette: null,
+      color_balance: null,
       grain_level: "medium",
       contrast_level: "medium",
       best_for: [],

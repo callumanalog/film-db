@@ -5,7 +5,7 @@ import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand }
 import { getFilmStockStats, getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
 import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
-import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS } from "@/lib/types";
+import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS } from "@/lib/types";
 import type { LatitudeLevel, DevelopmentProcess } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
 import { CommunityReviews, CommunityGallery } from "@/components/community-section";
@@ -60,9 +60,16 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   const developmentProcessValue: DevelopmentProcess | null =
     stock.development_process ?? (stock.type === "color_negative" ? "c41" : stock.type === "color_reversal" ? "e6" : stock.type === "instant" ? "c41" : "bw");
 
-  /** Color Balance: use open-text field when set; otherwise show — (e.g. B&W). */
-  const colorBalanceValue: string =
-    (stock.color_balance && stock.color_balance.trim()) ? stock.color_balance.trim() : "—";
+  /** Color Balance: use color_balance text, else type+kelvin (e.g. "Daylight (5500K)"), else — */
+  const colorBalanceValue: string = (() => {
+    const explicit = stock.color_balance?.trim();
+    if (explicit) return explicit;
+    if (stock.color_balance_type && stock.color_balance_type in COLOR_BALANCE_LABELS) {
+      const label = COLOR_BALANCE_LABELS[stock.color_balance_type as keyof typeof COLOR_BALANCE_LABELS];
+      return stock.color_balance_kelvin != null ? `${label} (${stock.color_balance_kelvin}K)` : label;
+    }
+    return "—";
+  })();
 
   /** Latitude: only one of the 5 categories when we have latitude_level; otherwise omit. */
   const latitudeValue: string | null =
@@ -183,7 +190,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     },
     {
       id: "gallery",
-      label: "Example images",
+      label: "Gallery",
       content: (
         <section>
           <CommunityGallery stockName={stock.name} slug={slug} flickrImages={flickrImages} variant="tab" />
@@ -201,7 +208,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     },
   ];
 
-  // All film stocks use the same template: sticky left pane + tabs (Overview, Example images, Reviews)
+  // All film stocks use the same template: sticky left pane + tabs (Overview, Gallery, Reviews)
   return (
     <div className="work-sans-content">
       <ScrollToTopOnRouteChange />

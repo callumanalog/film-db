@@ -134,14 +134,26 @@ function OptionLabel({ label, description }: { label: string; description: strin
   );
 }
 
-function FilmImage({ stock, size = 144 }: { stock: HeroMockupProps["stock"]; size?: number }) {
+function FilmImage({
+  stock,
+  size = 144,
+  width: widthProp,
+  height: heightProp,
+}: {
+  stock: HeroMockupProps["stock"];
+  size?: number;
+  width?: number;
+  height?: number;
+}) {
+  const width = widthProp ?? size;
+  const height = heightProp ?? size;
   if (stock.image_url) {
     return (
       <Image
         src={stock.image_url}
         alt={stock.name}
-        width={size}
-        height={size}
+        width={width}
+        height={height}
         className="h-full w-full object-contain"
       />
     );
@@ -333,7 +345,7 @@ function UserStarRating({
               e.stopPropagation();
               onChange(0);
             }}
-            className={`absolute right-full mr-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+            className={`absolute right-full mr-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50 ${
               showClear ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
             aria-label="Clear rating"
@@ -353,20 +365,20 @@ function UserStarRating({
           return (
             <div
               key={i}
-              className="relative h-7 w-7 cursor-pointer"
+              className="relative h-6 w-6 cursor-pointer"
               onMouseMove={(e) => setHover(getValueFromEvent(e, i))}
               onClick={(e) => {
                 const val = getValueFromEvent(e, i);
                 onChange(val === value ? 0 : val);
               }}
             >
-              <Star className="absolute inset-0 h-7 w-7 text-muted-foreground/20" />
+              <Star className="absolute inset-0 h-6 w-6 text-muted-foreground/20" />
               {full && (
-                <Star className="absolute inset-0 h-7 w-7 fill-primary text-primary" />
+                <Star className="absolute inset-0 h-6 w-6 fill-primary text-primary" />
               )}
               {half && (
                 <div className="absolute inset-0 overflow-hidden" style={{ width: "50%" }}>
-                  <Star className="h-7 w-7 fill-primary text-primary" />
+                  <Star className="h-6 w-6 fill-primary text-primary" />
                 </div>
               )}
             </div>
@@ -403,6 +415,40 @@ function ShootlistActiveIcon({ className }: { className?: string }) {
   );
 }
 
+/** Inactive Shot it icon: circle + check visible always; check draws in on hover (record.club-style) */
+function ShotItIconInactive() {
+  return (
+    <span className="shot-tick-draw inline-flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground/20 transition-colors group-hover:text-primary" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-6 w-6"
+      >
+        <circle cx="12" cy="12" r="10" />
+        {/* Always-visible tick (muted, turns primary on hover) */}
+        <path
+          d="M9 12l2 2 4-4"
+          pathLength={1}
+          strokeDasharray={1}
+          strokeDashoffset={0}
+        />
+        {/* Overlay tick that draws in on hover via CSS animation */}
+        <path
+          className="tick-draw-path"
+          d="M9 12l2 2 4-4"
+          pathLength={1}
+          strokeDasharray={1}
+          strokeDashoffset={1}
+        />
+      </svg>
+    </span>
+  );
+}
+
 type LogActionId = (typeof LOG_OPTIONS)[number]["id"];
 
 export function StickyLeftPane({ stock }: HeroMockupProps) {
@@ -421,6 +467,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
   const [trackModalOpen, setTrackModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
+  const [hoveredActionId, setHoveredActionId] = useState<"shot" | "favorite" | null>(null);
 
   const isShot = shotSlugs.includes(slug);
   const isFavourite = favouriteSlugs.includes(slug);
@@ -463,28 +510,32 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
 
   return (
     <div className="w-full min-w-0 sm:w-56 sm:min-w-[14rem] sm:shrink-0 sm:self-start sm:overflow-visible">
-      {/* Image card */}
+      {/* Image card — image, Shot it | Shootlist, then Log a roll (same layout for all film pages) */}
       <div className="relative mx-auto w-full max-w-full overflow-hidden rounded-xl border border-border/50 bg-white sm:mx-0 sm:w-full">
-        <span
-          className={`absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${stock.discontinued ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}
-        >
-          {stock.discontinued ? "Discontinued" : "Available"}
-        </span>
-        <div className="flex items-center justify-center p-6">
-          <div className="h-48 w-40">
-            <FilmImage stock={stock} size={192} />
+        {stock.discontinued && (
+          <span
+            className="absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+            aria-hidden
+          >
+            Discontinued
+          </span>
+        )}
+        <div className="flex items-center justify-center px-6 pt-0 pb-0">
+          <div className={slug === "cinestill-800t" ? "h-40 w-48" : "h-48 w-40"}>
+            <FilmImage
+              stock={stock}
+              size={192}
+              {...(slug === "cinestill-800t" ? { width: 192, height: 160 } : {})}
+            />
           </div>
         </div>
-      </div>
-
-      {/* Card 1: Shot | Shootlist, then Log a roll (still connected) */}
-      <div className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-card divide-y divide-border/50">
-        <div className="grid grid-cols-2 gap-0" role="group" aria-label="Film stock actions">
+        <div className="grid grid-cols-2 gap-0 border-t border-border/50 [&>*:first-child]:border-r [&>*:first-child]:border-border/50" role="group" aria-label="Film stock actions">
           {LOG_OPTIONS.map(({ id, fullLabel, Icon }) => {
             const label = id === "shot" ? "Shot it" : "Shootlist";
             const isActive = id === "shot" ? isShot : isFavourite;
             const filledIcon = isActive && id === "favorite";
             const shotActive = isActive && id === "shot";
+            const showRemove = isActive && hoveredActionId === id;
             return (
               <button
                 key={id}
@@ -493,28 +544,33 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
                 title={fullLabel}
                 aria-pressed={isActive}
                 aria-label={fullLabel}
-                className="group flex flex-col items-center justify-center gap-2 px-2 py-5 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground"
+                className="group flex flex-col items-center justify-center gap-2 px-2 py-3 text-xs font-normal normal-case transition-colors hover:bg-muted/60 text-muted-foreground"
+                onMouseEnter={() => setHoveredActionId(id)}
+                onMouseLeave={() => setHoveredActionId(null)}
               >
                 {shotActive ? (
                   <ShotActiveIcon />
                 ) : filledIcon ? (
                   <ShootlistActiveIcon />
+                ) : id === "shot" ? (
+                  <ShotItIconInactive />
                 ) : (
-                  <Icon className="h-6 w-6 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-primary" aria-hidden />
+                  <Icon
+                    className="h-6 w-6 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-primary transition-transform duration-200 group-hover:rotate-90"
+                    aria-hidden
+                  />
                 )}
                 <span className="text-inherit font-medium transition-colors group-hover:text-foreground">
-                  {label}
+                  {showRemove ? "Remove" : label}
                 </span>
               </button>
             );
           })}
         </div>
-
-        {/* Log a roll — text only, centered */}
         <button
           type="button"
           onClick={() => setTrackModalOpen(true)}
-          className="group flex w-full items-center justify-center px-4 py-4 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+          className="group flex w-full items-center justify-center border-t border-border/50 px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
         >
           <span className="font-medium transition-colors group-hover:text-foreground">Log a roll</span>
         </button>
@@ -527,10 +583,10 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
           onMouseEnter={() => setRatingRowHover(true)}
           onMouseLeave={() => setRatingRowHover(false)}
         >
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Rate</p>
           <div className="flex justify-center">
             <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
           </div>
+          <p className="mt-2 text-xs font-medium text-muted-foreground">Rate</p>
         </div>
 
         {/* Row: Write review — text only, centered */}
@@ -540,7 +596,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
             setReviewModalMode("review");
             setReviewModalOpen(true);
           }}
-          className="group flex w-full items-center justify-center px-4 py-4 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+          className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
         >
           <span className="font-medium transition-colors group-hover:text-foreground">Write review</span>
         </button>
@@ -552,7 +608,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
             setReviewModalMode("upload");
             setReviewModalOpen(true);
           }}
-          className="group flex w-full items-center justify-center px-4 py-4 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+          className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
         >
           <span className="font-medium transition-colors group-hover:text-foreground">Post shots</span>
         </button>
