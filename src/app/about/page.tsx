@@ -11,7 +11,7 @@ export default function AboutPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
       <div className="mb-10 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+        <div className="flex h-12 w-12 items-center justify-center rounded-[7px] bg-primary">
           <Film className="h-6 w-6 text-primary-foreground" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">About FilmDB</h1>
@@ -68,7 +68,7 @@ export default function AboutPage() {
         </ul>
       </div>
 
-      <div className="mt-12 rounded-xl border border-primary/20 bg-primary/5 p-6 text-center">
+      <div className="mt-12 rounded-[7px] border border-primary/20 bg-primary/5 p-6 text-center">
         <p className="font-semibold text-foreground">Ready to explore?</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Browse our database of film stocks from Kodak, Fujifilm, Ilford, and more.

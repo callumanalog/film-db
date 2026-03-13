@@ -6,7 +6,7 @@ export default function FilmsLoading() {
         <div className="mt-3 h-5 w-64 animate-pulse rounded-md bg-muted" />
       </div>
 
-      <div className="mb-6 h-10 max-w-md animate-pulse rounded-xl bg-muted" />
+      <div className="mb-6 h-10 max-w-md animate-pulse rounded-[7px] bg-muted" />
 
       <div className="flex flex-col gap-8 lg:flex-row">
         <div className="w-full shrink-0 space-y-6 lg:w-56">

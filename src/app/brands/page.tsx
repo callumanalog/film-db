@@ -32,7 +32,7 @@ export default async function BrandsPage() {
           <Link
             key={brand.id}
             href={`/brands/${brand.slug}`}
-            className="group rounded-xl border border-border/50 bg-card p-6 transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+            className="group rounded-[7px] border border-border/50 bg-card p-6 transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
           >
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-secondary text-xl font-bold text-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">

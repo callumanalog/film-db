@@ -4,7 +4,7 @@ export default function FilmDetailLoading() {
       <div className="mb-6 h-5 w-32 animate-pulse rounded bg-muted" />
 
       <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-        <div className="h-32 w-32 shrink-0 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-32 w-32 shrink-0 animate-pulse rounded-[7px] bg-muted" />
         <div className="flex-1 space-y-3">
           <div className="h-4 w-20 animate-pulse rounded bg-muted" />
           <div className="h-10 w-64 animate-pulse rounded-lg bg-muted" />
@@ -25,7 +25,7 @@ export default function FilmDetailLoading() {
             <div className="h-5 w-5 animate-pulse rounded bg-muted" />
             <div className="h-6 w-36 animate-pulse rounded bg-muted" />
           </div>
-          <div className="h-32 animate-pulse rounded-xl bg-muted" />
+          <div className="h-32 animate-pulse rounded-[7px] bg-muted" />
         </div>
       ))}
     </div>

@@ -3,12 +3,10 @@ import type { Metadata } from "next";
 import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/queries";
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { FilmsListingClient } from "@/app/films/films-listing-client";
-import { FilterSidebar } from "@/components/filter-sidebar";
+import { DiscoveryHeader } from "@/components/discovery-header";
 import { FilmsSortBar } from "@/components/films-sort-bar";
-import { SearchBar } from "@/components/search-bar";
 import { ActiveFilterChips } from "@/components/active-filter-chips";
-import { ClearFiltersLink } from "@/components/clear-filters-link";
-import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
+import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor, DiscoveryVibe } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Film Stocks",
@@ -18,6 +16,7 @@ export const metadata: Metadata = {
 interface FilmsPageProps {
   searchParams: Promise<{
     search?: string;
+    vibe?: string;
     brand?: string;
     type?: string;
     format?: string;
@@ -52,11 +51,22 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   const saturationArr = parseMultiParam(params.saturation) as SaturationFilter[];
   const bestForArr = parseMultiParam(params.bestFor) as BestFor[];
   const isoArr = parseMultiParam(params.iso).map((s) => Number(s)).filter((n) => !Number.isNaN(n));
+  const vibeParam = params.vibe as DiscoveryVibe | undefined;
+  const validVibes: DiscoveryVibe[] = [
+    "golden_hour",
+    "soft_portraits",
+    "gritty_street",
+    "neon_nights",
+    "vivid_landscapes",
+    "experimental",
+  ];
+  const vibe = vibeParam && validVibes.includes(vibeParam) ? vibeParam : undefined;
 
   const sortParam = params.sort === "alphabetical" ? "alphabetical" : "highest-rated";
 
   const stocksUnsorted = await getFilmStocks({
     search: params.search,
+    vibe,
     brand: brandArr.length ? brandArr : undefined,
     type: typeArr.length ? typeArr : undefined,
     format: formatArr.length ? formatArr : undefined,
@@ -85,6 +95,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
 
   const activeFilterCount = [
     params.search,
+    vibe,
     ...brandArr,
     ...typeArr,
     ...formatArr,
@@ -97,38 +108,19 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   ].filter(Boolean).length;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pt-20 pb-8 sm:px-6 sm:pt-24 lg:px-8">
-      <header className="mb-10 text-center">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl font-advercase">
-          Film Stocks
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {stocks.length} film stock{stocks.length !== 1 ? "s" : ""}{" "}
-          {activeFilterCount > 0 ? "matching your filters" : "in our database"}
-        </p>
-      </header>
+    <div className="min-h-screen bg-[oklch(0.985_0.002_75)]">
+      <div className="mx-auto max-w-7xl px-4 pt-20 pb-8 sm:px-6 sm:pt-24 lg:px-8">
+        <div className="mb-3">
+          <DiscoveryHeader
+            brands={brands}
+            filterOptions={filterOptions}
+            currentSort={params.sort === "alphabetical" ? "alphabetical" : "highest-rated"}
+          />
+        </div>
 
-      <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-        <aside className="w-full shrink-0 lg:w-56 xl:w-60 lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-4 space-y-4">
-          <div className="hidden h-[3.75rem] shrink-0 lg:block" aria-hidden />
-          <SearchBar defaultValue={params.search || ""} className="w-full" />
-          <Suspense>
-            <ClearFiltersLink />
-          </Suspense>
-          <Suspense>
-            <FilterSidebar brands={brands} filterOptions={filterOptions} />
-          </Suspense>
-        </aside>
-        <main className="min-w-0 flex-1">
-          <div className="mb-2 flex min-h-10 items-center justify-end">
-            <Suspense>
-              <FilmsSortBar
-                currentSort={params.sort === "alphabetical" ? "alphabetical" : "highest-rated"}
-              />
-            </Suspense>
-          </div>
+        <main className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1 flex items-center">
+            <div className="min-w-0 flex-1">
               <Suspense>
                 <ActiveFilterChips brands={brands} />
               </Suspense>

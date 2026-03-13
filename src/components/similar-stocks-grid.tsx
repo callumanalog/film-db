@@ -25,7 +25,6 @@ export function SimilarStocksGrid({ stocks, statsBySlug }: SimilarStocksGridProp
           stock={s}
           useWorkSansTitle
           shotSlugs={shotSlugs}
-          avgRating={statsBySlug?.[s.slug]?.avgRating ?? null}
         />
       ))}
     </div>

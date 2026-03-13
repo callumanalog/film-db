@@ -3,53 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { FilmBrand, FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
-import type { FilmFilterOptions } from "@/lib/supabase/queries";
+import type { FilmFilterOptions, IsoFilterOption } from "@/lib/supabase/queries";
 import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, BEST_FOR_LABELS } from "@/lib/types";
-import {
-  ChevronDown,
-  Palette,
-  Gauge,
-  ScanLine,
-  Contrast as ContrastIcon,
-  Building2,
-  UserCircle,
-  Mountain,
-  Heart,
-  Plane,
-  Moon,
-  LampDesk,
-  Sun,
-  SunDim,
-  Trophy,
-  Sparkles,
-  Aperture,
-  Film,
-  Maximize2,
-  Droplets,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-
-const BEST_FOR_ICONS: Record<BestFor, LucideIcon> = {
-  portrait: UserCircle,
-  landscape: Mountain,
-  street: Building2,
-  wedding: Heart,
-  travel: Plane,
-  night: Moon,
-  studio: LampDesk,
-  everyday: Sun,
-  sports: Trophy,
-  sunny_conditions: SunDim,
-  creative: Sparkles,
-};
-
-const TYPE_ICONS: Record<FilmType, LucideIcon> = {
-  color_negative: Palette,
-  color_reversal: Palette,
-  bw_negative: ContrastIcon,
-  bw_reversal: ContrastIcon,
-  instant: Film,
-};
+import { ChevronDown } from "lucide-react";
 
 interface FilterSidebarProps {
   brands: FilmBrand[];
@@ -76,6 +32,8 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
   const selectedBestFor = getParamArray(searchParams, "bestFor");
   const selectedIsos = getParamArray(searchParams, "iso");
 
+  const ISO_8_80_VALUES = ["8", "12", "20", "25", "50", "80"];
+
   const toggleMulti = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -93,15 +51,29 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
     [router, searchParams]
   );
 
+  const toggleIso8_80 = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    const current = getParamArray(params, "iso");
+    const all8_80Selected = ISO_8_80_VALUES.every((v) => current.includes(v));
+    const next = all8_80Selected
+      ? current.filter((x) => !ISO_8_80_VALUES.includes(x))
+      : [...current.filter((x) => !ISO_8_80_VALUES.includes(x)), ...ISO_8_80_VALUES];
+    if (next.length === 0) {
+      params.delete("iso");
+    } else {
+      params.set("iso", next.join(","));
+    }
+    router.push(`/films?${params.toString()}`);
+  }, [router, searchParams]);
+
   return (
     <div className="space-y-1">
       <nav className="flex flex-col gap-0" aria-label="Filters">
-        <FilterAccordion defaultOpen twoColumns={false} title="Type">
+        <FilterAccordion defaultOpen title="Type">
           <FilterPillGrid>
             {filterOptions.types.map((type) => (
               <FilterPill
                 key={type}
-                icon={TYPE_ICONS[type]}
                 label={FILM_TYPE_LABELS[type]}
                 selected={selectedTypes.includes(type)}
                 onToggle={() => toggleMulti("type", type)}
@@ -110,12 +82,11 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={false} title="Format">
+        <FilterAccordion defaultOpen={false} title="Format">
           <FilterPillGrid>
             {filterOptions.formats.map((format) => (
               <FilterPill
                 key={format}
-                icon={Aperture}
                 label={format}
                 selected={selectedFormats.includes(format)}
                 onToggle={() => toggleMulti("format", format)}
@@ -124,26 +95,33 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={true} title="ISO">
+        <FilterAccordion defaultOpen={false} title="ISO">
           <FilterPillGrid>
-            {filterOptions.isos.map((iso) => (
-              <FilterPill
-                key={iso}
-                icon={Gauge}
-                label={String(iso)}
-                selected={selectedIsos.includes(String(iso))}
-                onToggle={() => toggleMulti("iso", String(iso))}
-              />
-            ))}
+            {filterOptions.isos.map((iso: IsoFilterOption) =>
+              iso === "8-80" ? (
+                <FilterPill
+                  key="8-80"
+                  label="8-80"
+                  selected={ISO_8_80_VALUES.every((v) => selectedIsos.includes(v))}
+                  onToggle={toggleIso8_80}
+                />
+              ) : (
+                <FilterPill
+                  key={iso}
+                  label={String(iso)}
+                  selected={selectedIsos.includes(String(iso))}
+                  onToggle={() => toggleMulti("iso", String(iso))}
+                />
+              )
+            )}
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={false} title="Grain">
+        <FilterAccordion defaultOpen={false} title="Grain">
           <FilterPillGrid>
             {filterOptions.grains.map((level) => (
               <FilterPill
                 key={level}
-                icon={ScanLine}
                 label={GRAIN_LABELS[level]}
                 selected={selectedGrains.includes(level)}
                 onToggle={() => toggleMulti("grain", level)}
@@ -152,12 +130,11 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={false} title="Contrast">
+        <FilterAccordion defaultOpen={false} title="Contrast">
           <FilterPillGrid>
             {filterOptions.contrasts.map((level) => (
               <FilterPill
                 key={level}
-                icon={ContrastIcon}
                 label={CONTRAST_LABELS[level]}
                 selected={selectedContrasts.includes(level)}
                 onToggle={() => toggleMulti("contrast", level)}
@@ -166,12 +143,11 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={false} title="Latitude">
+        <FilterAccordion defaultOpen={false} title="Latitude">
           <FilterPillGrid>
             {filterOptions.latitudes.map((level) => (
               <FilterPill
                 key={level}
-                icon={Maximize2}
                 label={LATITUDE_LABELS[level]}
                 selected={selectedLatitudes.includes(level)}
                 onToggle={() => toggleMulti("latitude", level)}
@@ -180,12 +156,11 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={false} title="Saturation">
+        <FilterAccordion defaultOpen={false} title="Saturation">
           <FilterPillGrid>
             {filterOptions.saturations.map((level) => (
               <FilterPill
                 key={level}
-                icon={Droplets}
                 label={SATURATION_LABELS[level]}
                 selected={selectedSaturations.includes(level)}
                 onToggle={() => toggleMulti("saturation", level)}
@@ -194,12 +169,11 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={false} title="Brand">
+        <FilterAccordion defaultOpen={false} title="Brand">
           <FilterPillGrid>
             {brands.map((brand) => (
               <FilterPill
                 key={brand.slug}
-                icon={Building2}
                 label={brand.name}
                 selected={selectedBrands.includes(brand.slug)}
                 onToggle={() => toggleMulti("brand", brand.slug)}
@@ -208,12 +182,11 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} twoColumns={false} title="Use case">
+        <FilterAccordion defaultOpen={false} title="Use case">
           <FilterPillGrid>
             {filterOptions.bestFor.map((bf) => (
               <FilterPill
                 key={bf}
-                icon={BEST_FOR_ICONS[bf]}
                 label={BEST_FOR_LABELS[bf]}
                 selected={selectedBestFor.includes(bf)}
                 onToggle={() => toggleMulti("bestFor", bf)}
@@ -229,12 +202,10 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
 function FilterAccordion({
   title,
   defaultOpen,
-  twoColumns,
   children,
 }: {
   title: string;
   defaultOpen: boolean;
-  twoColumns: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -253,9 +224,7 @@ function FilterAccordion({
         />
       </button>
       {open && (
-        <div
-          className={`grid gap-2 pb-4 ${twoColumns ? "grid-cols-2" : "grid-cols-1"}`}
-        >
+        <div className="grid grid-cols-2 gap-2 pb-4">
           {children}
         </div>
       )}
@@ -268,12 +237,10 @@ function FilterPillGrid({ children }: { children: React.ReactNode }) {
 }
 
 function FilterPill({
-  icon: Icon,
   label,
   selected,
   onToggle,
 }: {
-  icon: LucideIcon;
   label: string;
   selected: boolean;
   onToggle: () => void;
@@ -282,13 +249,12 @@ function FilterPill({
     <button
       type="button"
       onClick={onToggle}
-      className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+      className={`inline-flex min-w-0 items-center justify-center rounded-[6px] border px-2.5 py-1.5 text-xs font-medium transition-colors ${
         selected
           ? "border-primary bg-primary/10 text-primary"
           : "border-border/60 bg-secondary/30 text-foreground hover:border-primary/40 hover:bg-primary/5"
       }`}
     >
-      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
       <span className="truncate">{label}</span>
     </button>
   );

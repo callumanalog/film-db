@@ -42,6 +42,10 @@ import {
   Calendar,
   CirclePlus,
   Plus,
+  Landmark,
+  Sunset,
+  Lightbulb,
+  FileVideo,
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
 import { TrackFilmModal } from "@/components/track-film-modal";
@@ -60,17 +64,21 @@ import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
 
 const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
+  general_purpose: Sun,
   portrait: UserCircle,
-  landscape: Mountain,
   street: Building2,
-  wedding: Heart,
-  travel: Plane,
-  night: Moon,
-  studio: LampDesk,
-  everyday: Sun,
+  landscapes: Mountain,
+  architecture: Landmark,
+  documentary: FileVideo,
   sports: Trophy,
-  sunny_conditions: SunDim,
-  creative: Sparkles,
+  travel: Plane,
+  weddings: Heart,
+  studio: LampDesk,
+  bright_sun: SunDim,
+  golden_hour: Sunset,
+  low_light: Moon,
+  artificial_light: Lightbulb,
+  experimental: Sparkles,
 };
 
 interface PurchaseLink {
@@ -189,7 +197,7 @@ function OptionA({ stock }: HeroMockupProps) {
         label="Option A — Cinematic Banner"
         description="Full-width horizontal banner. Film canister on the left, big bold name, stats as a horizontal row of pills."
       />
-      <div className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+      <div className="rounded-[7px] border border-border/50 bg-card overflow-hidden">
         <div className="flex items-center gap-8 p-8">
           <div className="flex h-32 w-32 shrink-0 items-center justify-center">
             <FilmImage stock={stock} size={128} />
@@ -233,7 +241,7 @@ function OptionB({ stock }: HeroMockupProps) {
         label="Option B — Compact Catalog Header"
         description="Single tight row: thumbnail, name, inline badges, and action buttons on the right. Description below."
       />
-      <div className="rounded-2xl border border-border/50 bg-card px-5 py-4">
+      <div className="rounded-[7px] border border-border/50 bg-card px-5 py-4">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center">
             <FilmImage stock={stock} size={64} />
@@ -389,7 +397,7 @@ function UserStarRating({
                 }
               }}
             >
-              <Star className="absolute inset-0 h-6 w-6 text-muted-foreground/20" />
+              <Star className="absolute inset-0 h-6 w-6 fill-none stroke-[1.5] text-muted-foreground/50" />
               {full && (
                 <Star className="absolute inset-0 h-6 w-6 fill-primary text-primary" />
               )}
@@ -540,7 +548,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
       <div className="grid grid-cols-1 gap-4">
       <div className="flex min-w-0 flex-col gap-3">
       {/* Image card — mobile: image + Shot it | Shootlist | Log a roll (3 in row); md+: image + 2-col + Log a roll */}
-      <div className="relative mx-auto w-full min-w-0 max-w-sm overflow-hidden rounded-xl border border-border/50 bg-white md:mx-0 md:max-w-none md:w-full">
+      <div className="relative mx-auto w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-white md:mx-0 md:max-w-none md:w-full">
         {stock.discontinued && (
           <span
             className="absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
@@ -649,7 +657,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
             className="group flex flex-col items-center justify-center gap-2 px-2 py-3 text-xs font-normal normal-case transition-colors hover:bg-muted/60 text-muted-foreground hover:text-foreground"
             aria-label="Actions"
           >
-            <Star className="h-6 w-6 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-primary" aria-hidden />
+            <Star className="h-6 w-6 shrink-0 fill-none stroke-[1.5] text-muted-foreground/50 transition-colors group-hover:text-primary group-hover:fill-primary/10 group-hover:stroke-primary" aria-hidden />
             <span className="text-inherit font-medium transition-colors group-hover:text-foreground">Actions</span>
           </button>
         </div>
@@ -657,7 +665,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
       </div>
 
       {/* Card 2: Rate + Write review + Post a shot (hidden below md; gap above when stacked on md+) */}
-      <div className="hidden overflow-hidden rounded-xl border border-border/50 bg-card divide-y divide-border/50 md:block md:mt-4">
+      <div className="hidden overflow-hidden rounded-[7px] border border-border/50 bg-card divide-y divide-border/50 md:block md:mt-4">
         <div
           className="px-4 py-3 text-center"
           onMouseEnter={() => setRatingRowHover(true)}
@@ -698,7 +706,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
       {/* Mobile Actions drawer — same content and styling as desktop rating card */}
       <Sheet open={actionsDrawerOpen} onOpenChange={setActionsDrawerOpen}>
         <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">
-          <div className="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50 bg-card">
+          <div className="divide-y divide-border/50 overflow-hidden rounded-[7px] border border-border/50 bg-card">
             <button
               type="button"
               onClick={() => closeDrawerThen(() => setTrackModalOpen(true))}
@@ -747,7 +755,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
             <button
               type="button"
               onClick={() => closeDrawerThen(() => { setReviewModalMode("review"); setReviewModalOpen(true); })}
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-primary/10 py-3 text-base font-semibold text-foreground transition-colors hover:bg-primary/15"
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[7px] bg-primary/10 py-3 text-base font-semibold text-foreground transition-colors hover:bg-primary/15"
             >
               <Pencil className="h-5 w-5 shrink-0" aria-hidden />
               Write a review
@@ -866,7 +874,7 @@ export function BuyRightPane({ stock }: HeroMockupProps) {
   const links = stock.purchase_links ?? [];
   if (links.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+    <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card">
       <div className="px-4 py-3">
         <h3 className="text-xl font-bold tracking-tight text-foreground">Buy this stock</h3>
       </div>
@@ -1001,7 +1009,7 @@ export function SpecsTable({ specs }: { specs: { label: string; value: string }[
   if (specs.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+    <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card">
       <div className="px-4 py-3">
         <h2 className="text-xl font-bold tracking-tight text-foreground">Specs</h2>
       </div>
@@ -1042,7 +1050,7 @@ export function SpecsRightPane({ specs }: { specs: { label: string; value: strin
 
   return (
     <div>
-      <div className="overflow-hidden rounded-xl border border-border/50">
+      <div className="overflow-hidden rounded-[7px] border border-border/50">
         <div className="border-b border-border/50 px-4 py-3">
           <p className="font-advercase text-sm font-bold tracking-tight">Specs</p>
         </div>
@@ -1064,7 +1072,7 @@ export function FilmDetailSpecsPane({ specs }: { specs: { label: string; value: 
   return (
     <div className="w-full sm:w-56 sm:shrink-0">
       <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h2>
-      <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+      <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card">
         <div className="pb-5">
           {specs.map((spec) => {
             const Icon = SPEC_ICONS[spec.label];
@@ -1102,7 +1110,7 @@ export function SpecsGrid({ specs }: { specs: { label: string; value: string }[]
   if (specs.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-4">
+    <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card p-4">
       <div className="grid grid-cols-3 gap-x-6 gap-y-4">
         {specs.map((spec) => {
           const Icon = SPEC_ICONS[spec.label];
@@ -1138,7 +1146,7 @@ export function SpecsGrid({ specs }: { specs: { label: string; value: string }[]
 export function SpecsGridOptionA({ specs }: { specs: { label: string; value: string }[] }) {
   if (specs.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-4">
+    <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card p-4">
       <div className="grid grid-cols-3 gap-x-6 gap-y-4">
         {specs.map((spec) => {
           const Icon = SPEC_ICONS[spec.label];
@@ -1167,7 +1175,7 @@ export function SpecsGridOptionA({ specs }: { specs: { label: string; value: str
 export function SpecsGridOptionB({ specs }: { specs: { label: string; value: string }[] }) {
   if (specs.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+    <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card">
       <table className="w-full text-left text-sm">
         <tbody>
           {specs.map((spec) => (
@@ -1190,7 +1198,7 @@ export function SpecsGridOptionB({ specs }: { specs: { label: string; value: str
 export function SpecsGridOptionC({ specs }: { specs: { label: string; value: string }[] }) {
   if (specs.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card p-4">
+    <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card p-4">
       <div className="grid grid-cols-3 gap-4">
         {specs.map((spec) => (
           <div key={spec.label} className="flex flex-col items-center text-center">
@@ -1211,7 +1219,7 @@ export function SpecsGridOptionC({ specs }: { specs: { label: string; value: str
 export function SpecsGridOptionD({ specs }: { specs: { label: string; value: string }[] }) {
   if (specs.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+    <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card">
       <dl className="divide-y divide-border/50">
         {specs.map((spec, i) => (
           <div
@@ -1264,7 +1272,7 @@ export function PriceBuyCard({ stock }: HeroMockupProps) {
   const links = stock.purchase_links ?? [];
   if (links.length === 0 && stock.base_price_usd === null) return null;
   return (
-    <div className="mb-8 rounded-xl border border-border/50 bg-card p-4">
+    <div className="mb-8 rounded-[7px] border border-border/50 bg-card p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-medium text-muted-foreground">Avg. price per roll</p>
@@ -1300,7 +1308,7 @@ function CircleAction({ icon: Icon, label }: { icon: React.ElementType; label: s
 
 function RectAction({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
-    <button className="group flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card py-3 transition-all hover:border-primary/40 hover:bg-primary/5">
+    <button className="group flex flex-col items-center gap-2 rounded-[7px] border border-border/60 bg-card py-3 transition-all hover:border-primary/40 hover:bg-primary/5">
       <Icon className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
       <span className="font-advercase text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-foreground">{label}</span>
     </button>
@@ -1352,7 +1360,7 @@ function OptionE({ stock }: HeroMockupProps) {
         <QuickActions />
       </div>
 
-      <div className="mt-6 rounded-xl border border-border/50 bg-card p-5">
+      <div className="mt-6 rounded-[7px] border border-border/50 bg-card p-5">
         <div className="mb-2 flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold">About this stock</h2>
@@ -1374,7 +1382,7 @@ function OptionF({ stock }: HeroMockupProps) {
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
         {/* Left: Image card with quick stats */}
         <div className="shrink-0 sm:w-48">
-          <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+          <div className="overflow-hidden rounded-[7px] border border-border/50 bg-card">
             <div className="flex h-52 w-full items-center justify-center p-3">
               <FilmImage stock={stock} size={200} />
             </div>
@@ -1408,7 +1416,7 @@ function OptionF({ stock }: HeroMockupProps) {
 
         {/* Right: Community action card */}
         <div className="shrink-0 sm:w-52">
-          <div className="rounded-xl border border-border/50 bg-card divide-y divide-border/50">
+          <div className="rounded-[7px] border border-border/50 bg-card divide-y divide-border/50">
             <CommunityActionRow icon={CheckCircle2} label="I've Shot This" activeColor="emerald" />
             <CommunityActionRow icon={Film} label="Track" activeColor="blue" />
             <CommunityActionRow icon={CirclePlus} label="Shootlist" activeColor="primary" />
@@ -1427,7 +1435,7 @@ function OptionF({ stock }: HeroMockupProps) {
           </div>
 
           {/* Ratings summary */}
-          <div className="mt-4 rounded-xl border border-border/50 bg-card px-4 py-3">
+          <div className="mt-4 rounded-[7px] border border-border/50 bg-card px-4 py-3">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ratings</p>
               <p className="text-xs text-muted-foreground">600 fans</p>

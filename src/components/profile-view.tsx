@@ -193,7 +193,6 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                       stock={stock}
                       useWorkSansTitle
                       shotSlugs={profile.shotSlugs}
-                      avgRating={statsBySlug[stock.slug]?.avgRating ?? null}
                     />
                   ))}
                 </div>
@@ -217,7 +216,6 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                       stock={stock}
                       useWorkSansTitle
                       shotSlugs={profile.shotSlugs}
-                      avgRating={statsBySlug[stock.slug]?.avgRating ?? null}
                     />
                   ))}
                 </div>
@@ -242,7 +240,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                       <li key={entry.slug}>
                         <Link
                           href={`/films/${entry.slug}`}
-                          className="block rounded-xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                          className="block rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
                         >
                           <div className="flex flex-wrap items-start gap-4">
                             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -300,7 +298,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                       <li key={r.slug}>
                         <Link
                           href={`/films/${r.slug}`}
-                          className="flex items-center gap-4 rounded-xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
                         >
                           <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
                             {stock.image_url ? (
@@ -351,7 +349,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                             <li key={r.id}>
                               <Link
                                 href={`/films/${r.film_stock_slug}`}
-                                className="flex items-center gap-4 rounded-xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                                className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
                               >
                                 <div className="min-w-0 flex-1">
                                   <span className="font-semibold text-foreground">{stockName}</span>
@@ -394,7 +392,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                             <Link
                               key={u.id}
                               href={`/films/${u.film_stock_slug}`}
-                              className="group overflow-hidden rounded-xl border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
+                              className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
                             >
                               <div className="relative aspect-[4/3] bg-muted">
                                 {u.image_url ? (
@@ -450,7 +448,7 @@ function ProfileSection({
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       <div className="mt-6">
         {isEmpty ? (
-          <p className="rounded-xl border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+          <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
             {emptyMessage}
           </p>
         ) : (

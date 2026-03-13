@@ -63,7 +63,7 @@ export function SearchBar({
             }
           }}
           placeholder={placeholder}
-          className={`w-full rounded-xl border border-border/60 bg-secondary/50 font-medium text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-primary/50 focus:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 ${sizeClasses}`}
+          className={`w-full rounded-[7px] border border-border/60 bg-secondary/50 font-medium text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-primary/50 focus:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 ${sizeClasses}`}
         />
         {showClear && (
           <button

@@ -1,14 +1,34 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import type { FilmBrand, FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
-import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, BEST_FOR_LABELS } from "@/lib/types";
+import type { FilmBrand, FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor, DiscoveryVibe } from "@/lib/types";
+import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, BEST_FOR_LABELS, DISCOVERY_VIBE_LABELS } from "@/lib/types";
 import { X } from "lucide-react";
+
+/** bestFor sets used by Discovery pills — when URL matches one of these, we hide bestFor chips. */
+const DISCOVERY_PILL_BEST_FOR_SETS: string[][] = [
+  ["golden_hour", "landscapes"].sort(),
+  ["portrait", "weddings"].sort(),
+  ["street", "documentary"].sort(),
+  ["artificial_light", "low_light"].sort(),
+  ["landscapes", "bright_sun"].sort(),
+  ["general_purpose"].sort(),
+  ["travel"].sort(),
+  ["experimental"].sort(),
+];
 
 function getParamArray(searchParams: URLSearchParams, key: string): string[] {
   const v = searchParams.get(key);
   if (!v) return [];
   return v.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function bestForMatchesDiscoveryPill(selectedBestFor: string[]): boolean {
+  if (selectedBestFor.length === 0) return false;
+  const sorted = [...selectedBestFor].sort();
+  return DISCOVERY_PILL_BEST_FOR_SETS.some(
+    (set) => set.length === sorted.length && set.every((v, i) => v === sorted[i])
+  );
 }
 
 function removeParamValue(
@@ -50,8 +70,13 @@ export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
   const selectedBrands = getParamArray(searchParams, "brand");
   const selectedBestFor = getParamArray(searchParams, "bestFor");
   const selectedIsos = getParamArray(searchParams, "iso");
+  const vibe = searchParams.get("vibe");
+  const hideBestForChips = bestForMatchesDiscoveryPill(selectedBestFor);
 
   const chips: Chip[] = [
+    ...(vibe && vibe in DISCOVERY_VIBE_LABELS
+      ? [{ key: "vibe", value: vibe, label: DISCOVERY_VIBE_LABELS[vibe as DiscoveryVibe] }]
+      : []),
     ...selectedTypes.map((value) => ({
       key: "type",
       value,
@@ -65,33 +90,33 @@ export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
     ...selectedGrains.map((value) => ({
       key: "grain",
       value,
-      label: GRAIN_LABELS[value as GrainFilter] ?? value,
+      label: `Grain: ${GRAIN_LABELS[value as GrainFilter] ?? value}`,
     })),
     ...selectedContrasts.map((value) => ({
       key: "contrast",
       value,
-      label: CONTRAST_LABELS[value as ContrastFilter] ?? value,
+      label: `Contrast: ${CONTRAST_LABELS[value as ContrastFilter] ?? value}`,
     })),
     ...selectedLatitudes.map((value) => ({
       key: "latitude",
       value,
-      label: LATITUDE_LABELS[value as LatitudeFilter] ?? value,
+      label: `Latitude: ${LATITUDE_LABELS[value as LatitudeFilter] ?? value}`,
     })),
     ...selectedSaturations.map((value) => ({
       key: "saturation",
       value,
-      label: SATURATION_LABELS[value as SaturationFilter] ?? value,
+      label: `Saturation: ${SATURATION_LABELS[value as SaturationFilter] ?? value}`,
     })),
     ...selectedBrands.map((slug) => ({
       key: "brand",
       value: slug,
       label: brands.find((b) => b.slug === slug)?.name ?? slug,
     })),
-    ...selectedBestFor.map((value) => ({
+    ...(hideBestForChips ? [] : selectedBestFor.map((value) => ({
       key: "bestFor",
       value,
       label: BEST_FOR_LABELS[value as BestFor] ?? value,
-    })),
+    }))),
     ...selectedIsos.map((value) => ({
       key: "iso",
       value,

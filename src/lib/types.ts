@@ -47,17 +47,39 @@ export type DevelopmentProcess = "c41" | "e6" | "bw" | "ecn2";
 export type ColorBalanceType = "daylight" | "tungsten" | "neutral" | "daylight_balanced";
 
 export type BestFor =
+  | "general_purpose"
   | "portrait"
-  | "landscape"
   | "street"
-  | "wedding"
-  | "travel"
-  | "night"
-  | "studio"
-  | "everyday"
+  | "landscapes"
+  | "architecture"
+  | "documentary"
   | "sports"
-  | "sunny_conditions"
-  | "creative";
+  | "travel"
+  | "weddings"
+  | "studio"
+  | "bright_sun"
+  | "golden_hour"
+  | "low_light"
+  | "artificial_light"
+  | "experimental";
+
+/** Discovery pill vibes: map to filter criteria for the Film Stocks landing page. */
+export type DiscoveryVibe =
+  | "golden_hour"
+  | "soft_portraits"
+  | "gritty_street"
+  | "neon_nights"
+  | "vivid_landscapes"
+  | "experimental";
+
+export const DISCOVERY_VIBE_LABELS: Record<DiscoveryVibe, string> = {
+  golden_hour: "Golden Hour",
+  soft_portraits: "Soft Portraits",
+  gritty_street: "Gritty Street",
+  neon_nights: "Neon Nights",
+  vivid_landscapes: "Vivid Landscapes",
+  experimental: "Experimental",
+};
 
 export const GRAIN_LABELS: Record<GrainFilter, string> = {
   fine: "Fine",
@@ -155,17 +177,21 @@ export const COLOR_BALANCE_LABELS: Record<ColorBalanceType, string> = {
 };
 
 export const BEST_FOR_LABELS: Record<BestFor, string> = {
-  portrait: "Portraits",
-  landscape: "Landscape",
+  general_purpose: "General purpose",
+  portrait: "Portrait",
   street: "Street",
-  wedding: "Weddings",
-  travel: "Travel",
-  night: "Low light",
-  studio: "Studio",
-  everyday: "Everyday",
+  landscapes: "Landscapes",
+  architecture: "Architecture",
+  documentary: "Documentary",
   sports: "Sports",
-  sunny_conditions: "Sunny Conditions",
-  creative: "Creative",
+  travel: "Travel",
+  weddings: "Weddings",
+  studio: "Studio",
+  bright_sun: "Bright Sun",
+  golden_hour: "Golden Hour",
+  low_light: "Low Light",
+  artificial_light: "Artificial Light",
+  experimental: "Experimental",
 };
 
 export interface FilmBrand {

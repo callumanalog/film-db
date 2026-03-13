@@ -52,7 +52,7 @@ export default async function BrandDetailPage({
       </Link>
 
       <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-secondary text-3xl font-bold text-foreground">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[7px] bg-secondary text-3xl font-bold text-foreground">
           {brand.name.charAt(0)}
         </div>
 

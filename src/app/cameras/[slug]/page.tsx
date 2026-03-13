@@ -71,7 +71,7 @@ export default async function CameraDetailPage({ params }: CameraDetailPageProps
       </Link>
 
       <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-        <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-2xl border border-border/50 bg-muted/30">
+        <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-[7px] border border-border/50 bg-muted/30">
           <Camera className="h-14 w-14 text-muted-foreground/40" />
         </div>
         <div className="min-w-0 flex-1">
@@ -120,7 +120,7 @@ export default async function CameraDetailPage({ params }: CameraDetailPageProps
               return (
                 <div
                   key={spec.label}
-                  className="rounded-xl border border-border/50 bg-card p-4"
+                  className="rounded-[7px] border border-border/50 bg-card p-4"
                 >
                   <div className="mb-1 flex items-center gap-2">
                     <Icon className="h-4 w-4 text-primary" />

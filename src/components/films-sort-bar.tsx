@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowUpDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -34,26 +35,25 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
     router.push(q ? `/films?${q}` : "/films");
   }
 
+  const currentLabel =
+    SORT_OPTIONS.find((o) => o.value === currentSort)?.label ?? "Highest rated";
+
   return (
-    <div className="flex flex-shrink-0 items-center gap-2">
-      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Sort by:
-      </span>
-      <Select value={currentSort} onValueChange={(v) => setSort(v as SortValue)}>
-        <SelectTrigger className="w-[140px]" size="sm">
-          <span>
-            {SORT_OPTIONS.find((o) => o.value === currentSort)?.label ??
-              "Highest rated"}
-          </span>
-        </SelectTrigger>
-        <SelectContent>
-          {SORT_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={currentSort} onValueChange={(v) => setSort(v as SortValue)}>
+      <SelectTrigger
+        size="sm"
+        className="w-fit border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent [&>svg]:text-muted-foreground"
+      >
+        <ArrowUpDown className="size-4 shrink-0 text-muted-foreground" />
+        <span className="text-sm text-foreground">{currentLabel}</span>
+      </SelectTrigger>
+      <SelectContent>
+        {SORT_OPTIONS.map((opt) => (
+          <SelectItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

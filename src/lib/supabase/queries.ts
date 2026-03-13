@@ -9,6 +9,8 @@ import type {
   LatitudeFilter,
   SaturationFilter,
   BestFor,
+  ColorBalanceType,
+  DiscoveryVibe,
 } from "@/lib/types";
 import { seedBrands, seedFilmStocks, seedPurchaseLinks } from "@/lib/seed-data";
 import { getFilmStocksFromFile, normalizeFilmStockFromFile } from "@/lib/editable-film-stocks";
@@ -33,6 +35,9 @@ export interface FilmStockFilters {
   latitude?: LatitudeFilter | LatitudeFilter[];
   saturation?: SaturationFilter | SaturationFilter[];
   bestFor?: BestFor | BestFor[];
+  colorBalanceType?: ColorBalanceType | ColorBalanceType[];
+  /** Discovery vibe: applies mood-based filter (e.g. golden_hour, neon_nights). */
+  vibe?: DiscoveryVibe;
   discontinued?: boolean;
   /** "popular" (default) = by featured then rating then name; "alphabetical" = by brand + name */
   sort?: "popular" | "alphabetical";
@@ -75,6 +80,49 @@ export async function getFilmStocks(
   let stocks = await getAllFilmStocksMaybeFromSupabase();
 
   if (filters) {
+    if (filters.vibe) {
+      switch (filters.vibe) {
+        case "golden_hour":
+          stocks = stocks.filter(
+            (s) =>
+              (s.latitude_level === "wide") &&
+              (s.saturation_filter === "natural" || s.saturation_filter === "vivid")
+          );
+          break;
+        case "soft_portraits":
+          stocks = stocks.filter(
+            (s) =>
+              (s.contrast_level === "soft" || s.contrast_level === "balanced") &&
+              s.best_for.includes("portrait")
+          );
+          break;
+        case "gritty_street":
+          stocks = stocks.filter(
+            (s) =>
+              (s.type === "bw_negative" || s.type === "bw_reversal") &&
+              s.contrast_level === "punchy"
+          );
+          break;
+        case "neon_nights":
+          stocks = stocks.filter(
+            (s) => s.iso >= 800 || s.color_balance_type === "tungsten"
+          );
+          break;
+        case "vivid_landscapes":
+          stocks = stocks.filter(
+            (s) =>
+              s.saturation_filter === "vivid" &&
+              s.grain_level === "fine" &&
+              s.best_for.includes("landscapes")
+          );
+          break;
+        case "experimental":
+          stocks = stocks.filter((s) => s.best_for.includes("experimental"));
+          break;
+        default:
+          break;
+      }
+    }
     if (filters.search) {
       const q = filters.search.toLowerCase().trim();
       const words = q.split(/\s+/).filter(Boolean);
@@ -141,6 +189,16 @@ export async function getFilmStocks(
         stocks = stocks.filter((s) => bestFor.some((bf) => s.best_for.includes(bf)));
       }
     }
+    if (filters.colorBalanceType !== undefined) {
+      const types = Array.isArray(filters.colorBalanceType)
+        ? filters.colorBalanceType
+        : [filters.colorBalanceType];
+      if (types.length > 0) {
+        stocks = stocks.filter(
+          (s) => s.color_balance_type != null && types.includes(s.color_balance_type)
+        );
+      }
+    }
     if (filters.discontinued !== undefined) {
       stocks = stocks.filter((s) => s.discontinued === filters.discontinued);
     }
@@ -166,9 +224,12 @@ export async function getFilmStocks(
   return stocks;
 }
 
+/** ISO filter option: a single ISO number or the combined "8-80" range. */
+export type IsoFilterOption = number | "8-80";
+
 export interface FilmFilterOptions {
   types: FilmType[];
-  isos: number[];
+  isos: IsoFilterOption[];
   formats: FilmFormat[];
   grains: GrainFilter[];
   contrasts: ContrastFilter[];
@@ -208,7 +269,11 @@ export async function getFilmFilterOptions(): Promise<FilmFilterOptions> {
     [...new Set(stocks.map((s) => s.type))],
     TYPE_ORDER
   );
-  const isos = [...new Set(stocks.map((s) => s.iso))].sort((a, b) => a - b);
+  const LOW_ISO_RANGE = [8, 12, 20, 25, 50, 80] as const;
+  const allIsos = [...new Set(stocks.map((s) => s.iso))];
+  const highIsos = allIsos.filter((iso) => !LOW_ISO_RANGE.includes(iso)).sort((a, b) => b - a);
+  const hasLowRange = LOW_ISO_RANGE.some((iso) => allIsos.includes(iso));
+  const isos: IsoFilterOption[] = hasLowRange ? [...highIsos, "8-80"] : highIsos;
   const formats = sortByOrder(
     [...new Set(stocks.flatMap((s) => s.format))],
     FORMAT_ORDER

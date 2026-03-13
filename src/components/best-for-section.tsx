@@ -14,20 +14,28 @@ import {
   SunDim,
   Trophy,
   Sparkles,
+  Landmark,
+  Sunset,
+  Lightbulb,
+  FileVideo,
 } from "lucide-react";
 
 const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
+  general_purpose: Sun,
   portrait: UserCircle,
-  landscape: Mountain,
   street: Building2,
-  wedding: Heart,
-  travel: Plane,
-  night: Moon,
-  studio: LampDesk,
-  everyday: Sun,
+  landscapes: Mountain,
+  architecture: Landmark,
+  documentary: FileVideo,
   sports: Trophy,
-  sunny_conditions: SunDim,
-  creative: Sparkles,
+  travel: Plane,
+  weddings: Heart,
+  studio: LampDesk,
+  bright_sun: SunDim,
+  golden_hour: Sunset,
+  low_light: Moon,
+  artificial_light: Lightbulb,
+  experimental: Sparkles,
 };
 
 interface BestForSectionProps {
@@ -47,7 +55,7 @@ export function BestForSection({ items }: BestForSectionProps) {
           return (
             <div
               key={key}
-              className="flex items-center gap-2 rounded-xl border border-border/50 bg-card px-4 py-3"
+              className="flex items-center gap-2 rounded-[7px] border border-border/50 bg-card px-4 py-3"
             >
               <Icon className="h-5 w-5 text-primary" aria-hidden />
               <span className="text-sm font-medium">{label}</span>

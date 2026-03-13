@@ -21,8 +21,10 @@ export function ClearFiltersLink() {
   const selectedSaturations = getParamArray(searchParams, "saturation");
   const selectedBestFor = getParamArray(searchParams, "bestFor");
   const selectedIsos = getParamArray(searchParams, "iso");
+  const vibe = searchParams.get("vibe");
 
   const hasAnyFilter =
+    !!vibe ||
     selectedBrands.length > 0 ||
     selectedTypes.length > 0 ||
     selectedFormats.length > 0 ||

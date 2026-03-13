@@ -12,7 +12,11 @@ type StockRow = FilmStock & { brand: FilmBrand };
 const TYPE_OPTIONS: FilmType[] = ["color_negative", "color_reversal", "bw_negative", "bw_reversal", "instant"];
 const SCALE_OPTIONS: (1 | 2 | 3 | 4 | 5)[] = [1, 2, 3, 4, 5];
 const DEVELOPMENT_PROCESS_OPTIONS: (DevelopmentProcess | "")[] = ["", "c41", "e6", "bw", "ecn2"];
-const BEST_FOR_OPTIONS: BestFor[] = ["portrait", "landscape", "street", "wedding", "travel", "night", "studio", "everyday"];
+const BEST_FOR_OPTIONS: BestFor[] = [
+  "general_purpose", "portrait", "street", "landscapes", "architecture", "documentary",
+  "sports", "travel", "weddings", "studio", "bright_sun", "golden_hour", "low_light",
+  "artificial_light", "experimental",
+];
 
 export default function AdminFilmsPage() {
   const [stocks, setStocks] = useState<StockRow[]>([]);
@@ -327,7 +331,7 @@ export default function AdminFilmsPage() {
       {stockToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setStockToDelete(null)}>
           <div
-            className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl"
+            className="w-full max-w-md rounded-[7px] border border-border bg-card p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-foreground">Delete film stock?</h3>
@@ -406,7 +410,7 @@ function EditPanel({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-xl"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[7px] border border-border bg-card p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

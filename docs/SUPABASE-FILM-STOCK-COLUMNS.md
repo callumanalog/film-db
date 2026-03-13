@@ -101,19 +101,23 @@ Free text. Shown in specs as "Color Balance". Examples: `Daylight (5500K)`, `Tun
 
 Store as text array. Allowed values:
 
-| Value in DB      | Shown in app    |
-|------------------|-----------------|
-| `everyday`       | Everyday        |
-| `portrait`       | Portraits       |
-| `travel`         | Travel          |
-| `landscape`      | Landscapes      |
-| `night`          | Low Light       |
-| `studio`         | Studio          |
-| `street`         | Street          |
-| `wedding`        | Weddings        |
-| `sports`         | Sports          |
-| `sunny_conditions` | Sunny Conditions |
-| `creative`       | Creative        |
+| Value in DB        | Shown in app      |
+|--------------------|-------------------|
+| `general_purpose`  | General purpose   |
+| `portrait`         | Portrait          |
+| `street`           | Street            |
+| `landscapes`       | Landscapes        |
+| `architecture`     | Architecture      |
+| `documentary`      | Documentary       |
+| `sports`           | Sports            |
+| `travel`           | Travel            |
+| `weddings`         | Weddings          |
+| `studio`           | Studio            |
+| `bright_sun`       | Bright Sun        |
+| `golden_hour`       | Golden Hour       |
+| `low_light`        | Low Light         |
+| `artificial_light` | Artificial Light  |
+| `experimental`     | Experimental      |
 
 ---
 

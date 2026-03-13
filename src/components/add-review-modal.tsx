@@ -452,7 +452,7 @@ export function AddReviewModal({
                     /* Step 1: Upload takes majority of screen */
                     <div className="flex flex-col min-h-0 flex-1 gap-5">
                       <div className="shrink-0 flex flex-col items-center text-center px-5 pt-[100px] pb-0">
-                        <div className="flex h-40 w-40 shrink-0 overflow-hidden rounded-2xl border border-border/50 bg-muted/30">
+                        <div className="flex h-40 w-40 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted/30">
                           <StockImage stock={stock} size={160} />
                         </div>
                         <Dialog.Title
@@ -478,7 +478,7 @@ export function AddReviewModal({
                         <div className="w-full max-w-[400px] flex flex-col items-center">
                           <div
                             className={cn(
-                              "relative w-full aspect-[3/2] rounded-xl overflow-hidden",
+                              "relative w-full aspect-[3/2] rounded-[7px] overflow-hidden",
                               "border-2 border-dashed border-border bg-muted/20"
                             )}
                           >
@@ -498,11 +498,11 @@ export function AddReviewModal({
                                     <img
                                       src={uploadPreviewUrl}
                                       alt=""
-                                      className="absolute inset-0 h-full w-full object-cover rounded-xl"
+                                      className="absolute inset-0 h-full w-full object-cover rounded-[7px]"
                                       aria-hidden
                                     />
                                     <div
-                                      className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/50 via-black/20 to-transparent"
+                                      className="absolute inset-0 rounded-[7px] bg-gradient-to-t from-black/50 via-black/20 to-transparent"
                                       aria-hidden
                                     />
                                   </>
@@ -513,7 +513,7 @@ export function AddReviewModal({
                               <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
-                                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset rounded-xl"
+                                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset rounded-[7px]"
                               >
                                 <Plus className="h-12 w-12 text-muted-foreground" aria-hidden />
                                 <span className="text-sm font-medium text-muted-foreground">Add shot</span>
@@ -539,13 +539,13 @@ export function AddReviewModal({
                   <div className="w-full border-b border-border/50">
                     {/* Image preview: small, flexible aspect */}
                     <div className="px-5 pt-[50px] pb-4 flex flex-col items-center">
-                      <div className="relative max-w-[360px] rounded-xl overflow-hidden w-fit border-0">
+                      <div className="relative max-w-[360px] rounded-[7px] overflow-hidden w-fit border-0">
                         <div className="relative">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={uploadedImageUrl}
                             alt=""
-                            className="max-w-[360px] max-h-[240px] w-auto h-auto object-contain block rounded-xl"
+                            className="max-w-[360px] max-h-[240px] w-auto h-auto object-contain block rounded-[7px]"
                           />
                           <button
                             type="button"
@@ -680,7 +680,7 @@ export function AddReviewModal({
             <Dialog.Popup
               className={cn(
                 "fixed left-1/2 top-1/2 z-50 w-full max-w-4xl max-h-[90vh] -translate-x-1/2 -translate-y-1/2",
-                "overflow-hidden rounded-xl border border-border/50 bg-card shadow-lg flex flex-col",
+                "overflow-hidden rounded-[7px] border border-border/50 bg-card shadow-lg flex flex-col",
                 "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
                 "work-sans-content"
               )}
@@ -772,7 +772,7 @@ export function AddReviewModal({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className={cn(
-                      "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/60 bg-muted/30 py-8 transition-colors",
+                      "flex w-full flex-col items-center justify-center gap-2 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/30 py-8 transition-colors",
                       "hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     )}
                   >

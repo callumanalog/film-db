@@ -127,7 +127,7 @@ export function QuickActions() {
     <div className="flex flex-wrap gap-2.5">
       <button
         onClick={() => setShotIt(!shotIt)}
-        className={`group inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
+        className={`group inline-flex items-center gap-2 rounded-[7px] border px-4 py-2 text-sm font-semibold transition-all ${
           shotIt
             ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
             : "border-border bg-card text-foreground hover:border-emerald-500/30 hover:bg-emerald-500/5"
@@ -139,7 +139,7 @@ export function QuickActions() {
 
       <button
         onClick={() => setTracked(!tracked)}
-        className={`group inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
+        className={`group inline-flex items-center gap-2 rounded-[7px] border px-4 py-2 text-sm font-semibold transition-all ${
           tracked
             ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
             : "border-border bg-card text-foreground hover:border-blue-500/30 hover:bg-blue-500/5"
@@ -151,7 +151,7 @@ export function QuickActions() {
 
       <button
         onClick={() => setSaved(!saved)}
-        className={`group inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all ${
+        className={`group inline-flex items-center gap-2 rounded-[7px] border px-4 py-2 text-sm font-semibold transition-all ${
           saved
             ? "border-primary/40 bg-primary/10 text-primary"
             : "border-border bg-card text-foreground hover:border-primary/30 hover:bg-primary/5"
@@ -511,7 +511,7 @@ export function CommunityGallery({
       )}
 
       {isTab && view === "you" && yourImagesCount === 0 && !galleryLoading ? (
-        <div className="rounded-xl border border-dashed border-border bg-secondary/20 py-12 text-center">
+        <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
           <p className="text-sm font-medium text-muted-foreground">You haven't added any images yet.</p>
           <p className="mt-1 text-xs text-muted-foreground">Your uploads will appear here.</p>
           <button
@@ -523,7 +523,7 @@ export function CommunityGallery({
           </button>
         </div>
       ) : galleryLoading ? (
-        <div className="rounded-xl border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-[7px] border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
           Loading images…
         </div>
       ) : (

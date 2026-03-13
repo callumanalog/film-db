@@ -90,7 +90,7 @@ function ReviewCard({
   const rating = review.rating != null && review.rating > 0 ? Number(review.rating) : 0;
 
   return (
-    <article className="rounded-xl border border-border/50 bg-card overflow-hidden transition-colors hover:border-border">
+    <article className="rounded-[7px] border border-border/50 bg-card overflow-hidden transition-colors hover:border-border">
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
 
   if (!slug) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-secondary/20 py-12 text-center">
+      <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
         <p className="text-sm font-medium text-muted-foreground">Select a film to see reviews.</p>
       </div>
     );
@@ -280,11 +280,11 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
       {/* Long scroll: list of review cards */}
       <div className="space-y-4">
         {loading ? (
-          <div className="rounded-xl border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-[7px] border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
             Loading reviews…
           </div>
         ) : view === "you" && paginatedReviews.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-secondary/20 py-12 text-center">
+          <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
             <p className="text-sm font-medium text-muted-foreground">You haven’t reviewed this film yet.</p>
             <p className="mt-1 text-xs text-muted-foreground">Write a review to see it here.</p>
             <button

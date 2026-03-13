@@ -85,7 +85,7 @@ export function SampleImagesGrid({ images, stockDisplayName, slug }: SampleImage
         {filteredAndSorted.map((img) => (
           <div
             key={img.id}
-            className="group overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+            className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             <div className="relative aspect-[4/3] bg-muted">
               {img.imageUrl ? (

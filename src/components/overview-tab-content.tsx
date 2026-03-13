@@ -2,6 +2,7 @@
 
 import type { FlickrPhoto } from "@/lib/flickr";
 import type { BestFor, FilmType, ShootingNote } from "@/lib/types";
+import { BEST_FOR_LABELS } from "@/lib/types";
 import { isBlackAndWhiteFilm } from "@/lib/types";
 import { ExternalLink, Play, Aperture, Palette, Gauge, FlaskConical } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -62,7 +63,7 @@ function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
               href={flickr.flickrPhotoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+              className="block overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30"
             >
               <div className="aspect-[4/3] bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -75,7 +76,7 @@ function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
           );
         }
         return (
-          <div key={i} className="overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30">
+          <div key={i} className="overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30">
             <div className="aspect-[4/3] bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={item.src} alt="" className="h-full w-full object-cover" aria-hidden />
@@ -168,7 +169,7 @@ export function OverviewTabContent({
                         key={tag}
                         className="inline-flex rounded border border-[#E5E5E5] bg-transparent px-2 py-1 text-[11px] font-medium uppercase leading-tight tracking-[0.05em] text-muted-foreground transition-colors hover:border-[#BBB] hover:text-primary"
                       >
-                        {tag}
+                        {(BEST_FOR_LABELS[tag as BestFor] ?? tag).replace(/_/g, " ")}
                       </span>
                     ))
                   : useCaseSpec!.value.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
@@ -176,7 +177,7 @@ export function OverviewTabContent({
                         key={tag}
                         className="inline-flex rounded border border-[#E5E5E5] bg-transparent px-2 py-1 text-[11px] font-medium uppercase leading-tight tracking-[0.05em] text-muted-foreground transition-colors hover:border-[#BBB] hover:text-primary"
                       >
-                        {tag}
+                        {tag.replace(/_/g, " ")}
                       </span>
                     ))}
               </div>
@@ -197,7 +198,7 @@ export function OverviewTabContent({
         {specs.length > 0 && (
           <section aria-labelledby="overview-specs-heading">
             <h3 id="overview-specs-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h3>
-            <div className="mb-3 overflow-hidden rounded-xl border border-border/50 bg-card">
+            <div className="mb-3 overflow-hidden rounded-[7px] border border-border/50 bg-card">
               <div className="divide-y divide-border/50">
                 {topSpecsRows.map((row, rowIndex) => (
                   <div key={rowIndex} className="grid grid-cols-2 divide-x divide-border/50">
@@ -230,7 +231,7 @@ export function OverviewTabContent({
         {characterSliders.length > 0 && (
           <section aria-labelledby="overview-characteristics-heading">
             <h3 id="overview-characteristics-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Characteristics</h3>
-            <div className="mb-3 overflow-hidden rounded-xl border border-border/50 bg-card px-4 py-5">
+            <div className="mb-3 overflow-hidden rounded-[7px] border border-border/50 bg-card px-4 py-5">
               <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                 {characterSliders.map((item) => {
                   const positionPercent = ((item.value - 1) / 4) * 100;
@@ -289,7 +290,7 @@ export function OverviewTabContent({
         {shootingNotes.length > 0 && (
           <section aria-labelledby="performance-heading">
             <h3 id="performance-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Performance</h3>
-            <div className="mb-3 overflow-hidden rounded-xl border border-border/50 bg-card">
+            <div className="mb-3 overflow-hidden rounded-[7px] border border-border/50 bg-card">
               <div className="divide-y divide-border/50">
                 {shootingNotes.map((note, i) => (
                   <div key={i} className="px-4 py-3">
@@ -322,7 +323,7 @@ export function OverviewTabContent({
                 href={review.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-card/80"
+                className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-card/80"
               >
                 <div className="min-w-0 flex-1">
                   <span className="block font-medium text-foreground">{review.title}</span>
@@ -353,7 +354,7 @@ export function OverviewTabContent({
                   href={video.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group block overflow-hidden rounded-xl border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-card/80"
+                  className="group block overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-card/80"
                 >
                   <div className="relative aspect-video bg-muted">
                     {thumbnailUrl ? (
@@ -403,7 +404,7 @@ export function OverviewTabContent({
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
-                className="flex items-center gap-3 rounded-xl border border-border/50 bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-secondary/30"
+                className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-secondary/30"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                   <ExternalLink className="h-4 w-4" aria-hidden />
