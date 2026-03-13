@@ -561,14 +561,14 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             onClick={closeMobileSearchDrawer}
           />
           <div
-            className={`fixed top-16 left-0 right-0 z-[70] flex h-[calc(100vh-4rem)] w-full flex-col overflow-hidden bg-background transition-transform duration-300 ease-out md:hidden ${
+            className={`fixed top-16 left-0 right-0 z-[70] h-[calc(100vh-4rem)] w-full overflow-hidden bg-background transition-transform duration-300 ease-out md:hidden ${
               searchDrawerReady && !searchDrawerClosing ? "translate-y-0" : "translate-y-full"
             }`}
             role="dialog"
             aria-label="Search films"
           >
-            {/* Header: same styling as filters modal — "Search" centered, X top-right */}
-            <div className="relative flex shrink-0 items-center justify-center border-b border-slate-200 bg-background px-4 py-3">
+            {/* Fixed header: stays in place when keyboard opens (viewport-fixed so keyboard doesn't push it) */}
+            <div className="fixed left-0 right-0 top-16 z-[72] flex h-12 items-center justify-center border-b border-slate-200 bg-background px-4 md:hidden">
               <span className="font-sans text-sm font-semibold text-foreground">Search</span>
               <button
                 type="button"
@@ -580,8 +580,8 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
               </button>
             </div>
 
-            {/* Search input bar */}
-            <div className="shrink-0 px-4 py-3">
+            {/* Fixed search bar: stays in place when keyboard opens (below 4rem + 3rem header) */}
+            <div className="fixed left-0 right-0 top-28 z-[72] shrink-0 bg-background px-4 py-3 md:hidden">
               <form onSubmit={handleMobileSearchSubmit} className="w-full" id="mobile-search-form">
                 <div className="flex items-center gap-2 rounded-[8px] border border-slate-200 bg-background px-3 py-3">
                   <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -599,8 +599,26 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
               </form>
             </div>
 
-            {/* Scrollable content: BRANDS + grid, no-scrollbar, pb-20 for keyboard/home indicator */}
-            <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-20">
+            {/* Fixed footer: stays at bottom when keyboard opens */}
+            <div className="fixed bottom-0 left-0 right-0 z-[72] space-y-2 border-t border-slate-200 bg-background p-4 md:hidden">
+              <button
+                type="submit"
+                form="mobile-search-form"
+                className="w-full rounded-[6px] bg-primary px-4 py-3 font-sans text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Search
+              </button>
+              <button
+                type="button"
+                onClick={closeMobileSearchDrawer}
+                className="w-full rounded-[6px] border border-border bg-transparent px-4 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+
+            {/* Scrollable content only: BRANDS grid; fixed top/bottom so only this area scrolls when keyboard opens */}
+            <div className="no-scrollbar fixed left-0 right-0 top-44 bottom-32 z-0 overflow-y-auto px-4 py-4 pb-4 md:hidden">
               <p className="mb-3 font-sans text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 BRANDS
               </p>
@@ -616,24 +634,6 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Fixed button bar: same layout as filters modal */}
-            <div className="shrink-0 space-y-2 border-t border-slate-200 bg-background p-4">
-              <button
-                type="submit"
-                form="mobile-search-form"
-                className="w-full rounded-[6px] bg-primary px-4 py-3 font-sans text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Search
-              </button>
-              <button
-                type="button"
-                onClick={closeMobileSearchDrawer}
-                className="w-full rounded-[6px] border border-border bg-transparent px-4 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-              >
-                Cancel
-              </button>
             </div>
           </div>
         </>
