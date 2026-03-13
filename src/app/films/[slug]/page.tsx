@@ -197,7 +197,6 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           stockName={stock.name}
           bestFor={stock.best_for ?? []}
           specs={overviewSpecsFlat}
-          pairedSpecsRows={pairedSpecsRows}
           useCaseSpec={useCaseSpec}
           characterScales={{
             grain: stock.grain ?? undefined,
