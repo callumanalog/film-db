@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Camera, Heart, ChevronDown, X } from "lucide-react";
+import { Camera, Heart, Bookmark, ChevronDown, X } from "lucide-react";
 import type { GalleryImage, SampleImageSource } from "@/lib/sample-images";
 
 /** Strip aperture (e.g. " f/2", " f/1.4") from camera string for display. */
@@ -256,17 +256,47 @@ export function GalleryGrid({
         {filteredAndSorted.map((img) => (
           <div
             key={img.galleryId}
-            className="group overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+            className="group overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             <div className="relative aspect-[4/3] bg-muted">
               {img.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={img.imageUrl}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                />
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.imageUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  />
+                  {/* Bottom gradient + username on image */}
+                  <div
+                    className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"
+                    aria-hidden
+                  />
+                  <p className="absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
+                    {img.username}
+                  </p>
+                  {/* Like and share on hover */}
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={(e) => e.preventDefault()}
+                      className="flex items-center gap-1 rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50"
+                      aria-label={`Like (${img.likes})`}
+                    >
+                      <Heart className="h-4 w-4" />
+                      <span className="text-[11px] font-medium tabular-nums">{img.likes}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => e.preventDefault()}
+                      className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50"
+                      aria-label="Save"
+                    >
+                      <Bookmark className="h-4 w-4" />
+                    </button>
+                  </div>
+                </>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-amber-900/30 via-orange-900/20 to-red-900/40">
                   <Camera className="h-8 w-8 text-white/20" />
@@ -281,17 +311,8 @@ export function GalleryGrid({
                 >
                   {img.stockName}
                 </Link>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{img.username}</p>
                 <p className="text-[11px] text-muted-foreground">{cameraWithoutAperture(img.camera)}</p>
               </div>
-              <button
-                type="button"
-                className="flex shrink-0 items-center gap-1.5 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                aria-label={`Like (${img.likes})`}
-              >
-                <Heart className="h-6 w-6" />
-                <span className="text-sm font-medium tabular-nums">{img.likes}</span>
-              </button>
             </div>
           </div>
         ))}

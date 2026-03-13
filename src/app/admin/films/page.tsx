@@ -2,17 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import type { FilmStock, FilmBrand, FilmType, BestFor, GrainLevel, ContrastLevel, LatitudeLevel, DevelopmentProcess } from "@/lib/types";
-import { FILM_TYPE_LABELS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS } from "@/lib/types";
+import type { FilmStock, FilmBrand, FilmType, BestFor, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, DevelopmentProcess, ShootingNote } from "@/lib/types";
+import { FILM_TYPE_LABELS, BEST_FOR_LABELS, DEVELOPMENT_PROCESS_LABELS } from "@/lib/types";
 import { urlToWebReview, urlToVideoReview } from "@/lib/review-url-utils";
 import { ChevronLeft, Save, RotateCcw, Pencil, X, Plus, Trash2 } from "lucide-react";
 
 type StockRow = FilmStock & { brand: FilmBrand };
 
 const TYPE_OPTIONS: FilmType[] = ["color_negative", "color_reversal", "bw_negative", "bw_reversal", "instant"];
-const GRAIN_OPTIONS: GrainLevel[] = ["fine", "medium", "strong"];
-const CONTRAST_OPTIONS: ContrastLevel[] = ["low", "medium", "high"];
-const LATITUDE_OPTIONS: (LatitudeLevel | "")[] = ["", "very_narrow", "narrow", "moderate", "wide", "very_wide"];
+const SCALE_OPTIONS: (1 | 2 | 3 | 4 | 5)[] = [1, 2, 3, 4, 5];
 const DEVELOPMENT_PROCESS_OPTIONS: (DevelopmentProcess | "")[] = ["", "c41", "e6", "bw", "ecn2"];
 const BEST_FOR_OPTIONS: BestFor[] = ["portrait", "landscape", "street", "wedding", "travel", "night", "studio", "everyday"];
 
@@ -167,13 +165,16 @@ export default function AdminFilmsPage() {
       iso: 400,
       description: null,
       history: null,
-      shooting_tips: null,
+      shooting_notes: [],
       grain: null,
       contrast: null,
       latitude: null,
+      saturation: null,
       color_balance: null,
       grain_level: "medium",
-      contrast_level: "medium",
+      contrast_level: "balanced",
+      latitude_level: null,
+      saturation_filter: null,
       best_for: [],
       discontinued: false,
       price_tier: null,
@@ -508,39 +509,61 @@ function EditPanel({
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">Grain</span>
+            <span className="text-xs font-medium text-muted-foreground">Grain (1–5)</span>
             <select
-              value={stock.grain_level}
-              onChange={(e) => onUpdate("grain_level", e.target.value as GrainLevel)}
-              className="rounded border border-border bg-background px-3 py-2 text-sm"
-            >
-              {GRAIN_OPTIONS.map((g) => (
-                <option key={g} value={g}>{GRAIN_LABELS[g]}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">Contrast</span>
-            <select
-              value={stock.contrast_level}
-              onChange={(e) => onUpdate("contrast_level", e.target.value as ContrastLevel)}
-              className="rounded border border-border bg-background px-3 py-2 text-sm"
-            >
-              {CONTRAST_OPTIONS.map((c) => (
-                <option key={c} value={c}>{CONTRAST_LABELS[c]}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">Latitude</span>
-            <select
-              value={stock.latitude_level ?? ""}
-              onChange={(e) => onUpdate("latitude_level", e.target.value === "" ? null : (e.target.value as LatitudeLevel))}
+              value={stock.grain ?? ""}
+              onChange={(e) => onUpdate("grain", e.target.value === "" ? null : Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
               className="rounded border border-border bg-background px-3 py-2 text-sm"
             >
               <option value="">—</option>
-              {LATITUDE_OPTIONS.filter((v) => v !== "").map((l) => (
-                <option key={l} value={l}>{LATITUDE_LABELS[l]}</option>
+              {SCALE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">Contrast (1–5)</span>
+            <select
+              value={stock.contrast ?? ""}
+              onChange={(e) => onUpdate("contrast", e.target.value === "" ? null : Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
+              className="rounded border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">—</option>
+              {SCALE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">Latitude (1–5)</span>
+            <select
+              value={stock.latitude ?? ""}
+              onChange={(e) => onUpdate("latitude", e.target.value === "" ? null : Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
+              className="rounded border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">—</option>
+              {SCALE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              {stock.type === "bw_negative" || stock.type === "bw_reversal"
+                ? "Color Sensitivity (1–5)"
+                : "Saturation (1–5)"}
+            </span>
+            {(stock.type === "bw_negative" || stock.type === "bw_reversal") && (
+              <span className="text-[10px] text-muted-foreground">1=Orthochromatic, 3=Panchromatic, 5=Extended Panchromatic</span>
+            )}
+            <select
+              value={stock.saturation ?? ""}
+              onChange={(e) => onUpdate("saturation", e.target.value === "" ? null : Number(e.target.value) as 1 | 2 | 3 | 4 | 5)}
+              className="rounded border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">—</option>
+              {SCALE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </label>
@@ -629,15 +652,57 @@ function EditPanel({
               className="rounded border border-border bg-background px-3 py-2 text-sm"
             />
           </label>
-          <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-xs font-medium text-muted-foreground">Shooting notes (tips)</span>
-            <textarea
-              value={stock.shooting_tips ?? ""}
-              onChange={(e) => onUpdate("shooting_tips", e.target.value || null)}
-              rows={4}
-              className="rounded border border-border bg-background px-3 py-2 text-sm"
-              placeholder="One or more tips, e.g. overexpose by 1 stop..."
-            />
+          <label className="flex flex-col gap-2 sm:col-span-2">
+            <span className="text-xs font-medium text-muted-foreground">Performance (hed + dek)</span>
+            <div className="space-y-3">
+              {(stock.shooting_notes ?? []).map((note, i) => (
+                <div key={i} className="flex flex-col gap-1.5 rounded border border-border/50 bg-muted/20 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-medium text-muted-foreground">Note {i + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = (stock.shooting_notes ?? []).filter((_, j) => j !== i);
+                        onUpdate("shooting_notes", next);
+                      }}
+                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label="Remove note"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={note.header}
+                    onChange={(e) => {
+                      const next = [...(stock.shooting_notes ?? [])];
+                      next[i] = { ...note, header: e.target.value };
+                      onUpdate("shooting_notes", next);
+                    }}
+                    className="rounded border border-border bg-background px-2 py-1.5 text-sm"
+                    placeholder="Header (hed)"
+                  />
+                  <textarea
+                    value={note.dek}
+                    onChange={(e) => {
+                      const next = [...(stock.shooting_notes ?? [])];
+                      next[i] = { ...note, dek: e.target.value };
+                      onUpdate("shooting_notes", next);
+                    }}
+                    rows={2}
+                    className="rounded border border-border bg-background px-2 py-1.5 text-sm"
+                    placeholder="Dek (body)"
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => onUpdate("shooting_notes", [...(stock.shooting_notes ?? []), { header: "", dek: "" }])}
+                className="inline-flex items-center gap-1 rounded border border-dashed border-border bg-background px-3 py-2 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              >
+                <Plus className="h-4 w-4" /> Add note
+              </button>
+            </div>
           </label>
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-xs font-medium text-muted-foreground">Web review URLs (one per line)</span>

@@ -29,35 +29,54 @@ Store as array. Allowed values:
 
 ---
 
-## Grain (single-select) — column: `grain`
+## Grain (scale 1–5) — column: `grain`
 
-| Value in DB | Shown in app |
-|-------------|--------------|
-| `fine`      | Fine         |
-| `medium`    | Medium       |
-| `strong`    | Strong       |
+Integer `1`–`5`. On the landing page, filters show: **Fine** (1–2), **Medium** (3), **Coarse** (4–5).
 
----
-
-## Contrast (single-select) — column: `contrast`
-
-| Value in DB | Shown in app |
-|-------------|--------------|
-| `low`       | Low          |
-| `medium`    | Medium       |
-| `high`      | High         |
+| Scale | Filter label |
+|-------|----------------|
+| 1, 2  | Fine          |
+| 3     | Medium        |
+| 4, 5  | Coarse        |
 
 ---
 
-## Latitude (single-select) — column: `latitude`
+## Contrast (scale 1–5) — column: `contrast`
 
-| Value in DB    | Shown in app  |
-|----------------|---------------|
-| `very_narrow`  | Very Narrow   |
-| `narrow`       | Narrow        |
-| `moderate`     | Moderate      |
-| `wide`         | Wide          |
-| `very_wide`    | Very Wide     |
+Integer `1`–`5`. Filters: **Soft** (1–2), **Balanced** (3), **Punchy** (4–5).
+
+---
+
+## Latitude (scale 1–5) — column: `latitude`
+
+Integer `1`–`5`. Filters: **Narrow** (1–2), **Moderate** (3), **Wide** (4–5).
+
+---
+
+## Saturation (scale 1–5) — column: `saturation`
+
+Integer `1`–`5`. New column. Filters: **Muted** (1–2), **Natural** (3), **Vivid** (4–5).
+
+---
+
+## Performance — column: `shooting_notes`
+
+Shown on the film page as the **Performance** section (hed + dek table, typically 3–6 items per stock). Stored as JSONB array of `{ "header": "...", "dek": "..." }`:
+
+- **header** (hed): Short label, e.g. `Skin Tones`, `Color Bias`, `Push/Pull`. Uppercase on the site.
+- **dek**: Body text for that note.
+
+Example (Kodak Gold 200–style):
+
+```json
+[
+  { "header": "Skin Tones", "dek": "Healthy and warm. It favors yellow/orange undertones, giving subjects a sun-kissed look." },
+  { "header": "Color Bias", "dek": "Strong leaning toward warmth. It excels in golden hour light, accentuating yellows, reds, and oranges." },
+  { "header": "Highlight Roll-off", "dek": "Exceptional. Like most Kodak negative films, it is very difficult to blow out highlights." }
+]
+```
+
+In the Table Editor you can paste/edit the JSON. The admin UI at **/admin/films** also has **Performance (hed + dek)** where you can add, edit, and remove notes per stock.
 
 ---
 

@@ -2,9 +2,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
-import type { FilmBrand, FilmType, FilmFormat, GrainLevel, ContrastLevel, BestFor } from "@/lib/types";
+import type { FilmBrand, FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
 import type { FilmFilterOptions } from "@/lib/supabase/queries";
-import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, BEST_FOR_LABELS } from "@/lib/types";
+import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, BEST_FOR_LABELS } from "@/lib/types";
 import {
   ChevronDown,
   Palette,
@@ -24,6 +24,8 @@ import {
   Sparkles,
   Aperture,
   Film,
+  Maximize2,
+  Droplets,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -69,6 +71,8 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
   const selectedFormats = getParamArray(searchParams, "format");
   const selectedGrains = getParamArray(searchParams, "grain");
   const selectedContrasts = getParamArray(searchParams, "contrast");
+  const selectedLatitudes = getParamArray(searchParams, "latitude");
+  const selectedSaturations = getParamArray(searchParams, "saturation");
   const selectedBestFor = getParamArray(searchParams, "bestFor");
   const selectedIsos = getParamArray(searchParams, "iso");
 
@@ -157,6 +161,34 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
                 label={CONTRAST_LABELS[level]}
                 selected={selectedContrasts.includes(level)}
                 onToggle={() => toggleMulti("contrast", level)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
+
+        <FilterAccordion defaultOpen={false} twoColumns={false} title="Latitude">
+          <FilterPillGrid>
+            {filterOptions.latitudes.map((level) => (
+              <FilterPill
+                key={level}
+                icon={Maximize2}
+                label={LATITUDE_LABELS[level]}
+                selected={selectedLatitudes.includes(level)}
+                onToggle={() => toggleMulti("latitude", level)}
+              />
+            ))}
+          </FilterPillGrid>
+        </FilterAccordion>
+
+        <FilterAccordion defaultOpen={false} twoColumns={false} title="Saturation">
+          <FilterPillGrid>
+            {filterOptions.saturations.map((level) => (
+              <FilterPill
+                key={level}
+                icon={Droplets}
+                label={SATURATION_LABELS[level]}
+                selected={selectedSaturations.includes(level)}
+                onToggle={() => toggleMulti("saturation", level)}
               />
             ))}
           </FilterPillGrid>

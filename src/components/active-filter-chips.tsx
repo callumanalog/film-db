@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import type { FilmBrand, FilmType, FilmFormat, GrainLevel, ContrastLevel, BestFor } from "@/lib/types";
-import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, BEST_FOR_LABELS } from "@/lib/types";
+import type { FilmBrand, FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
+import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, BEST_FOR_LABELS } from "@/lib/types";
 import { X } from "lucide-react";
 
 function getParamArray(searchParams: URLSearchParams, key: string): string[] {
@@ -45,6 +45,8 @@ export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
   const selectedFormats = getParamArray(searchParams, "format");
   const selectedGrains = getParamArray(searchParams, "grain");
   const selectedContrasts = getParamArray(searchParams, "contrast");
+  const selectedLatitudes = getParamArray(searchParams, "latitude");
+  const selectedSaturations = getParamArray(searchParams, "saturation");
   const selectedBrands = getParamArray(searchParams, "brand");
   const selectedBestFor = getParamArray(searchParams, "bestFor");
   const selectedIsos = getParamArray(searchParams, "iso");
@@ -63,12 +65,22 @@ export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
     ...selectedGrains.map((value) => ({
       key: "grain",
       value,
-      label: GRAIN_LABELS[value as GrainLevel] ?? value,
+      label: GRAIN_LABELS[value as GrainFilter] ?? value,
     })),
     ...selectedContrasts.map((value) => ({
       key: "contrast",
       value,
-      label: CONTRAST_LABELS[value as ContrastLevel] ?? value,
+      label: CONTRAST_LABELS[value as ContrastFilter] ?? value,
+    })),
+    ...selectedLatitudes.map((value) => ({
+      key: "latitude",
+      value,
+      label: LATITUDE_LABELS[value as LatitudeFilter] ?? value,
+    })),
+    ...selectedSaturations.map((value) => ({
+      key: "saturation",
+      value,
+      label: SATURATION_LABELS[value as SaturationFilter] ?? value,
     })),
     ...selectedBrands.map((slug) => ({
       key: "brand",

@@ -4,12 +4,14 @@ import type {
   FilmBrand,
   FilmType,
   FilmFormat,
-  GrainLevel,
-  ContrastLevel,
+  GrainFilter,
+  ContrastFilter,
+  LatitudeFilter,
+  SaturationFilter,
   BestFor,
 } from "@/lib/types";
 import { seedBrands, seedFilmStocks, seedPurchaseLinks } from "@/lib/seed-data";
-import { getFilmStocksFromFile } from "@/lib/editable-film-stocks";
+import { getFilmStocksFromFile, normalizeFilmStockFromFile } from "@/lib/editable-film-stocks";
 import { getBrandsFromFile } from "@/lib/editable-brands";
 import {
   getBrandsFromSupabase,
@@ -26,8 +28,10 @@ export interface FilmStockFilters {
   iso?: number[];
   isoMin?: number;
   isoMax?: number;
-  grain?: GrainLevel | GrainLevel[];
-  contrast?: ContrastLevel | ContrastLevel[];
+  grain?: GrainFilter | GrainFilter[];
+  contrast?: ContrastFilter | ContrastFilter[];
+  latitude?: LatitudeFilter | LatitudeFilter[];
+  saturation?: SaturationFilter | SaturationFilter[];
   bestFor?: BestFor | BestFor[];
   discontinued?: boolean;
   /** "popular" (default) = by featured then rating then name; "alphabetical" = by brand + name */
@@ -40,8 +44,12 @@ function getAllBrands(): FilmBrand[] {
 
 function getAllFilmStocks(): (FilmStock & { brand: FilmBrand })[] {
   const brands = getAllBrands();
-  const stocks = getFilmStocksFromFile() ?? seedFilmStocks;
-  return stocks
+  const fromFile = getFilmStocksFromFile();
+  const rawStocks = fromFile ?? seedFilmStocks;
+  const normalizedStocks: FilmStock[] = fromFile
+    ? rawStocks
+    : (rawStocks as unknown as Record<string, unknown>[]).map(normalizeFilmStockFromFile);
+  return normalizedStocks
     .map((stock) => {
       const brand = brands.find((b) => b.id === stock.brand_id);
       if (!brand) {
@@ -115,6 +123,18 @@ export async function getFilmStocks(
         stocks = stocks.filter((s) => contrasts.includes(s.contrast_level));
       }
     }
+    if (filters.latitude !== undefined) {
+      const latitudes = Array.isArray(filters.latitude) ? filters.latitude : [filters.latitude];
+      if (latitudes.length > 0) {
+        stocks = stocks.filter((s) => s.latitude_level != null && latitudes.includes(s.latitude_level));
+      }
+    }
+    if (filters.saturation !== undefined) {
+      const saturations = Array.isArray(filters.saturation) ? filters.saturation : [filters.saturation];
+      if (saturations.length > 0) {
+        stocks = stocks.filter((s) => s.saturation_filter != null && saturations.includes(s.saturation_filter));
+      }
+    }
     if (filters.bestFor !== undefined) {
       const bestFor = Array.isArray(filters.bestFor) ? filters.bestFor : [filters.bestFor];
       if (bestFor.length > 0) {
@@ -150,8 +170,10 @@ export interface FilmFilterOptions {
   types: FilmType[];
   isos: number[];
   formats: FilmFormat[];
-  grains: GrainLevel[];
-  contrasts: ContrastLevel[];
+  grains: GrainFilter[];
+  contrasts: ContrastFilter[];
+  latitudes: LatitudeFilter[];
+  saturations: SaturationFilter[];
   bestFor: BestFor[];
 }
 
@@ -164,8 +186,10 @@ const TYPE_ORDER: FilmType[] = [
   "instant",
 ];
 const FORMAT_ORDER: FilmFormat[] = ["35mm", "120", "4x5", "8x10", "110", "instant"];
-const GRAIN_ORDER: GrainLevel[] = ["fine", "medium", "strong"];
-const CONTRAST_ORDER: ContrastLevel[] = ["low", "medium", "high"];
+const GRAIN_ORDER: GrainFilter[] = ["fine", "medium", "coarse"];
+const CONTRAST_ORDER: ContrastFilter[] = ["soft", "balanced", "punchy"];
+const LATITUDE_ORDER: LatitudeFilter[] = ["narrow", "moderate", "wide"];
+const SATURATION_ORDER: SaturationFilter[] = ["muted", "natural", "vivid"];
 
 function sortByOrder<T>(arr: T[], order: T[]): T[] {
   return [...arr].sort((a, b) => {
@@ -197,8 +221,16 @@ export async function getFilmFilterOptions(): Promise<FilmFilterOptions> {
     [...new Set(stocks.map((s) => s.contrast_level))],
     CONTRAST_ORDER
   );
+  const latitudes = sortByOrder(
+    [...new Set(stocks.map((s) => s.latitude_level).filter((l): l is LatitudeFilter => l != null))],
+    LATITUDE_ORDER
+  );
+  const saturations = sortByOrder(
+    [...new Set(stocks.map((s) => s.saturation_filter).filter((s): s is SaturationFilter => s != null))],
+    SATURATION_ORDER
+  );
   const bestFor = [...new Set(stocks.flatMap((s) => s.best_for))].sort();
-  return { types, isos, formats, grains, contrasts, bestFor };
+  return { types, isos, formats, grains, contrasts, latitudes, saturations, bestFor };
 }
 
 export async function getFilmStockBySlug(

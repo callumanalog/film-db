@@ -134,7 +134,7 @@ export function QuickActions() {
         }`}
       >
         <CheckCircle2 className={`h-4 w-4 transition-colors ${shotIt ? "text-emerald-500 fill-emerald-500" : "text-muted-foreground group-hover:text-emerald-500"}`} />
-        {shotIt ? "Shot it" : "Shot"}
+        {shotIt ? "Shot It" : "Shot It"}
       </button>
 
       <button
@@ -164,7 +164,7 @@ export function QuickActions() {
         ) : (
           <CirclePlus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
         )}
-        {saved ? "In shootlist" : "Shootlist"}
+        {saved ? "On Shootlist" : "Shootlist"}
       </button>
     </div>
   );
@@ -564,35 +564,38 @@ export function CommunityGallery({
             type="button"
             key={u.id}
             onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: u.display_name ?? undefined, metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
-            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={u.image_url}
-                alt={u.caption ?? ""}
-                className="block w-full h-auto"
-                sizes="(max-width: 768px) 50vw, 33vw"
-              />
+              <div className="relative block w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={u.image_url}
+                  alt={u.caption ?? ""}
+                  className="block w-full h-auto"
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                />
+                <div
+                  className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"
+                  aria-hidden
+                />
+                <p className="absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
+                  {displayName}
+                </p>
+                <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Like">
+                    <Heart className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Save">
+                    <Bookmark className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="flex aspect-[4/3] w-full items-center justify-center bg-muted">
                 <Camera className="h-8 w-8 text-muted-foreground" />
               </div>
             )}
-            <div className="flex items-center gap-2 p-2.5">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
-                {getInitials(displayName)}
-              </span>
-              <p className="min-w-0 flex-1 truncate text-xs font-medium">{displayName}</p>
-              <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
-                  <Heart className="h-3.5 w-3.5" />
-                </button>
-                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
-                  <Bookmark className="h-3.5 w-3.5" />
-                </button>
-              </span>
-            </div>
           </button>
           );
         })}
@@ -602,35 +605,38 @@ export function CommunityGallery({
             type="button"
             key={u.id}
             onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: "You", metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
-            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={u.image_url}
-                alt={u.caption ?? ""}
-                className="block w-full h-auto"
-                sizes="(max-width: 768px) 50vw, 33vw"
-              />
+              <div className="relative block w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={u.image_url}
+                  alt={u.caption ?? ""}
+                  className="block w-full h-auto"
+                  sizes="(max-width: 768px) 50vw, 33vw"
+                />
+                <div
+                  className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"
+                  aria-hidden
+                />
+                <p className="absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
+                  You
+                </p>
+                <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Like">
+                    <Heart className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Save">
+                    <Bookmark className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="flex aspect-[4/3] w-full items-center justify-center bg-muted">
                 <Camera className="h-8 w-8 text-muted-foreground" />
               </div>
             )}
-            <div className="flex items-center gap-2 p-2.5">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
-                {getInitials("You")}
-              </span>
-              <p className="min-w-0 flex-1 truncate text-xs font-medium">You</p>
-              <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
-                  <Heart className="h-3.5 w-3.5" />
-                </button>
-                <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
-                  <Bookmark className="h-3.5 w-3.5" />
-                </button>
-              </span>
-            </div>
           </button>
         ))}
         {/* Placeholder cards (when no slug) */}
@@ -641,7 +647,7 @@ export function CommunityGallery({
             key={cardId}
             type="button"
             onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
-            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+            className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -676,7 +682,7 @@ export function CommunityGallery({
                   key={item.id}
                   type="button"
                   onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
-                  className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+                  className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.src} alt="" className="block w-full h-auto" aria-hidden />
@@ -705,7 +711,7 @@ export function CommunityGallery({
                 key={img.id}
                 type="button"
                 onClick={() => setLightboxImage({ imageUrl: img.imageUrl, alt: img.title || "", username: img.ownerName })}
-                className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+                className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -740,7 +746,7 @@ export function CommunityGallery({
                 key={img.id}
                 type="button"
                 onClick={() => img.imageUrl && setLightboxImage({ imageUrl: img.imageUrl!, username: img.username })}
-                className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:border-primary/30"
+                className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
               >
                 {img.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

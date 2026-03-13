@@ -3,7 +3,8 @@
  * Use the admin UI at /admin/films to edit; "Save" writes here. Delete this file to revert to seed.
  */
 
-import type { FilmStock } from "@/lib/types";
+import type { FilmStock, ShootingNote } from "@/lib/types";
+import { scaleToGrainFilter, scaleToContrastFilter, scaleToLatitudeFilter, scaleToSaturationFilter } from "@/lib/types";
 
 const FILM_STOCKS_PATH = "data/film-stocks.json";
 
@@ -17,7 +18,58 @@ function getDataPath(): string | null {
   }
 }
 
-/** Returns parsed film stocks from data/film-stocks.json, or null if not present/invalid. */
+/** Map legacy word values to scale 1–5 for migration from old file shape. */
+function legacyGrainToScale(v: unknown): number | null {
+  if (v === "fine") return 1;
+  if (v === "medium") return 3;
+  if (v === "strong") return 5;
+  return null;
+}
+function legacyContrastToScale(v: unknown): number | null {
+  if (v === "low") return 1;
+  if (v === "medium") return 3;
+  if (v === "high") return 5;
+  return null;
+}
+function legacyLatitudeToScale(v: unknown): number | null {
+  if (v === "very_narrow") return 1;
+  if (v === "narrow") return 2;
+  if (v === "moderate") return 3;
+  if (v === "wide") return 4;
+  if (v === "very_wide") return 5;
+  return null;
+}
+
+/** Normalize a row (from file or seed) to FilmStock (new schema: grain/contrast/latitude/saturation 1–5, shooting_notes). */
+export function normalizeFilmStockFromFile(row: Record<string, unknown>): FilmStock {
+  const grain = typeof row.grain === "number" ? row.grain : legacyGrainToScale(row.grain_level ?? row.grain);
+  const contrast = typeof row.contrast === "number" ? row.contrast : legacyContrastToScale(row.contrast_level ?? row.contrast);
+  const latitude = typeof row.latitude === "number" ? row.latitude : legacyLatitudeToScale(row.latitude_level ?? row.latitude);
+  const saturation = typeof row.saturation === "number" && row.saturation >= 1 && row.saturation <= 5 ? row.saturation : null;
+  let shooting_notes: ShootingNote[] = [];
+  if (Array.isArray(row.shooting_notes) && row.shooting_notes.every((n) => n && typeof n === "object")) {
+    shooting_notes = (row.shooting_notes as { header?: string; dek?: string }[]).map((n) => ({
+      header: typeof n.header === "string" ? n.header : "",
+      dek: typeof n.dek === "string" ? n.dek : "",
+    }));
+  } else if (row.shooting_tips != null && String(row.shooting_tips).trim() !== "") {
+    shooting_notes = [{ header: "", dek: String(row.shooting_tips).trim() }];
+  }
+  return {
+    ...row,
+    grain: grain ?? null,
+    contrast: contrast ?? null,
+    latitude: latitude ?? null,
+    saturation: saturation ?? row.saturation ?? null,
+    shooting_notes,
+    grain_level: scaleToGrainFilter(grain) ?? "medium",
+    contrast_level: scaleToContrastFilter(contrast) ?? "balanced",
+    latitude_level: scaleToLatitudeFilter(latitude) ?? null,
+    saturation_filter: scaleToSaturationFilter(saturation) ?? null,
+  } as FilmStock;
+}
+
+/** Returns parsed film stocks from data/film-stocks.json, or null if not present/invalid. Normalizes legacy shape. */
 export function getFilmStocksFromFile(): FilmStock[] | null {
   const fullPath = getDataPath();
   if (!fullPath) return null;
@@ -27,7 +79,7 @@ export function getFilmStocksFromFile(): FilmStock[] | null {
     const raw = fs.readFileSync(fullPath, "utf-8");
     const data = JSON.parse(raw) as unknown;
     if (!Array.isArray(data)) return null;
-    return data as FilmStock[];
+    return (data as Record<string, unknown>[]).map(normalizeFilmStockFromFile);
   } catch {
     return null;
   }

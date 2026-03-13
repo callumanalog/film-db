@@ -9,6 +9,7 @@
 import { config } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { seedBrands, seedFilmStocks, seedPurchaseLinks } from "../src/lib/seed-data";
+import { normalizeFilmStockFromFile } from "../src/lib/editable-film-stocks";
 
 // Prefer .env.local so we use the same credentials as the app
 config({ path: ".env.local" });
@@ -58,9 +59,10 @@ async function main() {
   // 2. Map seed brand_id to slug (seed uses id like "brand-kodak")
   const seedBrandIdToSlug = new Map(seedBrands.map((b) => [b.id, b.slug]));
 
-  // 3. Insert film stocks and build slug -> id map
+  // 3. Insert film stocks and build slug -> id map (normalize seed to new schema: scales 1–5, shooting_notes)
   const stockSlugToId = new Map<string, string>();
-  for (const s of seedFilmStocks) {
+  for (const raw of seedFilmStocks) {
+    const s = normalizeFilmStockFromFile(raw as unknown as Record<string, unknown>);
     const brandSlug = seedBrandIdToSlug.get(s.brand_id);
     if (!brandSlug) {
       console.warn("  Skipping stock (unknown brand):", s.slug);
@@ -82,10 +84,11 @@ async function main() {
         iso: s.iso,
         description: s.description,
         history: s.history,
-        shooting_tips: s.shooting_tips,
+        shooting_notes: s.shooting_notes?.length ? s.shooting_notes : null,
         grain: s.grain,
         contrast: s.contrast,
         latitude: s.latitude,
+        saturation: s.saturation,
         color_balance: s.color_balance,
         discontinued: s.discontinued,
         image_url: s.image_url,

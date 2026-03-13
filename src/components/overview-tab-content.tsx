@@ -1,31 +1,28 @@
 "use client";
 
 import type { FlickrPhoto } from "@/lib/flickr";
-import type { BestFor } from "@/lib/types";
-import { ExternalLink, Play, Aperture, Palette, Gauge, ScanLine, Thermometer, Target, QrCode, FlaskConical, Contrast as ContrastIcon, Image, Lightbulb, Calendar } from "lucide-react";
+import type { BestFor, FilmType, ShootingNote } from "@/lib/types";
+import { isBlackAndWhiteFilm } from "@/lib/types";
+import { ExternalLink, Play, Aperture, Palette, Gauge, FlaskConical } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { SwitchToTabButton } from "@/components/film-page-tabs";
 
-/** Icons for spec labels (match hero-mockups SpecsTable). */
+/** Icons for the 2x2 specs table (Format, Film Type, ISO, Development Process). */
 const SPEC_ICONS: Record<string, LucideIcon> = {
-  "Use case": Image,
   "Format": Aperture,
-  "Release Date": Calendar,
-  "Film Format": Aperture,
-  "Film Colour & Type": Palette,
   "Film Type": Palette,
   "ISO": Gauge,
-  "Grain": ScanLine,
-  "Contrast": ContrastIcon,
-  "Colour Balance": Thermometer,
-  "Color Balance": Thermometer,
-  "Color Palette": Palette,
-  "Exposure Latitude": Target,
-  "Latitude": Target,
-  "DX Coding": QrCode,
-  "Film Development Process": FlaskConical,
   "Development Process": FlaskConical,
+  "Film Development Process": FlaskConical,
 };
+
+/** Slider config: key, label, and end labels. Value comes from props (1–5 scale from DB). */
+const SLIDER_CONFIG: { key: "grain" | "contrast" | "saturation" | "latitude"; label: string; low: string; high: string }[] = [
+  { key: "grain", label: "Grain", low: "Fine", high: "Coarse" },
+  { key: "contrast", label: "Contrast", low: "Soft", high: "Punchy" },
+  { key: "saturation", label: "Saturation", low: "Muted", high: "Vivid" },
+  { key: "latitude", label: "Latitude", low: "Narrow", high: "Wide" },
+];
 
 /** Placeholder image paths and usernames for overview grid (same style as example cards, no heart/camera). */
 const OVERVIEW_PLACEHOLDER_ITEMS = [
@@ -102,39 +99,88 @@ interface PurchaseLink {
 interface OverviewTabContentProps {
   description: string | null;
   flickrImages: FlickrPhoto[];
-  shootingTips: string | null;
+  /** Array of { header, dek } for shooting notes. Replaces legacy shootingTips. */
+  shootingNotes: ShootingNote[];
   reviewsFromWeb: { title: string; site: string; url: string }[];
   videoReviews: { title: string; channel: string; url: string; videoId?: string }[];
   purchaseLinks?: PurchaseLink[];
   stockName?: string;
   bestFor?: BestFor[];
-  specs?: { label: string; value: string }[];
-  pairedSpecsRows?: { label: string; value: string }[][];
   useCaseSpec?: { label: string; value: string };
+  /** Flat list of spec { label, value } for the 2x2 table (Format, Film Type, ISO, Development Process). */
+  specs?: { label: string; value: string }[];
+  /** Scale 1–5 from DB; only sliders with a value are shown. For B&W, saturation is displayed as Color Sensitivity. */
+  characterScales?: { grain?: number | null; contrast?: number | null; saturation?: number | null; latitude?: number | null };
+  /** Film type: when bw_negative/bw_reversal, saturation slider is shown as "Color Sensitivity" (1=Ortho, 3=Pan, 5=Extended Pan). */
+  filmType?: FilmType | null;
 }
 
 export function OverviewTabContent({
   description,
   flickrImages,
-  shootingTips,
+  shootingNotes,
   reviewsFromWeb,
   videoReviews,
   purchaseLinks = [],
   stockName,
   bestFor = [],
-  specs = [],
-  pairedSpecsRows,
   useCaseSpec,
+  specs = [],
+  characterScales,
+  filmType,
 }: OverviewTabContentProps) {
+  const isBw = isBlackAndWhiteFilm(filmType ?? null);
+  const sliderConfig = SLIDER_CONFIG.map((c) => {
+    if (c.key === "saturation" && isBw) {
+      return { ...c, label: "Color Sensitivity", low: "Orthochromatic", high: "Extended Panchromatic" };
+    }
+    return c;
+  });
+  const characterSliders = sliderConfig.filter(
+    (c) => characterScales?.[c.key] != null && characterScales[c.key]! >= 1 && characterScales[c.key]! <= 5
+  ).map((c) => ({ ...c, value: characterScales![c.key] as number }));
+
+  /** 2x2 table: Format | Film Type, ISO | Development Process. */
+  const topSpecsRows: { label: string; value: string }[][] = [
+    [
+      specs.find((s) => s.label === "Format") ?? { label: "Format", value: "—" },
+      specs.find((s) => s.label === "Film Type") ?? { label: "Film Type", value: "—" },
+    ],
+    [
+      specs.find((s) => s.label === "ISO") ?? { label: "ISO", value: "—" },
+      specs.find((s) => s.label === "Development Process" || s.label === "Film Development Process") ?? { label: "Development Process", value: "—" },
+    ],
+  ];
   return (
     <div className="space-y-14">
-      {/* Description, then Gallery section, Specs, Shooting notes */}
+      {/* Description, then Gallery section, Specs, Performance */}
       <div className="min-w-0 space-y-10">
         {description && (
           <section>
             <p className="text-[15px] leading-relaxed text-black">
               {description}
             </p>
+            {(bestFor.length > 0 || (useCaseSpec?.value && useCaseSpec.value !== "—")) && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {bestFor.length > 0
+                  ? bestFor.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex rounded border border-[#E5E5E5] bg-transparent px-2 py-1 text-[11px] font-medium uppercase leading-tight tracking-[0.05em] text-muted-foreground transition-colors hover:border-[#BBB] hover:text-primary"
+                      >
+                        {tag}
+                      </span>
+                    ))
+                  : useCaseSpec!.value.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex rounded border border-[#E5E5E5] bg-transparent px-2 py-1 text-[11px] font-medium uppercase leading-tight tracking-[0.05em] text-muted-foreground transition-colors hover:border-[#BBB] hover:text-primary"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+              </div>
+            )}
           </section>
         )}
         <section>
@@ -148,83 +194,113 @@ export function OverviewTabContent({
           </div>
           <OverviewImageGrid flickrImages={flickrImages} />
         </section>
-        {specs.length > 0 && (() => {
-            const list = specs;
-            const pairedCount = Math.min(10, list.length);
-            const derivedPairedRows: { label: string; value: string }[][] = [];
-            for (let i = 0; i < pairedCount; i += 2) {
-              derivedPairedRows.push(list.slice(i, i + 2));
-            }
-            const derivedUseCaseSpec = list.length > 10 && list[10].label === "Use case" ? list[10] : null;
-            const pairedRows = pairedSpecsRows ?? derivedPairedRows;
-            const effectiveUseCaseSpec = useCaseSpec ?? derivedUseCaseSpec;
-
-            return (
-              <section aria-labelledby="overview-specs-heading">
-                <h3 id="overview-specs-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h3>
-                <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
-                  <div className="divide-y divide-border/50">
-                    {pairedRows.map((row, rowIndex) => (
-                      <div key={rowIndex} className="grid grid-cols-2 divide-x divide-border/50">
-                        {row.map((spec) => {
-                          const Icon = SPEC_ICONS[spec.label];
-                          return (
-                            <div key={spec.label} className="flex items-center gap-3 px-4 py-3">
-                              {Icon ? (
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
-                                  <Icon className="h-4 w-4" aria-hidden />
-                                </span>
-                              ) : (
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground text-xs font-medium">
-                                  —
-                                </span>
-                              )}
-                              <div className="min-w-0 flex-1 py-0.5">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
-                                <p className="mt-0.5 text-sm leading-tight text-foreground/90">{spec.value}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                    {effectiveUseCaseSpec && (
-                      <div className="flex items-center gap-3 px-4 py-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
-                          <Image className="h-4 w-4" aria-hidden />
-                        </span>
-                        <div className="min-w-0 flex-1 py-0.5">
-                          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{effectiveUseCaseSpec.label}</p>
-                          <div className="mt-0.5 flex flex-wrap gap-1.5">
-                            {effectiveUseCaseSpec.value && effectiveUseCaseSpec.value !== "—"
-                              ? effectiveUseCaseSpec.value.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
-                                  <span key={tag} className="inline-flex rounded-full bg-muted px-2 py-0.5 text-sm leading-tight text-muted-foreground">
-                                    {tag}
-                                  </span>
-                                ))
-                              : <span className="text-sm text-foreground/90">—</span>}
+        {specs.length > 0 && (
+          <section aria-labelledby="overview-specs-heading">
+            <h3 id="overview-specs-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Specs</h3>
+            <div className="mb-3 overflow-hidden rounded-xl border border-border/50 bg-card">
+              <div className="divide-y divide-border/50">
+                {topSpecsRows.map((row, rowIndex) => (
+                  <div key={rowIndex} className="grid grid-cols-2 divide-x divide-border/50">
+                    {row.map((spec) => {
+                      const Icon = SPEC_ICONS[spec.label];
+                      return (
+                        <div key={spec.label} className="flex items-center gap-3 px-4 py-3">
+                          {Icon ? (
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
+                              <Icon className="h-4 w-4" aria-hidden />
+                            </span>
+                          ) : (
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground text-xs font-medium">
+                              —
+                            </span>
+                          )}
+                          <div className="min-w-0 flex-1 py-0.5">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
+                            <p className="mt-0.5 text-sm leading-tight text-foreground/90">{spec.value}</p>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                </div>
-              </section>
-            );
-          })()}
-        {shootingTips && (
-          <section aria-labelledby="shooting-notes-heading">
-            <h3 id="shooting-notes-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Shooting notes</h3>
-            <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+        {characterSliders.length > 0 && (
+          <section aria-labelledby="overview-characteristics-heading">
+            <h3 id="overview-characteristics-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Characteristics</h3>
+            <div className="mb-3 overflow-hidden rounded-xl border border-border/50 bg-card px-4 py-5">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                {characterSliders.map((item) => {
+                  const positionPercent = ((item.value - 1) / 4) * 100;
+                  return (
+                    <div key={item.key} className="flex min-w-0 flex-col items-center">
+                      <p className="w-full text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {item.label}
+                      </p>
+                      <div className="mt-2 w-full">
+                        <div className="relative h-1 w-full">
+                          {/* Inactive track (right of dot) */}
+                          <div className="absolute inset-0 rounded-full bg-[#F2F2F2]" aria-hidden />
+                          {/* Filled track to the left of the dot — slightly darker for progressive feel */}
+                          {positionPercent > 0 && (
+                            <div
+                              className="absolute inset-y-0 left-0 rounded-[1px] bg-[#B8B8B8]"
+                              style={{ width: `${positionPercent}%` }}
+                              aria-hidden
+                            />
+                          )}
+                          {/* 5 subtle tick marks (1–5 scale) */}
+                          {[0, 25, 50, 75, 100].map((tickPercent) => (
+                            <span
+                              key={tickPercent}
+                              className="absolute top-0 bottom-0 w-px bg-[#E5E5E5]"
+                              style={{
+                                left: tickPercent === 0 ? "0" : tickPercent === 100 ? "100%" : `${tickPercent}%`,
+                                transform: tickPercent === 0 ? "none" : tickPercent === 100 ? "translateX(-100%)" : "translateX(-50%)",
+                              }}
+                              aria-hidden
+                            />
+                          ))}
+                          {/* Dot with crisp 2px white ring */}
+                          <span
+                            className="absolute top-1/2 z-[1] h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_0_2px_white]"
+                            style={{ left: `${positionPercent}%` }}
+                            aria-hidden
+                          />
+                        </div>
+                        <div className="mt-1 flex w-full justify-between">
+                          <span className="text-[9px] font-normal tracking-normal text-[#BBBBBB] text-left">
+                            {item.low}
+                          </span>
+                          <span className="text-[9px] font-normal tracking-normal text-[#BBBBBB] text-right">
+                            {item.high}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+        {shootingNotes.length > 0 && (
+          <section aria-labelledby="performance-heading">
+            <h3 id="performance-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">Performance</h3>
+            <div className="mb-3 overflow-hidden rounded-xl border border-border/50 bg-card">
               <div className="divide-y divide-border/50">
-                {shootingTips.split(/\.\s+/).filter((s) => s.trim().length > 0).map((tip, i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground">
-                      <Lightbulb className="h-4 w-4" aria-hidden />
+                {shootingNotes.map((note, i) => (
+                  <div key={i} className="px-4 py-3">
+                    {note.header && (
+                      <span className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {note.header}
+                      </span>
+                    )}
+                    <span className={`block text-[15px] leading-relaxed text-black ${note.header ? "mt-1 pl-3" : ""}`}>
+                      {note.dek}
                     </span>
-                    <p className="min-w-0 flex-1 text-[15px] leading-relaxed text-black">
-                      {tip.endsWith(".") ? tip : `${tip}.`}
-                    </p>
                   </div>
                 ))}
               </div>

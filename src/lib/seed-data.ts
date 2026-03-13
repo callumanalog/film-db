@@ -217,7 +217,8 @@ export const seedBrands: FilmBrand[] = [
   },
 ];
 
-export const seedFilmStocks: FilmStock[] = [
+/** Legacy shape (grain_level "strong", shooting_tips, etc.) is normalized at runtime in queries. */
+export const seedFilmStocks = [
   // --- KODAK ---
   {
     id: "stock-portra-400",
@@ -337,6 +338,13 @@ export const seedFilmStocks: FilmStock[] = [
       "Kodak Gold has been a consumer staple since the 1980s, evolving through multiple generations. It represents the 'Kodak look' that defined popular photography for decades. In recent years, Gold 200 has experienced a renaissance as film photography has surged in popularity, becoming one of the most accessible entry points for new film shooters.",
     shooting_tips:
       "Shoot in daylight for the most vibrant results -- this film loves sunshine. Overexposure by 1 stop enhances the warm, golden tones. Grain is noticeable but adds to the nostalgic character. Works great in point-and-shoot cameras. Underexposure leads to muddy shadows, so err toward brighter situations. A fantastic travel and everyday carry film.",
+    shooting_notes: [
+      { header: "Skin Tones", dek: "Healthy and warm. It favors yellow/orange undertones, giving subjects a \"sun-kissed\" look. While not as clinical as Portra, it is very flattering for casual portraits." },
+      { header: "Color Bias", dek: "Strong leaning toward warmth. It excels in golden hour light, accentuating yellows, reds, and oranges. Blues often take on a slight cyan/teal tint in the shadows." },
+      { header: "Push/Pull", dek: "Not recommended for significant pushing. While it can handle +1 stop if needed, the grain becomes considerably more \"gritty\" and the shadows can turn muddy/brown." },
+      { header: "Shadow Detail", dek: "Moderate. Gold 200 loves light; if shadows are underexposed by more than 1–2 stops, they tend to lose detail and shift toward a warm, grainy green-brown." },
+      { header: "Highlight Roll-off", dek: "Exceptional. Like most Kodak negative films, it is very difficult to \"blow out\" highlights. It handles bright sun and harsh reflections with a smooth, pleasing transition." },
+    ],
     grain: "Medium -- adds pleasant character",
     contrast: "Medium to high",
     latitude: "Good -- prefers overexposure to underexposure",
@@ -2827,7 +2835,7 @@ export const seedFilmStocks: FilmStock[] = [
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
-];
+] as unknown as FilmStock[];
 
 export const AFFILIATE_TAG = "filmdb-20";
 // Canonical retailer order for "Where to Buy": Amazon, Adorama, Analogue Wonderland, B&H Photo

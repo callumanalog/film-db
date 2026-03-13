@@ -8,7 +8,7 @@ import { FilmsSortBar } from "@/components/films-sort-bar";
 import { SearchBar } from "@/components/search-bar";
 import { ActiveFilterChips } from "@/components/active-filter-chips";
 import { ClearFiltersLink } from "@/components/clear-filters-link";
-import type { FilmType, FilmFormat, GrainLevel, ContrastLevel, BestFor } from "@/lib/types";
+import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Film Stocks",
@@ -23,6 +23,8 @@ interface FilmsPageProps {
     format?: string;
     grain?: string;
     contrast?: string;
+    latitude?: string;
+    saturation?: string;
     bestFor?: string;
     iso?: string;
     sort?: string;
@@ -44,8 +46,10 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   const brandArr = parseMultiParam(params.brand);
   const typeArr = parseMultiParam(params.type) as FilmType[];
   const formatArr = parseMultiParam(params.format) as FilmFormat[];
-  const grainArr = parseMultiParam(params.grain) as GrainLevel[];
-  const contrastArr = parseMultiParam(params.contrast) as ContrastLevel[];
+  const grainArr = parseMultiParam(params.grain) as GrainFilter[];
+  const contrastArr = parseMultiParam(params.contrast) as ContrastFilter[];
+  const latitudeArr = parseMultiParam(params.latitude) as LatitudeFilter[];
+  const saturationArr = parseMultiParam(params.saturation) as SaturationFilter[];
   const bestForArr = parseMultiParam(params.bestFor) as BestFor[];
   const isoArr = parseMultiParam(params.iso).map((s) => Number(s)).filter((n) => !Number.isNaN(n));
 
@@ -58,6 +62,8 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
     format: formatArr.length ? formatArr : undefined,
     grain: grainArr.length ? grainArr : undefined,
     contrast: contrastArr.length ? contrastArr : undefined,
+    latitude: latitudeArr.length ? latitudeArr : undefined,
+    saturation: saturationArr.length ? saturationArr : undefined,
     bestFor: bestForArr.length ? bestForArr : undefined,
     iso: isoArr.length ? isoArr : undefined,
     sort: "alphabetical",
@@ -84,6 +90,8 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
     ...formatArr,
     ...grainArr,
     ...contrastArr,
+    ...latitudeArr,
+    ...saturationArr,
     ...bestForArr,
     ...isoArr,
   ].filter(Boolean).length;

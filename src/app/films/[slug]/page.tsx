@@ -5,8 +5,8 @@ import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand }
 import { getFilmStockStats, getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
 import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
-import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS } from "@/lib/types";
-import type { LatitudeLevel, DevelopmentProcess } from "@/lib/types";
+import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS, COLOR_SENSITIVITY_LABELS, isBlackAndWhiteFilm } from "@/lib/types";
+import type { LatitudeFilter, DevelopmentProcess } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
 import { CommunityReviews, CommunityGallery } from "@/components/community-section";
 import { StickyLeftPane, PageTitleHeader } from "@/components/hero-mockups";
@@ -71,9 +71,21 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     return "—";
   })();
 
-  /** Latitude: only one of the 5 categories when we have latitude_level; otherwise omit. */
+  /** Latitude: filter bucket label when we have latitude_level. */
   const latitudeValue: string | null =
-    stock.latitude_level != null ? LATITUDE_LABELS[stock.latitude_level as LatitudeLevel] : null;
+    stock.latitude_level != null ? LATITUDE_LABELS[stock.latitude_level] : null;
+
+  /** Saturation (color) or Color Sensitivity (B&W): display value for specs. */
+  const saturationOrColorSensitivityValue: string | null =
+    stock.saturation != null && stock.saturation >= 1 && stock.saturation <= 5
+      ? isBlackAndWhiteFilm(stock.type)
+        ? COLOR_SENSITIVITY_LABELS[stock.saturation] ?? null
+        : stock.saturation_filter != null
+          ? SATURATION_LABELS[stock.saturation_filter]
+          : null
+      : null;
+  /** Label for the saturation/color-sensitivity spec row. */
+  const saturationSpecLabel = isBlackAndWhiteFilm(stock.type) ? "Color Sensitivity" : "Saturation";
 
   /** DX coding: default true if 35mm in format. */
   const dxCoding = stock.dx_coding ?? (stock.format ?? []).includes("35mm");
@@ -87,7 +99,8 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
    * Row 3: ISO | Color Balance
    * Row 4: Grain | DX Coding
    * Row 5: Contrast | Development Process
-   * Row 6: Use case (full width, no dividing line)
+   * Row 6: Saturation or Color Sensitivity (when set) | —
+   * Row 7: Use case (full width, no dividing line)
    */
   const pairedSpecsRows: { label: string; value: string }[][] = [
     [
@@ -110,6 +123,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       { label: "Contrast", value: CONTRAST_LABELS[stock.contrast_level] },
       { label: "Development Process", value: developmentProcessValue ? DEVELOPMENT_PROCESS_LABELS[developmentProcessValue] : "—" },
     ],
+    ...(saturationOrColorSensitivityValue ? [[{ label: saturationSpecLabel, value: saturationOrColorSensitivityValue }, { label: "", value: "—" }] as { label: string; value: string }[]] : []),
   ];
   const useCaseSpec: { label: string; value: string } = {
     label: "Use case",
@@ -176,7 +190,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         <OverviewTabContent
           description={stock.description}
           flickrImages={flickrImages}
-          shootingTips={stock.shooting_tips}
+          shootingNotes={stock.shooting_notes}
           reviewsFromWeb={reviewsFromWeb}
           videoReviews={videoReviews}
           purchaseLinks={sortedLinks}
@@ -185,6 +199,13 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           specs={overviewSpecsFlat}
           pairedSpecsRows={pairedSpecsRows}
           useCaseSpec={useCaseSpec}
+          characterScales={{
+            grain: stock.grain ?? undefined,
+            contrast: stock.contrast ?? undefined,
+            saturation: stock.saturation ?? undefined,
+            latitude: stock.latitude ?? undefined,
+          }}
+          filmType={stock.type}
         />
       ),
     },

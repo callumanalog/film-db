@@ -4,21 +4,39 @@ import type {
   FilmBrand,
   FilmType,
   FilmFormat,
-  GrainLevel,
-  ContrastLevel,
-  LatitudeLevel,
+  GrainFilter,
+  ContrastFilter,
+  LatitudeFilter,
+  SaturationFilter,
+  ShootingNote,
   ColorBalanceType,
   DevelopmentProcess,
   BestFor,
 } from "@/lib/types";
+import {
+  scaleToGrainFilter,
+  scaleToContrastFilter,
+  scaleToLatitudeFilter,
+  scaleToSaturationFilter,
+} from "@/lib/types";
 import type { FilmStockPurchaseLink } from "@/lib/types";
 
-const LATITUDE_VALUES: string[] = ["very_narrow", "narrow", "moderate", "wide", "very_wide"];
+function parseScale1To5(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+}
 
-function parseLatitudeLevel(value: unknown): LatitudeLevel | null {
-  if (value == null || String(value).trim() === "") return null;
-  const s = String(value).trim();
-  return LATITUDE_VALUES.includes(s) ? (s as LatitudeLevel) : null;
+function parseShootingNotes(value: unknown): ShootingNote[] {
+  if (value == null) return [];
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Record<string, unknown> => item != null && typeof item === "object")
+    .map((item) => ({
+      header: typeof item.header === "string" ? item.header : "",
+      dek: typeof item.dek === "string" ? item.dek : "",
+    }))
+    .filter((n) => n.header !== "" || n.dek !== "");
 }
 
 function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
@@ -37,6 +55,11 @@ function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
 function mapRowToStock(row: Record<string, unknown>, brand: FilmBrand): FilmStock & { brand: FilmBrand } {
   const format = Array.isArray(row.format) ? (row.format as FilmFormat[]) : [];
   const best_for = Array.isArray(row.best_for) ? (row.best_for as BestFor[]) : [];
+  const grain = parseScale1To5(row.grain);
+  const contrast = parseScale1To5(row.contrast);
+  const latitude = parseScale1To5(row.latitude);
+  const saturation = parseScale1To5(row.saturation);
+  const shooting_notes = parseShootingNotes(row.shooting_notes);
   return {
     id: row.id as string,
     name: row.name as string,
@@ -47,14 +70,16 @@ function mapRowToStock(row: Record<string, unknown>, brand: FilmBrand): FilmStoc
     iso: Number(row.iso),
     description: (row.description as string) || null,
     history: (row.history as string) || null,
-    shooting_tips: (row.shooting_tips as string) || null,
-    grain: (row.grain as string) || null,
-    contrast: (row.contrast as string) || null,
-    latitude: (row.latitude as string) || null,
+    shooting_notes,
+    grain,
+    contrast,
+    latitude,
+    saturation,
     color_balance: row.color_balance != null && String(row.color_balance).trim() !== "" ? String(row.color_balance).trim() : null,
-    grain_level: (row.grain_level as GrainLevel) ?? (row.grain as GrainLevel) ?? "medium",
-    contrast_level: (row.contrast_level as ContrastLevel) ?? (row.contrast as ContrastLevel) ?? "medium",
-    latitude_level: parseLatitudeLevel(row.latitude_level ?? row.latitude),
+    grain_level: scaleToGrainFilter(grain) ?? "medium",
+    contrast_level: scaleToContrastFilter(contrast) ?? "balanced",
+    latitude_level: scaleToLatitudeFilter(latitude),
+    saturation_filter: scaleToSaturationFilter(saturation),
     color_balance_type: (row.color_balance_type as ColorBalanceType) || null,
     color_balance_kelvin: row.color_balance_kelvin != null ? Number(row.color_balance_kelvin) : null,
     dx_coding: Boolean(row.dx_coding),

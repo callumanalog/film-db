@@ -17,6 +17,8 @@ export function ClearFiltersLink() {
   const selectedFormats = getParamArray(searchParams, "format");
   const selectedGrains = getParamArray(searchParams, "grain");
   const selectedContrasts = getParamArray(searchParams, "contrast");
+  const selectedLatitudes = getParamArray(searchParams, "latitude");
+  const selectedSaturations = getParamArray(searchParams, "saturation");
   const selectedBestFor = getParamArray(searchParams, "bestFor");
   const selectedIsos = getParamArray(searchParams, "iso");
 
@@ -26,6 +28,8 @@ export function ClearFiltersLink() {
     selectedFormats.length > 0 ||
     selectedGrains.length > 0 ||
     selectedContrasts.length > 0 ||
+    selectedLatitudes.length > 0 ||
+    selectedSaturations.length > 0 ||
     selectedBestFor.length > 0 ||
     selectedIsos.length > 0;
 

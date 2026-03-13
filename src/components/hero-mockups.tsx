@@ -410,8 +410,8 @@ function UserStarRating({
 /* ─── Sticky Left Pane ─── */
 
 const LOG_OPTIONS = [
-  { id: "shot", labelInactive: "Shot it", labelActive: "Shot it", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
-  { id: "favorite", labelInactive: "Shootlist", labelActive: "Shootlist", fullLabel: "Add to shootlist", Icon: CirclePlus },
+  { id: "shot", labelInactive: "Shot It", labelActive: "Shot It", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
+  { id: "favorite", labelInactive: "Shootlist", labelActive: "On Shootlist", fullLabel: "Add to shootlist", Icon: CirclePlus },
 ] as const;
 
 /** Active Shot: orange circle + white tick */
@@ -560,9 +560,9 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
         </div>
         {/* Desktop (md+): 2-col Shot it | Shootlist */}
         <div className="hidden grid-cols-2 gap-0 border-t border-border/50 md:grid [&>*:first-child]:border-r [&>*:first-child]:border-border/50" role="group" aria-label="Film stock actions">
-          {LOG_OPTIONS.map(({ id, fullLabel, Icon }) => {
-            const label = id === "shot" ? "Shot it" : "Shootlist";
+          {LOG_OPTIONS.map(({ id, fullLabel, Icon, labelInactive, labelActive }) => {
             const isActive = id === "shot" ? isShot : isFavourite;
+            const label = isActive ? labelActive : labelInactive;
             const filledIcon = isActive && id === "favorite";
             const shotActive = isActive && id === "shot";
             const showRemove = isActive && hoveredActionId === id;
@@ -607,9 +607,9 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
 
         {/* Mobile only (below md): Shot it | Shootlist | Log a roll — same as desktop, 3 in one row */}
         <div className="grid grid-cols-3 gap-0 border-t border-border/50 md:hidden [&>*:not(:last-child)]:border-r [&>*:not(:last-child)]:border-border/50" role="group" aria-label="Film stock actions">
-          {LOG_OPTIONS.map(({ id, fullLabel, Icon }) => {
-            const label = id === "shot" ? "Shot it" : "Shootlist";
+          {LOG_OPTIONS.map(({ id, fullLabel, Icon, labelInactive, labelActive }) => {
             const isActive = id === "shot" ? isShot : isFavourite;
+            const label = isActive ? labelActive : labelInactive;
             const filledIcon = isActive && id === "favorite";
             const shotActive = isActive && id === "shot";
             const showRemove = isActive && hoveredActionId === id;
@@ -941,7 +941,7 @@ export function PageTitleHeader({
             <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <span className="text-base font-semibold tracking-tight text-foreground">{display.shotByCount}</span>
           </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shooters</span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot It</span>
         </div>
         <div className="flex flex-col items-center">
           <div className="flex items-center justify-center gap-1.5">
