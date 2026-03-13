@@ -1052,7 +1052,7 @@ export function SpecsRightPane({ specs }: { specs: { label: string; value: strin
     <div>
       <div className="overflow-hidden rounded-[7px] border border-border/50">
         <div className="border-b border-border/50 px-4 py-3">
-          <p className="font-advercase text-sm font-bold tracking-tight">Specs</p>
+          <p className="font-sans text-sm font-bold tracking-tight">Specs</p>
         </div>
         {specs.map((spec, i) => (
           <div key={spec.label} className={`px-4 py-2 ${i % 2 === 0 ? "bg-secondary/30" : "bg-card"}`}>
@@ -1283,7 +1283,7 @@ export function PriceBuyCard({ stock }: HeroMockupProps) {
         {links.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {links.map((link) => (
-              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer sponsored" className="font-advercase inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3.5 py-2 text-xs font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
+              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer sponsored" className="font-sans inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3.5 py-2 text-xs font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
                 {link.retailer_name}
                 <ExternalLink className="h-3 w-3 text-muted-foreground" />
               </a>
@@ -1310,7 +1310,7 @@ function RectAction({ icon: Icon, label }: { icon: React.ElementType; label: str
   return (
     <button className="group flex flex-col items-center gap-2 rounded-[7px] border border-border/60 bg-card py-3 transition-all hover:border-primary/40 hover:bg-primary/5">
       <Icon className="h-6 w-6 text-muted-foreground transition-colors group-hover:text-primary" />
-      <span className="font-advercase text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-foreground">{label}</span>
+      <span className="font-sans text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-foreground">{label}</span>
     </button>
   );
 }

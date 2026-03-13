@@ -55,7 +55,7 @@ function SignInForm() {
 
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-sm flex-col justify-center px-4 py-12">
-      <Link href="/" className="mb-8 flex items-center gap-2.5 font-advercase">
+      <Link href="/" className="mb-8 flex items-center gap-2.5 font-sans">
         <div className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-primary">
           <Film className="h-5 w-5 text-primary-foreground" />
         </div>

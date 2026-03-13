@@ -42,11 +42,11 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
     <Select value={currentSort} onValueChange={(v) => setSort(v as SortValue)}>
       <SelectTrigger
         size="sm"
-        className="w-fit border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent [&>svg]:text-muted-foreground"
+        className="h-[44px] w-fit border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent md:h-[36px] [&>svg]:text-muted-foreground"
       >
         <ArrowUpDown className="size-4 shrink-0 text-muted-foreground" />
         <span className="text-sm text-foreground md:hidden">Sort</span>
-        <span className="hidden text-sm text-foreground md:inline">{currentLabel}</span>
+        <span className="hidden text-sm text-foreground md:inline md:text-xs">{currentLabel}</span>
       </SelectTrigger>
       <SelectContent>
         {SORT_OPTIONS.map((opt) => (

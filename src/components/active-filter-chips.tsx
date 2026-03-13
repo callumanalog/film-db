@@ -140,7 +140,7 @@ export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
           onClick={() => remove(key, value)}
           className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/50 pl-2.5 pr-1.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
         >
-          <span className="truncate max-w-[120px]">{label}</span>
+          <span className="truncate max-w-[var(--width-chip-label)]">{label}</span>
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary">
             <X className="h-3 w-3" aria-hidden />
           </span>

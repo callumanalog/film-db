@@ -27,7 +27,7 @@ export function ExpandableText({ description, history }: ExpandableTextProps) {
       </div>
       <button
         onClick={() => setExpanded(!expanded)}
-        className="font-advercase mt-2 text-sm font-medium text-primary transition-colors hover:text-primary/70"
+        className="font-sans mt-2 text-sm font-medium text-primary transition-colors hover:text-primary/70"
       >
         {expanded ? "Show less" : "Read more"}
       </button>
@@ -50,7 +50,7 @@ export function InlineExpandableText({ text }: { text: string }) {
               {" "}
               <button
                 onClick={() => setExpanded(false)}
-                className="font-advercase inline text-sm font-semibold text-primary transition-colors hover:text-primary/70"
+                className="font-sans inline text-sm font-semibold text-primary transition-colors hover:text-primary/70"
               >
                 LESS
               </button>
@@ -60,7 +60,7 @@ export function InlineExpandableText({ text }: { text: string }) {
         {!expanded && (
           <button
             onClick={() => setExpanded(true)}
-            className="font-advercase absolute bottom-0 right-0 bg-background pl-2 text-sm font-semibold text-primary transition-colors hover:text-primary/70"
+            className="font-sans absolute bottom-0 right-0 bg-background pl-2 text-sm font-semibold text-primary transition-colors hover:text-primary/70"
           >
             ... MORE
           </button>

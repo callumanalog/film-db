@@ -252,9 +252,9 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
           From sun-drenched portraits to gritty midnight streets—choose a mood below to find the perfect chemistry for your vision.
         </p>
 
-        {/* Discovery Ribbon: hidden below 768px; on mobile use Vibes button + bottom drawer */}
+        {/* Discovery Ribbon: hidden below 768px; on mobile use Vibes button + bottom drawer. Pill scale: h-[44px] mobile, h-[36px] desktop. */}
         <div className="mt-6 hidden px-4 sm:px-6 md:block">
-          <div className="mx-auto flex max-w-4xl flex-wrap justify-center gap-2.5 py-1.5">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-2.5">
             {DISCOVERY_PILLS.map((pill) => {
               const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
               const active = isPillActive(pill);
@@ -269,7 +269,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   onClick={() => setDiscoveryPill(pill, active)}
                   onMouseEnter={() => setHoveredPillId(pill.id)}
                   onMouseLeave={() => setHoveredPillId(null)}
-                  className={`group shrink-0 rounded-[6px] font-sans text-[13px] transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out ${
+                  className={`group flex h-[36px] shrink-0 items-center justify-center rounded-lg font-sans text-xs transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out ${
                     useGradientBorder ? "border border-transparent" : "border border-border/50 bg-white"
                   }`}
                   style={
@@ -285,7 +285,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       : undefined
                   }
                 >
-                  <span className="flex items-center gap-2.5 px-3.5 py-1.5">
+                  <span className="flex items-center gap-2 px-4">
                     <span
                       className="flex size-4 shrink-0 rounded-full ring-1 ring-white/50 transition-transform duration-200 ease-in-out group-hover:scale-110"
                       style={{
@@ -306,23 +306,23 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
           </div>
         </div>
 
-        {/* Utility Row: Search + Filters (left), Sort (right) — same size as discovery pills */}
-        <div className="mt-12 flex h-8 flex-row items-center justify-between gap-4">
+        {/* Utility Row: Search + Filters + Vibes — same vertical mid-point (pill scale: h-[44px] mobile, h-[36px] desktop) */}
+        <div className="mt-12 flex flex-row flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             {/* Mobile (< 768px): search icon opens full-screen search drawer */}
             <button
               type="button"
               onClick={() => setMobileSearchOpen(true)}
               aria-label="Open search"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-[6px] border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:hidden"
+              className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:hidden"
             >
               <Search className="h-3.5 w-3.5" />
             </button>
-            {/* Desktop: inline expand or expanded form */}
+            {/* Desktop: inline expand or expanded form — input height matches primary (h-[44px]) */}
             {searchExpanded ? (
               <form
                 onSubmit={handleSearchSubmit}
-                className="hidden min-w-0 max-w-[220px] items-center gap-2 rounded-[6px] border border-border/60 bg-secondary/50 pl-3.5 pr-2 py-1.5 md:flex"
+                className="hidden h-[36px] min-w-0 max-w-[var(--width-search-field)] items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 md:flex"
               >
                 <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <input
@@ -331,7 +331,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search..."
-                  className="min-w-0 flex-1 border-0 bg-transparent text-[13px] font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0"
+                  className="min-w-0 flex-1 border-0 bg-transparent text-xs font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0"
                 />
                 <button
                   type="button"
@@ -341,7 +341,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                     router.push("/films");
                   }}
                   aria-label="Clear search and close"
-                  className="ml-3 rounded-[6px] p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -351,7 +351,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 type="button"
                 onClick={() => setSearchExpanded(true)}
                 aria-label="Open search"
-                className="hidden h-8 w-8 items-center justify-center rounded-[6px] border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:inline-flex"
+                className="hidden h-[36px] w-[36px] shrink-0 items-center justify-center rounded-lg border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:inline-flex"
               >
                 <Search className="h-3.5 w-3.5" />
               </button>
@@ -359,18 +359,18 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="inline-flex items-center justify-center gap-2.5 rounded-[6px] border border-border/60 bg-secondary/50 px-3.5 py-1.5 font-sans text-[13px] font-medium text-foreground hover:border-primary/40 hover:bg-primary/5"
+              className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
               Filters
             </button>
             <button
               type="button"
               onClick={() => setVibesDrawerOpen(true)}
-              className="md:hidden inline-flex items-center justify-center gap-2.5 rounded-[6px] border border-border/60 bg-secondary/50 px-3.5 py-1.5 font-sans text-[13px] font-medium text-foreground hover:border-primary/40 hover:bg-primary/5"
+              className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:hidden"
               aria-label="Open vibes"
             >
-              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
               Vibes
             </button>
           </div>
@@ -392,7 +392,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 type="button"
                 onClick={() => setDiscoveryPill(activePill, true)}
                 aria-label={`Remove ${activePill.label} filter`}
-                className="inline-flex shrink-0 items-center gap-1 rounded-[6px] border border-transparent font-sans text-[13px] transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out pl-3.5 pr-1.5 py-1.5 cursor-pointer hover:opacity-90"
+                className="inline-flex h-[44px] shrink-0 items-center gap-1 rounded-lg border border-transparent px-4 font-sans text-sm transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out cursor-pointer hover:opacity-90"
                 style={{
                   borderWidth: 1.5,
                   backgroundImage: `linear-gradient(${fillBg}, ${fillBg}), ${borderGradient}`,
@@ -429,130 +429,132 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             aria-hidden
             onClick={() => setDrawerOpen(false)}
           />
-          {/* Filters: mobile drawer under site header (top-16), no rounded corners; desktop left drawer */}
+          {/* Filters: mobile drawer — full height from below header to viewport bottom (100dvh for mobile chrome). */}
           <div
-            className="fixed left-0 right-0 top-16 z-[70] flex h-[calc(100vh-4rem)] w-full max-w-none flex-col overflow-hidden border-t border-slate-200 bg-background shadow-xl md:hidden"
+            className="fixed inset-x-0 top-16 z-[70] flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] flex-col overflow-hidden border-t border-border bg-background shadow-xl md:hidden"
             role="dialog"
             aria-label="Filters"
           >
-            <div className="relative flex shrink-0 items-center justify-center border-b border-slate-200 bg-background px-4 py-3">
-              <span className="font-sans text-sm font-semibold text-foreground">Filters</span>
+            <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-white relative">
+              <h2 className="text-center font-sans text-sm font-semibold text-foreground">Filters</h2>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Close filters"
-                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-32 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <FilterSidebar brands={brands} filterOptions={filterOptions} />
             </div>
-            <div className="shrink-0 space-y-2 border-t border-slate-200 bg-background p-4">
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                disabled={
-                  !searchParams.get("search") &&
-                  !searchParams.get("brand") &&
-                  !searchParams.get("type") &&
-                  !searchParams.get("format") &&
-                  !searchParams.get("grain") &&
-                  !searchParams.get("contrast") &&
-                  !searchParams.get("latitude") &&
-                  !searchParams.get("saturation") &&
-                  !searchParams.get("bestFor") &&
-                  !searchParams.get("iso") &&
-                  !searchParams.get("vibe")
-                }
-                className="w-full rounded-[6px] bg-primary px-4 py-3 font-sans text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
-              >
-                Apply
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  router.push("/films");
-                  setDrawerOpen(false);
-                }}
-                className="w-full rounded-[6px] border border-border bg-transparent px-4 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-          <div
-            className="fixed left-0 top-16 z-[70] flex hidden h-[calc(100vh-4rem)] w-full max-w-sm flex-col overflow-hidden border-r border-border bg-background shadow-xl md:flex"
-            role="dialog"
-            aria-label="Filters"
-          >
-            <div className="shrink-0 flex flex-col gap-2 border-b border-border bg-background px-4 py-3">
-              <div className="flex items-center justify-between">
-                <span className="font-sans text-sm font-semibold text-foreground">Filters</span>
+            <div className="shrink-0 border-t border-border bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="space-y-2">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  aria-label="Close filters"
-                  className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  disabled={
+                    !searchParams.get("search") &&
+                    !searchParams.get("brand") &&
+                    !searchParams.get("type") &&
+                    !searchParams.get("format") &&
+                    !searchParams.get("grain") &&
+                    !searchParams.get("contrast") &&
+                    !searchParams.get("latitude") &&
+                    !searchParams.get("saturation") &&
+                    !searchParams.get("bestFor") &&
+                    !searchParams.get("iso") &&
+                    !searchParams.get("vibe")
+                  }
+                  className="btn-primary"
                 >
-                  <X className="h-5 w-5" />
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push("/films");
+                    setDrawerOpen(false);
+                  }}
+                  className="w-full py-2 text-center font-sans text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                >
+                  Clear all filters
                 </button>
               </div>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
-              <FilterSidebar brands={brands} filterOptions={filterOptions} />
-            </div>
-            <div className="sticky bottom-0 shrink-0 space-y-2 border-t border-slate-200 bg-background p-4">
+          </div>
+          <div
+            className="fixed left-0 top-16 z-[70] flex h-[calc(100dvh-4rem)] w-full max-w-sm flex-col overflow-hidden border-r border-border bg-background shadow-xl md:flex"
+            role="dialog"
+            aria-label="Filters"
+          >
+            <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-white relative">
+              <h2 className="text-center font-sans text-sm font-semibold text-foreground">Filters</h2>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                disabled={
-                  !searchParams.get("search") &&
-                  !searchParams.get("brand") &&
-                  !searchParams.get("type") &&
-                  !searchParams.get("format") &&
-                  !searchParams.get("grain") &&
-                  !searchParams.get("contrast") &&
-                  !searchParams.get("latitude") &&
-                  !searchParams.get("saturation") &&
-                  !searchParams.get("bestFor") &&
-                  !searchParams.get("iso") &&
-                  !searchParams.get("vibe")
-                }
-                className="w-full rounded-[6px] bg-primary px-4 py-3 font-sans text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
+                aria-label="Close filters"
+                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                Apply
+                <X className="h-5 w-5" />
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  router.push("/films");
-                  setDrawerOpen(false);
-                }}
-                disabled={
-                  !searchParams.get("search") &&
-                  !searchParams.get("brand") &&
-                  !searchParams.get("type") &&
-                  !searchParams.get("format") &&
-                  !searchParams.get("grain") &&
-                  !searchParams.get("contrast") &&
-                  !searchParams.get("latitude") &&
-                  !searchParams.get("saturation") &&
-                  !searchParams.get("bestFor") &&
-                  !searchParams.get("iso") &&
-                  !searchParams.get("vibe")
-                }
-                className="w-full rounded-[6px] border border-border bg-transparent px-4 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50"
-              >
-                Clear all filters
-              </button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-32">
+              <FilterSidebar brands={brands} filterOptions={filterOptions} />
+            </div>
+            <div className="shrink-0 border-t border-border bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(false)}
+                  disabled={
+                    !searchParams.get("search") &&
+                    !searchParams.get("brand") &&
+                    !searchParams.get("type") &&
+                    !searchParams.get("format") &&
+                    !searchParams.get("grain") &&
+                    !searchParams.get("contrast") &&
+                    !searchParams.get("latitude") &&
+                    !searchParams.get("saturation") &&
+                    !searchParams.get("bestFor") &&
+                    !searchParams.get("iso") &&
+                    !searchParams.get("vibe")
+                  }
+                  className="btn-primary"
+                >
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push("/films");
+                    setDrawerOpen(false);
+                  }}
+                  disabled={
+                    !searchParams.get("search") &&
+                    !searchParams.get("brand") &&
+                    !searchParams.get("type") &&
+                    !searchParams.get("format") &&
+                    !searchParams.get("grain") &&
+                    !searchParams.get("contrast") &&
+                    !searchParams.get("latitude") &&
+                    !searchParams.get("saturation") &&
+                    !searchParams.get("bestFor") &&
+                    !searchParams.get("iso") &&
+                    !searchParams.get("vibe")
+                  }
+                  className="w-full py-2 text-center font-sans text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
+                >
+                  Clear all filters
+                </button>
+              </div>
             </div>
           </div>
         </>
       )}
 
-      {/* Mobile search drawer: sits below site header (top-16), only below 768px */}
+      {/* Mobile search drawer: max-h-[90dvh], sticky header + action bar */}
       {(mobileSearchOpen || searchDrawerClosing) && (
         <>
           <div
@@ -561,29 +563,27 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             onClick={closeMobileSearchDrawer}
           />
           <div
-            className={`fixed top-16 left-0 right-0 z-[70] h-[calc(100vh-4rem)] w-full overflow-hidden bg-background transition-transform duration-300 ease-out md:hidden ${
+            className={`fixed inset-x-0 top-16 z-[70] flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-background transition-transform duration-300 ease-out md:hidden ${
               searchDrawerReady && !searchDrawerClosing ? "translate-y-0" : "translate-y-full"
             }`}
             role="dialog"
             aria-label="Search films"
           >
-            {/* Fixed header: stays in place when keyboard opens (viewport-fixed so keyboard doesn't push it) */}
-            <div className="fixed left-0 right-0 top-16 z-[72] flex h-12 items-center justify-center border-b border-slate-200 bg-background px-4 md:hidden">
-              <span className="font-sans text-sm font-semibold text-foreground">Search</span>
+            <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-white relative">
+              <h2 className="text-center font-sans text-sm font-semibold text-foreground">Search</h2>
               <button
                 type="button"
                 onClick={closeMobileSearchDrawer}
                 aria-label="Close search"
-                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
-            </div>
+            </header>
 
-            {/* Fixed search bar: stays in place when keyboard opens (below 4rem + 3rem header) */}
-            <div className="fixed left-0 right-0 top-28 z-[72] shrink-0 bg-background px-4 py-3 md:hidden">
+            <div className="shrink-0 bg-background px-4 py-3">
               <form onSubmit={handleMobileSearchSubmit} className="w-full" id="mobile-search-form">
-                <div className="flex items-center gap-2 rounded-[8px] border border-slate-200 bg-background px-3 py-3">
+                <div className="flex h-[52px] items-center gap-2 rounded-lg border border-border bg-background px-4">
                   <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <input
                     ref={mobileSearchInputRef}
@@ -599,47 +599,41 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
               </form>
             </div>
 
-            {/* Fixed footer: stays at bottom when keyboard opens */}
-            <div className="fixed bottom-0 left-0 right-0 z-[72] space-y-2 border-t border-slate-200 bg-background p-4 md:hidden">
-              <button
-                type="submit"
-                form="mobile-search-form"
-                className="w-full rounded-[6px] bg-primary px-4 py-3 font-sans text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Search
-              </button>
-              <button
-                type="button"
-                onClick={closeMobileSearchDrawer}
-                className="w-full rounded-[6px] border border-border bg-transparent px-4 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* Scrollable content only: BRANDS grid; fixed top/bottom so only this area scrolls when keyboard opens */}
-            <div className="no-scrollbar fixed left-0 right-0 top-44 bottom-32 z-0 overflow-y-auto px-4 py-4 pb-4 md:hidden">
-              <p className="mb-3 font-sans text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                BRANDS
-              </p>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-32 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <p className="label-caps mb-3">Brands</p>
               <div className="grid grid-cols-2 gap-2">
                 {brands.map((brand) => (
                   <button
                     key={brand.id}
                     type="button"
                     onClick={() => handleBrandTap(brand)}
-                    className="flex items-center justify-center rounded-[6px] border border-border/50 bg-secondary/30 py-3 font-sans text-[13px] font-semibold tracking-wide text-foreground transition-colors hover:border-primary/40 hover:bg-secondary active:bg-secondary/80"
+                    className="flex h-[44px] items-center justify-center rounded-lg border border-border/50 bg-secondary/30 px-4 font-sans text-sm font-semibold tracking-wide text-foreground transition-colors hover:border-primary/40 hover:bg-secondary active:bg-secondary/80"
                   >
                     {brand.name}
                   </button>
                 ))}
               </div>
             </div>
+
+            <div className="shrink-0 border-t border-border bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <div className="space-y-2">
+                <button type="submit" form="mobile-search-form" className="btn-primary">
+                  Search
+                </button>
+                <button
+                  type="button"
+                  onClick={closeMobileSearchDrawer}
+                  className="w-full py-2 text-center font-sans text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </>
       )}
 
-      {/* Vibes bottom drawer: mobile only, premium single-column pills */}
+      {/* Vibes bottom drawer: mobile only, max-h-[90dvh], sticky header */}
       {vibesDrawerOpen && (
         <>
           <div
@@ -648,31 +642,25 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             onClick={() => setVibesDrawerOpen(false)}
           />
           <div
-            className="fixed bottom-0 left-0 right-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[7px] bg-background md:hidden"
+            className="fixed bottom-0 left-0 right-0 z-50 flex h-[90dvh] max-h-[90dvh] flex-col overflow-hidden rounded-t-card bg-background md:hidden"
             role="dialog"
             aria-label="Vibes"
           >
-            {/* Pull-to-dismiss handle */}
-            <div className="flex justify-center pt-3 pb-1">
-              <div
-                className="h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30"
-                aria-hidden
-              />
+            <div className="flex shrink-0 justify-center pt-3 pb-1">
+              <div className="h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" aria-hidden />
             </div>
-            <div className="sticky top-0 z-10 grid grid-cols-[1fr_auto_1fr] items-center border-b border-slate-100 bg-background px-4 py-3">
-              <div className="min-w-0" />
-              <span className="text-center font-sans text-sm font-semibold text-foreground">Vibes</span>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setVibesDrawerOpen(false)}
-                  aria-label="Close vibes"
-                  className="rounded-[6px] p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
+            <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-white relative">
+              <h2 className="text-center font-sans text-sm font-semibold text-foreground">Vibes</h2>
+              <button
+                type="button"
+                onClick={() => setVibesDrawerOpen(false)}
+                aria-label="Close vibes"
+                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="grid grid-cols-2">
               {DISCOVERY_PILLS.map((pill, index) => {
                 const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
@@ -686,7 +674,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       setDiscoveryPill(pill, active);
                       setTimeout(() => setVibesDrawerOpen(false), 200);
                     }}
-                    className={`flex h-28 flex-col items-center justify-center gap-3 border-b border-slate-100 font-sans text-[14px] font-medium transition-colors duration-200 active:bg-slate-50 ${
+                    className={`flex h-28 flex-col items-center justify-center gap-3 border-b border-border font-sans text-sm font-medium transition-colors duration-200 active:bg-muted ${
                       isFirstColumn ? "border-r border-slate-100" : ""
                     } ${active ? "bg-transparent text-black" : "bg-background text-slate-700"}`}
                     style={
@@ -710,6 +698,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   </button>
                 );
               })}
+            </div>
             </div>
           </div>
         </>

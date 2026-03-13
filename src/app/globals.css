@@ -20,6 +20,7 @@
 }
 
 @theme inline {
+  /* ─── Colors (semantic) ─── */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-work-sans);
@@ -55,6 +56,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* ─── Radius (films landing as reference) ─── */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -62,6 +65,19 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /** Cards, panels, empty states, modals, pills, buttons, inputs. Use rounded-card or rounded-control (same: 7px). */
+  --radius-card: 0.4375rem; /* 7px */
+  --radius-control: 0.4375rem; /* 7px — consistent with rounded-card */
+
+  /* ─── Typography (films landing as reference). --text-* generates text-* utilities. ─── */
+  /** Smallest UI text: badges, ISO on placeholder cards. Use text-tiny. */
+  --text-tiny: 0.5625rem; /* 9px */
+  /** Labels, discontinued badge, spec labels. Use text-label. */
+  --text-label: 0.625rem; /* 10px */
+  /** Captions, secondary info. Use text-caption. */
+  --text-caption: 0.6875rem; /* 11px */
+  /** Compact UI: discovery pills, search input, filter buttons. Use text-ui. */
+  --text-ui: 0.8125rem; /* 13px */
 }
 
 :root {
@@ -98,6 +114,18 @@
   --sidebar-accent-foreground: #1F2937;
   --sidebar-border: oklch(0.88 0.01 70);
   --sidebar-ring: #D97706;
+
+  /* Layout / width tokens (films landing reference). Use with max-w-[var(--width-*)]. */
+  --width-search-field: 220px;
+  --width-chip-label: 120px;
+  /** Inline content max (e.g. hero subtitle). */
+  --width-prose-narrow: 36rem; /* max-w-xl */
+
+  /* Button/control height scale (responsive). Use with h-[var(--height-*)]. */
+  --height-btn-primary: 52px;   /* mobile */
+  --height-btn-primary-md: 44px; /* md: desktop */
+  --height-btn-pill: 44px;      /* secondary/pill mobile */
+  --height-btn-pill-md: 36px;   /* secondary/pill md: desktop */
 }
 
 @layer base {
@@ -118,15 +146,15 @@
   html {
     scroll-behavior: smooth;
   }
-  h1, h2, h4, h5, h6 {
+  h1 {
     font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
+  }
+  h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans), sans-serif !important;
   }
   /* Modal dialog titles use Work Sans via .font-work-sans; exclude so base doesn't override */
   h1#add-review-title, h2#add-review-title, h4#add-review-title, h5#add-review-title, h6#add-review-title {
     font-family: unset !important;
-  }
-  h3 {
-    font-family: var(--font-sans), sans-serif !important;
   }
   .font-advercase {
     font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
@@ -161,6 +189,28 @@
     font-family: var(--font-work-sans), var(--font-sans), ui-sans-serif, system-ui, sans-serif !important;
   }
 
+  /* Ledger-style section headers in drawers (TYPE, ISO, BRAND, etc.) */
+  .label-caps {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  /* Primary CTA: full-width in drawers. Responsive height 52px mobile / 44px desktop. */
+  .btn-primary {
+    @apply flex w-full items-center justify-center rounded-lg bg-primary px-4 font-sans font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50;
+    height: 52px;
+    font-size: 1rem;
+  }
+  @media (min-width: 768px) {
+    .btn-primary {
+      height: 44px;
+      font-size: 0.875rem;
+    }
+  }
+
   /* Hide scrollbars for internal scroll areas (e.g. drawer brand list) */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -169,6 +219,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
 }
 
 /* Shot it icon: tick draws in on hover (record.club-style) */

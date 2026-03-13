@@ -8,8 +8,6 @@ import { useUserActions } from "@/context/user-actions-context";
 
 interface FilmCardProps {
   stock: FilmStock & { brand: FilmBrand };
-  /** When true, use Work Sans for the title (e.g. on films listing page). */
-  useWorkSansTitle?: boolean;
   /** Slugs of films the user has shot. If not passed, uses context. Shows tick at bottom-left when included. */
   shotSlugs?: string[];
 }
@@ -24,7 +22,6 @@ const TYPE_ACCENT: Record<string, string> = {
 
 export function FilmCard({
   stock,
-  useWorkSansTitle = false,
   shotSlugs: shotSlugsProp,
 }: FilmCardProps) {
   const { shotSlugs: contextShotSlugs } = useUserActions();
@@ -37,11 +34,11 @@ export function FilmCard({
   return (
     <div className="group relative block">
       <Link href={`/films/${stock.slug}`} className="block">
-        <div className="relative overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+        <div className="relative overflow-hidden rounded-card border border-border/50 bg-card transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
           <div className="bg-white flex items-center justify-center overflow-hidden px-2 py-2 h-36 sm:h-40 relative">
             {stock.discontinued && (
               <span
-                className="absolute left-2 top-2 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                className="absolute left-2 top-2 z-10 inline-flex rounded-full px-2.5 py-1 text-label font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                 aria-hidden
               >
                 Discontinued
@@ -58,7 +55,7 @@ export function FilmCard({
             ) : (
               <div className="flex flex-col items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-80">
                 <Camera className={`h-7 w-7 ${accent}`} />
-                <span className={`text-[9px] font-medium ${accent}`}>
+                <span className={`text-tiny font-medium ${accent}`}>
                   ISO {stock.iso}
                 </span>
               </div>
@@ -68,9 +65,7 @@ export function FilmCard({
           <div className="border-t border-border/50 px-3 py-3 flex flex-col gap-1 min-w-0">
             <div className="flex min-w-0 items-center justify-between gap-2">
               <h3
-                className={`min-w-0 truncate text-sm font-semibold leading-tight text-foreground group-hover:text-primary transition-colors ${
-                  useWorkSansTitle ? "font-sans" : "font-advercase"
-                }`}
+                className="min-w-0 truncate text-sm font-semibold leading-tight text-foreground group-hover:text-primary transition-colors font-sans"
               >
                 {displayName}
               </h3>

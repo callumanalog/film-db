@@ -216,11 +216,11 @@ function FilterAccordion({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-b border-border/50 last:border-b-0">
+    <div className="border-b border-slate-100 last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        className="label-caps flex w-full items-center justify-between gap-2 py-4 text-left hover:text-foreground"
         aria-expanded={open}
       >
         <span className="flex items-center gap-2">

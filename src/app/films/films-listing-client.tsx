@@ -13,7 +13,7 @@ interface FilmsListingClientProps {
 
 /**
  * Client wrapper that reads the user's shot state from UserActionsContext
- * and renders the film grid with Work Sans titles and shot tick on cards.
+ * and renders the film grid with shot tick on cards.
  */
 export function FilmsListingClient({ stocks, statsBySlug }: FilmsListingClientProps) {
   const { shotSlugs } = useUserActions();
@@ -21,7 +21,6 @@ export function FilmsListingClient({ stocks, statsBySlug }: FilmsListingClientPr
   return (
     <FilmGrid
       stocks={stocks}
-      useWorkSansForTitles
       shotSlugs={shotSlugs}
       statsBySlug={statsBySlug}
     />
