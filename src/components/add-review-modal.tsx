@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { TrackFilmModalStock } from "@/components/track-film-modal";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 
 const PUSH_PULL_OPTIONS = ["-2", "-1", "0", "+1", "+2", "+3"] as const;
 
@@ -344,22 +345,31 @@ export function AddReviewModal({
       const blobUrl = URL.createObjectURL(file);
       setUploadPreviewUrl(blobUrl);
       setIsUploading(true);
-      const formData = new FormData();
-      formData.set("film_stock_slug", stock.slug);
-      formData.set("file", file);
       try {
-        const res = await fetch("/api/user/reviews/upload-shot", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          setUploadError(data.error ?? "Upload failed. Try again.");
-          setIsUploading(false);
+        const supabase = createSupabaseClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          setUploadError("You must be signed in to upload.");
           return;
         }
-        setUploadedImageUrl(data.publicUrl ?? null);
-        setUploadedStoragePath(data.storagePath ?? null);
+        const slug = stock.slug.trim();
+        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const safeExt = ["png", "jpeg", "jpg", "webp"].includes(ext) ? ext : "jpg";
+        const path = `${user.id}/${slug}/${Date.now()}.${safeExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("user-uploads")
+          .upload(path, file, { upsert: false });
+        if (uploadError) {
+          const message =
+            uploadError.message === "The resource already exists"
+              ? "File with this name already exists. Try again."
+              : uploadError.message || "Upload failed. Try again.";
+          setUploadError(message);
+          return;
+        }
+        const { data: urlData } = supabase.storage.from("user-uploads").getPublicUrl(uploadData.path);
+        setUploadedImageUrl(urlData.publicUrl);
+        setUploadedStoragePath(uploadData.path);
       } catch {
         setUploadError("Upload failed. Try again.");
       } finally {
