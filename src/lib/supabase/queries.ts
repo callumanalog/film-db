@@ -269,10 +269,10 @@ export async function getFilmFilterOptions(): Promise<FilmFilterOptions> {
     [...new Set(stocks.map((s) => s.type))],
     TYPE_ORDER
   );
-  const LOW_ISO_RANGE = [8, 12, 20, 25, 50, 80] as const;
+  const LOW_ISO_RANGE = new Set([8, 12, 20, 25, 50, 80]);
   const allIsos = [...new Set(stocks.map((s) => s.iso))];
-  const highIsos = allIsos.filter((iso) => !LOW_ISO_RANGE.includes(iso)).sort((a, b) => b - a);
-  const hasLowRange = LOW_ISO_RANGE.some((iso) => allIsos.includes(iso));
+  const highIsos = allIsos.filter((iso) => !LOW_ISO_RANGE.has(iso)).sort((a, b) => b - a);
+  const hasLowRange = allIsos.some((iso) => LOW_ISO_RANGE.has(iso));
   const isos: IsoFilterOption[] = hasLowRange ? [...highIsos, "8-80"] : highIsos;
   const formats = sortByOrder(
     [...new Set(stocks.flatMap((s) => s.format))],
