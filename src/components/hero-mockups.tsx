@@ -598,7 +598,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
                     aria-hidden
                   />
                 )}
-                <span className="text-inherit font-medium transition-colors group-hover:text-foreground">
+                <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
                   {showRemove ? "Remove" : label}
                 </span>
               </button>
@@ -610,7 +610,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
           onClick={() => setTrackModalOpen(true)}
           className="hidden w-full items-center justify-center border-t border-border/50 px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground md:flex"
         >
-          <span className="font-medium transition-colors group-hover:text-foreground">Log a roll</span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Log a roll</span>
         </button>
 
         {/* Mobile only (below md): Shot it | Shootlist | Log a roll — same as desktop, 3 in one row */}
@@ -645,7 +645,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
                     aria-hidden
                   />
                 )}
-                <span className="text-inherit font-medium transition-colors group-hover:text-foreground">
+                <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
                   {showRemove ? "Remove" : label}
                 </span>
               </button>
@@ -658,7 +658,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
             aria-label="Actions"
           >
             <Star className="h-6 w-6 shrink-0 fill-none stroke-[1.5] text-muted-foreground/50 transition-colors group-hover:text-primary group-hover:fill-primary/10 group-hover:stroke-primary" aria-hidden />
-            <span className="text-inherit font-medium transition-colors group-hover:text-foreground">Actions</span>
+            <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Actions</span>
           </button>
         </div>
       </div>
@@ -674,7 +674,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
           <div className="flex justify-center">
             <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
           </div>
-          <p className="mt-2 text-xs font-medium text-muted-foreground">Rate</p>
+          <p className="mt-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Rate</p>
         </div>
 
         {/* Row: Write review — text only, centered */}
@@ -686,7 +686,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
           }}
           className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
         >
-          <span className="font-medium transition-colors group-hover:text-foreground">Write review</span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Write review</span>
         </button>
 
         {/* Row: Post a shot — text only, centered */}
@@ -698,7 +698,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
           }}
           className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
         >
-          <span className="font-medium transition-colors group-hover:text-foreground">Post a shot</span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Post a shot</span>
         </button>
       </div>
       </div>
@@ -712,7 +712,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
               onClick={() => closeDrawerThen(() => setTrackModalOpen(true))}
               className="group flex w-full items-center justify-center border-border/50 px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
             >
-              <span className="font-medium transition-colors group-hover:text-foreground">Log a roll</span>
+              <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Log a roll</span>
             </button>
             <div
               className="px-4 py-3 text-center"
@@ -722,21 +722,21 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
               <div className="flex justify-center">
                 <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
               </div>
-              <p className="mt-2 text-xs font-medium text-muted-foreground">Rate</p>
+              <p className="mt-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Rate</p>
             </div>
             <button
               type="button"
               onClick={() => closeDrawerThen(() => { setReviewModalMode("review"); setReviewModalOpen(true); })}
               className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
             >
-              <span className="font-medium transition-colors group-hover:text-foreground">Write review</span>
+              <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Write review</span>
             </button>
             <button
               type="button"
               onClick={() => closeDrawerThen(() => { setReviewModalMode("upload"); setReviewModalOpen(true); })}
               className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
             >
-              <span className="font-medium transition-colors group-hover:text-foreground">Post a shot</span>
+              <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Post a shot</span>
             </button>
           </div>
         </SheetContent>
@@ -750,7 +750,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
           <div className="flex flex-col items-center gap-6 px-4 pt-2">
             <div className="flex flex-col items-center gap-2">
               <UserStarRating value={rating} onChange={handleRatingChange} rowHover={false} />
-              <p className="text-sm font-medium text-muted-foreground">Rate</p>
+              <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Rate</p>
             </div>
             <button
               type="button"
