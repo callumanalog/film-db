@@ -45,7 +45,8 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
         className="w-fit border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent [&>svg]:text-muted-foreground"
       >
         <ArrowUpDown className="size-4 shrink-0 text-muted-foreground" />
-        <span className="text-sm text-foreground">{currentLabel}</span>
+        <span className="text-sm text-foreground md:hidden">Sort</span>
+        <span className="hidden text-sm text-foreground md:inline">{currentLabel}</span>
       </SelectTrigger>
       <SelectContent>
         {SORT_OPTIONS.map((opt) => (

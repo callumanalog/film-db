@@ -160,6 +160,15 @@
   #add-review-title[class*="font-work-sans"] {
     font-family: var(--font-work-sans), var(--font-sans), ui-sans-serif, system-ui, sans-serif !important;
   }
+
+  /* Hide scrollbars for internal scroll areas (e.g. drawer brand list) */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 /* Shot it icon: tick draws in on hover (record.club-style) */

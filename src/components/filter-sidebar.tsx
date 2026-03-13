@@ -33,6 +33,8 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
   const selectedIsos = getParamArray(searchParams, "iso");
 
   const ISO_8_80_VALUES = ["8", "12", "20", "25", "50", "80"];
+  const iso8_80Selected = ISO_8_80_VALUES.every((v) => selectedIsos.includes(v));
+  const isoCount = (iso8_80Selected ? 1 : 0) + selectedIsos.filter((v) => !ISO_8_80_VALUES.includes(v)).length;
 
   const toggleMulti = useCallback(
     (key: string, value: string) => {
@@ -69,7 +71,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
   return (
     <div className="space-y-1">
       <nav className="flex flex-col gap-0" aria-label="Filters">
-        <FilterAccordion defaultOpen title="Type">
+        <FilterAccordion defaultOpen title="Type" activeCount={selectedTypes.length}>
           <FilterPillGrid>
             {filterOptions.types.map((type) => (
               <FilterPill
@@ -82,7 +84,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="Format">
+        <FilterAccordion defaultOpen={false} title="Format" activeCount={selectedFormats.length}>
           <FilterPillGrid>
             {filterOptions.formats.map((format) => (
               <FilterPill
@@ -95,7 +97,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="ISO">
+        <FilterAccordion defaultOpen={false} title="ISO" activeCount={isoCount}>
           <FilterPillGrid>
             {filterOptions.isos.map((iso: IsoFilterOption) =>
               iso === "8-80" ? (
@@ -117,7 +119,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="Grain">
+        <FilterAccordion defaultOpen={false} title="Grain" activeCount={selectedGrains.length}>
           <FilterPillGrid>
             {filterOptions.grains.map((level) => (
               <FilterPill
@@ -130,7 +132,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="Contrast">
+        <FilterAccordion defaultOpen={false} title="Contrast" activeCount={selectedContrasts.length}>
           <FilterPillGrid>
             {filterOptions.contrasts.map((level) => (
               <FilterPill
@@ -143,7 +145,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="Latitude">
+        <FilterAccordion defaultOpen={false} title="Latitude" activeCount={selectedLatitudes.length}>
           <FilterPillGrid>
             {filterOptions.latitudes.map((level) => (
               <FilterPill
@@ -156,7 +158,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="Saturation">
+        <FilterAccordion defaultOpen={false} title="Saturation" activeCount={selectedSaturations.length}>
           <FilterPillGrid>
             {filterOptions.saturations.map((level) => (
               <FilterPill
@@ -169,7 +171,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="Brand">
+        <FilterAccordion defaultOpen={false} title="Brand" activeCount={selectedBrands.length}>
           <FilterPillGrid>
             {brands.map((brand) => (
               <FilterPill
@@ -182,7 +184,7 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
           </FilterPillGrid>
         </FilterAccordion>
 
-        <FilterAccordion defaultOpen={false} title="Use case">
+        <FilterAccordion defaultOpen={false} title="Use case" activeCount={selectedBestFor.length}>
           <FilterPillGrid>
             {filterOptions.bestFor.map((bf) => (
               <FilterPill
@@ -202,10 +204,13 @@ export function FilterSidebar({ brands, filterOptions }: FilterSidebarProps) {
 function FilterAccordion({
   title,
   defaultOpen,
+  activeCount = 0,
   children,
 }: {
   title: string;
   defaultOpen: boolean;
+  /** When > 0, shows a circle badge with this number next to the title */
+  activeCount?: number;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -215,10 +220,20 @@ function FilterAccordion({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        className="flex w-full items-center justify-between gap-2 py-4 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
         aria-expanded={open}
       >
-        {title}
+        <span className="flex items-center gap-2">
+          {title}
+          {activeCount > 0 && (
+            <span
+              className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground"
+              aria-label={`${activeCount} filter${activeCount === 1 ? "" : "s"} active`}
+            >
+              {activeCount}
+            </span>
+          )}
+        </span>
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
         />
