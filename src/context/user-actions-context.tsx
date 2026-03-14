@@ -9,8 +9,8 @@
  *   - Every action persists to Supabase then refetches profile and refreshes the page so stats and profile stay in sync.
  *
  * When not logged in:
- *   - No actions are saved. Tapping any action (shot, favourite, track, rate) redirects to sign-in/sign-up
- *   - with ?next= current path so the user returns to the page after signing in.
+ *   - No actions are saved. Tapping any action (shot, favourite, track, rate) redirects to log-in/sign-up
+  *   - with ?next= current path so the user returns to the page after logging in.
  */
 
 import {

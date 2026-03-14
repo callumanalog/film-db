@@ -857,10 +857,10 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
             if (payload.rating > 0) persistRating(slug, payload.rating);
             showToastViaEvent(
               reviewModalMode === "upload"
-                ? (payload.files.length > 0 ? "Sign in to save your uploads." : "Done.")
+                ? (payload.files.length > 0 ? "Log in to save your uploads." : "Done.")
                 : payload.files.length > 0
-                  ? "Sign in to save your photos and review."
-                  : "Your rating was saved locally. Sign in to save reviews and uploads."
+                  ? "Log in to save your photos and review."
+                  : "Your rating was saved locally. Log in to save reviews and uploads."
             );
           }
         }}

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Film } from "lucide-react";
 
 export function Footer() {
   return (
@@ -7,10 +6,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-card bg-primary">
-                <Film className="h-4 w-4 text-primary-foreground" />
-              </div>
+            <Link href="/" className="transition-opacity hover:opacity-80">
               <span className="text-lg font-bold tracking-tight">FilmDB</span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">

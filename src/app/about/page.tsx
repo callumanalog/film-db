@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Film, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "About",
@@ -11,9 +11,6 @@ export default function AboutPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
       <div className="mb-10 flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-[7px] bg-primary">
-          <Film className="h-6 w-6 text-primary-foreground" />
-        </div>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">About FilmDB</h1>
       </div>
 

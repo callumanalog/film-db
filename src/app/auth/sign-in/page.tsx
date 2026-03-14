@@ -4,14 +4,15 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { AuthLayout } from "@/components/auth/auth-layout";
+import { getRedirectTo } from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Film } from "lucide-react";
 
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/profile";
+  const redirectTo = getRedirectTo(searchParams);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,105 +29,91 @@ function SignInForm() {
       setMessage({ type: "error", text: error.message });
       return;
     }
-    router.push(next);
+    router.push(redirectTo);
     router.refresh();
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
-    });
-    setLoading(false);
-    if (error) {
-      setMessage({ type: "error", text: error.message });
-      return;
-    }
-    setMessage({
-      type: "success",
-      text: "Check your email for the confirmation link, then sign in.",
-    });
-  };
-
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-sm flex-col justify-center px-4 py-12">
-      <Link href="/" className="mb-8 flex items-center gap-2.5 font-sans">
-        <div className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-primary">
-          <Film className="h-5 w-5 text-primary-foreground" />
-        </div>
-        <span className="text-xl font-bold tracking-tight">FilmDB</span>
-      </Link>
-      <h1 className="mb-2 text-2xl font-bold tracking-tight text-foreground">Sign in</h1>
+    <AuthLayout variant="sign-in">
+      <h1 className="font-advercase mb-2 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+        Welcome back.
+      </h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Sign in to your account to save reviews, uploads, and your profile.
+        Access your locker and shared rolls.
       </p>
+
       <form onSubmit={handleSignIn} className="flex flex-col gap-4">
-        <div>
-          <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
-            Email
-          </label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full"
-            autoComplete="email"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
-            Password
-          </label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full"
-            autoComplete="current-password"
-          />
-        </div>
-        {message && (
-          <p
-            className={`text-sm ${message.type === "error" ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}
-          >
-            {message.text}
-          </p>
-        )}
-        <div className="flex gap-2">
-          <Button type="submit" disabled={loading} className="flex-1">
-            {loading ? "Signing in…" : "Sign in"}
+          <div>
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
+              Email
+            </label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full"
+              autoComplete="email"
+            />
+          </div>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label htmlFor="password" className="block text-sm font-medium text-foreground">
+                Password
+              </label>
+              <Link
+                href={`/auth/forgot-password?next=${encodeURIComponent(redirectTo)}`}
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full"
+              autoComplete="current-password"
+            />
+          </div>
+          {message && (
+            <p
+              className={`text-sm ${message.type === "error" ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}
+            >
+              {message.text}
+            </p>
+          )}
+          <Button type="submit" disabled={loading} className="h-10 w-full">
+            {loading ? "Logging in…" : "Log in"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading}
-            onClick={handleSignUp}
-            className="flex-1"
-          >
-            Sign up
-          </Button>
-        </div>
       </form>
-      <p className="mt-6 text-center text-xs text-muted-foreground">
-        Don&apos;t have an account? Use the same form and click &quot;Sign up&quot; — we&apos;ll send a confirmation link to your email.
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Don&apos;t have an account?{" "}
+        <Link
+          href={`/auth/sign-up?next=${encodeURIComponent(redirectTo)}`}
+          className="font-medium text-primary hover:underline"
+        >
+          Join the Club
+        </Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="mx-auto flex min-h-[60vh] max-w-sm flex-col justify-center px-4 py-12 text-center text-muted-foreground">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[dvh] items-center justify-center text-muted-foreground">
+          Loading…
+        </div>
+      }
+    >
       <SignInForm />
     </Suspense>
   );

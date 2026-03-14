@@ -1,6 +1,6 @@
 /**
  * One-time script to create an auth user in Supabase (bypasses sign-up flow).
- * The user can then sign in at /auth/sign-in with the same email and password.
+ * The user can then log in at /auth/sign-in with the same email and password.
  *
  * Usage:
  *   npx tsx scripts/create-auth-user.ts "YourChosenPassword"
@@ -60,7 +60,7 @@ async function main() {
           console.error("Update failed:", updateErr.message);
           process.exit(1);
         }
-        console.log("Password and display name updated. You can sign in at /auth/sign-in");
+        console.log("Password and display name updated. You can log in at /auth/sign-in");
         return;
       }
     }
@@ -72,7 +72,7 @@ async function main() {
   console.log("  User ID:", user.user?.id);
   console.log("  Email:  ", EMAIL);
   console.log("  Name:   ", DISPLAY_NAME);
-  console.log("\nSign in at: /auth/sign-in");
+  console.log("\nLog in at: /auth/sign-in");
   console.log("  Email:    ", EMAIL);
   console.log("  Password: (the one you passed to this script)");
   console.log("");

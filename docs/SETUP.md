@@ -33,7 +33,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 Get it from **Supabase Dashboard → Settings → API → service_role**. Never expose this in client code or commit it.
 
-Without these, the app still runs using local/seed data, but sign-in and profile/reviews/uploads will not work.
+Without these, the app still runs using local/seed data, but log-in and profile/reviews/uploads will not work.
 
 ## 3. Run database migrations
 
@@ -68,7 +68,7 @@ To create an auth user directly in Supabase (e.g. for your own account without g
    ```bash
    npx tsx scripts/create-auth-user.ts "YourChosenPassword"
    ```
-3. Sign in at **/auth/sign-in** with the same email and password. The script creates the user with email and display name; the password is the one you pass to the script.
+3. Log in at **/auth/sign-in** with the same email and password. The script creates the user with email and display name; the password is the one you pass to the script.
 
 You can edit `scripts/create-auth-user.ts` to change the email and display name, or pass them as arguments if you extend the script.
 
@@ -114,7 +114,7 @@ Then deploy. Auth, profile, reviews, and user uploads will work against your Sup
 
 | Feature | Where it lives |
 |--------|-----------------|
-| **Auth** | Supabase Auth (email sign-in/sign-up). Session in cookies via `@supabase/ssr`. |
+| **Auth** | Supabase Auth (email log-in/sign-up). Session in cookies via `@supabase/ssr`. |
 | **Profiles** | `profiles` table + `user_shot`, `user_favourites`, `user_tracked`, `user_ratings`. |
 | **Reviews** | `reviews` table. Submitted from the “Add review & photos” modal when logged in. |
 | **User uploads** | `user_uploads` table + **user-uploads** storage bucket. Images uploaded from the same modal. |

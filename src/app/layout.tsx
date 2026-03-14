@@ -6,6 +6,7 @@ import { Footer } from "@/components/footer";
 import { UserActionsProvider } from "@/context/user-actions-context";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/toast";
+import { ViewportSize } from "@/components/viewport-size";
 import "./globals.css";
 
 const advercase = localFont({
@@ -51,6 +52,7 @@ export default function RootLayout({
               <Header />
               <main className="flex-1">{children}</main>
               <Footer />
+              <ViewportSize />
             </ToastProvider>
           </UserActionsProvider>
           </AuthProvider>
