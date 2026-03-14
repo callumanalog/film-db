@@ -42,23 +42,23 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
     <Select value={currentSort} onValueChange={(v) => setSort(v as SortValue)}>
       <SelectTrigger
         size="sm"
-        className="h-[44px] w-fit border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent md:h-[36px] [&>svg]:text-muted-foreground"
+        className="!h-[44px] w-fit border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent md:!h-[36px] [&>svg]:text-muted-foreground"
       >
         <ArrowUpDown className="size-4 shrink-0 text-muted-foreground" />
         <span className="text-sm text-foreground md:hidden">Sort</span>
-        <span className="hidden text-sm text-foreground md:inline md:text-xs">{currentLabel}</span>
+        <span className="hidden text-xs text-foreground md:inline">{currentLabel}</span>
       </SelectTrigger>
       <SelectContent
         alignItemWithTrigger={false}
         side="bottom"
         sideOffset={4}
-        className="min-w-[8rem] rounded-lg border border-border/60 bg-popover py-1"
+        className="min-w-[8rem] rounded-card border border-border/60 bg-popover py-1"
       >
         {SORT_OPTIONS.map((opt) => (
           <SelectItem
             key={opt.value}
             value={opt.value}
-            className="h-[44px] cursor-pointer items-center rounded-lg px-4 font-sans text-xs font-medium text-foreground focus:bg-primary/5 focus:text-foreground md:h-[36px] data-[focus]:bg-primary/5"
+            className="h-[44px] cursor-pointer items-center rounded-card px-4 font-sans text-xs font-medium text-foreground focus:bg-primary/5 focus:text-foreground md:h-[36px] data-[focus]:bg-primary/5"
           >
             {opt.label}
           </SelectItem>

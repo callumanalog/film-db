@@ -200,7 +200,7 @@
 
   /* Primary CTA: full-width in drawers. Responsive height 52px mobile / 44px desktop. */
   .btn-primary {
-    @apply flex w-full items-center justify-center rounded-lg bg-primary px-4 font-sans font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50;
+    @apply flex w-full items-center justify-center rounded-card bg-primary px-4 font-sans font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50;
     height: 52px;
     font-size: 1rem;
   }

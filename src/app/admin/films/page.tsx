@@ -240,7 +240,7 @@ export default function AdminFilmsPage() {
               type="button"
               onClick={handleResetToSeed}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
+              className="inline-flex items-center gap-1.5 rounded-card border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
             >
               <RotateCcw className="h-3.5 w-3.5" /> Reset to seed
             </button>
@@ -249,7 +249,7 @@ export default function AdminFilmsPage() {
             type="button"
             onClick={handleSaveAll}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             <Save className="h-4 w-4" /> Save all to file
           </button>
@@ -262,7 +262,7 @@ export default function AdminFilmsPage() {
         &quot;Reset to seed&quot;.
       </p>
 
-      <div className="overflow-x-auto rounded-lg border border-border/50 bg-card">
+      <div className="overflow-x-auto rounded-card border border-border/50 bg-card">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-border/50 bg-muted/50">
@@ -322,7 +322,7 @@ export default function AdminFilmsPage() {
         <button
           type="button"
           onClick={handleAddStock}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted hover:border-primary/40"
+          className="inline-flex items-center gap-1.5 rounded-card border border-border bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-muted hover:border-primary/40"
         >
           <Plus className="h-4 w-4" /> Add film stock
         </button>
@@ -342,14 +342,14 @@ export default function AdminFilmsPage() {
               <button
                 type="button"
                 onClick={() => setStockToDelete(null)}
-                className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+                className="rounded-card border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteStock}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                className="rounded-card bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
               >
                 Delete
               </button>
@@ -797,14 +797,14 @@ function EditPanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+            className="rounded-card border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onApply}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            className="rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             Apply to table
           </button>

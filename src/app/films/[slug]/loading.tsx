@@ -7,13 +7,13 @@ export default function FilmDetailLoading() {
         <div className="h-32 w-32 shrink-0 animate-pulse rounded-[7px] bg-muted" />
         <div className="flex-1 space-y-3">
           <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-          <div className="h-10 w-64 animate-pulse rounded-lg bg-muted" />
+          <div className="h-10 w-64 animate-pulse rounded-card bg-muted" />
           <div className="flex gap-2">
             <div className="h-6 w-24 animate-pulse rounded-full bg-muted" />
             <div className="h-6 w-16 animate-pulse rounded-full bg-muted" />
             <div className="h-6 w-12 animate-pulse rounded-full bg-muted" />
           </div>
-          <div className="h-16 max-w-2xl animate-pulse rounded-lg bg-muted" />
+          <div className="h-16 max-w-2xl animate-pulse rounded-card bg-muted" />
         </div>
       </div>
 

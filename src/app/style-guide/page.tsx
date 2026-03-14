@@ -191,18 +191,18 @@ export default function StyleGuidePage() {
             <div>
               <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Secondary / pill controls</h3>
               <code className="block font-mono text-caption text-muted-foreground mb-2 break-all">
-                h-[44px] md:h-[36px] rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm md:text-xs (Filters, Vibes, Search trigger — same vertical mid-point)
+                h-[44px] md:h-[36px] rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm md:text-xs (Filters, Vibes, Search trigger — same vertical mid-point)
               </code>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="inline-flex h-[44px] shrink-0 items-center justify-center rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
+                  className="inline-flex h-[44px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
                 >
                   Filters
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:h-[36px] md:w-[36px]"
+                  className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:h-[36px] md:w-[36px]"
                   aria-label="Search"
                 >
                   ⌕
@@ -228,24 +228,24 @@ export default function StyleGuidePage() {
         <section className="mb-14">
           <h2 className="font-sans text-xl font-bold text-foreground mb-1">Buttons (CTA)</h2>
           <p className="font-sans text-sm text-muted-foreground mb-2">
-            Responsive scaling: primary and search input use 52px (mobile) / 44px (desktop); secondary and pill controls use 44px / 36px. Radius: <code className="font-mono bg-muted rounded-lg px-1">rounded-lg</code> (8px). Vibes, Filters, and Search triggers share the same vertical mid-point when aligned.
+            Responsive scaling: primary and search input use 52px (mobile) / 44px (desktop); secondary and pill controls use 44px / 36px. Radius: <code className="font-mono bg-muted rounded-card px-1">rounded-card</code> / <code className="font-mono bg-muted rounded-card px-1">rounded-control</code> (7px). Vibes, Filters, and Search triggers share the same vertical mid-point when aligned.
           </p>
           <div className="space-y-8">
             <div>
               <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Primary (.btn-primary)</h3>
               <code className="block font-mono text-caption text-muted-foreground mb-3 break-all">
-                h-[52px] md:h-[44px] rounded-lg bg-primary px-4 font-sans text-base md:text-sm font-semibold text-primary-foreground + hover/disabled
+                h-[52px] md:h-[44px] rounded-card bg-primary px-4 font-sans text-base md:text-sm font-semibold text-primary-foreground + hover/disabled
               </code>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-[52px] items-center justify-center rounded-lg bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 md:h-[44px] md:text-sm"
+                  className="flex h-[52px] items-center justify-center rounded-card bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 md:h-[44px] md:text-sm"
                 >
                   Apply
                 </button>
                 <button
                   type="button"
-                  className="flex h-[52px] w-full max-w-xs items-center justify-center rounded-lg bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:h-[44px] md:text-sm"
+                  className="flex h-[52px] w-full max-w-xs items-center justify-center rounded-card bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:h-[44px] md:text-sm"
                 >
                   Apply (full width)
                 </button>
@@ -254,18 +254,18 @@ export default function StyleGuidePage() {
             <div>
               <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Secondary / pill</h3>
               <code className="block font-mono text-caption text-muted-foreground mb-3 break-all">
-                h-[44px] md:h-[36px] rounded-lg border border-border bg-transparent px-4 font-sans text-sm md:text-xs + hover/disabled
+                h-[44px] md:h-[36px] rounded-card border border-border bg-transparent px-4 font-sans text-sm md:text-xs + hover/disabled
               </code>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="flex h-[44px] items-center justify-center rounded-lg border border-border bg-transparent px-4 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50 md:h-[36px] md:text-xs"
+                  className="flex h-[44px] items-center justify-center rounded-card border border-border bg-transparent px-4 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50 md:h-[36px] md:text-xs"
                 >
                   Clear all filters
                 </button>
                 <button
                   type="button"
-                  className="flex h-[44px] w-full max-w-xs items-center justify-center rounded-lg border border-border bg-transparent px-4 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary md:h-[36px] md:text-xs"
+                  className="flex h-[44px] w-full max-w-xs items-center justify-center rounded-card border border-border bg-transparent px-4 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary md:h-[36px] md:text-xs"
                 >
                   Clear (full width)
                 </button>
@@ -273,8 +273,8 @@ export default function StyleGuidePage() {
             </div>
             <div>
               <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Search input</h3>
-              <p className="font-sans text-caption text-muted-foreground mb-2">Match primary button height: <code className="font-mono bg-muted rounded-lg px-1">h-[52px]</code> mobile, <code className="font-mono bg-muted rounded-lg px-1">md:h-[44px]</code> desktop. In utility row with Filters/Vibes, use pill height (44px / 36px) so all align.</p>
-              <div className="flex h-[52px] max-w-xs items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 md:h-[44px]">
+              <p className="font-sans text-caption text-muted-foreground mb-2">Match primary button height: <code className="font-mono bg-muted rounded-card px-1">h-[52px]</code> mobile, <code className="font-mono bg-muted rounded-card px-1">md:h-[44px]</code> desktop. In utility row with Filters/Vibes, use pill height (44px / 36px) so all align.</p>
+              <div className="flex h-[52px] max-w-xs items-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 md:h-[44px]">
                 <span className="text-muted-foreground">⌕</span>
                 <span className="font-sans text-base text-foreground md:text-sm">Search film stocks...</span>
               </div>

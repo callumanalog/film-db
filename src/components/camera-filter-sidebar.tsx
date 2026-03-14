@@ -65,7 +65,7 @@ export function CameraFilterSidebar({ brands }: CameraFilterSidebarProps) {
           <button
             type="button"
             onClick={() => setParam("brand", null)}
-            className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-card px-2.5 py-1.5 text-xs font-medium transition-colors ${
               !currentBrand
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -78,7 +78,7 @@ export function CameraFilterSidebar({ brands }: CameraFilterSidebarProps) {
               key={b.id}
               type="button"
               onClick={() => setParam("brand", currentBrand === b.slug ? "" : b.slug)}
-              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-card px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 currentBrand === b.slug
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -98,7 +98,7 @@ export function CameraFilterSidebar({ brands }: CameraFilterSidebarProps) {
           <button
             type="button"
             onClick={() => setParam("type", null)}
-            className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-card px-2.5 py-1.5 text-xs font-medium transition-colors ${
               !currentType
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -111,7 +111,7 @@ export function CameraFilterSidebar({ brands }: CameraFilterSidebarProps) {
               key={type}
               type="button"
               onClick={() => setParam("type", currentType === type ? "" : type)}
-              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-card px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 currentType === type
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -131,7 +131,7 @@ export function CameraFilterSidebar({ brands }: CameraFilterSidebarProps) {
           <button
             type="button"
             onClick={() => setParam("format", null)}
-            className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-card px-2.5 py-1.5 text-xs font-medium transition-colors ${
               !currentFormat
                 ? "bg-primary text-primary-foreground"
                 : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -144,7 +144,7 @@ export function CameraFilterSidebar({ brands }: CameraFilterSidebarProps) {
               key={format}
               type="button"
               onClick={() => setParam("format", currentFormat === format ? "" : format)}
-              className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-card px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 currentFormat === format
                   ? "bg-primary text-primary-foreground"
                   : "bg-secondary/60 text-muted-foreground hover:bg-secondary hover:text-foreground"

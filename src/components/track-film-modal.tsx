@@ -52,7 +52,7 @@ function StockImage({ stock, size = 80 }: { stock: TrackFilmModalStock; size?: n
     );
   }
   return (
-    <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-muted">
+    <div className="flex h-20 w-20 items-center justify-center rounded-card bg-muted">
       <Camera className="h-10 w-10 text-muted-foreground/40" />
     </div>
   );
@@ -88,7 +88,7 @@ export function TrackFilmModal({ open, onOpenChange, onSave, stock }: TrackFilmM
           <div className="flex flex-col gap-6 p-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-muted">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-card border border-border/50 bg-muted">
                   <StockImage stock={stock} />
                 </div>
                 <div className="min-w-0">
@@ -176,7 +176,7 @@ export function TrackFilmModal({ open, onOpenChange, onSave, stock }: TrackFilmM
                   placeholder="Optional notes..."
                   rows={3}
                   className={cn(
-                    "w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm transition-colors",
+                    "w-full rounded-card border border-input bg-transparent px-2.5 py-2 text-sm transition-colors",
                     "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring"
                   )}
                 />

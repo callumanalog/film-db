@@ -38,7 +38,7 @@ Use semantic radius utilities instead of arbitrary values.
 | `rounded-card`    | 7px   | Cards, panels, empty states, modals, image containers |
 | `rounded-control` | 7px   | Pills, buttons, inputs, search bar, filter controls (same as rounded-card) |
 
-Use existing scale where it fits: `rounded-sm`, `rounded-md`, `rounded-lg` (from `--radius` scale). Prefer `rounded-card` and `rounded-control` over arbitrary values (both are 7px).
+Use existing scale where it fits: `rounded-sm`, `rounded-md`, `rounded-lg` (from `--radius` scale). Prefer `rounded-card` and `rounded-control` for cards, panels, buttons, and inputs (both are 7px).
 
 ---
 
@@ -77,8 +77,8 @@ Use for film cards, content panels, empty states, modals.
 - Optional: `overflow-hidden` when the card clips content (e.g. image).
 
 ### Control surface (secondary / pill)
-Use for filter buttons, search trigger, Vibes. Responsive: `h-[44px] md:h-[36px]`, `text-sm md:text-xs`, `rounded-lg`.
-- Base: `rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium md:text-xs`
+Use for filter buttons, search trigger, Vibes. Responsive: `h-[44px] md:h-[36px]`, `text-sm md:text-xs`, `rounded-card`.
+- Base: `rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium md:text-xs`
 - Hover: `transition-colors hover:border-primary/40 hover:bg-secondary` (or `hover:bg-primary/5`)
 - Icon-only: `h-[44px] w-[44px] md:h-[36px] md:w-[36px]` (same vertical mid-point as text pills).
 
@@ -88,17 +88,17 @@ Use for filter buttons, search trigger, Vibes. Responsive: `h-[44px] md:h-[36px]
 - Truncate label: `max-w-[var(--width-chip-label)] truncate` (120px)
 
 ### Button & control scaling (responsive)
-Use `rounded-lg` (8px) for all buttons and controls. Ensure Vibes pills, Filter buttons, and Search triggers share the same vertical mid-point when aligned (pill scale).
+Use `rounded-card` or `rounded-control` (7px) for all buttons and controls. Ensure Vibes pills, Filter buttons, and Search triggers share the same vertical mid-point when aligned (pill scale).
 
 **Primary (.btn-primary)** — Apply, Submit, main CTAs
 - Mobile: `h-[52px]`, `text-base`
 - Desktop (md:): `h-[44px]`, `text-sm`
-- Classes: `flex h-[52px] items-center justify-center rounded-lg bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 md:h-[44px] md:text-sm`
+- Classes: `flex h-[52px] items-center justify-center rounded-card bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 md:h-[44px] md:text-sm`
 
 **Secondary / pill controls** — Filters, Vibes, Search trigger, Clear, Cancel
 - Mobile: `h-[44px]`, `text-sm`
 - Desktop (md:): `h-[36px]`, `text-xs`
-- Classes: `flex h-[44px] items-center justify-center rounded-lg border border-border bg-transparent px-4 font-sans text-sm font-medium ... md:h-[36px] md:text-xs`. For icon-only: `h-[44px] w-[44px] md:h-[36px] md:w-[36px]`.
+- Classes: `flex h-[44px] items-center justify-center rounded-card border border-border bg-transparent px-4 font-sans text-sm font-medium ... md:h-[36px] md:text-xs`. For icon-only: `h-[44px] w-[44px] md:h-[36px] md:w-[36px]`.
 
 **Search input**
 - Match primary height when standalone: `h-[52px]` mobile, `md:h-[44px]` desktop.
@@ -161,10 +161,10 @@ Destructive: `bg-destructive`, `text-destructive`; badges can use `bg-red-100 te
 | Hero title      | `font-advercase text-3xl font-bold tracking-tight sm:text-4xl` |
 | Hero subtitle   | `text-sm text-muted-foreground sm:text-base`, `max-w-xl` |
 | Cards           | `rounded-card border border-border/50 bg-card` + hover |
-| Controls/pills  | `h-[44px] md:h-[36px] rounded-lg border border-border/60 bg-secondary/50` + `text-sm md:text-xs` + hover |
+| Controls/pills  | `h-[44px] md:h-[36px] rounded-card border border-border/60 bg-secondary/50` + `text-sm md:text-xs` + hover |
 | Chips           | `rounded-full` + control-style border/bg, `max-w-[var(--width-chip-label)]` for label |
-| Primary button  | `h-[52px] md:h-[44px] rounded-lg bg-primary px-4 font-sans text-base md:text-sm font-semibold` + hover/disabled |
-| Secondary / pill | `h-[44px] md:h-[36px] rounded-lg border border-border` + `text-sm md:text-xs` + hover/disabled |
+| Primary button  | `h-[52px] md:h-[44px] rounded-card bg-primary px-4 font-sans text-base md:text-sm font-semibold` + hover/disabled |
+| Secondary / pill | `h-[44px] md:h-[36px] rounded-card border border-border` + `text-sm md:text-xs` + hover/disabled |
 | Search input    | Standalone: `h-[52px] md:h-[44px]`. In row with Filters: `h-[44px] md:h-[36px]` |
 | Grid            | `grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4` |
 | Empty state     | `rounded-card border border-dashed border-border py-16` |

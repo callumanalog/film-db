@@ -44,7 +44,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`rounded-lg border px-4 py-2.5 text-sm font-medium shadow-lg ${
+            className={`rounded-card border px-4 py-2.5 text-sm font-medium shadow-lg ${
               m.variant === "info"
                 ? "border-border bg-muted text-muted-foreground"
                 : "border-primary/30 bg-primary/10 text-primary"

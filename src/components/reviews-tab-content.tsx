@@ -219,7 +219,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
       {/* Row 1: [Everyone | You] ............................... + Write review */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div
-          className="inline-flex rounded-lg border border-border/60 bg-secondary/30 p-0.5"
+          className="inline-flex rounded-card border border-border/60 bg-secondary/30 p-0.5"
           role="tablist"
           aria-label="Review view"
         >
@@ -242,7 +242,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
           Write review
@@ -289,7 +289,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
             <p className="mt-1 text-xs text-muted-foreground">Write a review to see it here.</p>
             <button
               type="button"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              className="mt-4 inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
               Write review
@@ -316,7 +316,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
             type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-card border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -328,7 +328,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
             type="button"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-card border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
           >
             Next
             <ChevronRight className="h-4 w-4" />

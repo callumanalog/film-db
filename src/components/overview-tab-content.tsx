@@ -406,7 +406,7 @@ export function OverviewTabContent({
                 rel="noopener noreferrer sponsored"
                 className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-secondary/30"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card bg-muted text-muted-foreground">
                   <ExternalLink className="h-4 w-4" aria-hidden />
                 </span>
                 <p className="min-w-0 truncate text-sm font-medium text-foreground/90">

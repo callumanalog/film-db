@@ -72,7 +72,7 @@ export function CamerasHeader({ brands }: CamerasHeaderProps) {
             {searchExpanded ? (
               <form
                 onSubmit={handleSearchSubmit}
-                className="flex h-[44px] min-w-0 max-w-[220px] items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 md:h-[36px]"
+                className="flex h-[44px] min-w-0 max-w-[220px] items-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 md:h-[36px]"
               >
                 <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <input
@@ -87,7 +87,7 @@ export function CamerasHeader({ brands }: CamerasHeaderProps) {
                   type="button"
                   onClick={() => setSearchExpanded(false)}
                   aria-label="Close search"
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  className="rounded-card p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -97,7 +97,7 @@ export function CamerasHeader({ brands }: CamerasHeaderProps) {
                 type="button"
                 onClick={() => setSearchExpanded(true)}
                 aria-label="Open search"
-                className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:h-[36px] md:w-[36px]"
+                className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:h-[36px] md:w-[36px]"
               >
                 <Search className="h-3.5 w-3.5" />
               </button>
@@ -105,7 +105,7 @@ export function CamerasHeader({ brands }: CamerasHeaderProps) {
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="inline-flex h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
+              className="inline-flex h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
               Filters
@@ -132,7 +132,7 @@ export function CamerasHeader({ brands }: CamerasHeaderProps) {
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Close filters"
-                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-card text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>

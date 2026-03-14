@@ -580,7 +580,7 @@ export function AddReviewModal({
                           onChange={(e) => setCaption(e.target.value)}
                           placeholder="Tell the story behind this frame..."
                           rows={3}
-                          className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
+                          className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
                         />
                       </div>
                       <div className="flex flex-row gap-3 items-end">
@@ -592,7 +592,7 @@ export function AddReviewModal({
                             value={camera}
                             onChange={(e) => setCamera(e.target.value)}
                             placeholder="Search cameras"
-                            className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
+                            className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
                           />
                         </div>
                         <div className="w-24 shrink-0">
@@ -603,7 +603,7 @@ export function AddReviewModal({
                             value={shotIso}
                             onChange={(e) => setShotIso(e.target.value)}
                             placeholder="e.g. 400"
-                            className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
+                            className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
                           />
                         </div>
                       </div>
@@ -624,23 +624,23 @@ export function AddReviewModal({
                           <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3">
                             <div className="min-w-0">
                               <label htmlFor="upload-lens-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Lens</label>
-                              <input id="upload-lens-sheet" type="text" value={lens} onChange={(e) => setLens(e.target.value)} placeholder="e.g. 50mm f/1.4" className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <input id="upload-lens-sheet" type="text" value={lens} onChange={(e) => setLens(e.target.value)} placeholder="e.g. 50mm f/1.4" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
                             </div>
                             <div className="min-w-0">
                               <label htmlFor="upload-lab-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Lab / Processing</label>
-                              <input id="upload-lab-sheet" type="text" value={lab} onChange={(e) => setLab(e.target.value)} placeholder="e.g. Home dev" className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <input id="upload-lab-sheet" type="text" value={lab} onChange={(e) => setLab(e.target.value)} placeholder="e.g. Home dev" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
                             </div>
                             <div className="min-w-0">
                               <label htmlFor="upload-push-pull-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Push/Pull</label>
-                              <input id="upload-push-pull-sheet" type="text" value={pushPull} onChange={(e) => setPushPull(e.target.value)} placeholder="e.g. +1" className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <input id="upload-push-pull-sheet" type="text" value={pushPull} onChange={(e) => setPushPull(e.target.value)} placeholder="e.g. +1" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
                             </div>
                             <div className="min-w-0">
                               <label htmlFor="upload-filter-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Filter</label>
-                              <input id="upload-filter-sheet" type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="e.g. None, 81A" className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <input id="upload-filter-sheet" type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="e.g. None, 81A" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
                             </div>
                             <div className="min-w-0">
                               <label htmlFor="upload-scanner-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Scanner</label>
-                              <input id="upload-scanner-sheet" type="text" value={scanner} onChange={(e) => setScanner(e.target.value)} placeholder="e.g. Epson V600" className="w-full rounded-lg border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <input id="upload-scanner-sheet" type="text" value={scanner} onChange={(e) => setScanner(e.target.value)} placeholder="e.g. Epson V600" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
                             </div>
                           </div>
                         )}
@@ -754,7 +754,7 @@ export function AddReviewModal({
                         placeholder="What do you think? How did this film perform?"
                         rows={4}
                         className={cn(
-                          "w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm transition-colors",
+                          "w-full rounded-card border border-input bg-transparent px-2.5 py-2 text-sm transition-colors",
                           "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring"
                         )}
                       />
@@ -794,7 +794,7 @@ export function AddReviewModal({
                       {files.map((file, i) => (
                         <div
                           key={`${file.name}-${i}`}
-                          className="relative h-16 w-16 rounded-lg border border-border/50 bg-muted overflow-hidden"
+                          className="relative h-16 w-16 rounded-card border border-border/50 bg-muted overflow-hidden"
                         >
                           <img
                             src={previewUrls[i]}
@@ -831,7 +831,7 @@ export function AddReviewModal({
                 </div>
 
                 {/* 6. Additional details — collapsed accordion */}
-                <div className="rounded-lg border border-border/50">
+                <div className="rounded-card border border-border/50">
                   <button
                     type="button"
                     onClick={() => setDetailsOpen((o) => !o)}

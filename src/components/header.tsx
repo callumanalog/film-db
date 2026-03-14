@@ -49,7 +49,7 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl font-sans">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+          <div className="flex h-8 w-8 items-center justify-center rounded-card bg-primary">
             <Film className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="text-lg font-bold tracking-tight">FilmDB</span>
@@ -85,7 +85,7 @@ export function Header() {
               <Plus className="h-5 w-5" />
             </button>
             {actionsOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-lg border border-border/50 bg-card py-1 shadow-lg">
+              <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
                 <Link
                   href="/films"
                   onClick={() => setActionsOpen(false)}
@@ -135,7 +135,7 @@ export function Header() {
                     <User className="h-5 w-5" />
                   </button>
                   {profileMenuOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] overflow-hidden rounded-lg border border-border/50 bg-card py-1 shadow-lg">
+                    <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
                       <Link
                         href="/profile"
                         onClick={() => setProfileMenuOpen(false)}

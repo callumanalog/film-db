@@ -25,7 +25,7 @@ export default function GlobalError({
         The page hit an error. You can try again or go back home.
       </p>
       {(isDev || error?.message?.includes("Supabase") || error?.message?.includes("configured")) && error?.message && (
-        <pre className="mt-4 max-w-2xl overflow-auto rounded-lg border border-border bg-muted/50 p-4 text-left text-sm text-foreground">
+        <pre className="mt-4 max-w-2xl overflow-auto rounded-card border border-border bg-muted/50 p-4 text-left text-sm text-foreground">
           {error.message}
         </pre>
       )}
@@ -33,14 +33,14 @@ export default function GlobalError({
         <button
           type="button"
           onClick={reset}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-muted"
+          className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-5 py-2.5 text-sm font-semibold transition-colors hover:bg-muted"
         >
           <RefreshCw className="h-4 w-4" />
           Try again
         </button>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex items-center gap-2 rounded-card bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to home

@@ -462,7 +462,7 @@ export function CommunityGallery({
       {isTab && (
         <>
           <div
-            className="inline-flex rounded-lg border border-border/60 bg-secondary/30 p-0.5"
+            className="inline-flex rounded-card border border-border/60 bg-secondary/30 p-0.5"
             role="tablist"
             aria-label="Image source"
           >
@@ -473,7 +473,7 @@ export function CommunityGallery({
                 role="tab"
                 aria-selected={view === v}
                 onClick={() => setView(v)}
-                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-card px-4 py-2 text-sm font-medium transition-colors ${
                   view === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -516,7 +516,7 @@ export function CommunityGallery({
           <p className="mt-1 text-xs text-muted-foreground">Your uploads will appear here.</p>
           <button
             type="button"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            className="mt-4 inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             Add image

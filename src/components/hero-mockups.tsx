@@ -147,7 +147,7 @@ function AvgRatingStar({ rating }: { rating: number }) {
 
 function OptionLabel({ label, description }: { label: string; description: string }) {
   return (
-    <div className="mb-6 rounded-lg bg-primary/10 border border-primary/20 px-4 py-3">
+    <div className="mb-6 rounded-card bg-primary/10 border border-primary/20 px-4 py-3">
       <p className="text-sm font-bold text-primary">{label}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
     </div>
@@ -1082,11 +1082,11 @@ export function FilmDetailSpecsPane({ specs }: { specs: { label: string; value: 
                 className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-secondary/30"
               >
                 {Icon ? (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-card bg-muted text-muted-foreground">
                     <Icon className="h-4 w-4" aria-hidden />
                   </span>
                 ) : (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground text-xs font-medium">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-card bg-muted text-muted-foreground text-xs font-medium">
                     —
                   </span>
                 )}
@@ -1283,7 +1283,7 @@ export function PriceBuyCard({ stock }: HeroMockupProps) {
         {links.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {links.map((link) => (
-              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer sponsored" className="font-sans inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary/50 px-3.5 py-2 text-xs font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
+              <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer sponsored" className="font-sans inline-flex items-center gap-1.5 rounded-card border border-border bg-secondary/50 px-3.5 py-2 text-xs font-semibold transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary">
                 {link.retailer_name}
                 <ExternalLink className="h-3 w-3 text-muted-foreground" />
               </a>

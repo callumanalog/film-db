@@ -332,7 +332,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   }}
                   onFocus={() => prefetchPillUrl(pill)}
                   onMouseLeave={() => setHoveredPillId(null)}
-                  className={`group flex h-[36px] shrink-0 items-center justify-center rounded-lg font-sans text-xs transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out ${
+                  className={`group flex h-[36px] shrink-0 items-center justify-center rounded-card font-sans text-xs transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out ${
                     useGradientBorder ? "border border-transparent" : "border border-border/50 bg-white"
                   }`}
                   style={
@@ -377,7 +377,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
               <form
                 role="search"
                 onSubmit={handleSearchSubmit}
-                className="flex h-[44px] w-full min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 pl-4 pr-2"
+                className="flex h-[44px] w-full min-w-0 items-center gap-2 rounded-card border border-border/60 bg-secondary/50 pl-4 pr-2"
               >
                 <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <input
@@ -399,7 +399,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                     router.push("/films");
                   }}
                   aria-label="Clear search and close"
-                  className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  className="rounded-card p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -409,7 +409,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   <button
                     type="button"
                     onClick={() => setDrawerOpen(true)}
-                    className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
                     aria-label="Open filters"
                   >
                     <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -433,7 +433,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                     type="button"
                     onClick={() => setMobileSearchOpen(true)}
                     aria-label="Open search"
-                    className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-lg border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:hidden"
+                    className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:hidden"
                   >
                     <Search className="h-3.5 w-3.5" />
                   </button>
@@ -443,7 +443,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   <form
                     role="search"
                     onSubmit={handleSearchSubmit}
-                    className="flex h-[44px] min-w-0 basis-full items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 pl-4 pr-2 md:h-[36px] md:basis-auto md:max-w-[var(--width-search-field)]"
+                    className="flex h-[44px] min-w-0 basis-full items-center gap-2 rounded-card border border-border/60 bg-secondary/50 pl-4 pr-2 md:h-[36px] md:basis-auto md:max-w-[var(--width-search-field)]"
                   >
                     <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <input
@@ -465,7 +465,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                         router.push("/films");
                       }}
                       aria-label="Clear search and close"
-                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      className="rounded-card p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -477,7 +477,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                     type="button"
                     onClick={() => setSearchExpanded(true)}
                     aria-label="Open search"
-                    className="hidden h-[36px] w-[36px] shrink-0 items-center justify-center rounded-lg border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:inline-flex"
+                    className="hidden h-[36px] w-[36px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:inline-flex"
                   >
                     <Search className="h-3.5 w-3.5" />
                   </button>
@@ -485,7 +485,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(true)}
-                  className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:hidden"
+                  className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:hidden"
                   aria-label="Open filters"
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -495,7 +495,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   type="button"
                   onClick={toggleFiltersPane}
                   aria-label={filtersPaneOpen ? "Close filters" : "Open filters"}
-                  className={`hidden h-[36px] shrink-0 items-center justify-center gap-2 rounded-lg border px-4 font-sans text-xs font-medium transition-colors md:inline-flex ${
+                  className={`hidden h-[36px] shrink-0 items-center justify-center gap-2 rounded-card border px-4 font-sans text-xs font-medium transition-colors md:inline-flex ${
                     filtersPaneOpen
                       ? "border-primary/60 bg-primary/10 text-foreground hover:bg-primary/15"
                       : "border-border/60 bg-secondary/50 text-foreground hover:border-primary/40 hover:bg-primary/5"
@@ -565,7 +565,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label="Close filters"
-                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-card text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -675,12 +675,12 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 type="button"
                 onClick={closeMobileSearchDrawer}
                 aria-label="Close search"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <form role="search" onSubmit={handleMobileSearchSubmit} className="min-w-0 flex-1" id="mobile-search-form">
-                <div className="flex h-[52px] items-center gap-2 rounded-lg border border-border bg-background px-4">
+                <div className="flex h-[52px] items-center gap-2 rounded-card border border-border bg-background px-4">
                   <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <input
                     ref={mobileSearchInputRef}
@@ -700,7 +700,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       router.push("/films");
                     }}
                     aria-label="Clear search"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card text-muted-foreground hover:bg-secondary hover:text-foreground"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -719,7 +719,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       key={brand.id}
                       type="button"
                       onClick={() => handleBrandTap(brand)}
-                      className="flex h-[44px] items-center justify-center rounded-lg border border-border/50 bg-secondary/30 px-4 font-sans text-sm font-semibold tracking-wide text-foreground transition-colors hover:border-primary/40 hover:bg-secondary active:bg-secondary/80"
+                      className="flex h-[44px] items-center justify-center rounded-card border border-border/50 bg-secondary/30 px-4 font-sans text-sm font-semibold tracking-wide text-foreground transition-colors hover:border-primary/40 hover:bg-secondary active:bg-secondary/80"
                     >
                       {TRENDING_BRAND_DISPLAY[brand.name] ?? brand.name}
                     </button>
@@ -752,7 +752,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 type="button"
                 onClick={() => setVibesDrawerOpen(false)}
                 aria-label="Close vibes"
-                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-card text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <X className="h-5 w-5" />
               </button>

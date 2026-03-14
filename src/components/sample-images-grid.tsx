@@ -51,7 +51,7 @@ export function SampleImagesGrid({ images, stockDisplayName, slug }: SampleImage
             <button
               key={value}
               onClick={() => setSourceFilter(value)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-card border px-3 py-1.5 text-sm font-medium transition-colors ${
                 sourceFilter === value
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/50 bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
@@ -68,7 +68,7 @@ export function SampleImagesGrid({ images, stockDisplayName, slug }: SampleImage
             <button
               key={value}
               onClick={() => setSort(value)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-card border px-3 py-1.5 text-sm font-medium transition-colors ${
                 sort === value
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/50 bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"

@@ -94,8 +94,8 @@ export function ProfilePageClient() {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="animate-pulse space-y-6">
-          <div className="h-16 w-64 rounded-lg bg-muted" />
-          <div className="h-32 rounded-lg bg-muted" />
+          <div className="h-16 w-64 rounded-card bg-muted" />
+          <div className="h-32 rounded-card bg-muted" />
         </div>
       </div>
     );

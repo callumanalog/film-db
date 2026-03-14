@@ -124,7 +124,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
             <button
               type="button"
               onClick={() => setActionsOpen((o) => !o)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+              className="flex h-9 w-9 items-center justify-center rounded-card border border-border/50 bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
               aria-expanded={actionsOpen}
               aria-haspopup="true"
               aria-label="Add or create"
@@ -132,7 +132,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
               <Plus className="h-5 w-5" />
             </button>
             {actionsOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-lg border border-border/50 bg-card py-1 shadow-lg">
+              <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
                 <Link
                   href="/films"
                   onClick={() => setActionsOpen(false)}
@@ -163,7 +163,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
         </div>
         <div className="flex flex-wrap gap-4 sm:gap-6">
           {stats.map(({ label, value, icon: Icon }) => (
-            <div key={label} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-4 py-2">
+            <div key={label} className="flex items-center gap-2 rounded-card border border-border/50 bg-card px-4 py-2">
               <Icon className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-semibold">{value}</span>
               <span className="text-xs text-muted-foreground">{label}</span>
@@ -241,7 +241,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                           className="block rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
                         >
                           <div className="flex flex-wrap items-start gap-4">
-                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted">
+                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-card bg-muted">
                               {stock.image_url ? (
                                 <Image
                                   src={stock.image_url}
@@ -298,7 +298,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                           href={`/films/${r.slug}`}
                           className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
                         >
-                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-card bg-muted">
                             {stock.image_url ? (
                               <Image
                                 src={stock.image_url}

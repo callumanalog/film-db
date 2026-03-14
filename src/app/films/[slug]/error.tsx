@@ -26,14 +26,14 @@ export default function FilmPageError({
         <button
           type="button"
           onClick={reset}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold transition-colors hover:bg-muted"
+          className="inline-flex items-center gap-2 rounded-card border border-border bg-background px-4 py-2 text-sm font-semibold transition-colors hover:bg-muted"
         >
           <RefreshCw className="h-4 w-4" />
           Try again
         </button>
         <Link
           href="/films"
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <ArrowLeft className="h-4 w-4" />
           All film stocks

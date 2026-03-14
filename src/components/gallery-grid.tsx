@@ -111,7 +111,7 @@ export function GalleryGrid({
             setBrandFilter(e.target.value);
             setSelectedStockSlugs(new Set());
           }}
-          className="rounded-lg border border-border/50 bg-card px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="rounded-card border border-border/50 bg-card px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
           <option value="all">All brands</option>
           {brands.map((b) => (
@@ -129,7 +129,7 @@ export function GalleryGrid({
             <button
               type="button"
               onClick={() => setStockDropdownOpen((o) => !o)}
-              className="flex min-w-[10rem] items-center justify-between gap-2 rounded-lg border border-border/50 bg-card px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="flex min-w-[10rem] items-center justify-between gap-2 rounded-card border border-border/50 bg-card px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <span className="truncate">
                 {selectedStockSlugs.size === 0
@@ -141,7 +141,7 @@ export function GalleryGrid({
               />
             </button>
             {stockDropdownOpen && (
-              <div className="absolute left-0 top-full z-10 mt-1 w-72 rounded-lg border border-border/50 bg-card py-2 shadow-lg">
+              <div className="absolute left-0 top-full z-10 mt-1 w-72 rounded-card border border-border/50 bg-card py-2 shadow-lg">
                 <div className="mb-2 flex gap-2 border-b border-border/50 px-3 pb-2">
                   <button
                     type="button"
@@ -220,7 +220,7 @@ export function GalleryGrid({
             <button
               key={value}
               onClick={() => setSourceFilter(value)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-card border px-3 py-1.5 text-sm font-medium transition-colors ${
                 sourceFilter === value
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/50 bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
@@ -239,7 +239,7 @@ export function GalleryGrid({
             <button
               key={value}
               onClick={() => setSort(value)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-card border px-3 py-1.5 text-sm font-medium transition-colors ${
                 sort === value
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/50 bg-card text-muted-foreground hover:border-primary/30 hover:text-foreground"
