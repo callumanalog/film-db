@@ -12,6 +12,8 @@ interface FilterSidebarProps {
   filterOptions: FilmFilterOptions;
   /** "drawer" = pills + accordions (mobile drawer). "specs" = specs-style table with same pills (desktop left pane). */
   variant?: "drawer" | "specs";
+  /** When false, Type accordion starts closed (e.g. when Vibes is first in drawer). Default true. */
+  typeDefaultOpen?: boolean;
 }
 
 function getParamArray(searchParams: URLSearchParams, key: string): string[] {
@@ -20,7 +22,7 @@ function getParamArray(searchParams: URLSearchParams, key: string): string[] {
   return v.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-export function FilterSidebar({ brands, filterOptions, variant = "drawer" }: FilterSidebarProps) {
+export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeDefaultOpen = true }: FilterSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -76,7 +78,7 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer" }: Fil
 
   const accordionContent = (
     <>
-      <FilterAccordion defaultOpen singleColumn={variant === "specs"} title="Type">
+      <FilterAccordion defaultOpen={typeDefaultOpen} singleColumn={variant === "specs"} title="Type">
         <FilterPillGrid>
           {filterOptions.types.map((type) => (
             <FilterPill

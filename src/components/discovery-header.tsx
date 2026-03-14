@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useState, useEffect, useRef, startTransition } from "react";
-import { ChevronLeft, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react";
 import type { FilmBrand } from "@/lib/types";
 import type { FilmFilterOptions } from "@/lib/supabase/queries";
 import type { BestFor } from "@/lib/types";
@@ -113,6 +113,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
   const searchParams = useSearchParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [vibesDrawerOpen, setVibesDrawerOpen] = useState(false);
+  const [filtersVibesOpen, setFiltersVibesOpen] = useState(true);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchDrawerClosing, setSearchDrawerClosing] = useState(false);
   const [searchDrawerReady, setSearchDrawerReady] = useState(false);
@@ -170,15 +171,15 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
     [router, buildUrl]
   );
 
-  // Prefetch films page for each discovery pill when the Vibes drawer opens (mobile) so taps feel instant.
+  // Prefetch films page for each discovery pill when Vibes or Filters drawer opens (mobile) so taps feel instant.
   useEffect(() => {
-    if (!vibesDrawerOpen) return;
+    if (!vibesDrawerOpen && !drawerOpen) return;
     DISCOVERY_PILLS.forEach((pill) => {
       const value = pill.bestFor.length > 0 ? pill.bestFor.join(",") : null;
       const url = buildUrl({ bestFor: value, vibe: null });
       router.prefetch(url);
     });
-  }, [vibesDrawerOpen, router, buildUrl]);
+  }, [vibesDrawerOpen, drawerOpen, router, buildUrl]);
 
   // Desktop: prefetch a pill’s films page on hover/focus so the click is fast.
   const prefetchPillUrl = useCallback(
@@ -221,11 +222,12 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
   /** On mobile, only show expanded bar when URL has a search term; on desktop use searchExpanded (tap or URL). */
   const showExpandedSearch = isMobile ? !!defaultSearch : searchExpanded;
 
+  // Only auto-focus inline search on desktop; on mobile avoid opening keyboard when landing on results
   useEffect(() => {
-    if (searchExpanded) {
-      searchInputRef.current?.focus();
+    if (searchExpanded && !isMobile) {
+      searchInputRef.current?.focus({ preventScroll: true });
     }
-  }, [searchExpanded]);
+  }, [searchExpanded, isMobile]);
 
   // Mobile search drawer: slide-up ready after mount, focus input when open
   useEffect(() => {
@@ -243,7 +245,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
 
   useEffect(() => {
     if (mobileSearchOpen && searchDrawerReady) {
-      mobileSearchInputRef.current?.focus();
+      mobileSearchInputRef.current?.focus({ preventScroll: true });
     }
   }, [mobileSearchOpen, searchDrawerReady]);
 
@@ -372,17 +374,20 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             /* Mobile search expanded: search bar full width, then Filters/Vibes and Sort on one row (Sort right-aligned) */
             <div className="flex w-full flex-col gap-3">
               <form
+                role="search"
                 onSubmit={handleSearchSubmit}
-                className="flex h-[44px] w-full min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4"
+                className="flex h-[44px] w-full min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 pl-4 pr-2"
               >
                 <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                 <input
                   ref={searchInputRef}
-                  type="text"
+                  type="search"
+                  inputMode="search"
+                  autoComplete="off"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search..."
-                  className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0"
+                  className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
                 />
                 <button
                   type="button"
@@ -407,15 +412,6 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   >
                     <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     Filters
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setVibesDrawerOpen(true)}
-                    className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
-                    aria-label="Open vibes"
-                  >
-                    <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    Vibes
                   </button>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <ActiveFilterChips brands={brands} />
@@ -443,17 +439,20 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 {/* Inline search form: on mobile only when URL has search term; on desktop when searchExpanded */}
                 {showExpandedSearch && (
                   <form
+                    role="search"
                     onSubmit={handleSearchSubmit}
-                    className="flex h-[44px] min-w-0 basis-full items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 md:h-[36px] md:basis-auto md:max-w-[var(--width-search-field)]"
+                    className="flex h-[44px] min-w-0 basis-full items-center gap-2 rounded-lg border border-border/60 bg-secondary/50 pl-4 pr-2 md:h-[36px] md:basis-auto md:max-w-[var(--width-search-field)]"
                   >
                     <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <input
                       ref={searchInputRef}
-                      type="text"
+                      type="search"
+                      inputMode="search"
+                      autoComplete="off"
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                       placeholder="Search..."
-                      className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 md:text-xs"
+                      className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 md:text-xs [&::-webkit-search-cancel-button]:appearance-none"
                     />
                     <button
                       type="button"
@@ -501,15 +500,6 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   Filters
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVibesDrawerOpen(true)}
-                  className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:hidden"
-                  aria-label="Open vibes"
-                >
-                  <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  Vibes
                 </button>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <ActiveFilterChips brands={brands} />
@@ -589,7 +579,51 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
               </button>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto bg-white px-4 pt-4 pb-32 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <FilterSidebar brands={brands} filterOptions={filterOptions} />
+              {/* Vibes: first category in filter drawer on mobile, default open, same pill style with gradient circle */}
+              <div className="border-b border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setFiltersVibesOpen((o) => !o)}
+                  className="label-caps flex w-full items-center justify-between gap-2 py-4 text-left hover:text-foreground"
+                  aria-expanded={filtersVibesOpen}
+                >
+                  <span>Vibes</span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 shrink-0 transition-transform ${filtersVibesOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {filtersVibesOpen && (
+                  <div className="grid grid-cols-2 gap-2 pb-4">
+                    {DISCOVERY_PILLS.map((pill) => {
+                      const active = isPillActive(pill);
+                      const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
+                      return (
+                        <button
+                          key={pill.id}
+                          type="button"
+                          onClick={() => setDiscoveryPill(pill, active)}
+                          className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-[6px] border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                            active
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border/60 bg-secondary/30 text-foreground hover:border-primary/40 hover:bg-primary/5"
+                          }`}
+                        >
+                          <span
+                            className="size-4 shrink-0 rounded-full ring-1 ring-white/50"
+                            style={{
+                              background: theme.gradient,
+                              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+                            }}
+                            aria-hidden
+                          />
+                          <span className="truncate">{pill.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <FilterSidebar brands={brands} filterOptions={filterOptions} typeDefaultOpen={false} />
             </div>
             <div className="shrink-0 border-t border-border bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <div className="space-y-2">
@@ -653,18 +687,18 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <form onSubmit={handleMobileSearchSubmit} className="min-w-0 flex-1" id="mobile-search-form">
+              <form role="search" onSubmit={handleMobileSearchSubmit} className="min-w-0 flex-1" id="mobile-search-form">
                 <div className="flex h-[52px] items-center gap-2 rounded-lg border border-border bg-background px-4">
                   <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <input
                     ref={mobileSearchInputRef}
-                    type="text"
+                    type="search"
+                    inputMode="search"
+                    autoComplete="off"
                     value={mobileSearchInput}
                     onChange={(e) => setMobileSearchInput(e.target.value)}
                     placeholder="Search film stocks..."
-                    className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0"
-                    autoComplete="off"
-                    autoFocus
+                    className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
                   />
                   <button
                     type="button"
