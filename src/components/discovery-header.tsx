@@ -383,6 +383,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   ref={searchInputRef}
                   type="search"
                   inputMode="search"
+                  enterKeyHint="search"
                   autoComplete="off"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
@@ -413,7 +414,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                     <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     Filters
                   </button>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="hidden flex-wrap items-center gap-1.5 md:flex">
                     <ActiveFilterChips brands={brands} />
                   </div>
                 </div>
@@ -448,6 +449,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       ref={searchInputRef}
                       type="search"
                       inputMode="search"
+                      enterKeyHint="search"
                       autoComplete="off"
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
@@ -501,7 +503,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   Filters
                 </button>
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="hidden flex-wrap items-center gap-1.5 md:flex">
                   <ActiveFilterChips brands={brands} />
                 </div>
               </div>
@@ -512,47 +514,36 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
           )}
         </div>
 
-        {/* Mobile only: show active vibe below search/filter buttons — same styling as desktop pill */}
-        {(() => {
-          const activePill = DISCOVERY_PILLS.find((p) => isPillActive(p));
-          if (!activePill) return null;
-          const theme = PILL_THEMES[activePill.id] ?? PILL_THEMES.experimental;
-          const fillBg = theme.activeBgTint;
-          const borderGradient = theme.gradient;
-          return (
-            <div className="mt-3 flex justify-start md:hidden">
+        {/* Mobile only: active vibe + filter chips in one row, chip styling (rounded-full, same size/color as ActiveFilterChips) */}
+        <div className="mt-3 flex flex-wrap items-center justify-start gap-1.5 md:hidden">
+          {(() => {
+            const activePill = DISCOVERY_PILLS.find((p) => isPillActive(p));
+            if (!activePill) return null;
+            const theme = PILL_THEMES[activePill.id] ?? PILL_THEMES.experimental;
+            return (
               <button
                 type="button"
                 onClick={() => setDiscoveryPill(activePill, true)}
                 aria-label={`Remove ${activePill.label} filter`}
-                className="inline-flex h-[44px] shrink-0 items-center gap-1 rounded-lg border border-transparent px-4 font-sans text-sm transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out cursor-pointer hover:opacity-90"
-                style={{
-                  borderWidth: 1.5,
-                  backgroundImage: `linear-gradient(${fillBg}, ${fillBg}), ${borderGradient}`,
-                  backgroundOrigin: "padding-box, border-box",
-                  backgroundClip: "padding-box, border-box",
-                  backgroundRepeat: "no-repeat",
-                  backgroundSize: "100% 100%, 100% 100%",
-                }}
+                className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/50 pl-2.5 pr-1.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
               >
-                <span className="flex items-center gap-2.5">
-                  <span
-                    className="flex size-4 shrink-0 rounded-full ring-1 ring-white/50 transition-transform duration-200 ease-in-out"
-                    style={{
-                      background: theme.gradient,
-                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
-                    }}
-                    aria-hidden
-                  />
-                  <span className={`font-semibold ${theme.activeTextClass ?? "text-white"}`}>{activePill.label}</span>
-                </span>
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white/80 hover:bg-white/20 hover:text-white">
+                <span
+                  className="size-4 shrink-0 rounded-full ring-1 ring-white/50"
+                  style={{
+                    background: theme.gradient,
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+                  }}
+                  aria-hidden
+                />
+                <span className="truncate">{activePill.label}</span>
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary">
                   <X className="h-3 w-3" aria-hidden />
                 </span>
               </button>
-            </div>
-          );
-        })()}
+            );
+          })()}
+          <ActiveFilterChips brands={brands} />
+        </div>
       </header>
 
       {drawerOpen && (
@@ -694,6 +685,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                     ref={mobileSearchInputRef}
                     type="search"
                     inputMode="search"
+                    enterKeyHint="search"
                     autoComplete="off"
                     value={mobileSearchInput}
                     onChange={(e) => setMobileSearchInput(e.target.value)}
