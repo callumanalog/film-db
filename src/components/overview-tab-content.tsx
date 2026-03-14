@@ -216,7 +216,9 @@ export function OverviewTabContent({
                             </span>
                           )}
                           <div className="min-w-0 flex-1 py-0.5">
-                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{spec.label}</p>
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              {spec.label === "Development Process" || spec.label === "Film Development Process" ? "DEV PROCESS" : spec.label}
+                            </p>
                             <p className="mt-0.5 text-sm leading-tight text-foreground/90">{spec.value}</p>
                           </div>
                         </div>
