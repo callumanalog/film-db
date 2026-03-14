@@ -6,7 +6,7 @@ import { Menu, X, User, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHori
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 const navLinks = [
   { href: "/community", label: "Community" },
@@ -200,21 +200,21 @@ export function Header() {
         <div className="flex items-center justify-end gap-2">
           {!loading && !user && (
             <div className="flex items-center gap-2 max-[533px]:hidden">
-              <Button
-                asChild
-                variant="ghost"
-                size="default"
-                className="shrink-0 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              <Link
+                href="/auth/sign-in?next=/profile"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "default" }),
+                  "shrink-0 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
               >
-                <Link href="/auth/sign-in?next=/profile">Log in</Link>
-              </Button>
-              <Button
-                asChild
-                size="default"
-                className="shrink-0 text-sm font-medium"
+                Log in
+              </Link>
+              <Link
+                href="/auth/sign-up"
+                className={cn(buttonVariants({ variant: "default", size: "default" }), "shrink-0 text-sm font-medium")}
               >
-                <Link href="/auth/sign-up">Join the club</Link>
-              </Button>
+                Join the club
+              </Link>
             </div>
           )}
           {!loading && user && (
@@ -285,11 +285,13 @@ export function Header() {
                   Log in
                 </Link>
                 <div className="pt-1">
-                  <Button asChild size="sm" className="w-full">
-                    <Link href="/auth/sign-up" onClick={() => setMobileOpen(false)}>
-                      Join the club
-                    </Link>
-                  </Button>
+                  <Link
+                    href="/auth/sign-up"
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(buttonVariants({ variant: "default", size: "sm" }), "flex w-full justify-center")}
+                  >
+                    Join the club
+                  </Link>
                 </div>
               </div>
             )}
