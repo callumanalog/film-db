@@ -42,6 +42,7 @@ import {
   Calendar,
   CirclePlus,
   Plus,
+  Bookmark,
   Landmark,
   Sunset,
   Lightbulb,
@@ -332,14 +333,19 @@ function UserStarRating({
   value,
   onChange,
   rowHover,
+  starSize = "default",
 }: {
   value: number;
   onChange: (value: number) => void;
   /** When set, clear (X) is shown when this is true and value > 0 (e.g. hover from parent row). */
   rowHover?: boolean;
+  /** Star size: default 24px, sm 20px, xs 18px */
+  starSize?: "default" | "sm" | "xs";
 }) {
   const [hover, setHover] = useState(0);
   const [starsHover, setStarsHover] = useState(false);
+  const sizeClass =
+    starSize === "xs" ? "h-[18px] w-[18px]" : starSize === "sm" ? "h-5 w-5" : "h-6 w-6";
 
   const display = hover || value;
   const showClear = value > 0 && (rowHover !== undefined ? rowHover : starsHover);
@@ -385,7 +391,7 @@ function UserStarRating({
           return (
             <div
               key={i}
-              className="relative h-6 w-6 cursor-pointer"
+              className={`relative cursor-pointer ${sizeClass}`}
               onMouseMove={(e) => setHover(getValueFromEvent(e, i))}
               onClick={(e) => {
                 const val = getValueFromEvent(e, i);
@@ -397,13 +403,13 @@ function UserStarRating({
                 }
               }}
             >
-              <Star className="absolute inset-0 h-6 w-6 fill-none stroke-[1.5] text-muted-foreground/50" />
+              <Star className={`absolute inset-0 fill-none stroke-[1.5] text-muted-foreground/50 ${sizeClass}`} />
               {full && (
-                <Star className="absolute inset-0 h-6 w-6 fill-primary text-primary" />
+                <Star className={`absolute inset-0 fill-primary text-primary ${sizeClass}`} />
               )}
               {half && (
                 <div className="absolute inset-0 overflow-hidden" style={{ width: "50%" }}>
-                  <Star className="h-6 w-6 fill-primary text-primary" />
+                  <Star className={`${sizeClass} fill-primary text-primary`} />
                 </div>
               )}
             </div>
@@ -417,110 +423,42 @@ function UserStarRating({
 
 /* ─── Sticky Left Pane ─── */
 
-const LOG_OPTIONS = [
-  { id: "shot", labelInactive: "Shot It", labelActive: "Shot It", fullLabel: "I've shot this stock — save to shot stocks", Icon: CheckCircle2 },
-  { id: "favorite", labelInactive: "Shootlist", labelActive: "On Shootlist", fullLabel: "Add to shootlist", Icon: CirclePlus },
-] as const;
-
-/** Active Shot: orange circle + white tick */
-function ShotActiveIcon({ className }: { className?: string }) {
-  return (
-    <span className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary ${className ?? ""}`} aria-hidden>
-      <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
-    </span>
-  );
-}
-
-/** Active Shootlist: orange circle + white plus (same treatment as Shot) */
-function ShootlistActiveIcon({ className }: { className?: string }) {
-  return (
-    <span className={`relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary ${className ?? ""}`} aria-hidden>
-      <Plus className="h-3.5 w-3.5 text-white" strokeWidth={3} />
-    </span>
-  );
-}
-
-/** Inactive Shot it icon: circle + check visible always; check draws in on hover (record.club-style) */
-function ShotItIconInactive() {
-  return (
-    <span className="shot-tick-draw inline-flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground/20 transition-colors group-hover:text-primary" aria-hidden>
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="h-6 w-6"
-      >
-        <circle cx="12" cy="12" r="10" />
-        {/* Always-visible tick (muted, turns primary on hover) */}
-        <path
-          d="M9 12l2 2 4-4"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={0}
-        />
-        {/* Overlay tick that draws in on hover via CSS animation */}
-        <path
-          className="tick-draw-path"
-          d="M9 12l2 2 4-4"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={1}
-        />
-      </svg>
-    </span>
-  );
-}
-
-type LogActionId = (typeof LOG_OPTIONS)[number]["id"];
-
-export function StickyLeftPane({ stock }: HeroMockupProps) {
+export function StickyLeftPane({
+  stock,
+  stats,
+}: HeroMockupProps & { stats?: FilmStockStatsProp | null }) {
   const { slug } = stock;
   const {
-    shotSlugs,
     favouriteSlugs,
-    toggleShot,
     toggleFavourite,
     addOrUpdateTracked,
     setRating: persistRating,
     ratings,
+    shotSlugs,
+    toggleShot,
   } = useUserActions();
   const { user } = useAuth();
 
   const [trackModalOpen, setTrackModalOpen] = useState(false);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
-  const [hoveredActionId, setHoveredActionId] = useState<"shot" | "favorite" | null>(null);
-  const [actionsDrawerOpen, setActionsDrawerOpen] = useState(false);
   const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false);
 
-  const isShot = shotSlugs.includes(slug);
   const isFavourite = favouriteSlugs.includes(slug);
   const rating = ratings[slug] ?? 0;
 
-  const [ratingRowHover, setRatingRowHover] = useState(false);
-
-  const toggleAction = (id: LogActionId) => {
-    if (id === "shot") {
-      const { added } = toggleShot(slug);
-      showToastViaEvent(added ? "Added to stocks you've shot" : "Removed from Shot");
-      return;
-    }
-    if (id === "favorite") {
-      const { added } = toggleFavourite(slug);
-      showToastViaEvent(added ? "Added to shootlist" : "Removed from shootlist");
-      return;
-    }
-  };
-
   const handleRatingChange = (value: number) => {
     persistRating(slug, value);
-    if (value > 0 && !isShot) {
+    if (value > 0 && !shotSlugs.includes(slug)) {
       toggleShot(slug);
       showToastViaEvent("Added to stocks you've shot");
     }
+  };
+
+  const display = {
+    avgRating: stats?.avgRating ?? null,
+    shotByCount: stats?.shotByCount ?? 0,
+    shotsCount: stats?.shotsCount ?? 0,
   };
 
   const handleTrackSave = (entry: { format: string; status: string; expiryDate: string; notes: string }) => {
@@ -536,7 +474,6 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
   };
 
   const closeDrawerThen = (fn: () => void) => {
-    setActionsDrawerOpen(false);
     setReviewDrawerOpen(false);
     const t = setTimeout(fn, 150);
     return () => clearTimeout(t);
@@ -544,203 +481,87 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
 
   return (
     <div className="w-full min-w-0 flex flex-col md:w-56 md:min-w-[14rem] md:shrink-0 md:self-start md:overflow-visible">
-      {/* Below md (768px): single col, image + 3-btn row. md+: 2-col (image | rating) then contents. */}
+      {/* Mobile-first: image card + rating + Add Shooting Notes / Post a shot. FAB for Log a Roll. */}
       <div className="grid grid-cols-1 gap-4">
       <div className="flex min-w-0 flex-col gap-3">
-      {/* Image card — mobile: image + Shot it | Shootlist | Log a roll (3 in row); md+: image + 2-col + Log a roll */}
+      {/* Image card + Rate — single card, same width */}
       <div className="relative mx-auto w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-white md:mx-0 md:max-w-none md:w-full">
-        {stock.discontinued && (
-          <span
-            className="absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-            aria-hidden
-          >
-            Discontinued
-          </span>
-        )}
-        <div className="flex items-center justify-center px-6 pt-0 pb-0">
-          <div className={slug === "cinestill-800t" ? "h-40 w-48" : "h-48 w-40"}>
-            <FilmImage
-              stock={stock}
-              size={192}
-              {...(slug === "cinestill-800t" ? { width: 192, height: 160 } : {})}
-            />
+        {/* Image — Save (Bookmark) bottom-right */}
+        <div className="relative">
+          {stock.discontinued && (
+            <span
+              className="absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              aria-hidden
+            >
+              Discontinued
+            </span>
+          )}
+          <div className="flex items-center justify-center px-6 pt-0 pb-0">
+            <div className={slug === "cinestill-800t" ? "h-40 w-48" : "h-48 w-40"}>
+              <FilmImage
+                stock={stock}
+                size={192}
+                {...(slug === "cinestill-800t" ? { width: 192, height: 160 } : {})}
+              />
+            </div>
           </div>
-        </div>
-        {/* Desktop (md+): 2-col Shot it | Shootlist */}
-        <div className="hidden grid-cols-2 gap-0 border-t border-border/50 md:grid [&>*:first-child]:border-r [&>*:first-child]:border-border/50" role="group" aria-label="Film stock actions">
-          {LOG_OPTIONS.map(({ id, fullLabel, Icon, labelInactive, labelActive }) => {
-            const isActive = id === "shot" ? isShot : isFavourite;
-            const label = isActive ? labelActive : labelInactive;
-            const filledIcon = isActive && id === "favorite";
-            const shotActive = isActive && id === "shot";
-            const showRemove = isActive && hoveredActionId === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => toggleAction(id)}
-                title={fullLabel}
-                aria-pressed={isActive}
-                aria-label={fullLabel}
-                className="group flex flex-col items-center justify-center gap-2 px-2 py-3 text-xs font-normal normal-case transition-colors hover:bg-muted/60 text-muted-foreground"
-                onMouseEnter={() => setHoveredActionId(id)}
-                onMouseLeave={() => setHoveredActionId(null)}
-              >
-                {shotActive ? (
-                  <ShotActiveIcon />
-                ) : filledIcon ? (
-                  <ShootlistActiveIcon />
-                ) : id === "shot" ? (
-                  <ShotItIconInactive />
-                ) : (
-                  <Icon
-                    className="h-6 w-6 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-primary transition-transform duration-200 group-hover:rotate-90"
-                    aria-hidden
-                  />
-                )}
-                <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
-                  {showRemove ? "Remove" : label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <button
-          type="button"
-          onClick={() => setTrackModalOpen(true)}
-          className="hidden w-full items-center justify-center border-t border-border/50 px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground md:flex"
-        >
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Log a roll</span>
-        </button>
-
-        {/* Mobile only (below md): Shot it | Shootlist | Log a roll — same as desktop, 3 in one row */}
-        <div className="grid grid-cols-3 gap-0 border-t border-border/50 md:hidden [&>*:not(:last-child)]:border-r [&>*:not(:last-child)]:border-border/50" role="group" aria-label="Film stock actions">
-          {LOG_OPTIONS.map(({ id, fullLabel, Icon, labelInactive, labelActive }) => {
-            const isActive = id === "shot" ? isShot : isFavourite;
-            const label = isActive ? labelActive : labelInactive;
-            const filledIcon = isActive && id === "favorite";
-            const shotActive = isActive && id === "shot";
-            const showRemove = isActive && hoveredActionId === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => toggleAction(id)}
-                title={fullLabel}
-                aria-pressed={isActive}
-                aria-label={fullLabel}
-                className="group flex flex-col items-center justify-center gap-2 px-2 py-3 text-xs font-normal normal-case transition-colors hover:bg-muted/60 text-muted-foreground"
-                onMouseEnter={() => setHoveredActionId(id)}
-                onMouseLeave={() => setHoveredActionId(null)}
-              >
-                {shotActive ? (
-                  <ShotActiveIcon />
-                ) : filledIcon ? (
-                  <ShootlistActiveIcon />
-                ) : id === "shot" ? (
-                  <ShotItIconInactive />
-                ) : (
-                  <Icon
-                    className="h-6 w-6 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-primary transition-transform duration-200 group-hover:rotate-90"
-                    aria-hidden
-                  />
-                )}
-                <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">
-                  {showRemove ? "Remove" : label}
-                </span>
-              </button>
-            );
-          })}
           <button
             type="button"
-            onClick={() => setActionsDrawerOpen(true)}
-            className="group flex flex-col items-center justify-center gap-2 px-2 py-3 text-xs font-normal normal-case transition-colors hover:bg-muted/60 text-muted-foreground hover:text-foreground"
-            aria-label="Actions"
+            onClick={() => {
+              const { added } = toggleFavourite(slug);
+              showToastViaEvent(added ? "Added to shootlist" : "Removed from shootlist");
+            }}
+            title={isFavourite ? "Remove from shootlist" : "Save to shootlist"}
+            aria-pressed={isFavourite}
+            aria-label={isFavourite ? "Remove from shootlist" : "Save to shootlist"}
+            className="absolute right-2.5 bottom-2.5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/80 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:text-foreground"
           >
-            <Star className="h-6 w-6 shrink-0 fill-none stroke-[1.5] text-muted-foreground/50 transition-colors group-hover:text-primary group-hover:fill-primary/10 group-hover:stroke-primary" aria-hidden />
-            <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Actions</span>
+            <Bookmark
+              className={`h-5 w-5 shrink-0 ${isFavourite ? "fill-primary text-primary" : "text-muted-foreground"}`}
+              aria-hidden
+            />
           </button>
         </div>
-      </div>
-      </div>
-
-      {/* Card 2: Rate + Write review + Post a shot (hidden below md; gap above when stacked on md+) */}
-      <div className="hidden overflow-hidden rounded-[7px] border border-border/50 bg-card divide-y divide-border/50 md:block md:mt-4">
-        <div
-          className="px-4 py-3 text-center"
-          onMouseEnter={() => setRatingRowHover(true)}
-          onMouseLeave={() => setRatingRowHover(false)}
-        >
-          <div className="flex justify-center">
-            <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
-          </div>
-          <p className="mt-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Rate</p>
-        </div>
-
-        {/* Row: Write review — text only, centered */}
-        <button
-          type="button"
-          onClick={() => {
-            setReviewModalMode("review");
-            setReviewModalOpen(true);
-          }}
-          className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
-        >
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Write review</span>
-        </button>
-
-        {/* Row: Post a shot — text only, centered */}
-        <button
-          type="button"
-          onClick={() => {
-            setReviewModalMode("upload");
-            setReviewModalOpen(true);
-          }}
-          className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
-        >
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Post a shot</span>
-        </button>
-      </div>
-      </div>
-
-      {/* Mobile Actions drawer — same content and styling as desktop rating card */}
-      <Sheet open={actionsDrawerOpen} onOpenChange={setActionsDrawerOpen}>
-        <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">
-          <div className="divide-y divide-border/50 overflow-hidden rounded-[7px] border border-border/50 bg-card">
-            <button
-              type="button"
-              onClick={() => closeDrawerThen(() => setTrackModalOpen(true))}
-              className="group flex w-full items-center justify-center border-border/50 px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
-            >
-              <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Log a roll</span>
-            </button>
-            <div
-              className="px-4 py-3 text-center"
-              onMouseEnter={() => setRatingRowHover(true)}
-              onMouseLeave={() => setRatingRowHover(false)}
-            >
-              <div className="flex justify-center">
-                <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} />
-              </div>
-              <p className="mt-2 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Rate</p>
+        {/* Stats — connected section (Shot It | Avg. rating | Shots) */}
+        <div className="grid grid-cols-3 gap-2 border-t border-border/50 bg-card px-3 py-3">
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="text-base font-semibold tracking-tight text-foreground">{display.shotByCount}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => closeDrawerThen(() => { setReviewModalMode("review"); setReviewModalOpen(true); })}
-              className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
-            >
-              <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Write review</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => closeDrawerThen(() => { setReviewModalMode("upload"); setReviewModalOpen(true); })}
-              className="group flex w-full items-center justify-center px-4 py-3 text-xs font-normal normal-case transition-colors hover:bg-primary/5 text-muted-foreground hover:text-foreground"
-            >
-              <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground">Post a shot</span>
-            </button>
+            <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot It</span>
           </div>
-        </SheetContent>
-      </Sheet>
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-center gap-1.5">
+              <Star className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="text-base font-semibold tracking-tight text-foreground">
+                {display.avgRating != null ? display.avgRating.toFixed(1) : "—"}
+              </span>
+            </div>
+            <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avg. rating</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-center gap-1.5">
+              <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="text-base font-semibold tracking-tight text-foreground">{display.shotsCount}</span>
+            </div>
+            <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shots</span>
+          </div>
+        </div>
+      </div>
+
+      </div>
+      </div>
+
+      {/* FAB — Log a Roll */}
+      <button
+        type="button"
+        onClick={() => setTrackModalOpen(true)}
+        aria-label="Log a roll"
+        className="fixed bottom-8 right-8 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl transition-transform hover:scale-105 active:scale-95"
+      >
+        <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
+      </button>
 
       <Sheet open={reviewDrawerOpen} onOpenChange={setReviewDrawerOpen}>
         <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">
@@ -758,7 +579,7 @@ export function StickyLeftPane({ stock }: HeroMockupProps) {
               className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[7px] bg-primary/10 py-3 text-base font-semibold text-foreground transition-colors hover:bg-primary/15"
             >
               <Pencil className="h-5 w-5 shrink-0" aria-hidden />
-              Write a review
+              Add Shooting Notes
             </button>
           </div>
           <div className="mt-6 flex justify-center pb-2">
@@ -921,53 +742,46 @@ export interface FilmStockStatsProp {
 
 export function PageTitleHeader({
   stock,
-  stats,
 }: HeroMockupProps & { stats?: FilmStockStatsProp | null }) {
-  const display = {
-    avgRating: stats?.avgRating ?? null,
-    shotByCount: stats?.shotByCount ?? 0,
-    favouritesCount: stats?.favouritesCount ?? 0,
-    shotsCount: stats?.shotsCount ?? 0,
+  const { slug } = stock;
+  const { shotSlugs, setRating: persistRating, ratings, toggleShot } = useUserActions();
+  const rating = ratings[slug] ?? 0;
+  const isShot = shotSlugs.includes(slug);
+  const [ratingRowHover, setRatingRowHover] = useState(false);
+
+  const handleRatingChange = (value: number) => {
+    persistRating(slug, value);
+    if (value > 0 && !isShot) {
+      toggleShot(slug);
+      showToastViaEvent("Added to stocks you've shot");
+    }
   };
 
+  const typeLabel = stock.typeLabel ?? "—";
+  const isoStr = stock.iso != null ? `ISO ${stock.iso}` : "ISO —";
+  const formatStr = (stock.format ?? []).join(", ") || "—";
+  const metaLine = `${typeLabel} | ${isoStr} | ${formatStr}`;
+
   return (
-      /* HeaderContent: below md = column, title then stats, both center-aligned; md+ = row, wrap when narrow. */
       <div
-        className="@container mb-0 flex min-w-0 flex-wrap flex-col gap-x-8 gap-y-5 md:flex-row items-center md:items-start @[28rem]:items-center"
+        className="@container mb-0 flex min-w-0 flex-wrap flex-col gap-x-8 gap-y-5 md:flex-row items-center md:items-start @[28rem]:items-center pt-6"
         data-header-content
       >
-        <div className="min-w-0 w-fit">
+        <div className="min-w-0 w-fit flex flex-col items-center md:items-start gap-2">
           <h1 className="w-fit font-advercase text-3xl font-bold tracking-tight sm:text-4xl md:text-left text-center">
             {stock.name}
           </h1>
-        </div>
-
-        {/* Quick Stats — below md: 3 equal columns so 5.0 is the true centre, other two either side; md+: flex row */}
-        <div className="grid w-full max-w-sm grid-cols-3 gap-5 shrink-0 place-items-center md:max-w-none md:w-auto md:grid-cols-[auto_auto_auto] md:flex md:justify-start sm:gap-6">
-        <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">{display.shotByCount}</span>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {metaLine}
+          </p>
+          <div
+            className="flex flex-col items-center md:items-start"
+            onMouseEnter={() => setRatingRowHover(true)}
+            onMouseLeave={() => setRatingRowHover(false)}
+          >
+            <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} starSize="xs" />
           </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot It</span>
         </div>
-        <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">
-              {display.avgRating != null ? display.avgRating.toFixed(1) : "—"}
-            </span>
-          </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avg. rating</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-base font-semibold tracking-tight text-foreground">{display.shotsCount}</span>
-          </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shots</span>
-        </div>
-      </div>
     </div>
   );
 }

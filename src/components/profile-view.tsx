@@ -147,7 +147,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                   className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                 >
                   <NotebookPen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  Write review
+                  Add Shooting Notes
                 </Link>
                 <Link
                   href="/films"

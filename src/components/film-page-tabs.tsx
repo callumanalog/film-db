@@ -134,7 +134,7 @@ export function FilmDetailTabs({
           >
             {t.label}
             {t.id === activeId && (
-              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
+              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" />
             )}
           </button>
         ))}

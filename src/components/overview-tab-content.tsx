@@ -141,14 +141,14 @@ export function OverviewTabContent({
     (c) => characterScales?.[c.key] != null && characterScales[c.key]! >= 1 && characterScales[c.key]! <= 5
   ).map((c) => ({ ...c, value: characterScales![c.key] as number }));
 
-  /** 2x2 table: Format | Film Type, ISO | Development Process. */
+  /** 2x2 table: Film Type | ISO, Format | Development Process (order matches header meta line). */
   const topSpecsRows: { label: string; value: string }[][] = [
     [
-      specs.find((s) => s.label === "Format") ?? { label: "Format", value: "—" },
       specs.find((s) => s.label === "Film Type") ?? { label: "Film Type", value: "—" },
+      specs.find((s) => s.label === "ISO") ?? { label: "ISO", value: "—" },
     ],
     [
-      specs.find((s) => s.label === "ISO") ?? { label: "ISO", value: "—" },
+      specs.find((s) => s.label === "Format") ?? { label: "Format", value: "—" },
       specs.find((s) => s.label === "Development Process" || s.label === "Film Development Process") ?? { label: "Development Process", value: "—" },
     ],
   ];

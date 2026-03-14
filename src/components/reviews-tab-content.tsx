@@ -216,7 +216,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Row 1: [Everyone | You] ............................... + Write review */}
+      {/* Row 1: [Everyone | You] ............................... + Add Shooting Notes */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div
           className="inline-flex rounded-card border border-border/60 bg-secondary/30 p-0.5"
@@ -245,7 +245,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
           className="inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          Write review
+          Add Shooting Notes
         </button>
       </div>
 
@@ -286,13 +286,13 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
         ) : view === "you" && paginatedReviews.length === 0 ? (
           <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
             <p className="text-sm font-medium text-muted-foreground">You haven’t reviewed this film yet.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Write a review to see it here.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Add shooting notes to see them here.</p>
             <button
               type="button"
               className="mt-4 inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <Plus className="h-4 w-4" />
-              Write review
+              Add Shooting Notes
             </button>
           </div>
         ) : (
