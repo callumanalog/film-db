@@ -191,7 +191,6 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                     <FilmCard
                       key={stock.id}
                       stock={stock}
-                      useWorkSansTitle
                       shotSlugs={profile.shotSlugs}
                     />
                   ))}
@@ -214,7 +213,6 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                     <FilmCard
                       key={stock.id}
                       stock={stock}
-                      useWorkSansTitle
                       shotSlugs={profile.shotSlugs}
                     />
                   ))}

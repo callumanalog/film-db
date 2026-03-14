@@ -23,7 +23,6 @@ export function SimilarStocksGrid({ stocks, statsBySlug }: SimilarStocksGridProp
         <FilmCard
           key={s.id}
           stock={s}
-          useWorkSansTitle
           shotSlugs={shotSlugs}
         />
       ))}
