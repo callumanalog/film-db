@@ -485,7 +485,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             </div>
           </div>
           <div
-            className="fixed left-0 top-16 z-[70] flex h-[calc(100dvh-4rem)] w-full max-w-sm flex-col overflow-hidden border-r border-border bg-background shadow-xl md:flex"
+            className="fixed left-0 top-16 z-[70] hidden h-[calc(100dvh-4rem)] w-full max-w-sm flex-col overflow-hidden border-r border-border bg-background shadow-xl md:flex"
             role="dialog"
             aria-label="Filters"
           >
