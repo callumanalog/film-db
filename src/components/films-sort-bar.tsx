@@ -48,9 +48,18 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
         <span className="text-sm text-foreground md:hidden">Sort</span>
         <span className="hidden text-sm text-foreground md:inline md:text-xs">{currentLabel}</span>
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent
+        alignItemWithTrigger={false}
+        side="bottom"
+        sideOffset={4}
+        className="min-w-[8rem] rounded-lg border border-border/60 bg-popover py-1"
+      >
         {SORT_OPTIONS.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
+          <SelectItem
+            key={opt.value}
+            value={opt.value}
+            className="h-[44px] cursor-pointer items-center rounded-lg px-4 font-sans text-xs font-medium text-foreground focus:bg-primary/5 focus:text-foreground md:h-[36px] data-[focus]:bg-primary/5"
+          >
             {opt.label}
           </SelectItem>
         ))}

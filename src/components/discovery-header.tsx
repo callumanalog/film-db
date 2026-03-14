@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useState, useEffect, useRef, startTransition } from "react";
-import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ChevronLeft, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import type { FilmBrand } from "@/lib/types";
 import type { FilmFilterOptions } from "@/lib/supabase/queries";
 import type { BestFor } from "@/lib/types";
@@ -644,19 +644,16 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             role="dialog"
             aria-label="Search films"
           >
-            <header className="flex h-16 shrink-0 items-center justify-end bg-white relative">
+            <div className="flex shrink-0 items-center gap-2 bg-white px-4 py-3">
               <button
                 type="button"
                 onClick={closeMobileSearchDrawer}
                 aria-label="Close search"
-                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
-                <X className="h-5 w-5" />
+                <ChevronLeft className="h-5 w-5" />
               </button>
-            </header>
-
-            <div className="shrink-0 bg-white px-4 py-3">
-              <form onSubmit={handleMobileSearchSubmit} className="w-full" id="mobile-search-form">
+              <form onSubmit={handleMobileSearchSubmit} className="min-w-0 flex-1" id="mobile-search-form">
                 <div className="flex h-[52px] items-center gap-2 rounded-lg border border-border bg-background px-4">
                   <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <input
@@ -676,15 +673,15 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       router.push("/films");
                     }}
                     aria-label="Clear search"
-                    className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
               </form>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto bg-white px-4 pt-4 pb-32 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex-1 overflow-hidden bg-white px-4 pt-4">
               <p className="label-caps mb-3">Trending brands</p>
               <div className="grid grid-cols-2 gap-2">
                 {brands
