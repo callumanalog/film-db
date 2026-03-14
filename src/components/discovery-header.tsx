@@ -280,13 +280,14 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    searchInputRef.current?.blur();
     const q = searchInput.trim();
     router.push(buildUrl({ search: q || null }));
-    // Keep bar expanded so the user's search term stays visible
   };
 
   const handleMobileSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    mobileSearchInputRef.current?.blur();
     const q = mobileSearchInput.trim();
     router.push(buildUrl({ search: q || null }));
     closeMobileSearchDrawer();
