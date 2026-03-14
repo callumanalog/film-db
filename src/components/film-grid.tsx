@@ -8,6 +8,8 @@ interface FilmGridProps {
   shotSlugs?: string[];
   /** Optional map of slug -> avgRating so cards show real community rating. */
   statsBySlug?: Record<string, { avgRating: number | null }>;
+  /** When true (filter pane open), use 3 columns per row. */
+  filterPaneOpen?: boolean;
 }
 
 export function FilmGrid({
@@ -15,6 +17,7 @@ export function FilmGrid({
   emptyMessage = "No film stocks found matching your filters.",
   shotSlugs,
   statsBySlug,
+  filterPaneOpen = false,
 }: FilmGridProps) {
   if (stocks.length === 0) {
     return (
@@ -25,7 +28,13 @@ export function FilmGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+    <div
+      className={
+        filterPaneOpen
+          ? "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 md:gap-6"
+          : "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-5"
+      }
+    >
       {stocks.map((stock) => (
         <FilmCard key={stock.id} stock={stock} shotSlugs={shotSlugs} />
       ))}

@@ -29,13 +29,34 @@ export async function getFilmStockStats(slug: string): Promise<FilmStockStats> {
   };
 }
 
-/** Fetches stats for multiple slugs (e.g. for grids). Returns a map slug -> stats for use in cards. */
+/** Fetches stats for multiple slugs in one round-trip (e.g. for grids). Returns a map slug -> stats for use in cards. Falls back to per-slug RPC if batch RPC is unavailable (e.g. before migration). */
 export async function getFilmStockStatsForSlugs(slugs: string[]): Promise<Record<string, FilmStockStats>> {
   if (slugs.length === 0) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_film_stock_stats_batch", { p_slugs: slugs });
+  if (!error && data != null) {
+    const rows = Array.isArray(data) ? data : [];
+    const map: Record<string, FilmStockStats> = {};
+    for (const row of rows) {
+      const slug = row?.slug as string | undefined;
+      if (slug == null) continue;
+      map[slug] = {
+        shotByCount: Number(row.shot_by_count ?? 0),
+        favouritesCount: Number(row.favourites_count ?? 0),
+        avgRating: row.avg_rating != null ? Number(row.avg_rating) : null,
+        ratingCount: Number(row.rating_count ?? 0),
+        shotsCount: Number(row.shots_count ?? 0),
+      };
+    }
+    return map;
+  }
+  if (error) {
+    console.warn("[getFilmStockStatsForSlugs] batch RPC unavailable, falling back to per-slug:", error.message);
+  }
   const results = await Promise.all(slugs.map((slug) => getFilmStockStats(slug)));
-  const map: Record<string, FilmStockStats> = {};
+  const fallbackMap: Record<string, FilmStockStats> = {};
   slugs.forEach((slug, i) => {
-    map[slug] = results[i];
+    fallbackMap[slug] = results[i];
   });
-  return map;
+  return fallbackMap;
 }

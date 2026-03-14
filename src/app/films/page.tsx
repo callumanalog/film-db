@@ -4,8 +4,8 @@ import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/q
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { FilmsListingClient } from "@/app/films/films-listing-client";
 import { DiscoveryHeader } from "@/components/discovery-header";
+import { FiltersLeftPane } from "@/components/filters-left-pane";
 import { FilmsSortBar } from "@/components/films-sort-bar";
-import { ActiveFilterChips } from "@/components/active-filter-chips";
 import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor, DiscoveryVibe } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -27,6 +27,7 @@ interface FilmsPageProps {
     bestFor?: string;
     iso?: string;
     sort?: string;
+    filters?: string;
   }>;
 }
 
@@ -37,11 +38,6 @@ function parseMultiParam(value: string | undefined): string[] {
 
 export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   const params = await searchParams;
-  const brands = (await getBrands()).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-  const filterOptions = await getFilmFilterOptions();
-
   const brandArr = parseMultiParam(params.brand);
   const typeArr = parseMultiParam(params.type) as FilmType[];
   const formatArr = parseMultiParam(params.format) as FilmFormat[];
@@ -61,23 +57,28 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
     "experimental",
   ];
   const vibe = vibeParam && validVibes.includes(vibeParam) ? vibeParam : undefined;
-
   const sortParam = params.sort === "alphabetical" ? "alphabetical" : "highest-rated";
 
-  const stocksUnsorted = await getFilmStocks({
-    search: params.search,
-    vibe,
-    brand: brandArr.length ? brandArr : undefined,
-    type: typeArr.length ? typeArr : undefined,
-    format: formatArr.length ? formatArr : undefined,
-    grain: grainArr.length ? grainArr : undefined,
-    contrast: contrastArr.length ? contrastArr : undefined,
-    latitude: latitudeArr.length ? latitudeArr : undefined,
-    saturation: saturationArr.length ? saturationArr : undefined,
-    bestFor: bestForArr.length ? bestForArr : undefined,
-    iso: isoArr.length ? isoArr : undefined,
-    sort: "alphabetical",
-  });
+  const [brandsRes, filterOptionsRes, stocksUnsorted] = await Promise.all([
+    getBrands(),
+    getFilmFilterOptions(),
+    getFilmStocks({
+      search: params.search,
+      vibe,
+      brand: brandArr.length ? brandArr : undefined,
+      type: typeArr.length ? typeArr : undefined,
+      format: formatArr.length ? formatArr : undefined,
+      grain: grainArr.length ? grainArr : undefined,
+      contrast: contrastArr.length ? contrastArr : undefined,
+      latitude: latitudeArr.length ? latitudeArr : undefined,
+      saturation: saturationArr.length ? saturationArr : undefined,
+      bestFor: bestForArr.length ? bestForArr : undefined,
+      iso: isoArr.length ? isoArr : undefined,
+      sort: "alphabetical",
+    }),
+  ]);
+  const brands = brandsRes.sort((a, b) => a.name.localeCompare(b.name));
+  const filterOptions = filterOptionsRes;
 
   const statsBySlug = stocksUnsorted.length > 0 ? await getFilmStockStatsForSlugs(stocksUnsorted.map((s) => s.slug)) : {};
 
@@ -118,16 +119,17 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
           />
         </div>
 
-        <main className="min-w-0">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <Suspense>
-                <ActiveFilterChips brands={brands} />
-              </Suspense>
-            </div>
-          </div>
-          <FilmsListingClient stocks={stocks} statsBySlug={statsBySlug} />
-        </main>
+        {params.filters === "1" ? (
+          <FiltersLeftPane brands={brands} filterOptions={filterOptions}>
+            <main className="min-w-0">
+              <FilmsListingClient stocks={stocks} statsBySlug={statsBySlug} filterPaneOpen />
+            </main>
+          </FiltersLeftPane>
+        ) : (
+          <main className="min-w-0">
+            <FilmsListingClient stocks={stocks} statsBySlug={statsBySlug} />
+          </main>
+        )}
       </div>
     </div>
   );
