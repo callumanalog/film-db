@@ -1,16 +1,21 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import type { CameraBrand } from "@/lib/types";
 import { CameraFilterSidebar } from "@/components/camera-filter-sidebar";
+import { CamerasActiveFilterChips } from "@/components/cameras-active-filter-chips";
+import { CamerasSortBar } from "@/components/cameras-sort-bar";
+
+type CamerasSort = "alphabetical" | "newest";
 
 interface CamerasHeaderProps {
   brands: CameraBrand[];
+  currentSort: CamerasSort;
 }
 
-export function CamerasHeader({ brands }: CamerasHeaderProps) {
+export function CamerasHeader({ brands, currentSort }: CamerasHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -66,51 +71,78 @@ export function CamerasHeader({ brands }: CamerasHeaderProps) {
           Browse classic and modern film cameras — SLRs, rangefinders, TLRs, medium format, and more.
         </p>
 
-        {/* Utility Row: Search + Filters — pill scale h-[44px] mobile, h-[36px] desktop, same vertical mid-point */}
+        {/* Utility Row: Search + Filters + Chips (desktop) — pill scale h-[44px] mobile, h-[36px] desktop; Sort on right */}
         <div className="mt-12 flex flex-row flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {searchExpanded ? (
-              <form
-                onSubmit={handleSearchSubmit}
-                className="flex h-[44px] min-w-0 max-w-[220px] items-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 md:h-[36px]"
-              >
-                <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search cameras..."
-                  className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 md:text-xs"
-                />
+              <>
+                <form
+                  onSubmit={handleSearchSubmit}
+                  className="flex h-[44px] min-w-0 max-w-[var(--width-search-field)] items-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 md:h-[36px]"
+                >
+                  <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="Search cameras..."
+                    className="min-w-0 flex-1 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 md:text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSearchExpanded(false)}
+                    aria-label="Close search"
+                    className="rounded-card p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </form>
                 <button
                   type="button"
-                  onClick={() => setSearchExpanded(false)}
-                  aria-label="Close search"
-                  className="rounded-card p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  onClick={() => setDrawerOpen(true)}
+                  className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
+                  aria-label="Open filters"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Filters
                 </button>
-              </form>
+                <div className="hidden flex-wrap items-center gap-1.5 md:flex">
+                  <CamerasActiveFilterChips brands={brands} />
+                </div>
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={() => setSearchExpanded(true)}
-                aria-label="Open search"
-                className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:h-[36px] md:w-[36px]"
-              >
-                <Search className="h-3.5 w-3.5" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSearchExpanded(true)}
+                  aria-label="Open search"
+                  className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:h-[36px] md:w-[36px]"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
+                  aria-label="Open filters"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Filters
+                </button>
+                <div className="hidden flex-wrap items-center gap-1.5 md:flex">
+                  <CamerasActiveFilterChips brands={brands} />
+                </div>
+              </>
             )}
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="inline-flex h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:h-[36px] md:text-xs"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              Filters
-            </button>
           </div>
+          <div className="flex shrink-0 items-center">
+            <CamerasSortBar currentSort={currentSort} />
+          </div>
+        </div>
+        {/* Mobile: active filter chips below utility row */}
+        <div className="mt-3 flex flex-wrap items-center justify-start gap-1.5 md:hidden">
+          <CamerasActiveFilterChips brands={brands} />
         </div>
       </header>
 
