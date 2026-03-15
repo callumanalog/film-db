@@ -12,8 +12,12 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error && data.user) {
+      await supabase
+        .from("profiles")
+        .update({ email_verified_at: new Date().toISOString() })
+        .eq("id", data.user.id);
       return NextResponse.redirect(`${origin}${target}`);
     }
   }

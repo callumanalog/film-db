@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -8,6 +8,7 @@ import { AuthLayout } from "@/components/auth/auth-layout";
 import { getRedirectTo } from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
+import { showToastViaEvent } from "@/components/toast";
 
 function SignInForm() {
   const router = useRouter();
@@ -17,6 +18,22 @@ function SignInForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  useEffect(() => {
+    const toastParam = searchParams.get("toast");
+    if (toastParam) {
+      try {
+        showToastViaEvent(decodeURIComponent(toastParam));
+      } catch {
+        showToastViaEvent(toastParam);
+      }
+      const next = searchParams.get("next");
+      const url = next
+        ? `/auth/sign-in?next=${encodeURIComponent(next)}`
+        : "/auth/sign-in";
+      router.replace(url, { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();

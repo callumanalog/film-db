@@ -5,16 +5,25 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AuthLayout } from "@/components/auth/auth-layout";
+import { requestVerificationResend } from "@/app/actions/sign-up-status";
 import { Mail } from "lucide-react";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
-  const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
+  const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "sent" | "error" | "throttled">("idle");
+  const [resendError, setResendError] = useState<string>("");
 
   const handleResend = async () => {
     if (!email || resendStatus === "loading") return;
     setResendStatus("loading");
+    setResendError("");
+    const throttle = await requestVerificationResend(email);
+    if (!throttle.allowed) {
+      setResendStatus("throttled");
+      setResendError(throttle.message);
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase.auth.resend({
       type: "signup",
@@ -22,6 +31,7 @@ function VerifyEmailContent() {
     });
     if (error) {
       setResendStatus("error");
+      setResendError(error.message);
       return;
     }
     setResendStatus("sent");
@@ -52,7 +62,7 @@ function VerifyEmailContent() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={resendStatus === "loading" || !email}
+              disabled={resendStatus === "loading" || resendStatus === "throttled" || !email}
               className="font-medium text-primary hover:underline disabled:opacity-50"
             >
               {resendStatus === "loading"
@@ -80,9 +90,9 @@ function VerifyEmailContent() {
             We&apos;ve sent another confirmation email.
           </p>
         )}
-        {resendStatus === "error" && (
+        {(resendStatus === "error" || resendStatus === "throttled") && (
           <p className="mt-4 text-sm text-destructive">
-            Couldn&apos;t resend. Wait a moment and try again, or reach out to us.
+            {resendStatus === "throttled" ? resendError : "Couldn't resend. Wait a moment and try again, or reach out to us."}
           </p>
         )}
       </div>

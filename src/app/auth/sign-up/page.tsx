@@ -10,6 +10,7 @@ import { getRedirectToSignUp, buildCallbackUrl, getEmailRedirectOrigin } from "@
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { checkUsernameAvailable } from "@/app/actions/check-username";
+import { getSignUpStatus, recordVerificationEmailSent } from "@/app/actions/sign-up-status";
 import { cn } from "@/lib/utils";
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken";
@@ -58,23 +59,93 @@ function SignUpForm() {
     }
     setLoading(true);
     setMessage(null);
-    const supabase = createClient();
     const origin = getEmailRedirectOrigin() || window.location.origin;
-    const { error } = await supabase.auth.signUp({
-      email,
+    const status = await getSignUpStatus(email.trim(), password, username.trim());
+
+    if (status.status === "existing_verified") {
+      setLoading(false);
+      const toastMessage = "An account already exists with this email. Please log in.";
+      router.push(
+        `/auth/sign-in?next=${encodeURIComponent(redirectTo)}&toast=${encodeURIComponent(toastMessage)}`
+      );
+      router.refresh();
+      return;
+    }
+
+    if (status.status === "throttled") {
+      setLoading(false);
+      setMessage({ type: "error", text: status.message });
+      return;
+    }
+
+    if (status.status === "error") {
+      setLoading(false);
+      setMessage({ type: "error", text: status.message });
+      return;
+    }
+
+    const supabase = createClient();
+    const callbackUrl = buildCallbackUrl(redirectTo, origin);
+
+    if (status.status === "existing_unverified") {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: { emailRedirectTo: callbackUrl },
+      });
+      setLoading(false);
+      if (error) {
+        setMessage({ type: "error", text: error.message });
+        return;
+      }
+      router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
+      router.refresh();
+      return;
+    }
+
+    const { data: signUpData, error } = await supabase.auth.signUp({
+      email: email.trim(),
       password,
       options: {
-        data: { display_name: username || undefined },
-        emailRedirectTo: buildCallbackUrl(redirectTo, origin),
+        data: { display_name: username.trim() || undefined },
+        emailRedirectTo: callbackUrl,
       },
     });
     setLoading(false);
     if (error) {
+      const alreadyExists =
+        /already (been )?registered|already exists|user already exists|email.*(already|registered|in use)|duplicate/i.test(
+          error.message
+        );
+      if (alreadyExists) {
+        const toastMessage = "An account already exists with this email. Please log in.";
+        router.push(
+          `/auth/sign-in?next=${encodeURIComponent(redirectTo)}&toast=${encodeURIComponent(toastMessage)}`
+        );
+        router.refresh();
+        return;
+      }
       setMessage({ type: "error", text: error.message });
       return;
     }
-    router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`);
+    // Only treat as existing when identities is explicitly an empty array (Supabase returns that when email already exists).
+    // When identities is undefined, assume new user so we don't block the first-tap redirect to verify-email.
+    const existingUserNoError =
+      signUpData?.user &&
+      Array.isArray(signUpData.user.identities) &&
+      signUpData.user.identities.length === 0;
+    if (existingUserNoError) {
+      const toastMessage = "An account already exists with this email. Please log in.";
+      router.push(
+        `/auth/sign-in?next=${encodeURIComponent(redirectTo)}&toast=${encodeURIComponent(toastMessage)}`
+      );
+      router.refresh();
+      return;
+    }
+    // Redirect immediately so one tap takes user to verify screen; record throttle in background
+    router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
     router.refresh();
+    recordVerificationEmailSent(email.trim());
   };
 
   return (
