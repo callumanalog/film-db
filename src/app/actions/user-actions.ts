@@ -181,7 +181,7 @@ export interface LoggedRollEntry {
   created_at: string;
 }
 
-/** Save a logged roll (e.g. from "In Fridge" in Log Roll drawer). Multiple rolls per user per film allowed. */
+/** Save logged roll(s). Inserts one row per roll so each appears as a separate card and can be managed individually. */
 export async function saveLoggedRoll(
   film_stock_slug: string,
   format: string,
@@ -192,15 +192,17 @@ export async function saveLoggedRoll(
   const userId = await getCurrentUserId();
   if (!userId) return { synced: false };
 
+  const qty = Math.max(1, Math.min(999, Math.round(quantity)));
   const supabase = await createClient();
-  const { error } = await supabase.from("user_logged_rolls").insert({
+  const rows = Array.from({ length: qty }, () => ({
     user_id: userId,
     film_stock_slug,
     format: format || "",
     status: status || "in_fridge",
     expiry_date: expiry_date || null,
-    quantity: Math.max(1, Math.min(999, Math.round(quantity))),
-  });
+    quantity: 1,
+  }));
+  const { error } = await supabase.from("user_logged_rolls").insert(rows);
   if (error) {
     console.error("[user-actions] saveLoggedRoll error:", error.message, { film_stock_slug });
     return { synced: false };
