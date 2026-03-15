@@ -10,7 +10,7 @@ const LABEL_TO_INPUT_GAP = "mb-1";
 /** Label text style (style guide: text-ui / 13px). Uses .text-field-label from globals so font-size always applies. */
 const LABEL_CLASSES = "text-field-label";
 
-export interface TextFieldProps extends Omit<React.ComponentProps<typeof Input>, "id"> {
+export interface TextFieldProps extends Omit<React.ComponentProps<typeof Input>, "id" | "prefix"> {
   id: string;
   label: string;
   /** Optional node after the label (e.g. "Forgot password?" link) */
