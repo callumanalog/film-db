@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ExposuresRulerPicker } from "@/components/exposures-ruler-picker";
+import { ExpiryDateMaskedInput } from "@/components/expiry-date-masked-input";
 
 const STATUSES: { id: string; label: string; phase: string; icon: LucideIcon }[] = [
   { id: "in_fridge", label: "In Fridge", phase: "INVENTORY", icon: Refrigerator },
@@ -84,6 +85,9 @@ export function LogRollStatusDrawer({
   const [vaultQuantity, setVaultQuantity] = useState<number>(1);
 
   const formatOptions = stock.format ?? [];
+
+  const expiryMonth = vaultExpiry.slice(0, 2);
+  const expiryYear = vaultExpiry.slice(2, 6);
 
   useEffect(() => {
     if (open) {
@@ -143,7 +147,10 @@ export function LogRollStatusDrawer({
 
   const handleInFridgeSubmit = () => {
     const formatStr = `${vaultFormat}-${vaultExposures}`;
-    onContinue("in_fridge", formatStr, { expiry: vaultExpiry, quantity: vaultQuantity });
+    onContinue("in_fridge", formatStr, {
+      expiry: vaultExpiry ? `${expiryMonth} / ${expiryYear}`.trim() : "",
+      quantity: vaultQuantity,
+    });
     onOpenChange(false);
     setSelectedId(null);
     setSelectedFormat("");
@@ -291,44 +298,48 @@ export function LogRollStatusDrawer({
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-[1fr_auto] gap-4">
-                  <div>
+                <div className="grid grid-cols-[2fr_1fr] gap-4">
+                  <div className="flex min-w-0 flex-col">
                     <label
                       htmlFor="log-roll-expiry"
                       className="mb-2 block text-sm font-medium text-foreground"
                     >
-                      Expiry <span className="text-muted-foreground">(Optional)</span>
+                      Expiry date <span className="text-muted-foreground">(Optional)</span>
                     </label>
-                    <input
+                    <ExpiryDateMaskedInput
                       id="log-roll-expiry"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="MM / YYYY"
                       value={vaultExpiry}
-                      onChange={(e) => setVaultExpiry(e.target.value)}
-                      className="w-full rounded-[7px] border border-slate-200 bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                      onChange={setVaultExpiry}
+                      placeholder="MM / YYYY"
+                      className="h-11"
                     />
                   </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
+                  <div className="flex min-w-0 flex-col">
+                    <label
+                      htmlFor="log-roll-quantity"
+                      className="mb-2 block text-sm font-medium text-foreground"
+                    >
                       Quantity
                     </label>
-                    <div className="inline-flex items-center overflow-hidden rounded-[7px] border border-slate-200 bg-background">
+                    <div
+                      id="log-roll-quantity"
+                      className="inline-flex h-11 w-full items-center justify-center overflow-hidden rounded-[7px] border border-slate-200 bg-background px-2"
+                    >
                       <button
                         type="button"
                         onClick={() => setVaultQuantity((q) => Math.max(1, q - 1))}
-                        className="flex h-10 w-10 items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         aria-label="Decrease quantity"
                       >
                         <Minus className="h-4 w-4" />
                       </button>
-                      <span className="min-w-[2rem] py-2 text-center font-medium tabular-nums">
+                      <span className="min-w-6 flex-1 py-2 text-center font-sans font-medium tabular-nums text-ui md:text-sm text-foreground">
                         {vaultQuantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => setVaultQuantity((q) => q + 1)}
-                        className="flex h-10 w-10 items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        className="flex h-9 min-w-9 shrink-0 items-center justify-center rounded text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         aria-label="Increase quantity"
                       >
                         <Plus className="h-4 w-4" />
@@ -337,13 +348,15 @@ export function LogRollStatusDrawer({
                   </div>
                 </div>
                 <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">
+                    <label className="mb-1 block text-sm font-medium text-foreground">
                       Exposures
                     </label>
-                    <ExposuresRulerPicker
-                      value={vaultExposures}
-                      onChange={setVaultExposures}
-                    />
+                    <div className="px-5">
+                      <ExposuresRulerPicker
+                        value={vaultExposures}
+                        onChange={setVaultExposures}
+                      />
+                    </div>
                   </div>
                 <Button
                   type="submit"

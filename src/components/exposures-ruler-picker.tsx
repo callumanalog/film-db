@@ -64,7 +64,7 @@ export function ExposuresRulerPicker({
       {/* Track container */}
       <div className="relative flex flex-col">
         {/* Row 1: Track with gradient fill + thumb + range input */}
-        <div className="relative h-10">
+        <div className="relative h-14">
           {/* Track: linear-gradient for progress fill (amber left, slate right) */}
           <div
             className="absolute inset-0 flex items-center"
@@ -78,12 +78,14 @@ export function ExposuresRulerPicker({
             />
           </div>
 
-          {/* Thumb — moves smoothly with value */}
+          {/* Thumb — moves smoothly with value, number inside circle */}
           <div
-            className="absolute top-1/2 size-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-white shadow-md ring-2 ring-primary/20 transition-[left] duration-0"
+            className="absolute top-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-primary bg-white text-sm font-medium tabular-nums text-foreground shadow-md ring-2 ring-primary/20 transition-[left] duration-0"
             style={{ left: `${percentage}%` }}
             aria-hidden
-          />
+          >
+            {value}
+          </div>
 
           {/* HTML5 range: min 1, max 72, step 1 — drives value and accessibility */}
           <input
@@ -100,20 +102,6 @@ export function ExposuresRulerPicker({
             aria-label="Exposures"
             className="absolute inset-0 h-full w-full cursor-grab appearance-none bg-transparent opacity-0 active:cursor-grabbing [&::-webkit-slider-runnable-track]:h-0 [&::-moz-range-track]:h-0"
           />
-        </div>
-
-        {/* Selected value below the thumb */}
-        <div className="relative -mt-1 flex h-5 items-center justify-center">
-          <span
-            className="absolute text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-[left] duration-0"
-            style={{
-              left: `${percentage}%`,
-              transform: "translate(-50%, 0)",
-            }}
-            aria-live="polite"
-          >
-            {value}
-          </span>
         </div>
       </div>
     </div>
