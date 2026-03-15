@@ -3,8 +3,8 @@
 import { useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 
-const MIN = 1;
-const MAX = 72;
+const MIN: number = 1;
+const MAX: number = 72;
 
 const MILESTONES = [12, 24, 36, 72] as const;
 
