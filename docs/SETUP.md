@@ -41,6 +41,14 @@ Without these, the app still runs using local/seed data, but log-in and profile/
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 ```
 
+**Sending email with Resend (optional):** If you use the Resend Node.js SDK (e.g. `/api/send` or custom transactional emails), add:
+
+```env
+RESEND_API_KEY=re_your_api_key
+```
+
+Get the key from [resend.com/api-keys](https://resend.com/api-keys). For production, use a [verified domain](https://resend.com/domains) in the `from` address.
+
 ## 3. Run database migrations
 
 In the Supabase Dashboard go to **SQL Editor** and run the migrations in order:
@@ -65,7 +73,32 @@ In Supabase: **Authentication → Providers**:
 - Optionally enable **Confirm email** (recommended for production). If you enable it, users must click the confirmation link before signing in.
 - You can also enable **Google** or other providers later.
 
-## 5. (Optional) Create a user without the sign-up flow
+## 5. (Optional) Custom SMTP for auth emails
+
+Supabase’s built-in email service has a **fixed rate limit** (e.g. 2 emails/hour on free tier). If you hit “email rate limit exceeded” during sign-up or password reset, configure a custom SMTP provider so you can send more auth emails.
+
+**Using Resend (free tier):**
+
+1. **Sign up at [resend.com](https://resend.com)** and create an API key (**API Keys** in the dashboard).
+2. **Add a domain** in Resend (or use their test sender `onboarding@resend.dev` for development).
+3. In Resend, open **Domains** → your domain → **SMTP** and note:
+   - **Host:** `smtp.resend.com`
+   - **Port:** `465` (SSL) or `587` (TLS)
+   - **Username:** `resend`
+   - **Password:** your Resend API key (starts with `re_`)
+4. **In Supabase:** **Project Settings** (gear) → **Auth** → scroll to **SMTP Settings**.
+5. Enable **Custom SMTP** and fill in:
+   - **Sender email:** Your verified address (e.g. `noreply@yourdomain.com`) or `onboarding@resend.dev` for testing.
+   - **Sender name:** e.g. `FilmDB`
+   - **Host:** `smtp.resend.com`
+   - **Port:** `465` or `587`
+   - **Username:** `resend`
+   - **Password:** your Resend API key
+6. Save. All auth emails (sign-up confirmation, password reset, etc.) will go through Resend. The built-in rate limit no longer applies; you’re limited by Resend’s plan instead.
+
+Other providers (SendGrid, Postmark, etc.) work the same way: get their SMTP host, port, username, and password from their docs and enter them in **Auth → SMTP Settings**.
+
+## 6. (Optional) Create a user without the sign-up flow
 
 To create an auth user directly in Supabase (e.g. for your own account without going through sign-up/email confirmation):
 
@@ -78,7 +111,7 @@ To create an auth user directly in Supabase (e.g. for your own account without g
 
 You can edit `scripts/create-auth-user.ts` to change the email and display name, or pass them as arguments if you extend the script.
 
-## 6. (Optional) Use Supabase for the film catalog
+## 7. (Optional) Use Supabase for the film catalog
 
 By default the app reads brands and film stocks from local files / seed data. To use Supabase for the catalog as well (Option B — catalog in Supabase Storage):
 
@@ -105,7 +138,7 @@ By default the app reads brands and film stocks from local files / seed data. To
 
 Until `brands` and `film_stocks` are populated in Supabase, the app keeps using the existing file/seed catalog.
 
-## 7. Deploy (e.g. Vercel)
+## 8. Deploy (e.g. Vercel)
 
 Add the same env vars in your hosting provider:
 

@@ -89,7 +89,13 @@ function SignUpForm() {
       });
       setLoading(false);
       if (error) {
-        setMessage({ type: "error", text: error.message });
+        const isRateLimit = /rate limit|too many requests/i.test(error.message);
+        setMessage({
+          type: "error",
+          text: isRateLimit
+            ? "Too many emails sent. Please try again in a few minutes."
+            : error.message,
+        });
         return;
       }
       router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
@@ -119,7 +125,13 @@ function SignUpForm() {
         router.refresh();
         return;
       }
-      setMessage({ type: "error", text: error.message });
+      const isRateLimit = /rate limit|too many requests/i.test(error.message);
+      setMessage({
+        type: "error",
+        text: isRateLimit
+          ? "Too many sign-up attempts. Please try again in a few minutes."
+          : error.message,
+      });
       return;
     }
     // Only treat as existing when identities is explicitly an empty array (Supabase returns that when email already exists).

@@ -1,0 +1,52 @@
+---
+description: Resend Node.js SDK — send email only per official guardrails (env key, resend package, camelCase, error handling)
+globs: **/*.ts,**/*.tsx
+alwaysApply: false
+---
+
+# Send Email with Resend Node.js SDK
+
+When suggesting or writing code that sends email with [Resend](https://resend.com/), follow these rules.
+
+## Setup
+
+- **API key:** Store in env var `RESEND_API_KEY`. Never hardcode.
+- **Package:** Install `resend` (not `@resend/node`). Import: `import { Resend } from 'resend';`
+- **Domain:** Use a verified domain in `from` for production. `onboarding@resend.dev` is for testing only.
+- **Initialize:** `const resend = new Resend(process.env.RESEND_API_KEY);`
+
+## Sending
+
+- **Await:** `resend.emails.send()` returns a Promise. Always use `async/await` or `.then()`.
+- **Response:** Use the `{ data, error }` return shape. Check `error` and handle it. Do **not** rely on try/catch for send failures (SDK does not throw).
+- **Params:** Use **camelCase** only: `replyTo`, `scheduledAt`, `idempotencyKey`, etc. No snake_case.
+- **Content:** Provide at least one of `html`, `text`, or `react`. Do **not** mix `template` with `html`/`text`/`react`.
+
+## Required parameters
+
+- `from`: string (e.g. `'Acme <onboarding@resend.dev>'`)
+- `to`: string | string[]
+- `subject`: string
+- One of: `html`, `text`, or `react` (or `template` alone)
+
+## Optional patterns
+
+- **Idempotency:** Use `idempotencyKey` for safe retries (e.g. `welcome-user/<userId>`). Keys expire after 24h, max 256 chars.
+- **React Email:** Pass the component as a **function call**: `react: WelcomeEmail({ name: 'John' })`, not JSX.
+
+## Never do
+
+- Hardcode API keys.
+- Use `@resend/node` or any package other than `resend`.
+- Use snake_case for SDK parameters.
+- Use `onboarding@resend.dev` as `from` in production.
+- Send `html`/`text`/`react` together with `template`.
+
+## Verification before suggesting Resend code
+
+1. Import from `resend`.
+2. API key from `process.env.RESEND_API_KEY`.
+3. `resend.emails.send()` awaited.
+4. `{ data, error }` handled; check `error` before using `data`.
+5. All parameter names in camelCase.
+6. Production `from` uses a verified domain.
