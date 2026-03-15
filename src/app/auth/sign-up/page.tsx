@@ -89,6 +89,7 @@ function SignUpForm() {
       <form onSubmit={handleSignUp} className="flex flex-col gap-4">
           <TextField
             id="email"
+            name="email"
             label="Email"
             type="email"
             placeholder="Enter your email address"
@@ -96,9 +97,11 @@ function SignUpForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
+            autoCapitalize="none"
           />
           <TextField
             id="username"
+            name="username"
             label="Username"
             type="text"
             prefix={"@\u00A0"}
@@ -106,6 +109,8 @@ function SignUpForm() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
+            autoCorrect="off"
+            autoCapitalize="none"
             labelSuffix={
               usernameStatus === "checking" ? (
                 <span className="font-sans text-caption text-muted-foreground">Checking…</span>
@@ -125,6 +130,7 @@ function SignUpForm() {
           <div>
             <TextField
               id="password"
+              name="password"
               label="Password"
               type="password"
               value={password}
