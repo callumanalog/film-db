@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, User, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal } from "lucide-react";
+import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -23,12 +24,11 @@ const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 export function Header() {
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
+  const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,17 +41,6 @@ export function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [actionsOpen]);
-
-  useEffect(() => {
-    if (!profileMenuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setProfileMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [profileMenuOpen]);
 
   useEffect(() => {
     if (!moreMenuOpen) return;
@@ -196,62 +185,60 @@ export function Header() {
           </Link>
         </div>
 
-        {/* Right column: Log in + Join or Profile (hidden ≤533px; then only in drawer). Hamburger rightmost on mobile. */}
+        {/* Right column: on mobile (<768px) show profile icon → sign-in; on desktop show Log in + Create account or avatar */}
         <div className="flex items-center justify-end gap-2">
-          {!loading && !user && (
-            <div className="flex items-center gap-2 max-[533px]:hidden">
+          {!loading && !user && !isAuthPage && (
+            <>
+              <div className="hidden items-center gap-2 md:flex">
+                <Link
+                  href="/auth/sign-in?next=/profile"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "default" }),
+                    "shrink-0 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/auth/sign-up"
+                  className={cn(buttonVariants({ variant: "secondary", size: "default" }), "shrink-0 text-sm font-medium")}
+                >
+                  Create account
+                </Link>
+              </div>
               <Link
                 href="/auth/sign-in?next=/profile"
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "default" }),
-                  "shrink-0 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/50 bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+                aria-label="Log in"
               >
-                Log in
+                <UserRound className="h-5 w-5" />
               </Link>
-              <Link
-                href="/auth/sign-up"
-                className={cn(buttonVariants({ variant: "default", size: "default" }), "shrink-0 text-sm font-medium")}
-              >
-                Join the club
-              </Link>
-            </div>
+            </>
           )}
           {!loading && user && (
-            <div className="relative hidden items-center gap-0.5 lg:flex" ref={profileRef}>
-              <button
-                type="button"
-                onClick={() => setProfileMenuOpen((o) => !o)}
-                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                aria-expanded={profileMenuOpen}
-                aria-label="Profile menu"
-              >
-                <User className="h-5 w-5" />
-              </button>
-              {profileMenuOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
-                  <Link
-                    href="/profile"
-                    onClick={() => setProfileMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
-                  >
-                    <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    Profile
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      signOut();
-                      setProfileMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted/50"
-                  >
-                    <LogOut className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    Sign out
-                  </button>
-                </div>
+            <Link
+              href="/profile"
+              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/50 bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Profile"
+            >
+              {(user.user_metadata?.avatar_url as string) ? (
+                <Image
+                  src={user.user_metadata.avatar_url as string}
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <span className="text-sm font-semibold">
+                  {(user.user_metadata?.display_name as string)?.charAt(0) ||
+                    (user.user_metadata?.full_name as string)?.charAt(0) ||
+                    user.email?.charAt(0)?.toUpperCase() ||
+                    "?"}
+                </span>
               )}
-            </div>
+            </Link>
           )}
         </div>
       </div>
@@ -275,8 +262,8 @@ export function Header() {
                 {link.label}
               </Link>
             ))}
-            {!loading && !user && (
-              <div className="min-[534px]:hidden">
+            {!loading && !user && !isAuthPage && (
+              <div className="md:hidden">
                 <Link
                   href="/auth/sign-in?next=/profile"
                   onClick={() => setMobileOpen(false)}
@@ -288,9 +275,9 @@ export function Header() {
                   <Link
                     href="/auth/sign-up"
                     onClick={() => setMobileOpen(false)}
-                    className={cn(buttonVariants({ variant: "default", size: "sm" }), "flex w-full justify-center")}
+                    className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "flex w-full justify-center")}
                   >
-                    Join the club
+                    Create account
                   </Link>
                 </div>
               </div>
@@ -322,16 +309,6 @@ export function Header() {
                   <ImagePlus className="h-4 w-4 shrink-0" />
                   Upload images
                 </Link>
-                <Link
-                  href="/profile"
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "rounded-md px-3 py-2.5 transition-colors",
-                    pathname === "/profile" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                  )}
-                >
-                  Profile
-                </Link>
                 <button
                   type="button"
                   onClick={() => {
@@ -341,7 +318,7 @@ export function Header() {
                   className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
                   <LogOut className="h-4 w-4 shrink-0" />
-                  Sign out
+                  Log out
                 </button>
               </>
             )}

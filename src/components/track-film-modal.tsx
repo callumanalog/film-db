@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Dialog } from "@base-ui/react/dialog";
 import { Camera } from "lucide-react";
@@ -37,6 +37,10 @@ interface TrackFilmModalProps {
   onOpenChange: (open: boolean) => void;
   onSave: (entry: { format: string; status: string; expiryDate: string; notes: string }) => void;
   stock: TrackFilmModalStock;
+  /** When set, pre-fill the status field when the modal opens (e.g. from mobile status drawer). */
+  initialStatus?: string;
+  /** When set, pre-fill the format field when the modal opens (e.g. from mobile format step). */
+  initialFormat?: string;
 }
 
 function StockImage({ stock, size = 80 }: { stock: TrackFilmModalStock; size?: number }) {
@@ -58,11 +62,18 @@ function StockImage({ stock, size = 80 }: { stock: TrackFilmModalStock; size?: n
   );
 }
 
-export function TrackFilmModal({ open, onOpenChange, onSave, stock }: TrackFilmModalProps) {
+export function TrackFilmModal({ open, onOpenChange, onSave, stock, initialStatus, initialFormat }: TrackFilmModalProps) {
   const [format, setFormat] = useState("");
   const [status, setStatus] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      if (initialStatus) setStatus(initialStatus);
+      if (initialFormat) setFormat(initialFormat);
+    }
+  }, [open, initialStatus, initialFormat]);
 
   const formatOptions = stock.format ?? [];
 

@@ -2,18 +2,21 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { TrackedEntry } from "@/lib/user-store";
+import type { LoggedRollEntry } from "@/app/actions/user-actions";
 
 export interface ProfileFromDb {
   displayName: string;
   shotSlugs: string[];
   favouriteSlugs: string[];
   tracked: TrackedEntry[];
+  /** Logged rolls (e.g. In Fridge) for profile "Logged Rolls" tab */
+  loggedRolls: LoggedRollEntry[];
   ratings: Record<string, number>;
   reviewCount: number;
   uploadCount: number;
-  /** User's reviews for profile "Your reviews" section */
+  /** User's reviews for profile "Shooting Notes" section */
   reviews: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
-  /** User's uploads for profile "Your uploads" section */
+  /** User's uploads for profile "Gallery" section */
   uploads: { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[];
 }
 
@@ -27,12 +30,13 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
     }
     if (!user) return null;
 
-    const [profileRes, shotRes, favRes, shootlistRes, trackedRes, ratingsRes, reviewsRes, uploadsRes, reviewsListRes, uploadsListRes] = await Promise.all([
+    const [profileRes, shotRes, favRes, shootlistRes, trackedRes, loggedRollsRes, ratingsRes, reviewsRes, uploadsRes, reviewsListRes, uploadsListRes] = await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).single(),
       supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
       supabase.from("user_favourites").select("film_stock_slug").eq("user_id", user.id),
       supabase.from("user_shootlist").select("film_stock_slug").eq("user_id", user.id),
       supabase.from("user_tracked").select("film_stock_slug, format, status, expiry_date, notes").eq("user_id", user.id),
+      supabase.from("user_logged_rolls").select("id, film_stock_slug, format, status, expiry_date, quantity, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("user_ratings").select("film_stock_slug, rating").eq("user_id", user.id),
       supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("user_uploads").select("id", { count: "exact", head: true }).eq("user_id", user.id),
@@ -62,11 +66,22 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       ratings[r.film_stock_slug] = Number(r.rating);
     }
 
+    const loggedRolls: LoggedRollEntry[] = (loggedRollsRes.data ?? []).map((r) => ({
+      id: r.id,
+      film_stock_slug: r.film_stock_slug,
+      format: r.format ?? "",
+      status: r.status ?? "",
+      expiry_date: r.expiry_date,
+      quantity: Number(r.quantity) || 1,
+      created_at: r.created_at,
+    }));
+
     return {
       displayName,
       shotSlugs,
       favouriteSlugs: favouriteSlugs.length ? favouriteSlugs : shootlistSlugs,
       tracked,
+      loggedRolls,
       ratings,
       reviewCount: reviewsRes.count ?? 0,
       uploadCount: uploadsRes.count ?? 0,

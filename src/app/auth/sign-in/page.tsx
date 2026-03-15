@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AuthLayout } from "@/components/auth/auth-layout";
 import { getRedirectTo } from "@/lib/auth-redirect";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { TextField } from "@/components/ui/text-field";
 import { showToastViaEvent } from "@/components/toast";
 
@@ -53,10 +54,10 @@ function SignInForm() {
   return (
     <AuthLayout variant="sign-in">
       <h1 className="font-advercase mb-2 text-center text-2xl font-bold tracking-tight text-foreground md:text-3xl lg:text-left">
-        Welcome back.
+        Log in to your account
       </h1>
       <p className="mb-6 text-center text-sm text-muted-foreground lg:text-left">
-        Access your locker and shared rolls.
+        Track your film inventory from fridge to camera and build an archive of your analog journey.
       </p>
 
       <form onSubmit={handleSignIn} className="flex flex-col gap-4">
@@ -81,7 +82,7 @@ function SignInForm() {
             labelSuffix={
               <Link
                 href={`/auth/forgot-password?next=${encodeURIComponent(redirectTo)}`}
-                className="text-xs text-primary hover:underline"
+                className="text-xs text-foreground hover:underline"
               >
                 Forgot Password?
               </Link>
@@ -94,20 +95,20 @@ function SignInForm() {
               {message.text}
             </p>
           )}
-          <Button type="submit" size="cta" disabled={loading} className="w-full">
+          <Button type="submit" variant="secondary" size="cta" disabled={loading} className="w-full">
             {loading ? "Logging in…" : "Log in"}
           </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link
-          href={`/auth/sign-up?next=${encodeURIComponent(redirectTo)}`}
-          className="font-medium text-primary hover:underline"
-        >
-          Join the Club
-        </Link>
+        Don&apos;t have an account?
       </p>
+      <Link
+        href={`/auth/sign-up?next=${encodeURIComponent(redirectTo)}`}
+        className={cn(buttonVariants({ variant: "tertiary", size: "cta" }), "mt-3 w-full")}
+      >
+        Create account
+      </Link>
     </AuthLayout>
   );
 }

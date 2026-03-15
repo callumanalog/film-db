@@ -78,17 +78,3 @@ export async function getSignUpStatus(
 
   return { status: "existing_unverified" };
 }
-
-export type RequestResendResult =
-  | { allowed: true }
-  | { allowed: false; message: string };
-
-/**
- * Call before supabase.auth.resend() from the verify-email page. No rate limit; always allows.
- */
-export async function requestVerificationResend(email: string): Promise<RequestResendResult> {
-  if (!email?.trim()) {
-    return { allowed: false, message: "Email is required." };
-  }
-  return { allowed: true };
-}

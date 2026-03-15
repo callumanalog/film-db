@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,17 +7,15 @@ import {
   ListTodo,
   Star,
   StarHalf,
-  Plus,
   NotebookPen,
   ImagePlus,
   ChevronRight,
-  CheckCircle2,
-  Bookmark,
 } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import type { TrackedEntry } from "@/lib/user-store";
+import type { LoggedRollEntry } from "@/app/actions/user-actions";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
@@ -62,6 +59,7 @@ export interface ProfileData {
   shotSlugs: string[];
   favouriteSlugs: string[];
   tracked: TrackedEntry[];
+  loggedRolls?: LoggedRollEntry[];
   ratings: Record<string, number>;
   reviewCount?: number;
   uploadCount?: number;
@@ -77,33 +75,17 @@ interface ProfileViewProps {
 }
 
 export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: ProfileViewProps) {
-  const shotStocks = profile.shotSlugs.map((s) => stocksBySlug.get(s)).filter(Boolean) as StockWithBrand[];
-  const favouriteStocks = profile.favouriteSlugs.map((s) => stocksBySlug.get(s)).filter(Boolean) as StockWithBrand[];
   const ratingsList = Object.entries(profile.ratings).map(([slug, rating]) => ({ slug, rating }));
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const actionsRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!actionsOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
-        setActionsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [actionsOpen]);
+  const loggedRolls = profile.loggedRolls ?? [];
 
   const stats = [
-    { label: "Films shot", value: profile.shotSlugs.length, icon: CheckCircle2 },
-    { label: "Shootlist", value: profile.favouriteSlugs.length, icon: Bookmark },
-    { label: "Tracked", value: profile.tracked.length, icon: ListTodo },
+    { label: "Logged rolls", value: loggedRolls.length, icon: ListTodo },
     { label: "Rated", value: ratingsList.length, icon: Star },
     ...(typeof profile.reviewCount === "number" && profile.reviewCount > 0
-      ? [{ label: "Reviews", value: profile.reviewCount, icon: NotebookPen }]
+      ? [{ label: "Shooting Notes", value: profile.reviewCount, icon: NotebookPen }]
       : []),
     ...(typeof profile.uploadCount === "number" && profile.uploadCount > 0
-      ? [{ label: "Uploads", value: profile.uploadCount, icon: ImagePlus }]
+      ? [{ label: "Gallery", value: profile.uploadCount, icon: ImagePlus }]
       : []),
   ];
 
@@ -111,54 +93,13 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
     <div className="space-y-8">
       {/* Profile header */}
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex flex-1 items-center gap-4">
+        <div className="flex flex-1 items-center gap-4">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-2xl font-bold text-primary">
             {profile.displayName.charAt(0)}
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold tracking-tight font-advercase">{profile.displayName}</h1>
             <p className="text-sm text-muted-foreground">FilmDB member</p>
-          </div>
-          {/* Plus icon — top right of left section — dropdown */}
-          <div className="absolute right-0 top-0" ref={actionsRef}>
-            <button
-              type="button"
-              onClick={() => setActionsOpen((o) => !o)}
-              className="flex h-9 w-9 items-center justify-center rounded-card border border-border/50 bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
-              aria-expanded={actionsOpen}
-              aria-haspopup="true"
-              aria-label="Add or create"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-            {actionsOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
-                <Link
-                  href="/films"
-                  onClick={() => setActionsOpen(false)}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
-                >
-                  <ListTodo className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  Track a roll
-                </Link>
-                <Link
-                  href="/films"
-                  onClick={() => setActionsOpen(false)}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
-                >
-                  <NotebookPen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  Add Shooting Notes
-                </Link>
-                <Link
-                  href="/films"
-                  onClick={() => setActionsOpen(false)}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
-                >
-                  <ImagePlus className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  Post a shot
-                </Link>
-              </div>
-            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-4 sm:gap-6">
@@ -174,70 +115,26 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
 
       {/* Tabs */}
       <FilmDetailTabs
-        defaultId="shot"
+        defaultId="logged-rolls"
         tabs={[
           {
-            id: "shot",
-            label: "I've shot",
+            id: "logged-rolls",
+            label: "Logged Rolls",
             content: (
               <ProfileSection
-                title="Films you've shot"
-                description="Stocks you've marked as shot. Your ratings and reviews are linked from here."
-                emptyMessage={'You haven\'t marked any films as shot yet. Visit a film page and tap "I\'ve shot this".'}
-                isEmpty={shotStocks.length === 0}
-              >
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                  {shotStocks.map((stock) => (
-                    <FilmCard
-                      key={stock.id}
-                      stock={stock}
-                      shotSlugs={profile.shotSlugs}
-                    />
-                  ))}
-                </div>
-              </ProfileSection>
-            ),
-          },
-          {
-            id: "shootlist",
-            label: "Shootlist",
-            content: (
-              <ProfileSection
-                title="Shootlist"
-                description="Stocks you've added to your shootlist."
-                emptyMessage="No shootlist yet. Add a film on its page with the + button to add it here."
-                isEmpty={favouriteStocks.length === 0}
-              >
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                  {favouriteStocks.map((stock) => (
-                    <FilmCard
-                      key={stock.id}
-                      stock={stock}
-                      shotSlugs={profile.shotSlugs}
-                    />
-                  ))}
-                </div>
-              </ProfileSection>
-            ),
-          },
-          {
-            id: "tracked",
-            label: "Tracked",
-            content: (
-              <ProfileSection
-                title="Tracked"
-                description="Film stocks you're tracking. Format, status, expiry and notes from the Track modal."
-                emptyMessage="No tracked stocks yet. Open a film page and tap Track to add one."
-                isEmpty={profile.tracked.length === 0}
+                title="Logged Rolls"
+                description="Rolls you've logged (e.g. In Fridge). Tap a film to see its Logged rolls tab."
+                emptyMessage="No logged rolls yet. Open a film page and tap Log a roll to add one."
+                isEmpty={loggedRolls.length === 0}
               >
                 <ul className="space-y-4">
-                  {profile.tracked.map((entry) => {
-                    const stock = stocksBySlug.get(entry.slug);
+                  {loggedRolls.map((entry) => {
+                    const stock = stocksBySlug.get(entry.film_stock_slug);
                     if (!stock) return null;
                     return (
-                      <li key={entry.slug}>
+                      <li key={entry.id}>
                         <Link
-                          href={`/films/${entry.slug}`}
+                          href={`/films/${entry.film_stock_slug}?tab=logged-rolls`}
                           className="block rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
                         >
                           <div className="flex flex-wrap items-start gap-4">
@@ -263,11 +160,9 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                               <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                                 {entry.format && <span>Format: {entry.format}</span>}
                                 {entry.status && <span>Status: {entry.status}</span>}
-                                {entry.expiryDate && <span>Expiry: {entry.expiryDate}</span>}
+                                {entry.expiry_date && <span>Expiry: {entry.expiry_date}</span>}
+                                {entry.quantity > 1 && <span>Qty: {entry.quantity}</span>}
                               </div>
-                              {entry.notes && (
-                                <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{entry.notes}</p>
-                              )}
                             </div>
                           </div>
                         </Link>
@@ -330,11 +225,11 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
             ? [
                 {
                   id: "reviews",
-                  label: "Your reviews",
+                  label: "Shooting Notes",
                   content: (
                     <ProfileSection
-                      title="Your reviews"
-                      description="Reviews you've written. Click through to the film to read or edit."
+                      title="Shooting Notes"
+                      description="Notes you've written. Click through to the film to read or edit."
                       emptyMessage="You haven't written any reviews yet."
                       isEmpty={!profile.reviews || profile.reviews.length === 0}
                     >
@@ -374,10 +269,10 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
             ? [
                 {
                   id: "uploads",
-                  label: "Your uploads",
+                  label: "Gallery",
                   content: (
                     <ProfileSection
-                      title="Your uploads"
+                      title="Gallery"
                       description="Images you've uploaded for films. Click through to the film page."
                       emptyMessage="You haven't uploaded any images yet."
                       isEmpty={!profile.uploads || profile.uploads.length === 0}

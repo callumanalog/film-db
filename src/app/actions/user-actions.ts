@@ -170,3 +170,70 @@ export async function removeTrackedInSupabase(slug: string): Promise<{ synced: b
   revalidatePath("/profile");
   return { synced: true };
 }
+
+export interface LoggedRollEntry {
+  id: string;
+  film_stock_slug: string;
+  format: string;
+  status: string;
+  expiry_date: string | null;
+  quantity: number;
+  created_at: string;
+}
+
+/** Save a logged roll (e.g. from "In Fridge" in Log Roll drawer). Multiple rolls per user per film allowed. */
+export async function saveLoggedRoll(
+  film_stock_slug: string,
+  format: string,
+  status: string,
+  expiry_date: string,
+  quantity: number
+): Promise<{ synced: boolean }> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { synced: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("user_logged_rolls").insert({
+    user_id: userId,
+    film_stock_slug,
+    format: format || "",
+    status: status || "in_fridge",
+    expiry_date: expiry_date || null,
+    quantity: Math.max(1, Math.min(999, Math.round(quantity))),
+  });
+  if (error) {
+    console.error("[user-actions] saveLoggedRoll error:", error.message, { film_stock_slug });
+    return { synced: false };
+  }
+  revalidatePath("/films/[slug]", "page");
+  revalidatePath(`/films/${film_stock_slug}`);
+  revalidatePath("/profile");
+  return { synced: true };
+}
+
+/** Fetch logged rolls for the current user for a given film slug (for film page tab). */
+export async function getLoggedRollsForFilm(slug: string): Promise<LoggedRollEntry[]> {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_logged_rolls")
+    .select("id, film_stock_slug, format, status, expiry_date, quantity, created_at")
+    .eq("user_id", userId)
+    .eq("film_stock_slug", slug)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("[user-actions] getLoggedRollsForFilm error:", error.message, { slug });
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    film_stock_slug: r.film_stock_slug,
+    format: r.format ?? "",
+    status: r.status ?? "",
+    expiry_date: r.expiry_date,
+    quantity: Number(r.quantity) || 1,
+    created_at: r.created_at,
+  }));
+}

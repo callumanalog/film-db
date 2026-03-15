@@ -14,6 +14,7 @@ import { FilmDetailTabs } from "@/components/film-page-tabs";
 import { OverviewTabContent } from "@/components/overview-tab-content";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
 import { getReviewsForSlug } from "@/lib/seed-film-reviews";
+import { getLoggedRollsForFilm } from "@/app/actions/user-actions";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic";
 
 interface FilmDetailPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
 export async function generateMetadata({
@@ -43,8 +45,9 @@ export async function generateStaticParams() {
   return stocks.map((stock) => ({ slug: stock.slug }));
 }
 
-export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
+export default async function FilmDetailPage({ params, searchParams }: FilmDetailPageProps) {
   const { slug } = await params;
+  const { tab } = await searchParams;
   const stock = await getFilmStockBySlug(slug);
 
   if (!stock) notFound();
@@ -179,6 +182,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   const discoveryStatsBySlug = discoverySlugs.length > 0 ? await getFilmStockStatsForSlugs(discoverySlugs) : {};
 
   const flickrImages = await getFlickrSampleImagesForStock(slug).catch(() => []);
+  const loggedRolls = await getLoggedRollsForFilm(slug);
 
   const { web: reviewsFromWeb, video: videoReviews } = getReviewsForSlug(slug);
 
@@ -226,6 +230,42 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         </section>
       ),
     },
+    {
+      id: "logged-rolls",
+      label: "Logged rolls",
+      content: (
+        <section className="space-y-4">
+          <h2 className="text-lg font-semibold tracking-tight">Your logged rolls</h2>
+          <p className="text-sm text-muted-foreground">
+            Rolls you&apos;ve logged for this stock (e.g. In Fridge). Log a roll from the button on this page.
+          </p>
+          {loggedRolls.length === 0 ? (
+            <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+              No logged rolls yet. Sign in and use &quot;Log a roll&quot; to add one.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {loggedRolls.map((roll) => (
+                <li
+                  key={roll.id}
+                  className="rounded-[7px] border border-border/50 bg-card p-4"
+                >
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+                    {roll.format && <span>Format: {roll.format}</span>}
+                    {roll.status && <span>Status: {roll.status}</span>}
+                    {roll.expiry_date && <span>Expiry: {roll.expiry_date}</span>}
+                    {roll.quantity > 1 && <span>Qty: {roll.quantity}</span>}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Logged {new Date(roll.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ),
+    },
   ];
 
   // All film stocks use the same template: sticky left pane + tabs (Overview, Gallery, Reviews)
@@ -252,7 +292,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           <div className="order-3 min-w-0 -mt-2 md:mt-0">
             <FilmDetailTabs
               tabs={filmTabs}
-              defaultId="overview"
+              defaultId={tab === "logged-rolls" ? "logged-rolls" : "overview"}
               fullWidthTabBar
             />
           </div>

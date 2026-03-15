@@ -98,7 +98,10 @@ function SignUpForm() {
         });
         return;
       }
-      router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
+      const toastMessage = "We've sent a new verification link to your email. Log in to continue.";
+      router.push(
+        `/auth/sign-in?next=${encodeURIComponent(redirectTo)}&toast=${encodeURIComponent(toastMessage)}`
+      );
       router.refresh();
       return;
     }
@@ -135,7 +138,7 @@ function SignUpForm() {
       return;
     }
     // Only treat as existing when identities is explicitly an empty array (Supabase returns that when email already exists).
-    // When identities is undefined, assume new user so we don't block the first-tap redirect to verify-email.
+    // When identities is undefined, assume new user and give instant access (redirect with welcome + verify toast).
     const existingUserNoError =
       signUpData?.user &&
       Array.isArray(signUpData.user.identities) &&
@@ -148,7 +151,28 @@ function SignUpForm() {
       router.refresh();
       return;
     }
-    router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
+    // New user: ensure we have a session so they're logged in, then redirect.
+    // When "Confirm email" is enabled in Supabase, signUp() returns user but session is null — sign in with password to get a session.
+    let hasSession = !!signUpData.session;
+    if (!hasSession && signUpData.user) {
+      const { data: signInData } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      hasSession = !!signInData.session;
+      if (!hasSession) {
+        setLoading(false);
+        const toastMessage = "Account created. Please check your email to confirm, then log in.";
+        router.push(
+          `/auth/sign-in?next=${encodeURIComponent(redirectTo)}&toast=${encodeURIComponent(toastMessage)}`
+        );
+        router.refresh();
+        return;
+      }
+    }
+    const welcomeToast = "Welcome to FilmDB!\nPlease check your email to verify your account when you have a moment.";
+    const sep = redirectTo.includes("?") ? "&" : "?";
+    router.push(`${redirectTo}${sep}toast=${encodeURIComponent(welcomeToast)}`);
     router.refresh();
   };
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   Grid2x2,
   Building2,
@@ -50,6 +51,7 @@ import {
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
 import { TrackFilmModal } from "@/components/track-film-modal";
+import { LogRollStatusDrawer } from "@/components/log-roll-status-drawer";
 import { AddReviewModal } from "@/components/add-review-modal";
 import { showToastViaEvent } from "@/components/toast";
 import {
@@ -59,6 +61,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useUserActions } from "@/context/user-actions-context";
+import { saveLoggedRoll } from "@/app/actions/user-actions";
 import { useAuth } from "@/context/auth-context";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import type { BestFor } from "@/lib/types";
@@ -438,8 +441,30 @@ export function StickyLeftPane({
     toggleShot,
   } = useUserActions();
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [trackModalOpen, setTrackModalOpen] = useState(false);
+  const [logRollDrawerOpen, setLogRollDrawerOpen] = useState(false);
+  const [trackInitialStatus, setTrackInitialStatus] = useState<string | undefined>(undefined);
+  const [trackInitialFormat, setTrackInitialFormat] = useState<string | undefined>(undefined);
+
+  // Intent continuity: if user just returned from sign-in/sign-up with action=log-roll, open drawer (mobile) or modal (desktop)
+  const didHandleLogRollIntent = useRef(false);
+  useEffect(() => {
+    if (!user || searchParams.get("action") !== "log-roll" || didHandleLogRollIntent.current) return;
+    didHandleLogRollIntent.current = true;
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setLogRollDrawerOpen(true);
+    } else {
+      setTrackModalOpen(true);
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("action");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname ?? "/", { scroll: false });
+  }, [user, searchParams, pathname, router]);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
   const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false);
@@ -556,7 +581,19 @@ export function StickyLeftPane({
       {/* FAB — Log a Roll */}
       <button
         type="button"
-        onClick={() => setTrackModalOpen(true)}
+        onClick={() => {
+          if (!user) {
+            const returnPath = pathname ?? "/";
+            const nextUrl = returnPath + (returnPath.includes("?") ? "&" : "?") + "action=log-roll";
+            router.push(`/auth/sign-in?next=${encodeURIComponent(nextUrl)}`);
+            return;
+          }
+          if (typeof window !== "undefined" && window.innerWidth < 768) {
+            setLogRollDrawerOpen(true);
+          } else {
+            setTrackModalOpen(true);
+          }
+        }}
         aria-label="Log a roll"
         className="fixed bottom-8 right-8 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl transition-transform hover:scale-105 active:scale-95"
       >
@@ -594,9 +631,43 @@ export function StickyLeftPane({
         </SheetContent>
       </Sheet>
 
+      <LogRollStatusDrawer
+        open={logRollDrawerOpen}
+        onOpenChange={setLogRollDrawerOpen}
+        stock={{ slug: stock.slug, name: stock.name, format: stock.format ?? [], image_url: stock.image_url ?? null }}
+        onContinue={async (statusId, format, payload) => {
+          if (statusId === "in_fridge" && payload && format) {
+            const { synced } = await saveLoggedRoll(slug, format, "in_fridge", payload.expiry, payload.quantity);
+            setLogRollDrawerOpen(false);
+            if (synced) {
+              showToastViaEvent("Roll saved");
+              router.push(`/films/${slug}?tab=logged-rolls`);
+            } else {
+              showToastViaEvent("Sign in to save rolls");
+            }
+            return;
+          }
+          const statusMap: Record<string, string> = {
+            in_fridge: "In Fridge",
+            in_camera: "In camera",
+            awaiting_dev: "Awaiting development",
+            at_lab: "Scanned",
+          };
+          setTrackInitialStatus(statusMap[statusId] ?? "");
+          setTrackInitialFormat(format);
+          setLogRollDrawerOpen(false);
+          setTrackModalOpen(true);
+        }}
+      />
       <TrackFilmModal
         open={trackModalOpen}
-        onOpenChange={setTrackModalOpen}
+        onOpenChange={(open) => {
+          setTrackModalOpen(open);
+          if (!open) {
+            setTrackInitialStatus(undefined);
+            setTrackInitialFormat(undefined);
+          }
+        }}
         onSave={handleTrackSave}
         stock={{
           slug: stock.slug,
@@ -605,6 +676,8 @@ export function StickyLeftPane({
           format: stock.format ?? [],
           image_url: stock.image_url,
         }}
+        initialStatus={trackInitialStatus}
+        initialFormat={trackInitialFormat}
       />
 
       <AddReviewModal

@@ -1,19 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Settings, LogOut } from "lucide-react";
 import { getStocksBySlugs, getStatsForSlugs } from "@/app/actions/get-film-stocks";
 import { getProfileFromSupabase } from "@/app/actions/get-profile";
 import { ProfileView, type ProfileData } from "@/components/profile-view";
 import { useUserActions } from "@/context/user-actions-context";
 import { useAuth } from "@/context/auth-context";
+import { createClient } from "@/lib/supabase/client";
+import { showToastViaEvent } from "@/components/toast";
+import { getEmailRedirectOrigin, buildCallbackUrl } from "@/lib/auth-redirect";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
 export function ProfilePageClient() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { shotSlugs, favouriteSlugs, tracked, ratings } = useUserActions();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stocksBySlug, setStocksBySlug] = useState<Map<string, StockWithBrand>>(new Map());
@@ -36,6 +41,7 @@ export function ProfilePageClient() {
             shotSlugs: p.shotSlugs,
             favouriteSlugs: p.favouriteSlugs,
             tracked: p.tracked,
+            loggedRolls: p.loggedRolls ?? [],
             ratings: p.ratings,
             reviewCount: p.reviewCount,
             uploadCount: p.uploadCount,
@@ -48,6 +54,7 @@ export function ProfilePageClient() {
             shotSlugs: [],
             favouriteSlugs: [],
             tracked: [],
+            loggedRolls: [],
             ratings: {},
           });
         }
@@ -65,6 +72,7 @@ export function ProfilePageClient() {
         ...profile.shotSlugs,
         ...profile.favouriteSlugs,
         ...profile.tracked.map((t) => t.slug),
+        ...(profile.loggedRolls?.map((r) => r.film_stock_slug) ?? []),
         ...Object.keys(profile.ratings),
         ...(profile.reviews?.map((r) => r.film_stock_slug) ?? []),
         ...(profile.uploads?.map((u) => u.film_stock_slug) ?? []),
@@ -90,6 +98,30 @@ export function ProfilePageClient() {
     });
   }, [uniqueSlugs.join(",")]);
 
+  const isUnverified = user && !(user as { email_confirmed_at?: string }).email_confirmed_at;
+  const [resendStatus, setResendStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
+
+  const handleResendVerification = async () => {
+    if (!user?.email || resendStatus === "loading") return;
+    setResendStatus("loading");
+    const supabase = createClient();
+    const origin = getEmailRedirectOrigin() || (typeof window !== "undefined" ? window.location.origin : "");
+    const callbackUrl = buildCallbackUrl("/profile", origin);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: user.email,
+      options: { emailRedirectTo: callbackUrl },
+    });
+    if (error) {
+      const isRateLimit = /rate limit|too many requests/i.test(error.message);
+      setResendStatus("error");
+      showToastViaEvent(isRateLimit ? "Too many emails sent. Please try again in a few minutes." : error.message);
+      return;
+    }
+    setResendStatus("sent");
+    showToastViaEvent("Verification email sent. Check your inbox.");
+  };
+
   if (authLoading || !user || profileLoading || !profile) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -103,6 +135,38 @@ export function ProfilePageClient() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      {isUnverified && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+          <p className="text-sm text-amber-900 dark:text-amber-200">
+            Verify your email to unlock all account features
+          </p>
+          <button
+            type="button"
+            onClick={handleResendVerification}
+            disabled={resendStatus === "loading"}
+            className="shrink-0 text-sm font-medium text-amber-800 underline underline-offset-2 hover:text-amber-900 disabled:opacity-50 dark:text-amber-300 dark:hover:text-amber-100"
+          >
+            {resendStatus === "loading" ? "Sending…" : resendStatus === "sent" ? "Email sent" : "Resend email"}
+          </button>
+        </div>
+      )}
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
+        <Link
+          href="/profile/settings"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Settings className="h-4 w-4 shrink-0" aria-hidden />
+          Settings
+        </Link>
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+          Log out
+        </button>
+      </div>
       <ProfileView profile={profile} stocksBySlug={stocksBySlug} statsBySlug={statsBySlug} />
     </div>
   );

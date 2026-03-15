@@ -78,6 +78,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             borderRadius: 8,
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
             border: "1px solid #e5e5e5",
+            whiteSpace: "pre-line",
           }}
         >
           {message}

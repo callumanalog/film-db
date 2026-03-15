@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import localFont from "next/font/local";
-import { Work_Sans, Geist_Mono } from "next/font/google";
+import { Work_Sans, Geist_Mono, Playfair_Display } from "next/font/google";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { UserActionsProvider } from "@/context/user-actions-context";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/toast";
+import { UrlToastHandler } from "@/components/url-toast-handler";
 import { ViewportSize } from "@/components/viewport-size";
 import "./globals.css";
 
@@ -28,6 +30,12 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const playfairDisplay = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: {
     default: "FilmDB — Your Film Photography Database",
@@ -43,12 +51,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${advercase.variable} ${workSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${advercase.variable} ${workSans.variable} ${geistMono.variable} ${playfairDisplay.variable}`}>
       <body className="antialiased" style={{ pointerEvents: 'auto' }}>
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>
           <AuthProvider>
           <UserActionsProvider>
             <ToastProvider>
+              <Suspense fallback={null}>
+                <UrlToastHandler />
+              </Suspense>
               <Header />
               <main className="flex-1">{children}</main>
               <Footer />
