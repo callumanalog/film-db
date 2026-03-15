@@ -6,7 +6,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { TextField } from "@/components/ui/text-field";
 import {
   Select,
   SelectContent,
@@ -152,18 +152,13 @@ export function TrackFilmModal({ open, onOpenChange, onSave, stock }: TrackFilmM
                 </Select>
               </div>
 
-              <div>
-                <label htmlFor="track-expiry" className="mb-1.5 block text-sm font-medium text-foreground">
-                  Expiry date
-                </label>
-                <Input
-                  id="track-expiry"
-                  type="date"
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  className="w-full"
-                />
-              </div>
+              <TextField
+                id="track-expiry"
+                label="Expiry date"
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+              />
 
               <div>
                 <label htmlFor="track-notes" className="mb-1.5 block text-sm font-medium text-foreground">

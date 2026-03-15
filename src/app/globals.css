@@ -189,6 +189,14 @@
     font-family: var(--font-work-sans), var(--font-sans), ui-sans-serif, system-ui, sans-serif !important;
   }
 
+  /* TextField label: 13px (text-ui) so it always applies even if Tailwind doesn't emit text-ui for the component */
+  .text-field-label {
+    font-size: var(--text-ui);
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
   /* Ledger-style section headers in drawers (TYPE, ISO, BRAND, etc.) */
   .label-caps {
     font-size: 0.75rem;

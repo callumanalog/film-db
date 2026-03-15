@@ -774,13 +774,15 @@ export function PageTitleHeader({
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             {metaLine}
           </p>
-          <div
-            className="flex flex-col items-center md:items-start"
-            onMouseEnter={() => setRatingRowHover(true)}
-            onMouseLeave={() => setRatingRowHover(false)}
-          >
-            <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} starSize="xs" />
-          </div>
+          {rating > 0 && (
+            <div
+              className="flex flex-col items-center md:items-start"
+              onMouseEnter={() => setRatingRowHover(true)}
+              onMouseLeave={() => setRatingRowHover(false)}
+            >
+              <UserStarRating value={rating} onChange={handleRatingChange} rowHover={ratingRowHover} starSize="xs" />
+            </div>
+          )}
         </div>
     </div>
   );

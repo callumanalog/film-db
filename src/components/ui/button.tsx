@@ -10,10 +10,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 [a]:hover:bg-primary/90",
+        /** Secondary: same sizes/font/padding as primary (use size="cta") but bg = black */
+        secondary:
+          "bg-black text-white hover:bg-black/90 [a]:hover:bg-black/90",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary:
+        /** Tertiary: muted gray pill style */
+        tertiary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
@@ -24,6 +28,9 @@ const buttonVariants = cva(
       size: {
         default:
           "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        /** Style guide primary CTA: 52px mobile / 44px desktop, text-base/sm, font-semibold, px-4 */
+        cta:
+          "h-[52px] md:h-[44px] gap-1.5 px-4 font-sans text-base font-semibold has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4 md:text-sm [&_svg:not([class*='size-'])]:size-4",
         xs: "h-6 gap-1 rounded-card px-2 text-xs in-data-[slot=button-group]:rounded-card has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-7 gap-1 rounded-card px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-card has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3",

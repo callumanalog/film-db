@@ -29,6 +29,17 @@ export function getRedirectToSignUp(searchParams: ReadonlyURLSearchParams | null
   return value;
 }
 
+/**
+ * Origin to use for email links (verification, password reset).
+ * Use NEXT_PUBLIC_APP_URL in production so links point to your site, not localhost.
+ */
+export function getEmailRedirectOrigin(): string {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || "";
+}
+
 /** Build callback URL with redirect param for email/OAuth. */
 export function buildCallbackUrl(redirectTo: string, origin: string): string {
   const path = `/auth/callback?next=${encodeURIComponent(redirectTo)}`;

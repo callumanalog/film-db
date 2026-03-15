@@ -35,6 +35,12 @@ Get it from **Supabase Dashboard → Settings → API → service_role**. Never 
 
 Without these, the app still runs using local/seed data, but log-in and profile/reviews/uploads will not work.
 
+**Production (email verification):** So that sign-up and password-reset emails link to your live site instead of localhost, set your canonical URL:
+
+```env
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+```
+
 ## 3. Run database migrations
 
 In the Supabase Dashboard go to **SQL Editor** and run the migrations in order:

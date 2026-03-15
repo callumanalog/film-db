@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Style guide",
@@ -228,47 +229,52 @@ export default function StyleGuidePage() {
         <section className="mb-14">
           <h2 className="font-sans text-xl font-bold text-foreground mb-1">Buttons (CTA)</h2>
           <p className="font-sans text-sm text-muted-foreground mb-2">
-            Responsive scaling: primary and search input use 52px (mobile) / 44px (desktop); secondary and pill controls use 44px / 36px. Radius: <code className="font-mono bg-muted rounded-card px-1">rounded-card</code> / <code className="font-mono bg-muted rounded-card px-1">rounded-control</code> (7px). Vibes, Filters, and Search triggers share the same vertical mid-point when aligned.
+            Use <code className="font-mono bg-muted rounded-card px-1">Button</code> from <code className="font-mono bg-muted rounded-card px-1">@/components/ui/button</code>. Primary and Secondary use <code className="font-mono bg-muted rounded-card px-1">size="cta"</code> (52px mobile / 44px desktop). Tertiary and pill controls use default or smaller sizes. Radius: <code className="font-mono bg-muted rounded-card px-1">rounded-card</code> (7px).
           </p>
           <div className="space-y-8">
             <div>
-              <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Primary (.btn-primary)</h3>
+              <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Primary</h3>
               <code className="block font-mono text-caption text-muted-foreground mb-3 break-all">
-                h-[52px] md:h-[44px] rounded-card bg-primary px-4 font-sans text-base md:text-sm font-semibold text-primary-foreground + hover/disabled
+                {"<Button variant=\"default\" size=\"cta\">Apply</Button>"}
               </code>
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-[52px] items-center justify-center rounded-card bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50 md:h-[44px] md:text-sm"
-                >
+                <Button type="button" size="cta">
                   Apply
-                </button>
-                <button
-                  type="button"
-                  className="flex h-[52px] w-full max-w-xs items-center justify-center rounded-card bg-primary px-4 font-sans text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:h-[44px] md:text-sm"
-                >
+                </Button>
+                <Button type="button" size="cta" className="w-full max-w-xs">
                   Apply (full width)
-                </button>
+                </Button>
               </div>
             </div>
             <div>
-              <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Secondary / pill</h3>
+              <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Secondary</h3>
+              <p className="font-sans text-caption text-muted-foreground mb-2">
+                Same sizes and font as Primary; background = foreground (dark), text = background.
+              </p>
               <code className="block font-mono text-caption text-muted-foreground mb-3 break-all">
-                h-[44px] md:h-[36px] rounded-card border border-border bg-transparent px-4 font-sans text-sm md:text-xs + hover/disabled
+                {"<Button variant=\"secondary\" size=\"cta\">Secondary action</Button>"}
               </code>
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className="flex h-[44px] items-center justify-center rounded-card border border-border bg-transparent px-4 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:pointer-events-none disabled:opacity-50 md:h-[36px] md:text-xs"
-                >
+                <Button type="button" variant="secondary" size="cta">
+                  Secondary action
+                </Button>
+                <Button type="button" variant="secondary" size="cta" className="w-full max-w-xs">
+                  Secondary (full width)
+                </Button>
+              </div>
+            </div>
+            <div>
+              <h3 className="font-sans text-sm font-semibold text-foreground mb-2">Tertiary / pill</h3>
+              <code className="block font-mono text-caption text-muted-foreground mb-3 break-all">
+                {"<Button variant=\"tertiary\">Clear all filters</Button>"}
+              </code>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" variant="tertiary">
                   Clear all filters
-                </button>
-                <button
-                  type="button"
-                  className="flex h-[44px] w-full max-w-xs items-center justify-center rounded-card border border-border bg-transparent px-4 font-sans text-sm font-medium text-foreground transition-colors hover:bg-secondary md:h-[36px] md:text-xs"
-                >
+                </Button>
+                <Button type="button" variant="tertiary" className="w-full max-w-xs">
                   Clear (full width)
-                </button>
+                </Button>
               </div>
             </div>
             <div>

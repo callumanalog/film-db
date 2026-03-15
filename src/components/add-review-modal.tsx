@@ -6,7 +6,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Star, Camera, XIcon, ImagePlus, ChevronDown, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { TextField } from "@/components/ui/text-field";
 import {
   Select,
   SelectContent,
@@ -585,25 +585,23 @@ export function AddReviewModal({
                       </div>
                       <div className="flex flex-row gap-3 items-end">
                         <div className="flex-1 min-w-0">
-                          <label htmlFor="upload-camera-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Camera</label>
-                          <input
+                          <TextField
                             id="upload-camera-sheet"
+                            label="Camera"
                             type="text"
                             value={camera}
                             onChange={(e) => setCamera(e.target.value)}
                             placeholder="Search cameras"
-                            className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
                           />
                         </div>
                         <div className="w-24 shrink-0">
-                          <label htmlFor="upload-shot-iso-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Shot at ISO</label>
-                          <input
+                          <TextField
                             id="upload-shot-iso-sheet"
+                            label="Shot at ISO"
                             type="text"
                             value={shotIso}
                             onChange={(e) => setShotIso(e.target.value)}
                             placeholder="e.g. 400"
-                            className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
                           />
                         </div>
                       </div>
@@ -623,24 +621,54 @@ export function AddReviewModal({
                         {uploadDetailsOpen && (
                           <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3">
                             <div className="min-w-0">
-                              <label htmlFor="upload-lens-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Lens</label>
-                              <input id="upload-lens-sheet" type="text" value={lens} onChange={(e) => setLens(e.target.value)} placeholder="e.g. 50mm f/1.4" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <TextField
+                                id="upload-lens-sheet"
+                                label="Lens"
+                                type="text"
+                                value={lens}
+                                onChange={(e) => setLens(e.target.value)}
+                                placeholder="e.g. 50mm f/1.4"
+                              />
                             </div>
                             <div className="min-w-0">
-                              <label htmlFor="upload-lab-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Lab / Processing</label>
-                              <input id="upload-lab-sheet" type="text" value={lab} onChange={(e) => setLab(e.target.value)} placeholder="e.g. Home dev" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <TextField
+                                id="upload-lab-sheet"
+                                label="Lab / Processing"
+                                type="text"
+                                value={lab}
+                                onChange={(e) => setLab(e.target.value)}
+                                placeholder="e.g. Home dev"
+                              />
                             </div>
                             <div className="min-w-0">
-                              <label htmlFor="upload-push-pull-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Push/Pull</label>
-                              <input id="upload-push-pull-sheet" type="text" value={pushPull} onChange={(e) => setPushPull(e.target.value)} placeholder="e.g. +1" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <TextField
+                                id="upload-push-pull-sheet"
+                                label="Push/Pull"
+                                type="text"
+                                value={pushPull}
+                                onChange={(e) => setPushPull(e.target.value)}
+                                placeholder="e.g. +1"
+                              />
                             </div>
                             <div className="min-w-0">
-                              <label htmlFor="upload-filter-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Filter</label>
-                              <input id="upload-filter-sheet" type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="e.g. None, 81A" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <TextField
+                                id="upload-filter-sheet"
+                                label="Filter"
+                                type="text"
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                                placeholder="e.g. None, 81A"
+                              />
                             </div>
                             <div className="min-w-0">
-                              <label htmlFor="upload-scanner-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Scanner</label>
-                              <input id="upload-scanner-sheet" type="text" value={scanner} onChange={(e) => setScanner(e.target.value)} placeholder="e.g. Epson V600" className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary" />
+                              <TextField
+                                id="upload-scanner-sheet"
+                                label="Scanner"
+                                type="text"
+                                value={scanner}
+                                onChange={(e) => setScanner(e.target.value)}
+                                placeholder="e.g. Epson V600"
+                              />
                             </div>
                           </div>
                         )}
@@ -729,19 +757,14 @@ export function AddReviewModal({
                       <ModalStarRating value={rating} onChange={setRating} />
                     </div>
                     {/* 2. Review title */}
-                    <div>
-                      <label htmlFor="add-review-title-field" className="mb-1.5 block text-sm font-medium text-foreground">
-                        Review title
-                      </label>
-                      <Input
-                        id="add-review-title-field"
-                        type="text"
-                        value={reviewTitle}
-                        onChange={(e) => setReviewTitle(e.target.value)}
-                        placeholder="Optional title for your review"
-                        className="w-full"
-                      />
-                    </div>
+                    <TextField
+                      id="add-review-title-field"
+                      label="Review title"
+                      type="text"
+                      value={reviewTitle}
+                      onChange={(e) => setReviewTitle(e.target.value)}
+                      placeholder="Optional title for your review"
+                    />
                     {/* 3. Review body */}
                     <div>
                       <label htmlFor="add-review-text" className="mb-1.5 block text-sm font-medium text-foreground">
@@ -816,19 +839,14 @@ export function AddReviewModal({
                 </div>
 
                 {/* 5. Camera */}
-                <div>
-                  <label htmlFor="add-review-camera" className="mb-1.5 block text-sm font-medium text-foreground">
-                    Camera
-                  </label>
-                  <Input
-                    id="add-review-camera"
-                    type="text"
-                    value={camera}
-                    onChange={(e) => setCamera(e.target.value)}
-                    placeholder="e.g. Canon AE-1"
-                    className="w-full"
-                  />
-                </div>
+                <TextField
+                  id="add-review-camera"
+                  label="Camera"
+                  type="text"
+                  value={camera}
+                  onChange={(e) => setCamera(e.target.value)}
+                  placeholder="e.g. Canon AE-1"
+                />
 
                 {/* 6. Additional details — collapsed accordion */}
                 <div className="rounded-card border border-border/50">
@@ -865,29 +883,23 @@ export function AddReviewModal({
                         </div>
                       )}
                       <div>
-                        <label htmlFor="add-review-location" className="mb-1 block text-xs font-medium text-muted-foreground">
-                          Location
-                        </label>
-                        <Input
+                        <TextField
                           id="add-review-location"
+                          label="Location"
                           type="text"
                           value={location}
                           onChange={(e) => setLocation(e.target.value)}
                           placeholder="Where did you shoot?"
-                          className="w-full"
                         />
                       </div>
                       <div>
-                        <label htmlFor="add-review-iso" className="mb-1 block text-xs font-medium text-muted-foreground">
-                          ISO
-                        </label>
-                        <Input
+                        <TextField
                           id="add-review-iso"
+                          label="ISO"
                           type="text"
                           value={iso}
                           onChange={(e) => setIso(e.target.value)}
                           placeholder="e.g. 800"
-                          className="w-full"
                         />
                       </div>
                       <div>

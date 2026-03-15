@@ -38,6 +38,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? envLocal.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY:
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? envLocal.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    /** Canonical site URL for email links (e.g. https://filmdb.com). If set, verification/reset emails use this instead of localhost. */
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? envLocal.NEXT_PUBLIC_APP_URL,
   },
   images: {
     remotePatterns: [
