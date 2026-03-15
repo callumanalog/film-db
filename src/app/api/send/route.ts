@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { EmailTemplate } from "@/components/email-template";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 /**
  * POST /api/send — send a test email using the React email template.
  * Body (optional): { to?: string, firstName?: string }
@@ -11,7 +9,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * See https://resend.com/docs/send-with-nextjs
  */
 export async function POST(request: Request) {
-  if (!process.env.RESEND_API_KEY) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
     return NextResponse.json(
       { error: "RESEND_API_KEY is not set" },
       { status: 500 }
@@ -31,6 +30,7 @@ export async function POST(request: Request) {
     // keep defaults
   }
 
+  const resend = new Resend(apiKey);
   const { data, error } = await resend.emails.send({
     from: "FilmDB <onboarding@resend.dev>",
     to,
