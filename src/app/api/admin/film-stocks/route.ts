@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { FilmStock } from "@/lib/types";
 import { writeFilmStocksToFile, removeFilmStocksFile } from "@/lib/editable-film-stocks";
 import { getFilmStocks } from "@/lib/supabase/queries";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /** Strip client-only fields so we store only FilmStock shape. */
 function toStorable(stock: FilmStock & { brand?: unknown }): FilmStock {
@@ -11,11 +12,15 @@ function toStorable(stock: FilmStock & { brand?: unknown }): FilmStock {
 
 /** GET: return all film stocks (with brand) for the admin UI. */
 export async function GET() {
+  const forbidden = await requireAdmin();
+  if (forbidden) return forbidden;
   const stocks = await getFilmStocks({ sort: "alphabetical" });
   return NextResponse.json(stocks);
 }
 
 export async function POST(request: Request) {
+  const forbidden = await requireAdmin();
+  if (forbidden) return forbidden;
   try {
     const body = (await request.json()) as unknown;
     if (!Array.isArray(body)) {
@@ -32,6 +37,8 @@ export async function POST(request: Request) {
 
 /** DELETE: remove data/film-stocks.json so the app uses seed again. */
 export async function DELETE() {
+  const forbidden = await requireAdmin();
+  if (forbidden) return forbidden;
   try {
     removeFilmStocksFile();
     return NextResponse.json({ ok: true });

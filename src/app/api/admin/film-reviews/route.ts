@@ -3,9 +3,12 @@ import type { FilmReviewsBySlug } from "@/lib/editable-film-reviews";
 import { getFilmReviewsFromFile, writeFilmReviewsToFile } from "@/lib/editable-film-reviews";
 import { getFilmStocks } from "@/lib/supabase/queries";
 import { getReviewsForSlug } from "@/lib/seed-film-reviews";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /** GET returns merged reviews (file overrides seed) for all film stock slugs. */
 export async function GET() {
+  const forbidden = await requireAdmin();
+  if (forbidden) return forbidden;
   const fromFile = getFilmReviewsFromFile();
   const stocks = await getFilmStocks({ sort: "alphabetical" });
   const merged: FilmReviewsBySlug = {};
@@ -20,6 +23,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const forbidden = await requireAdmin();
+  if (forbidden) return forbidden;
   try {
     const body = (await request.json()) as unknown;
     if (body === null || typeof body !== "object" || Array.isArray(body)) {

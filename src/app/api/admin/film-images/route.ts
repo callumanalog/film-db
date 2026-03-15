@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import * as fs from "fs";
 import * as path from "path";
+import { requireAdmin } from "@/lib/admin-auth";
 
 /**
  * Returns a list of image paths under public/films so the admin can pick
  * an existing image instead of typing a path. Images must already exist in public/films.
  */
 export async function GET() {
+  const forbidden = await requireAdmin();
+  if (forbidden) return forbidden;
   try {
     const dir = path.join(process.cwd(), "public", "films");
     if (!fs.existsSync(dir)) {
