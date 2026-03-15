@@ -10,7 +10,7 @@ import { getRedirectToSignUp, buildCallbackUrl, getEmailRedirectOrigin } from "@
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { checkUsernameAvailable } from "@/app/actions/check-username";
-import { getSignUpStatus, recordVerificationEmailSent } from "@/app/actions/sign-up-status";
+import { getSignUpStatus } from "@/app/actions/sign-up-status";
 import { cn } from "@/lib/utils";
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken";
@@ -69,12 +69,6 @@ function SignUpForm() {
         `/auth/sign-in?next=${encodeURIComponent(redirectTo)}&toast=${encodeURIComponent(toastMessage)}`
       );
       router.refresh();
-      return;
-    }
-
-    if (status.status === "throttled") {
-      setLoading(false);
-      setMessage({ type: "error", text: status.message });
       return;
     }
 
@@ -142,10 +136,8 @@ function SignUpForm() {
       router.refresh();
       return;
     }
-    // Redirect immediately so one tap takes user to verify screen; record throttle in background
     router.push(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`);
     router.refresh();
-    recordVerificationEmailSent(email.trim());
   };
 
   return (
