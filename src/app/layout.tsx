@@ -67,7 +67,9 @@ export default function RootLayout({
               <Suspense fallback={null}>
                 <UrlToastHandler />
               </Suspense>
-              <Header />
+              <Suspense fallback={<header className="sticky top-0 z-50 h-16 border-b border-border/50 bg-background/80 backdrop-blur-xl" />}>
+                <Header />
+              </Suspense>
               <main className="flex-1 pb-20 md:pb-0">{children}</main>
               <Footer />
               <BottomNav />
