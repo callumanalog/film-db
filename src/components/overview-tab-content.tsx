@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { FlickrPhoto } from "@/lib/flickr";
 import type { BestFor, FilmType, ShootingNote } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
@@ -49,6 +50,9 @@ function getYouTubeVideoId(url: string): string | null {
 }
 
 /** Grid of 3 images (Flickr or placeholders) — card style with username only under image, same size. */
+const OVERVIEW_IMAGE_WIDTH = 400;
+const OVERVIEW_IMAGE_HEIGHT = 300; // 4:3
+
 function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
   const images = flickrImages.slice(0, 3);
 
@@ -65,9 +69,15 @@ function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
               rel="noopener noreferrer"
               className="block overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30"
             >
-              <div className="aspect-[4/3] bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={flickr.imageUrl} alt={flickr.title || ""} className="h-full w-full object-cover" />
+              <div className="relative aspect-[4/3] bg-muted">
+                <Image
+                  src={flickr.imageUrl}
+                  alt={flickr.title || ""}
+                  width={OVERVIEW_IMAGE_WIDTH}
+                  height={OVERVIEW_IMAGE_HEIGHT}
+                  sizes="(max-width: 640px) 33vw, 200px"
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div className="p-3">
                 <p className="text-xs font-medium">{flickr.ownerName}</p>
@@ -77,9 +87,16 @@ function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
         }
         return (
           <div key={i} className="overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30">
-            <div className="aspect-[4/3] bg-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.src} alt="" className="h-full w-full object-cover" aria-hidden />
+            <div className="relative aspect-[4/3] bg-muted">
+              <Image
+                src={item.src}
+                alt=""
+                width={OVERVIEW_IMAGE_WIDTH}
+                height={OVERVIEW_IMAGE_HEIGHT}
+                sizes="(max-width: 640px) 33vw, 200px"
+                className="h-full w-full object-cover"
+                aria-hidden
+              />
             </div>
             <div className="p-3">
               <p className="text-xs font-medium">{item.username}</p>

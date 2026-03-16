@@ -10,6 +10,8 @@ interface FilmCardProps {
   stock: FilmStock & { brand: FilmBrand };
   /** Slugs of films the user has shot. If not passed, uses context. Shows tick at bottom-left when included. */
   shotSlugs?: string[];
+  /** Preload image for LCP (e.g. first row on films list). */
+  priority?: boolean;
 }
 
 const TYPE_ACCENT: Record<string, string> = {
@@ -20,9 +22,12 @@ const TYPE_ACCENT: Record<string, string> = {
   instant: "text-sky-700",
 };
 
+const CARD_IMAGE_SIZES = "(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw";
+
 export function FilmCard({
   stock,
   shotSlugs: shotSlugsProp,
+  priority = false,
 }: FilmCardProps) {
   const { shotSlugs: contextShotSlugs } = useUserActions();
   const shotSlugs = shotSlugsProp ?? contextShotSlugs;
@@ -50,6 +55,8 @@ export function FilmCard({
                 alt={displayName}
                 width={200}
                 height={112}
+                sizes={CARD_IMAGE_SIZES}
+                priority={priority}
                 className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
               />
             ) : (

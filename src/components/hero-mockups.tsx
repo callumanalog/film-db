@@ -164,11 +164,13 @@ function FilmImage({
   size = 144,
   width: widthProp,
   height: heightProp,
+  priority = false,
 }: {
   stock: HeroMockupProps["stock"];
   size?: number;
   width?: number;
   height?: number;
+  priority?: boolean;
 }) {
   const width = widthProp ?? size;
   const height = heightProp ?? size;
@@ -179,6 +181,7 @@ function FilmImage({
         alt={stock.name}
         width={width}
         height={height}
+        priority={priority}
         className="h-full w-full object-contain"
       />
     );
@@ -439,6 +442,7 @@ export function MobileFilmHero({ stock }: HeroMockupProps) {
         <FilmImage
           stock={stock}
           size={192}
+          priority
           {...(isWide ? { width: 192, height: 160 } : {})}
         />
       </div>
@@ -575,6 +579,7 @@ export function StickyLeftPane({
               <FilmImage
                 stock={stock}
                 size={192}
+                priority
                 {...(slug === "cinestill-800t" ? { width: 192, height: 160 } : {})}
               />
             </div>

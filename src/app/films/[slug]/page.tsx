@@ -54,10 +54,12 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
 
   if (!stock) notFound();
 
-  const [stats, relatedStocks, moreFromBrandStocks] = await Promise.all([
+  const [stats, relatedStocks, moreFromBrandStocks, flickrImages, loggedRolls] = await Promise.all([
     getFilmStockStats(slug),
     getRelatedStocks(stock, 6),
     getMoreFromBrand(stock, 6),
+    getFlickrSampleImagesForStock(slug).catch(() => []),
+    getLoggedRollsForFilm(slug),
   ]);
   const typeColor = FILM_TYPE_COLORS[stock.type];
 
@@ -182,9 +184,6 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
 
   const discoverySlugs = allDiscoveryStocks.map((s) => s.slug);
   const discoveryStatsBySlug = discoverySlugs.length > 0 ? await getFilmStockStatsForSlugs(discoverySlugs) : {};
-
-  const flickrImages = await getFlickrSampleImagesForStock(slug).catch(() => []);
-  const loggedRolls = await getLoggedRollsForFilm(slug);
 
   const { web: reviewsFromWeb, video: videoReviews } = getReviewsForSlug(slug);
 

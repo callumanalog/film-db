@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type {
   FilmStock,
   FilmStockWithRelations,
@@ -298,7 +299,8 @@ export async function getFilmFilterOptions(): Promise<FilmFilterOptions> {
   return { types, isos, formats, grains, contrasts, latitudes, saturations, bestFor };
 }
 
-export async function getFilmStockBySlug(
+/** Cached per-request so generateMetadata and page share one fetch. */
+export const getFilmStockBySlug = cache(async function getFilmStockBySlug(
   slug: string
 ): Promise<FilmStockWithRelations | null> {
   const fromSupabase = await getFilmStockBySlugFromSupabase(slug);
@@ -327,7 +329,7 @@ export async function getFilmStockBySlug(
     purchase_links,
     sample_images: [],
   };
-}
+});
 
 export async function getFeaturedFilmStocks(): Promise<
   (FilmStock & { brand: FilmBrand })[]

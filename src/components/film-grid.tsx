@@ -35,8 +35,8 @@ export function FilmGrid({
           : "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-5"
       }
     >
-      {stocks.map((stock) => (
-        <FilmCard key={stock.id} stock={stock} shotSlugs={shotSlugs} />
+      {stocks.map((stock, index) => (
+        <FilmCard key={stock.id} stock={stock} shotSlugs={shotSlugs} priority={index < 6} />
       ))}
     </div>
   );
