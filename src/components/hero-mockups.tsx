@@ -61,6 +61,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useUserActions } from "@/context/user-actions-context";
+import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
 import { saveLoggedRoll } from "@/app/actions/user-actions";
 import { useAuth } from "@/context/auth-context";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
@@ -424,6 +425,35 @@ function UserStarRating({
   );
 }
 
+/* ─── Mobile full-bleed hero (film detail only) ─── */
+
+export function MobileFilmHero({ stock }: HeroMockupProps) {
+  const { slug } = stock;
+  const isWide = slug === "cinestill-800t";
+  return (
+    <div
+      className="relative left-1/2 flex w-screen -translate-x-1/2 items-center justify-center border-b border-slate-100 bg-white shadow-[0_1px_0_0_rgba(0,0,0,0.03)] md:hidden"
+      style={{ height: isWide ? 160 : 192 }}
+    >
+      <div className={isWide ? "h-40 w-48" : "h-48 w-40"}>
+        <FilmImage
+          stock={stock}
+          size={192}
+          {...(isWide ? { width: 192, height: 160 } : {})}
+        />
+      </div>
+      {stock.discontinued && (
+        <span
+          className="absolute left-3 top-3 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+          aria-hidden
+        >
+          Discontinued
+        </span>
+      )}
+    </div>
+  );
+}
+
 /* ─── Sticky Left Pane ─── */
 
 export function StickyLeftPane({
@@ -504,15 +534,34 @@ export function StickyLeftPane({
     return () => clearTimeout(t);
   };
 
+  const logRollTrigger = useLogRollTrigger();
+  useEffect(() => {
+    if (!logRollTrigger) return;
+    const openLogRoll = () => {
+      if (!user) {
+        const returnPath = pathname ?? "/";
+        const nextUrl = returnPath + (returnPath.includes("?") ? "&" : "?") + "action=log-roll";
+        router.push(`/auth/sign-in?next=${encodeURIComponent(nextUrl)}`);
+        return;
+      }
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        setLogRollDrawerOpen(true);
+      } else {
+        setTrackModalOpen(true);
+      }
+    };
+    logRollTrigger.registerOpenLogRoll(openLogRoll);
+    return () => logRollTrigger.unregisterOpenLogRoll();
+  }, [logRollTrigger, user, pathname, router]);
+
   return (
     <div className="w-full min-w-0 flex flex-col md:w-56 md:min-w-[14rem] md:shrink-0 md:self-start md:overflow-visible">
-      {/* Mobile-first: image card + rating + Add Shooting Notes / Post a shot. FAB for Log a Roll. */}
+      {/* Mobile: stats card only (image is full-bleed above via MobileFilmHero). Desktop: image + stats card. */}
       <div className="grid grid-cols-1 gap-4">
       <div className="flex min-w-0 flex-col gap-3">
-      {/* Image card + Rate — single card, same width */}
       <div className="relative mx-auto w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-white md:mx-0 md:max-w-none md:w-full">
-        {/* Image — Save (Bookmark) bottom-right */}
-        <div className="relative">
+        {/* Image — desktop only; on mobile image is full-bleed in MobileFilmHero */}
+        <div className="relative hidden md:block">
           {stock.discontinued && (
             <span
               className="absolute left-2.5 top-2.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
@@ -547,8 +596,8 @@ export function StickyLeftPane({
             />
           </button>
         </div>
-        {/* Stats — connected section (Shot It | Avg. rating | Shots) */}
-        <div className="grid grid-cols-3 gap-2 border-t border-border/50 bg-card px-3 py-3">
+        {/* Stats — connected section (Shot It | Avg. rating | Shots); on mobile no border-t (no image above) */}
+        <div className="grid grid-cols-3 gap-2 border-t-0 bg-card px-3 py-3 md:border-t md:border-border/50">
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -577,28 +626,6 @@ export function StickyLeftPane({
 
       </div>
       </div>
-
-      {/* FAB — Log a Roll */}
-      <button
-        type="button"
-        onClick={() => {
-          if (!user) {
-            const returnPath = pathname ?? "/";
-            const nextUrl = returnPath + (returnPath.includes("?") ? "&" : "?") + "action=log-roll";
-            router.push(`/auth/sign-in?next=${encodeURIComponent(nextUrl)}`);
-            return;
-          }
-          if (typeof window !== "undefined" && window.innerWidth < 768) {
-            setLogRollDrawerOpen(true);
-          } else {
-            setTrackModalOpen(true);
-          }
-        }}
-        aria-label="Log a roll"
-        className="fixed bottom-8 right-8 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-2xl transition-transform hover:scale-105 active:scale-95"
-      >
-        <Plus className="h-7 w-7" strokeWidth={2.5} aria-hidden />
-      </button>
 
       <Sheet open={reviewDrawerOpen} onOpenChange={setReviewDrawerOpen}>
         <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">

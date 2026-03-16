@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { buttonVariants } from "@/components/ui/button";
 
 const navLinks = [
@@ -21,15 +22,35 @@ const PRIORITY_NAV_COUNT = 2;
 const priorityNavLinks = navLinks.slice(0, PRIORITY_NAV_COUNT);
 const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 
+const MAIN_LANDING_PATHS = ["/", "/films", "/vault", "/profile"];
+
+/** Height of the integrated film hero header when scroll is 0 (mobile). */
+const EXPANDED_HERO_HEIGHT = 50;
+/** Height of the sticky nav bar when scrolled past the hero. */
+const COLLAPSED_NAV_HEIGHT = 52;
+
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, loading, signOut } = useAuth();
+  const { mobileHeaderTitle, mobileHeroMeta } = useMobileHeaderTitle() ?? {};
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
+  const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
+  const isFilmHero = showBack && mobileHeaderTitle && mobileHeroMeta != null;
+  const [scrollY, setScrollY] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isFilmHero) return;
+    const onScroll = () => setScrollY(typeof window !== "undefined" ? window.scrollY : 0);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isFilmHero]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -53,21 +74,111 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [moreMenuOpen]);
 
+  const heroHeight = Math.max(COLLAPSED_NAV_HEIGHT, EXPANDED_HERO_HEIGHT - scrollY);
+  const heroPast = scrollY >= EXPANDED_HERO_HEIGHT;
+  const borderOpacity = heroPast ? 1 : Math.min(1, scrollY / Math.max(1, EXPANDED_HERO_HEIGHT));
+  const h1Scale = Math.max(0.6, 1 - (scrollY / Math.max(1, EXPANDED_HERO_HEIGHT)) * 0.4);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl font-sans">
-      <div className="mx-auto grid h-16 max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8">
-        {/* Left column: on mobile = empty (bottom nav). md–lg = hamburger. lg+ = nav + Add. */}
-        <div className="flex min-w-0 items-center justify-start overflow-hidden gap-1">
+    <header
+      className={cn(
+        "sticky top-0 z-50 font-sans transition-[background-color,border-color] duration-200",
+        isFilmHero
+          ? "border-0 bg-white md:border-b md:border-border/50 md:bg-background/80 md:backdrop-blur-xl"
+          : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
+      )}
+      style={
+        isFilmHero
+          ? {
+              paddingTop: heroPast
+                ? "env(safe-area-inset-top, 0px)"
+                : "calc(env(safe-area-inset-top, 0px) + 20px)",
+              paddingBottom: undefined,
+              borderBottomWidth: 1,
+              borderBottomStyle: "solid",
+              borderBottomColor: `rgba(241, 245, 249, ${borderOpacity})`,
+            }
+          : undefined
+      }
+    >
+      {/* Film hero integrated header: mobile only — flex row, icons aligned to first line of title */}
+      {isFilmHero && (
+        <div
+          className={cn(
+            "flex w-full justify-between px-4 md:hidden",
+            heroPast ? "items-center" : "items-start"
+          )}
+          style={{ minHeight: heroPast ? COLLAPSED_NAV_HEIGHT : heroHeight }}
+        >
           <button
-            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground hidden md:flex lg:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-            aria-expanded={mobileOpen}
+            type="button"
+            onClick={() => router.back()}
+            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Go back"
+            style={{ marginTop: heroPast ? 0 : "-4px" }}
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <ChevronLeft className="h-5 w-5" />
           </button>
-          {/* Desktop nav: lg–xl = 2 priority links + More; xl+ = all links */}
-          <nav className="hidden items-center gap-1 overflow-hidden text-sm font-medium lg:flex">
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
+            <span
+              className={cn(
+                "mx-auto max-w-[70%] tracking-tight transition-[transform,font-size] duration-200",
+                heroPast ? "font-sans text-lg font-bold" : "font-advercase text-3xl font-bold"
+              )}
+              style={
+                heroPast
+                  ? undefined
+                  : { transform: `scale(${h1Scale})`, transformOrigin: "center center" }
+              }
+            >
+              {mobileHeaderTitle}
+            </span>
+            {scrollY < EXPANDED_HERO_HEIGHT && (
+              <p className="mt-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                {mobileHeroMeta}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Share"
+            style={{ marginTop: heroPast ? 0 : "-4px" }}
+          >
+            <Share2 className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
+      {/* Standard nav: desktop; or mobile when not film hero */}
+      <div
+        className={cn(
+          "mx-auto grid max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
+          isFilmHero ? "hidden md:grid h-16" : "grid h-16"
+        )}
+      >
+        <div className="flex min-w-0 items-center justify-start overflow-hidden gap-1">
+          {showBack ? (
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Go back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          ) : (
+            <>
+              <button
+                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground hidden md:flex lg:hidden"
+                onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label="Toggle menu"
+                aria-expanded={mobileOpen}
+              >
+                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+              {/* Desktop nav: lg–xl = 2 priority links + More; xl+ = all links */}
+              <nav className="hidden items-center gap-1 overflow-hidden text-sm font-medium lg:flex">
             {/* Priority links: visible from lg to xl */}
             {priorityNavLinks.map((link) => (
               <Link
@@ -173,21 +284,40 @@ export function Header() {
               )}
             </div>
           )}
+            </>
+          )}
         </div>
 
-        {/* Center column: logo — centred on mobile and desktop */}
+        {/* Center column: logo — on mobile show stock name on film detail pages; on desktop always FilmDB */}
         <div className="flex items-center justify-center">
+          {/* Desktop: always FilmDB */}
           <Link
             href="/"
-            className="whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80"
+            className="hidden whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80 md:inline-block"
           >
             FilmDB
           </Link>
+          {/* Mobile: stock name when on film detail (else FilmDB); film hero mode uses integrated header instead */}
+          <Link
+            href={mobileHeaderTitle && pathname ? pathname : "/"}
+            className="whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80 md:hidden font-sans"
+          >
+            {mobileHeaderTitle ?? "FilmDB"}
+          </Link>
         </div>
 
-        {/* Right column: on mobile (<768px) show profile icon → sign-in; on desktop show Log in + Create account or avatar */}
+        {/* Right column: Share when back; else profile / sign-in */}
         <div className="flex items-center justify-end gap-2">
-          {!loading && !user && !isAuthPage && (
+          {showBack && (
+            <button
+              type="button"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Share"
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+          )}
+          {!showBack && !loading && !user && !isAuthPage && (
             <>
               <div className="hidden items-center gap-2 md:flex">
                 <Link
@@ -215,7 +345,7 @@ export function Header() {
               </Link>
             </>
           )}
-          {!loading && user && (
+          {!showBack && !loading && user && (
             <Link
               href="/profile"
               className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/50 bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

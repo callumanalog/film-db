@@ -9,13 +9,14 @@ import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONT
 import type { LatitudeFilter, DevelopmentProcess } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
 import { CommunityReviews, CommunityGallery } from "@/components/community-section";
-import { StickyLeftPane, PageTitleHeader } from "@/components/hero-mockups";
+import { StickyLeftPane, PageTitleHeader, MobileFilmHero } from "@/components/hero-mockups";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import { OverviewTabContent } from "@/components/overview-tab-content";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
 import { getReviewsForSlug } from "@/lib/seed-film-reviews";
 import { getLoggedRollsForFilm } from "@/app/actions/user-actions";
 import { LoggedRollMenu } from "@/components/logged-roll-menu";
+import { SetFilmMobileHeader } from "@/components/set-film-mobile-header";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -277,8 +278,15 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
   // Film stock page tabs: Overview, Rolls, Shots, Notes
   return (
     <div className="work-sans-content">
+      <SetFilmMobileHeader
+        name={stock.name}
+        typeLabel={FILM_TYPE_LABELS[stock.type]}
+        iso={stock.iso}
+        format={stock.format ?? []}
+      />
       <ScrollToTopOnRouteChange />
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <MobileFilmHero stock={stockProps.stock} />
+      <div className="mx-auto max-w-6xl px-4 pt-0 pb-8 sm:px-6 md:py-8 lg:px-8">
         <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
           <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
           <ChevronRight className="h-3.5 w-3.5" />
@@ -287,12 +295,12 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
           <span className="font-medium text-foreground">{stock.name}</span>
         </nav>
 
-        {/* Mobile: Title → Stats → Sidebar (2-col) → Tabs. md+: Sidebar left, Title+Tabs right. */}
+        {/* Mobile: full-bleed image above; no H1; stats card + tabs. md+: Sidebar left, Title+Tabs right. */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
           <div className="order-2 min-w-0 md:order-1 md:row-span-2">
             <StickyLeftPane {...stockProps} />
           </div>
-          <div className="order-1 min-w-0 pt-0 md:order-2 md:pt-8">
+          <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
             <PageTitleHeader {...stockProps} />
           </div>
           <div className="order-3 min-w-0 -mt-2 md:mt-0">

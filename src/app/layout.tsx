@@ -10,6 +10,8 @@ import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/toast";
 import { UrlToastHandler } from "@/components/url-toast-handler";
 import { ViewportSize } from "@/components/viewport-size";
+import { LogRollTriggerProvider } from "@/context/log-roll-trigger-context";
+import { MobileHeaderTitleProvider } from "@/context/mobile-header-title-context";
 import "./globals.css";
 
 const advercase = localFont({
@@ -57,6 +59,8 @@ export default function RootLayout({
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>
           <AuthProvider>
           <UserActionsProvider>
+            <LogRollTriggerProvider>
+            <MobileHeaderTitleProvider>
             <ToastProvider>
               <Suspense fallback={null}>
                 <UrlToastHandler />
@@ -67,6 +71,8 @@ export default function RootLayout({
               <BottomNav />
               <ViewportSize />
             </ToastProvider>
+            </MobileHeaderTitleProvider>
+            </LogRollTriggerProvider>
           </UserActionsProvider>
           </AuthProvider>
         </div>
