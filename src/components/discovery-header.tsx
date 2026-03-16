@@ -304,14 +304,14 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
   return (
     <>
       <header className="text-center">
-        <h1 className="font-sans text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="hidden font-sans text-3xl font-bold tracking-tight text-foreground md:block sm:text-4xl">
           Discover your next film
         </h1>
-        <p className="mx-auto mt-2 max-w-xl font-sans text-sm text-muted-foreground sm:text-base">
+        <p className="mx-auto mt-2 hidden max-w-xl font-sans text-sm text-muted-foreground md:block sm:text-base">
           From sun-drenched portraits to gritty midnight streets—choose a mood below to find the perfect chemistry for your vision.
         </p>
 
-        {/* Discovery Ribbon: hidden below 768px; on mobile use Vibes button + bottom drawer. Pill scale: h-[44px] mobile, h-[36px] desktop. */}
+        {/* Discovery Ribbon: desktop only — centered flex wrap. */}
         <div className="mt-6 hidden px-4 sm:px-6 md:block">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-2.5">
             {DISCOVERY_PILLS.map((pill) => {
@@ -369,81 +369,71 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
           </div>
         </div>
 
-        {/* Utility Row: Search + Filters + Vibes + Sort. When mobile search expanded: row 1 = full-width search bar, row 2 = Filters/Vibes/chips left, Sort right. */}
-        <div className="mt-12 flex flex-row flex-wrap items-center justify-between gap-4">
-          {showExpandedSearch && isMobile ? (
-            /* Mobile search expanded: search bar full width, then Filters/Vibes and Sort on one row (Sort right-aligned) */
-            <div className="flex w-full flex-col gap-3">
-              <form
-                role="search"
-                onSubmit={handleSearchSubmit}
-                className="flex h-[44px] w-full min-w-0 items-center gap-2 rounded-card border border-border/60 bg-secondary/50 pl-4 pr-2"
+        {/* Mobile: "Start browsing" + discovery pills in 2-column grid. */}
+        <div className="mt-3 md:hidden">
+          <h3 className="mb-3 text-left font-sans text-xl font-bold tracking-tight text-foreground">
+            Start browsing
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+          {DISCOVERY_PILLS.map((pill) => {
+            const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
+            const active = isPillActive(pill);
+            const useGradientBorder = active;
+            const borderGradient = active ? theme.gradient : theme.gradient60;
+            const fillBg = active ? theme.activeBgTint : "white";
+            return (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => setDiscoveryPill(pill, active)}
+                className={`group flex min-h-[44px] w-full items-center justify-center gap-2 rounded-card font-sans text-xs transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out ${
+                  useGradientBorder ? "border border-transparent" : "border border-border/50 bg-white"
+                }`}
+                style={
+                  useGradientBorder
+                    ? {
+                        borderWidth: 1.5,
+                        backgroundImage: `linear-gradient(${fillBg}, ${fillBg}), ${borderGradient}`,
+                        backgroundOrigin: "padding-box, border-box",
+                        backgroundClip: "padding-box, border-box",
+                        backgroundRepeat: "no-repeat",
+                        backgroundSize: "100% 100%, 100% 100%",
+                      }
+                    : undefined
+                }
               >
-                <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <input
-                  ref={searchInputRef}
-                  type="search"
-                  inputMode="search"
-                  enterKeyHint="search"
-                  autoComplete="off"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Search..."
-                  className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchInput("");
-                    setSearchExpanded(false);
-                    router.push("/films");
+                <span
+                  className="flex size-4 shrink-0 rounded-full ring-1 ring-white/50"
+                  style={{
+                    background: theme.gradient,
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
                   }}
-                  aria-label="Clear search and close"
-                  className="rounded-card p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  aria-hidden
+                />
+                <span
+                  className={active ? `font-semibold ${theme.activeTextClass ?? "text-white"}` : "font-medium"}
                 >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </form>
-              <div className="flex w-full items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDrawerOpen(true)}
-                    className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
-                    aria-label="Open filters"
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    Filters
-                  </button>
-                  <div className="hidden flex-wrap items-center gap-1.5 md:flex">
-                    <ActiveFilterChips brands={brands} />
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center">
-                  <FilmsSortBar currentSort={currentSort} />
-                </div>
-              </div>
-            </div>
+                  {pill.label}
+                </span>
+              </button>
+            );
+          })}
+          </div>
+        </div>
+
+        {/* Utility Row: Mobile = nothing (search in header). Desktop = search icon/form + Filters + Sort. */}
+        <div className="mt-0 flex flex-row flex-wrap items-center justify-between gap-4 md:mt-12">
+          {isMobile ? (
+            /* Mobile: search is in site header; no Filters/Sort row */
+            null
           ) : (
-            <>
+            <div className="hidden md:flex min-w-0 flex-1 flex-wrap items-center justify-between gap-4">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                {/* Mobile: when no search term, icon opens search drawer */}
-                {!showExpandedSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setMobileSearchOpen(true)}
-                    aria-label="Open search"
-                    className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:hidden"
-                  >
-                    <Search className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                {/* Inline search form: on mobile only when URL has search term; on desktop when searchExpanded */}
-                {showExpandedSearch && (
+                {showExpandedSearch ? (
                   <form
                     role="search"
                     onSubmit={handleSearchSubmit}
-                    className="flex h-[44px] min-w-0 basis-full items-center gap-2 rounded-card border border-border/60 bg-secondary/50 pl-4 pr-2 md:h-[36px] md:basis-auto md:max-w-[var(--width-search-field)]"
+                    className="flex h-[36px] min-w-0 basis-full items-center gap-2 rounded-card border border-border/60 bg-secondary/50 pl-4 pr-2 md:basis-auto md:max-w-[var(--width-search-field)]"
                   >
                     <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     <input
@@ -455,7 +445,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
                       placeholder="Search..."
-                      className="min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 md:text-xs [&::-webkit-search-cancel-button]:appearance-none"
+                      className="min-w-0 flex-1 border-0 bg-transparent text-xs font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
                     />
                     <button
                       type="button"
@@ -470,32 +460,21 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </form>
-                )}
-                {/* Desktop: when search not expanded, show icon to expand */}
-                {!showExpandedSearch && (
+                ) : (
                   <button
                     type="button"
                     onClick={() => setSearchExpanded(true)}
                     aria-label="Open search"
-                    className="hidden h-[36px] w-[36px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground md:inline-flex"
+                    className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-card border border-border/60 bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-secondary hover:text-foreground"
                   >
                     <Search className="h-3.5 w-3.5" />
                   </button>
                 )}
                 <button
                   type="button"
-                  onClick={() => setDrawerOpen(true)}
-                  className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-card border border-border/60 bg-secondary/50 px-4 font-sans text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 md:hidden"
-                  aria-label="Open filters"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  Filters
-                </button>
-                <button
-                  type="button"
                   onClick={toggleFiltersPane}
                   aria-label={filtersPaneOpen ? "Close filters" : "Open filters"}
-                  className={`hidden h-[36px] shrink-0 items-center justify-center gap-2 rounded-card border px-4 font-sans text-xs font-medium transition-colors md:inline-flex ${
+                  className={`h-[36px] shrink-0 items-center justify-center gap-2 rounded-card border px-4 font-sans text-xs font-medium transition-colors inline-flex ${
                     filtersPaneOpen
                       ? "border-primary/60 bg-primary/10 text-foreground hover:bg-primary/15"
                       : "border-border/60 bg-secondary/50 text-foreground hover:border-primary/40 hover:bg-primary/5"
@@ -504,14 +483,14 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                   <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   Filters
                 </button>
-                <div className="hidden flex-wrap items-center gap-1.5 md:flex">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <ActiveFilterChips brands={brands} />
                 </div>
               </div>
               <div className="flex shrink-0 items-center">
                 <FilmsSortBar currentSort={currentSort} />
               </div>
-            </>
+            </div>
           )}
         </div>
 

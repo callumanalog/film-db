@@ -3,12 +3,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { buttonVariants } from "@/components/ui/button";
+import { FilmsHeaderSearch } from "@/components/films-header-search";
 
 const navLinks = [
   { href: "/community", label: "Community" },
@@ -78,14 +80,17 @@ export function Header() {
   const heroPast = scrollY >= EXPANDED_HERO_HEIGHT;
   const borderOpacity = heroPast ? 1 : Math.min(1, scrollY / Math.max(1, EXPANDED_HERO_HEIGHT));
   const h1Scale = Math.max(0.6, 1 - (scrollY / Math.max(1, EXPANDED_HERO_HEIGHT)) * 0.4);
+  const isFilmsPage = pathname === "/films";
 
   return (
     <header
       className={cn(
         "sticky top-0 z-50 font-sans transition-[background-color,border-color] duration-200",
-        isFilmHero
-          ? "border-0 bg-white md:border-b md:border-border/50 md:bg-background/80 md:backdrop-blur-xl"
-          : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
+        isFilmsPage
+          ? "border-b border-border/50 bg-background"
+          : isFilmHero
+            ? "border-0 bg-white md:border-b md:border-border/50 md:bg-background/80 md:backdrop-blur-xl"
+            : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
       )}
       style={
         isFilmHero
@@ -150,7 +155,19 @@ export function Header() {
         </div>
       )}
 
-      {/* Standard nav: desktop; or mobile when not film hero */}
+      {/* Standard nav: desktop; or mobile when not film hero. Films page = single column full-width search. */}
+      {isFilmsPage ? (
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8",
+            isFilmHero ? "hidden md:flex h-16" : "h-16"
+          )}
+        >
+          <Suspense fallback={<div className="h-12 w-full rounded-card border border-slate-200 bg-white" />}>
+            <FilmsHeaderSearch />
+          </Suspense>
+        </div>
+      ) : (
       <div
         className={cn(
           "mx-auto grid max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
@@ -288,8 +305,8 @@ export function Header() {
           )}
         </div>
 
-        {/* Center column: logo — on mobile show stock name on film detail pages; on desktop always FilmDB */}
-        <div className="flex items-center justify-center">
+        {/* Center column: logo (FilmDB / mobile stock name) */}
+        <div className="flex min-w-0 flex-1 items-center justify-center">
           {/* Desktop: always FilmDB */}
           <Link
             href="/"
@@ -372,6 +389,7 @@ export function Header() {
           )}
         </div>
       </div>
+      )}
 
       {/* Mobile drawer: md–lg only (hidden on small mobile where bottom nav is shown) */}
       {mobileOpen && (

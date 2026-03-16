@@ -57,23 +57,19 @@ export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
             {/* Full-bleed: break out of page padding so scroll spans full width */}
             <div className="-mx-4">
               <div
-                className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto overflow-y-hidden gap-4 pb-1 pl-4 pr-4"
+                className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-4 pb-1 pl-4 pr-4"
               >
-                {list.map((stock, index) => {
-                  const isFirst = index === 0;
-                  const isLast = index === list.length - 1;
-                  return (
-                    <div
-                      key={stock.id}
-                      className={`min-w-0 w-[calc(45%-8px)] shrink-0 snap-start ${isFirst ? "scroll-ml-4" : ""} ${isLast ? "scroll-mr-4 pr-4" : ""}`}
-                    >
-                      <FilmCard
-                        stock={stock}
-                        priority={type === "color_negative" && index < 4}
-                      />
-                    </div>
-                  );
-                })}
+                {list.map((stock, index) => (
+                  <div
+                    key={stock.id}
+                    className="min-w-0 w-[calc(45%-8px)] shrink-0"
+                  >
+                    <FilmCard
+                      stock={stock}
+                      priority={type === "color_negative" && index < 4}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </section>
