@@ -198,7 +198,7 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                     href={`/brands/${b.slug}`}
                     thumb={<div className="h-full w-full bg-slate-100" />}
                     title={b.name}
-                    subMeta={b.country ?? "—"}
+                    subMeta={b.subMeta}
                   />
                 ))}
               </div>

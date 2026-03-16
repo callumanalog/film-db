@@ -18,7 +18,7 @@ export interface SearchStocksResult {
 export interface SearchBrandsResult {
   slug: string;
   name: string;
-  country?: string | null;
+  subMeta: string;
 }
 
 export interface SearchShotsResult {
@@ -86,7 +86,7 @@ export async function searchFilmsByTab(
         brands: filtered.map((b) => ({
           slug: b.slug,
           name: b.name,
-          country: b.country ?? null,
+          subMeta: "Brand",
         })),
       };
     }
