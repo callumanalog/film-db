@@ -4,14 +4,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Search } from "lucide-react";
+import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { buttonVariants } from "@/components/ui/button";
 import { FilmsHeaderSearch } from "@/components/films-header-search";
-import { FilmsViewTabs } from "@/components/films-view-tabs";
 import { GlobalSearchOverlay } from "@/components/global-search-overlay";
 
 const navLinks = [
@@ -44,7 +43,6 @@ export function Header() {
   const searchParams = useSearchParams();
   const filmsViewTab = searchParams.get("tab") === "index" ? "index" : "for-you";
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
-  const showFilmsSearchIcon = isFilmsPage;
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -317,24 +315,8 @@ export function Header() {
           </Link>
         </div>
 
-        {/* Right column: Share when back; FOR YOU mobile = search icon; else profile / sign-in */}
+        {/* Right column: Share when back; else profile / sign-in */}
         <div className="flex items-center justify-end gap-2">
-          {showFilmsSearchIcon && (
-            <button
-              type="button"
-              onClick={() => setSearchOverlayOpen(true)}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
-              aria-label="Open search"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-          )}
-          <div
-            className={cn(
-              "flex items-center justify-end gap-2",
-              showFilmsSearchIcon && "hidden md:flex"
-            )}
-          >
           {showBack && (
             <button
               type="button"
@@ -390,16 +372,27 @@ export function Header() {
               )}
             </Link>
           )}
-          </div>
         </div>
       </div>
 
-      {/* Films mobile: Tabs only (FOR YOU | INDEX). Search via 🔍 in nav on FOR YOU; no inline search bar on INDEX. */}
+      {/* Films page: search bar + All Filters gear below main nav (mobile) */}
       {isFilmsPage && (
-        <div className="mx-auto w-full max-w-7xl md:hidden">
-          <Suspense fallback={null}>
-            <FilmsViewTabs />
-          </Suspense>
+        <div className="mx-auto w-full max-w-7xl px-4 pb-3 pt-1 sm:px-6 lg:px-8 md:hidden">
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <Suspense fallback={<div className="h-[52px] w-full rounded-card border border-slate-200 bg-slate-50" />}>
+                <FilmsHeaderSearch />
+              </Suspense>
+            </div>
+            <button
+              type="button"
+              onClick={() => typeof window !== "undefined" && window.dispatchEvent(new CustomEvent("openFilmsAllFilters"))}
+              className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-card border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-foreground"
+              aria-label="All filters"
+            >
+              <Settings2 className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       )}
 

@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Plus, Refrigerator, UserRound } from "lucide-react";
+import { Home, GalleryHorizontalEnd, Plus, Refrigerator, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
 
 const LEFT_ITEMS = [
   { href: "/films", label: "Home", icon: Home },
-  { href: "/", label: "Library", icon: Search },
+  { href: "/", label: "Library", icon: GalleryHorizontalEnd },
 ] as const;
 
 const RIGHT_ITEMS = [

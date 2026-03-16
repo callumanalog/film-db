@@ -116,7 +116,7 @@ export function FilmCarousels({ stocks, statsBySlug, viewMode = "all" }: FilmCar
           <div className="-mx-4 overflow-hidden">
             <div className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4">
               {communityFavourites.map((stock, index) => (
-                <div key={stock.id} className="min-w-0 w-[calc(36%-8px)] shrink-0">
+                <div key={stock.id} className="min-w-0 w-[calc(43.2%-8px)] shrink-0">
                   <FilmCard stock={stock} priority={index < 4} />
                 </div>
               ))}

@@ -132,7 +132,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   );
 
   return (
-    <FilmsPageMobileSearchWrapper>
+    <FilmsPageMobileSearchWrapper brands={brands} filterOptions={filterOptions}>
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         {/* Hide DiscoveryHeader on mobile when Index tab is active (FOR YOU | INDEX tabs). */}

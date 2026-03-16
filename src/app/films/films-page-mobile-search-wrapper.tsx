@@ -4,20 +4,31 @@ import { useSearchParams } from "next/navigation";
 import { useFilmsSearch } from "@/context/films-search-context";
 import { MobileSearchEmptyState } from "@/components/mobile-search-empty-state";
 import { MobileSearchResults } from "@/components/mobile-search-results";
+import { FilmsAllFiltersSheet } from "@/components/films-all-filters-sheet";
+import type { FilmBrand } from "@/lib/types";
+import type { FilmFilterOptions } from "@/lib/supabase/queries";
 
-export function FilmsPageMobileSearchWrapper({ children }: { children: React.ReactNode }) {
+interface FilmsPageMobileSearchWrapperProps {
+  children: React.ReactNode;
+  brands?: FilmBrand[];
+  filterOptions?: FilmFilterOptions;
+}
+
+export function FilmsPageMobileSearchWrapper({ children, brands = [], filterOptions }: FilmsPageMobileSearchWrapperProps) {
   const searchParams = useSearchParams();
   const filmsSearch = useFilmsSearch();
   const searchQuery = searchParams.get("search")?.trim() ?? "";
   const showSearchPanel = !!(filmsSearch?.isSearchFocused || searchQuery);
+  const hasFilterData = brands.length > 0 && filterOptions != null;
 
   return (
     <div className="min-h-screen bg-background">
+      {hasFilterData && <FilmsAllFiltersSheet brands={brands} filterOptions={filterOptions} />}
       {/* Desktop: always show main content */}
       <div className="hidden md:block">
         {children}
       </div>
-      {/* Mobile: show main content only when not in search panel */}
+      {/* Mobile: main content or search panel */}
       <div className="md:hidden">
         {!showSearchPanel && children}
         {showSearchPanel && (
