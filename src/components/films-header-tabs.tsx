@@ -12,14 +12,14 @@ const FILMS_TABS = [
 ] as const;
 
 function buildHref(tabId: string, searchParams: URLSearchParams): string {
-  if (tabId === "brands") return "/brands";
-  if (tabId === "users") return "/community";
-  const params = new URLSearchParams(searchParams.toString());
-  if (tabId === "stocks") {
-    params.delete("tab");
-  } else {
-    params.set("tab", tabId);
+  const hasSearch = searchParams.has("search");
+  if (!hasSearch) {
+    if (tabId === "brands") return "/brands";
+    if (tabId === "users") return "/community";
   }
+  const params = new URLSearchParams(searchParams.toString());
+  if (tabId === "stocks") params.delete("tab");
+  else params.set("tab", tabId);
   const q = params.toString();
   return q ? `/films?${q}` : "/films";
 }
@@ -35,7 +35,7 @@ export function FilmsHeaderTabs() {
       : pathname === "/community"
         ? "users"
         : pathname === "/films"
-          ? (tabParam === "shots" ? "shots" : tabParam === "notes" ? "notes" : "stocks")
+          ? (tabParam === "shots" ? "shots" : tabParam === "notes" ? "notes" : tabParam === "brands" ? "brands" : tabParam === "users" ? "users" : "stocks")
           : "stocks";
 
   return (

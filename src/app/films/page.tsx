@@ -3,6 +3,7 @@ import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/q
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getVaultRolls } from "@/app/actions/user-actions";
 import { FilmsListingClient } from "@/app/films/films-listing-client";
+import { FilmsPageMobileSearchWrapper } from "@/app/films/films-page-mobile-search-wrapper";
 import { DiscoveryHeader } from "@/components/discovery-header";
 import { FiltersLeftPane } from "@/components/filters-left-pane";
 import { FilmsSortBar } from "@/components/films-sort-bar";
@@ -112,6 +113,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   ].filter(Boolean).length;
 
   return (
+    <FilmsPageMobileSearchWrapper>
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-6 lg:px-8">
         <div className="mb-6">
@@ -145,5 +147,6 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
         )}
       </div>
     </div>
+    </FilmsPageMobileSearchWrapper>
   );
 }

@@ -123,7 +123,7 @@ export function FilmCarousels({ stocks, statsBySlug, loggedSlugs = [] }: FilmCar
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-12">
       {hasCommunityFavourites && (
         <section
           key="community-favourites"
@@ -232,7 +232,7 @@ export function FilmCarousels({ stocks, statsBySlug, loggedSlugs = [] }: FilmCar
           >
             All stocks
           </h3>
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6">
             {allStocksAlphabetical.map((stock, index) => (
               <FilmCard key={stock.id} stock={stock} priority={index < 4} />
             ))}
