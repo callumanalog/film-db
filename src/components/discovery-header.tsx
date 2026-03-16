@@ -77,6 +77,38 @@ const PILL_THEMES: Record<
   },
 };
 
+/** Discovery vibe pills section (Essential Everyday, Golden Hour, etc.) — rendered below Budget-friendly on mobile. */
+export function DiscoveryVibePills() {
+  return (
+    <div className="mt-6 md:hidden">
+      <div className="grid grid-cols-2 gap-2.5">
+        {DISCOVERY_PILLS.map((pill) => {
+          const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
+          return (
+            <Link
+              key={pill.id}
+              href={`/films/vibe/${pill.id}`}
+              className="group flex h-11 w-full items-center justify-start rounded-card border border-transparent font-sans text-xs transition-[background-image,background-size,background-position] duration-200 ease-in-out"
+              style={{
+                borderWidth: 1.5,
+                backgroundImage: `linear-gradient(${theme.activeBgTint}, ${theme.activeBgTint}), ${theme.gradient}`,
+                backgroundOrigin: "padding-box, border-box",
+                backgroundClip: "padding-box, border-box",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "100% 100%, 100% 100%",
+              }}
+            >
+              <span className={`m-0 font-sans text-sm font-semibold pl-4 pr-4 ${theme.activeTextClass ?? "text-white"}`}>
+                {pill.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** Pastel background colors for mobile Start browsing tiles (archival aesthetic). */
 const MOOD_TILE_BG: Record<string, string> = {
   essential_everyday: "bg-[#E0E7FF]",   // Soft Blue
@@ -119,7 +151,7 @@ interface DiscoveryHeaderProps {
   brands: FilmBrand[];
   filterOptions: FilmFilterOptions;
   currentSort: SortValue;
-  /** When false, hide "Browse by use case" on mobile (e.g. when on Shots/Notes/Brands/Users tab). Default true. */
+  /** When false, hide "Start browsing" on mobile (e.g. when on Shots/Notes/Brands/Users tab). Default true. */
   showUseCasePills?: boolean;
 }
 
@@ -303,35 +335,29 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
           </div>
         </div>
 
-        {/* Mobile: "Browse by use case" + 2x2 grid of pills — only on Film Stocks tab. */}
+        {/* Mobile: "Start browsing" — text-only cards, inverted (dark bg, light text). */}
         {showUseCasePills && (
           <div className="mt-3 md:hidden">
             <h3 className="mb-2 text-left font-sans text-xl font-bold tracking-tight text-foreground">
-              Browse by use case
+              Start browsing
             </h3>
             <div className="grid grid-cols-2 gap-2.5">
-              {DISCOVERY_PILLS.map((pill) => {
-                const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
-                return (
-                  <Link
-                    key={pill.id}
-                    href={vibeHref(pill.id)}
-                    className="group flex h-11 w-full items-center justify-start rounded-card border border-transparent font-sans text-xs transition-[background-image,background-size,background-position] duration-200 ease-in-out"
-                    style={{
-                      borderWidth: 1.5,
-                      backgroundImage: `linear-gradient(${theme.activeBgTint}, ${theme.activeBgTint}), ${theme.gradient}`,
-                      backgroundOrigin: "padding-box, border-box",
-                      backgroundClip: "padding-box, border-box",
-                      backgroundRepeat: "no-repeat",
-                      backgroundSize: "100% 100%, 100% 100%",
-                    }}
-                  >
-                    <h3 className={`m-0 font-sans text-sm font-semibold pl-4 pr-4 ${theme.activeTextClass ?? "text-white"}`}>
-                      {pill.label}
-                    </h3>
-                  </Link>
-                );
-              })}
+              {[
+                { id: "all-film", href: "/films", label: "All Film" },
+                { id: "all-brands", href: "/brands", label: "All Brands" },
+                { id: "color-negative", href: buildUrl({ type: "color_negative" }), label: "Color Negative" },
+                { id: "black-white", href: buildUrl({ type: "bw_negative,bw_reversal" }), label: "Black & White" },
+              ].map(({ id, href, label }) => (
+                <Link
+                  key={id}
+                  href={href}
+                  className="flex h-[70px] w-full items-start rounded-[7px] bg-foreground px-4 pt-4 transition-colors hover:bg-foreground/90"
+                >
+                  <span className="font-sans text-sm font-semibold text-background">
+                    {label}
+                  </span>
+                </Link>
+              ))}
             </div>
           </div>
         )}

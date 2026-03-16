@@ -8,10 +8,10 @@ import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, Mor
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { useFilmsSearch } from "@/context/films-search-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { buttonVariants } from "@/components/ui/button";
 import { FilmsHeaderSearch } from "@/components/films-header-search";
-import { FilmsHeaderTabs } from "@/components/films-header-tabs";
 
 const navLinks = [
   { href: "/community", label: "Community" },
@@ -31,12 +31,16 @@ const MAIN_LANDING_PATHS = ["/", "/films", "/vault", "/profile"];
 const EXPANDED_HERO_HEIGHT = 52;
 /** Height of the sticky nav bar when scrolled past the hero. */
 const COLLAPSED_NAV_HEIGHT = 52;
+/** Scroll threshold (px) for collapsing the Discover H1 into the small navbar title on films mobile. */
+const DISCOVER_HERO_THRESHOLD = 60;
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const { mobileHeaderTitle, mobileHeroMeta } = useMobileHeaderTitle() ?? {};
+  const filmsSearch = useFilmsSearch();
+  const isSearchFocused = filmsSearch?.isSearchFocused ?? false;
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
@@ -88,7 +92,7 @@ export function Header() {
       className={cn(
         "sticky top-0 z-50 font-sans transition-[background-color,border-color] duration-200",
         isFilmsPage
-          ? "border-b border-border/50 bg-background"
+          ? "bg-background"
           : isFilmHero
             ? "border-0 bg-white md:border-b md:border-border/50 md:bg-background/80 md:backdrop-blur-xl"
             : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
@@ -156,25 +160,24 @@ export function Header() {
         </div>
       )}
 
-      {/* Standard nav: desktop = always 3-column (logo center, nav left, profile right). Mobile = 3-column unless films page (then full-width search). DO NOT change desktop nav without asking. */}
+      {/* Standard nav: desktop = always 3-column (logo center, nav left, profile right). Mobile = 3-column unless films page (then full-width discover hero + search). DO NOT change desktop nav without asking. */}
       {isFilmsPage && (
         <div className="mx-auto w-full max-w-7xl md:hidden">
-          <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
+          {/* Film archive hero: H1 visible at top when not searching; when search focused or scrolled, H1 disappears and search bar is fixed to top. */}
+          <div
+            className={cn(
+              "overflow-hidden bg-background transition-[max-height] duration-200 ease-out",
+              isSearchFocused || scrollY >= DISCOVER_HERO_THRESHOLD ? "max-h-0" : "max-h-32"
+            )}
+          >
+            <h1 className="px-4 pt-6 text-2xl font-sans font-bold tracking-tight text-slate-900 mb-1 bg-background sm:px-6 lg:px-8">
+              Film archive
+            </h1>
+          </div>
+          <div className="flex h-16 items-center bg-background px-4 sm:px-6 lg:px-8">
             <Suspense fallback={<div className="h-12 w-full rounded-card border border-slate-200 bg-white" />}>
               <FilmsHeaderSearch />
             </Suspense>
-          </div>
-          <div
-            className={cn(
-              "overflow-hidden transition-[max-height,opacity] duration-200 ease-out",
-              scrollY > 60 ? "max-h-0 opacity-0" : "max-h-12 opacity-100"
-            )}
-          >
-            <div className="px-4 sm:px-6 lg:px-8">
-              <Suspense fallback={<div className="h-9 border-b border-border/50" />}>
-                <FilmsHeaderTabs />
-              </Suspense>
-            </div>
           </div>
         </div>
       )}

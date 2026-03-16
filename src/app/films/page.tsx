@@ -6,7 +6,7 @@ import { getLatestShots, getLatestNotes, getLatestUsers } from "@/app/actions/se
 import { FilmsListingClient } from "@/app/films/films-listing-client";
 import { FilmsPageMobileSearchWrapper } from "@/app/films/films-page-mobile-search-wrapper";
 import { DiscoverTabPanels } from "@/app/films/discover-tab-panels";
-import { DiscoveryHeader } from "@/components/discovery-header";
+import { DiscoveryHeader, DiscoveryVibePills } from "@/components/discovery-header";
 import { FiltersLeftPane } from "@/components/filters-left-pane";
 import { FilmsSortBar } from "@/components/films-sort-bar";
 import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor, DiscoveryVibe } from "@/lib/types";
@@ -152,7 +152,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
             <div className="hidden md:block">
               {filmsListing}
             </div>
-            {/* Mobile: show film grid or discover tab panel (Shots / Notes / Brands / Users) */}
+            {/* Mobile: show film grid or discover tab panel (Shots / Notes / Brands / Users). Vibe pills below carousels on Film Stocks tab. */}
             <div className="md:hidden">
               {discoverTab ? (
                 <DiscoverTabPanels
@@ -163,7 +163,10 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
                   latestUsers={latestUsers}
                 />
               ) : (
-                filmsListing
+                <>
+                  {filmsListing}
+                  <DiscoveryVibePills />
+                </>
               )}
             </div>
           </main>

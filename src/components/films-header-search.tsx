@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, ChevronLeft } from "lucide-react";
 import { useFilmsSearch } from "@/context/films-search-context";
 
 const DEBOUNCE_MS = 300;
@@ -76,6 +76,18 @@ export function FilmsHeaderSearch() {
   const handleBlur = () => filmsSearch?.setIsSearchFocused(false);
 
   const showClear = value.trim() !== "";
+  const isFocused = filmsSearch?.isSearchFocused ?? false;
+
+  const handleExitSearch = () => {
+    setValue("");
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    router.push("/films");
+    filmsSearch?.setIsSearchFocused(false);
+    inputRef.current?.blur();
+  };
 
   return (
     <form
@@ -83,9 +95,20 @@ export function FilmsHeaderSearch() {
       onSubmit={handleSubmit}
       className="flex h-12 w-full min-w-0 items-center gap-2 rounded-card border border-slate-200 bg-white pl-4 pr-2"
     >
-      <span className="flex shrink-0 items-center justify-center" aria-hidden>
-        <Search className="h-4 w-4 text-muted-foreground" />
-      </span>
+      {isFocused ? (
+        <button
+          type="button"
+          onClick={handleExitSearch}
+          aria-label="Exit search"
+          className="flex shrink-0 items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-slate-100 hover:text-foreground -ml-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      ) : (
+        <span className="flex shrink-0 items-center justify-center" aria-hidden>
+          <Search className="h-4 w-4 text-muted-foreground" />
+        </span>
+      )}
       <input
         ref={inputRef}
         type="search"
