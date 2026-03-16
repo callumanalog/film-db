@@ -67,6 +67,9 @@ function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
               width={OVERVIEW_IMAGE_WIDTH}
               height={OVERVIEW_IMAGE_HEIGHT}
               sizes="(max-width: 640px) 33vw, 200px"
+              loading="lazy"
+              placeholder="blur"
+              blurDataURL="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgdmlld0JveD0iMCAwIDEwIDEwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTVlN2ViIi8+PC9zdmc+"
               className="h-full w-full object-cover"
             />
           </div>
@@ -85,7 +88,7 @@ interface PurchaseLink {
   url: string;
 }
 
-interface OverviewTabContentProps {
+export interface OverviewTabContentProps {
   description: string | null;
   flickrImages: FlickrPhoto[];
   /** Array of { header, dek } for shooting notes. Replaces legacy shootingTips. */

@@ -8,14 +8,12 @@ import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
 import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS, COLOR_SENSITIVITY_LABELS, isBlackAndWhiteFilm } from "@/lib/types";
 import type { LatitudeFilter, DevelopmentProcess } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
-import { CommunityReviews, CommunityGallery } from "@/components/community-section";
+import { CommunityReviews } from "@/components/community-section";
 import { StickyLeftPane, PageTitleHeader, MobileFilmHero } from "@/components/hero-mockups";
-import { FilmDetailTabs } from "@/components/film-page-tabs";
-import { OverviewTabContent } from "@/components/overview-tab-content";
+import { FilmDetailTabsLazy } from "@/components/film-detail-tabs-lazy";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
 import { getReviewsForSlug } from "@/lib/seed-film-reviews";
 import { getLoggedRollsForFilm } from "@/app/actions/user-actions";
-import { LoggedRollMenu } from "@/components/logged-roll-menu";
 import { SetFilmMobileHeader } from "@/components/set-film-mobile-header";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
@@ -187,94 +185,26 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
 
   const { web: reviewsFromWeb, video: videoReviews } = getReviewsForSlug(slug);
 
-  const filmTabs = [
-    {
-      id: "overview",
-      label: "Overview",
-      content: (
-        <OverviewTabContent
-          description={stock.description}
-          flickrImages={flickrImages}
-          shootingNotes={stock.shooting_notes}
-          reviewsFromWeb={reviewsFromWeb}
-          videoReviews={videoReviews}
-          purchaseLinks={sortedLinks}
-          stockName={stock.name}
-          bestFor={stock.best_for ?? []}
-          specs={overviewSpecsFlat}
-          useCaseSpec={useCaseSpec}
-          characterScales={{
-            grain: stock.grain ?? undefined,
-            contrast: stock.contrast ?? undefined,
-            saturation: stock.saturation ?? undefined,
-            latitude: stock.latitude ?? undefined,
-          }}
-          filmType={stock.type}
-        />
-      ),
+  const overviewProps = {
+    description: stock.description,
+    flickrImages,
+    shootingNotes: stock.shooting_notes,
+    reviewsFromWeb,
+    videoReviews,
+    purchaseLinks: sortedLinks,
+    stockName: stock.name,
+    bestFor: stock.best_for ?? [],
+    specs: overviewSpecsFlat,
+    useCaseSpec,
+    characterScales: {
+      grain: stock.grain ?? undefined,
+      contrast: stock.contrast ?? undefined,
+      saturation: stock.saturation ?? undefined,
+      latitude: stock.latitude ?? undefined,
     },
-    {
-      id: "rolls",
-      label: "Rolls",
-      content: (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold tracking-tight">Your rolls</h2>
-          <p className="text-sm text-muted-foreground">
-            Rolls you&apos;ve logged for this stock (e.g. In Fridge). Log a roll from the button on this page.
-          </p>
-          {loggedRolls.length === 0 ? (
-            <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
-              No rolls yet. Use &quot;Log a roll&quot; above to add one and track it through the fridge, camera, processing, and beyond.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {loggedRolls.map((roll) => (
-                <li
-                  key={roll.id}
-                  className="rounded-[7px] border border-border/50 bg-card p-4"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
-                        {roll.format && <span>Format: {roll.format}</span>}
-                        {roll.status && <span>Status: {roll.status}</span>}
-                        {roll.expiry_date && <span>Expiry: {roll.expiry_date}</span>}
-                        {roll.quantity > 1 && <span>Qty: {roll.quantity}</span>}
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Logged {new Date(roll.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
-                      </p>
-                    </div>
-                    <LoggedRollMenu rollId={roll.id} filmSlug={slug} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ),
-    },
-    {
-      id: "shots",
-      label: "Shots",
-      content: (
-        <section>
-          <CommunityGallery stockName={stock.name} slug={slug} flickrImages={flickrImages} variant="tab" />
-        </section>
-      ),
-    },
-    {
-      id: "notes",
-      label: "Notes",
-      content: (
-        <section className="space-y-10">
-          <CommunityReviews slug={slug} />
-        </section>
-      ),
-    },
-  ];
+    filmType: stock.type,
+  };
 
-  // Film stock page tabs: Overview, Rolls, Shots, Notes
   return (
     <div className="work-sans-content">
       <SetFilmMobileHeader
@@ -306,10 +236,12 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
             <PageTitleHeader {...stockProps} />
           </div>
           <div className="order-3 min-w-0 -mt-2 md:mt-0">
-            <FilmDetailTabs
-              tabs={filmTabs}
+            <FilmDetailTabsLazy
               defaultId={tab === "rolls" || tab === "logged-rolls" ? "rolls" : tab === "shots" || tab === "gallery" ? "shots" : tab === "notes" || tab === "reviews" ? "notes" : "overview"}
-              fullWidthTabBar
+              overviewProps={overviewProps}
+              rollsProps={{ loggedRolls, slug }}
+              shotsProps={{ stockName: stock.name, slug, flickrImages }}
+              notesProps={{ slug }}
             />
           </div>
         </div>

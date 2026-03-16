@@ -11,6 +11,7 @@ import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { buttonVariants } from "@/components/ui/button";
 import { FilmsHeaderSearch } from "@/components/films-header-search";
+import { FilmsHeaderTabs } from "@/components/films-header-tabs";
 
 const navLinks = [
   { href: "/community", label: "Community" },
@@ -155,23 +156,25 @@ export function Header() {
         </div>
       )}
 
-      {/* Standard nav: desktop; or mobile when not film hero. Films page = single column full-width search. */}
-      {isFilmsPage ? (
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-7xl items-center px-4 sm:px-6 lg:px-8",
-            isFilmHero ? "hidden md:flex h-16" : "h-16"
-          )}
-        >
-          <Suspense fallback={<div className="h-12 w-full rounded-card border border-slate-200 bg-white" />}>
-            <FilmsHeaderSearch />
-          </Suspense>
+      {/* Standard nav: desktop = always 3-column (logo center, nav left, profile right). Mobile = 3-column unless films page (then full-width search). DO NOT change desktop nav without asking. */}
+      {isFilmsPage && (
+        <div className="mx-auto w-full max-w-7xl md:hidden">
+          <div className="flex h-16 items-center px-4 sm:px-6 lg:px-8">
+            <Suspense fallback={<div className="h-12 w-full rounded-card border border-slate-200 bg-white" />}>
+              <FilmsHeaderSearch />
+            </Suspense>
+          </div>
+          <div className="px-4 sm:px-6 lg:px-8">
+            <Suspense fallback={<div className="h-9 border-b border-border/50" />}>
+              <FilmsHeaderTabs />
+            </Suspense>
+          </div>
         </div>
-      ) : (
+      )}
       <div
         className={cn(
           "mx-auto grid max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
-          isFilmHero ? "hidden md:grid h-16" : "grid h-16"
+          isFilmHero ? "hidden md:grid h-16" : isFilmsPage ? "hidden md:grid h-16" : "grid h-16"
         )}
       >
         <div className="flex min-w-0 items-center justify-start overflow-hidden gap-1">
@@ -389,7 +392,6 @@ export function Header() {
           )}
         </div>
       </div>
-      )}
 
       {/* Mobile drawer: md–lg only (hidden on small mobile where bottom nav is shown) */}
       {mobileOpen && (

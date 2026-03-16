@@ -105,6 +105,8 @@ export function FilmDetailTabs({
   rightPane,
   rightPaneOnlyForTabId,
   fullWidthTabBar = false,
+  activeId: controlledActiveId,
+  onTabChange,
 }: {
   tabs: { id: string; label: string; content: ReactNode }[];
   defaultId?: string;
@@ -112,8 +114,13 @@ export function FilmDetailTabs({
   /** When set, right pane is only shown when this tab is active (e.g. "overview"). */
   rightPaneOnlyForTabId?: string;
   fullWidthTabBar?: boolean;
+  /** When provided, tab is controlled by parent (for lazy tab content). */
+  activeId?: string;
+  onTabChange?: (id: string) => void;
 }) {
-  const [activeId, setActiveId] = useState(defaultId ?? tabs[0]?.id ?? "");
+  const [internalActiveId, setInternalActiveId] = useState(defaultId ?? tabs[0]?.id ?? "");
+  const activeId = controlledActiveId ?? internalActiveId;
+  const setActiveId = onTabChange ?? setInternalActiveId;
 
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
   const showRightPane = rightPane && (rightPaneOnlyForTabId == null || activeId === rightPaneOnlyForTabId);

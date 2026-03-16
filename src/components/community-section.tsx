@@ -28,6 +28,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { LazyImage } from "@/components/lazy-image";
 
 interface CommunityReview {
   id: string;
@@ -554,8 +555,7 @@ export function CommunityGallery({
           >
             {u.image_url ? (
               <div className="relative block w-full">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <LazyImage
                   src={u.image_url}
                   alt={u.caption ?? ""}
                   className="block w-full h-auto"
@@ -595,8 +595,7 @@ export function CommunityGallery({
           >
             {u.image_url ? (
               <div className="relative block w-full">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <LazyImage
                   src={u.image_url}
                   alt={u.caption ?? ""}
                   className="block w-full h-auto"
@@ -635,13 +634,7 @@ export function CommunityGallery({
             onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={item.src}
-              alt=""
-              className="block w-full h-auto"
-              aria-hidden
-            />
+            <LazyImage src={item.src} alt="" className="block w-full h-auto" aria-hidden />
             <div className="flex items-center gap-2 p-2.5">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
                 {getInitials(item.username)}
@@ -668,8 +661,7 @@ export function CommunityGallery({
               onClick={() => setLightboxImage({ imageUrl: img.imageUrl, alt: img.title || "", username: img.ownerName })}
               className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <LazyImage
                 src={img.imageUrl}
                 alt={img.title || ""}
                 className="block w-full h-auto"
@@ -701,8 +693,7 @@ export function CommunityGallery({
                 className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
               >
                 {img.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <LazyImage
                     src={img.imageUrl}
                     alt=""
                     className="block w-full h-auto"

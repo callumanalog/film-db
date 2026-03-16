@@ -1,7 +1,7 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/queries";
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
+import { getVaultRolls } from "@/app/actions/user-actions";
 import { FilmsListingClient } from "@/app/films/films-listing-client";
 import { DiscoveryHeader } from "@/components/discovery-header";
 import { FiltersLeftPane } from "@/components/filters-left-pane";
@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 
 interface FilmsPageProps {
   searchParams: Promise<{
+    tab?: string;
     search?: string;
     vibe?: string;
     brand?: string;
@@ -77,10 +78,12 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
       sort: "alphabetical",
     }),
   ]);
-  const brands = brandsRes.sort((a, b) => a.name.localeCompare(b.name));
-  const filterOptions = filterOptionsRes;
+  const brands = Array.isArray(brandsRes) ? [...brandsRes].sort((a, b) => a.name.localeCompare(b.name)) : [];
+  const filterOptions = filterOptionsRes ?? { types: [], isos: [], formats: [], grains: [], contrasts: [], latitudes: [], saturations: [], bestFor: [] };
 
   const statsBySlug = stocksUnsorted.length > 0 ? await getFilmStockStatsForSlugs(stocksUnsorted.map((s) => s.slug)) : {};
+  const vaultRolls = await getVaultRolls();
+  const loggedSlugs = [...new Set(vaultRolls.map((r) => r.film_stock_slug))];
 
   const stocks =
     sortParam === "highest-rated"
@@ -110,24 +113,34 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 pt-20 pb-8 sm:px-6 sm:pt-24 lg:px-8">
-        <div className="mb-3">
+      <div className="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-6 lg:px-8">
+        <div className="mb-6">
           <DiscoveryHeader
             brands={brands}
             filterOptions={filterOptions}
             currentSort={params.sort === "alphabetical" ? "alphabetical" : "highest-rated"}
           />
         </div>
-
         {params.filters === "1" ? (
           <FiltersLeftPane brands={brands} filterOptions={filterOptions}>
             <main className="min-w-0">
-              <FilmsListingClient stocks={stocks} statsBySlug={statsBySlug} filterPaneOpen />
+              <FilmsListingClient
+                stocks={stocks}
+                statsBySlug={statsBySlug}
+                loggedSlugs={loggedSlugs}
+                filterPaneOpen
+                useCaseFilter={bestForArr.length > 0 || !!vibe}
+              />
             </main>
           </FiltersLeftPane>
         ) : (
           <main className="min-w-0">
-            <FilmsListingClient stocks={stocks} statsBySlug={statsBySlug} />
+            <FilmsListingClient
+              stocks={stocks}
+              statsBySlug={statsBySlug}
+              loggedSlugs={loggedSlugs}
+              useCaseFilter={bestForArr.length > 0 || !!vibe}
+            />
           </main>
         )}
       </div>

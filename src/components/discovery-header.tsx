@@ -1,29 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useState, useEffect, useRef, startTransition } from "react";
-import { ChevronDown, ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react";
+import { Suspense, useCallback, useState, useEffect, useRef } from "react";
+import { ChevronDown, ChevronLeft, Search, SlidersHorizontal, X, Sun, Heart, Camera, Moon, Mountain, MapPin, Sparkles, Package } from "lucide-react";
 import type { FilmBrand } from "@/lib/types";
 import type { FilmFilterOptions } from "@/lib/supabase/queries";
-import type { BestFor } from "@/lib/types";
+import { DISCOVERY_PILLS } from "@/lib/discovery-vibes";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { ClearFiltersLink } from "@/components/clear-filters-link";
 import { FilmsSortBar } from "@/components/films-sort-bar";
 import { ActiveFilterChips } from "@/components/active-filter-chips";
 
 type SortValue = "highest-rated" | "alphabetical";
-
-/** Discovery pill: label and bestFor filters applied when tapped. */
-const DISCOVERY_PILLS: { id: string; label: string; bestFor: BestFor[] }[] = [
-  { id: "essential_everyday", label: "Essential Everyday", bestFor: ["general_purpose"] },
-  { id: "golden_hour", label: "Golden Hour", bestFor: ["golden_hour", "landscapes"] },
-  { id: "dreamy_portraits", label: "Dreamy Portraits", bestFor: ["portrait", "weddings"] },
-  { id: "gritty_street", label: "Gritty Street", bestFor: ["street", "documentary"] },
-  { id: "cinematic_nights", label: "Cinematic Nights", bestFor: ["artificial_light", "low_light"] },
-  { id: "vivid_landscapes", label: "Vivid Landscapes", bestFor: ["landscapes", "bright_sun"] },
-  { id: "nostalgic_travel", label: "Nostalgic Travel", bestFor: ["travel"] },
-  { id: "experimental", label: "Experimental", bestFor: ["experimental"] },
-];
 
 /** Gradient palette: dot and border match; gradient30/60 = border opacity; activeBgTint = 5%; activeBgTint10 = 10% (mobile drawer). activeTextClass = optional dark text when active (e.g. Dreamy Portraits). */
 const PILL_THEMES: Record<
@@ -88,6 +77,30 @@ const PILL_THEMES: Record<
   },
 };
 
+/** Pastel background colors for mobile Start browsing tiles (archival aesthetic). */
+const MOOD_TILE_BG: Record<string, string> = {
+  essential_everyday: "bg-[#E0E7FF]",   // Soft Blue
+  golden_hour: "bg-[#FFEDD5]",          // Soft Peach
+  dreamy_portraits: "bg-[#FCE7F3]",     // Soft Rose
+  gritty_street: "bg-[#F1F5F9]",        // Cool Grey
+  cinematic_nights: "bg-[#E5E7EB]",     // Slate
+  vivid_landscapes: "bg-[#DCFCE7]",     // Soft Mint
+  nostalgic_travel: "bg-[#FEF3C7]",     // Soft Amber
+  experimental: "bg-[#EDE9FE]",         // Soft Violet
+};
+
+/** Icon component for each mood tile peek (bottom-right). */
+const MOOD_TILE_ICONS: Record<string, typeof Sun> = {
+  essential_everyday: Package,
+  golden_hour: Sun,
+  dreamy_portraits: Heart,
+  gritty_street: Camera,
+  cinematic_nights: Moon,
+  vivid_landscapes: Mountain,
+  nostalgic_travel: MapPin,
+  experimental: Sparkles,
+};
+
 /** Brand names shown in the mobile search drawer (trending brands). Order preserved. */
 const TRENDING_BRAND_NAMES = ["Kodak", "CineStill", "Ilford", "Harman Technology", "Fujifilm", "Lomography"];
 
@@ -119,14 +132,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
   const [searchDrawerReady, setSearchDrawerReady] = useState(false);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const [mobileSearchInput, setMobileSearchInput] = useState("");
-  const [hoveredPillId, setHoveredPillId] = useState<string | null>(null);
   const defaultSearch = searchParams.get("search") ?? "";
-
-  const getBestForFromUrl = useCallback(() => {
-    const v = searchParams.get("bestFor");
-    if (!v) return [];
-    return [...v.split(",").map((s) => s.trim()).filter(Boolean)].sort();
-  }, [searchParams]);
 
   const buildUrl = useCallback(
     (updates: Record<string, string | null>) => {
@@ -155,51 +161,8 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
     }
   }, [filtersPaneOpen, router, searchParams]);
 
-  const currentBestFor = getBestForFromUrl();
-
-  const setDiscoveryPill = useCallback(
-    (pill: (typeof DISCOVERY_PILLS)[number], active: boolean) => {
-      startTransition(() => {
-        if (active) {
-          router.push(buildUrl({ bestFor: null, vibe: null }));
-        } else {
-          const value = pill.bestFor.length > 0 ? pill.bestFor.join(",") : null;
-          router.push(buildUrl({ bestFor: value, vibe: null }));
-        }
-      });
-    },
-    [router, buildUrl]
-  );
-
-  // Prefetch films page for each discovery pill when Vibes or Filters drawer opens (mobile) so taps feel instant.
-  useEffect(() => {
-    if (!vibesDrawerOpen && !drawerOpen) return;
-    DISCOVERY_PILLS.forEach((pill) => {
-      const value = pill.bestFor.length > 0 ? pill.bestFor.join(",") : null;
-      const url = buildUrl({ bestFor: value, vibe: null });
-      router.prefetch(url);
-    });
-  }, [vibesDrawerOpen, drawerOpen, router, buildUrl]);
-
-  // Desktop: prefetch a pill’s films page on hover/focus so the click is fast.
-  const prefetchPillUrl = useCallback(
-    (pill: (typeof DISCOVERY_PILLS)[number]) => {
-      const value = pill.bestFor.length > 0 ? pill.bestFor.join(",") : null;
-      router.prefetch(buildUrl({ bestFor: value, vibe: null }));
-    },
-    [router, buildUrl]
-  );
-
-  const isPillActive = useCallback(
-    (pill: (typeof DISCOVERY_PILLS)[number]) => {
-      const pillSet = [...pill.bestFor].sort();
-      if (currentBestFor.length !== pillSet.length) return false;
-      return pillSet.every((bf, i) => currentBestFor[i] === bf);
-    },
-    [currentBestFor]
-  );
-
-  const activePill = DISCOVERY_PILLS.find((p) => isPillActive(p));
+  /** Vibe page URL: /films/vibe/[id] */
+  const vibeHref = (id: string) => `/films/vibe/${id}`;
 
   const [searchInput, setSearchInput] = useState(defaultSearch);
   const [searchExpanded, setSearchExpanded] = useState(!!defaultSearch);
@@ -303,7 +266,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
 
   return (
     <>
-      <header className="text-center">
+      <header className="text-center pb-0">
         <h1 className="hidden font-sans text-3xl font-bold tracking-tight text-foreground md:block sm:text-4xl">
           Discover your next film
         </h1>
@@ -311,113 +274,62 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
           From sun-drenched portraits to gritty midnight streets—choose a mood below to find the perfect chemistry for your vision.
         </p>
 
-        {/* Discovery Ribbon: desktop only — centered flex wrap. */}
+        {/* Discovery Ribbon: desktop only — centered flex wrap; pills are links with always-active styling. */}
         <div className="mt-6 hidden px-4 sm:px-6 md:block">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-2.5">
             {DISCOVERY_PILLS.map((pill) => {
               const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
-              const active = isPillActive(pill);
-              const isHovered = hoveredPillId === pill.id && !active;
-              const useGradientBorder = active || isHovered;
-              const borderGradient = active ? theme.gradient : theme.gradient60;
-              const fillBg = active ? theme.activeBgTint : "white";
               return (
-                <button
+                <Link
                   key={pill.id}
-                  type="button"
-                  onClick={() => setDiscoveryPill(pill, active)}
-                  onMouseEnter={() => {
-                    setHoveredPillId(pill.id);
-                    prefetchPillUrl(pill);
+                  href={vibeHref(pill.id)}
+                  className="group flex h-11 shrink-0 items-center justify-center rounded-card border border-transparent font-sans text-xs transition-[background-image,background-size,background-position] duration-200 ease-in-out"
+                  style={{
+                    borderWidth: 1.5,
+                    backgroundImage: `linear-gradient(${theme.activeBgTint}, ${theme.activeBgTint}), ${theme.gradient}`,
+                    backgroundOrigin: "padding-box, border-box",
+                    backgroundClip: "padding-box, border-box",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "100% 100%, 100% 100%",
                   }}
-                  onFocus={() => prefetchPillUrl(pill)}
-                  onMouseLeave={() => setHoveredPillId(null)}
-                  className={`group flex h-[36px] shrink-0 items-center justify-center rounded-card font-sans text-xs transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out ${
-                    useGradientBorder ? "border border-transparent" : "border border-border/50 bg-white"
-                  }`}
-                  style={
-                    useGradientBorder
-                      ? {
-                          borderWidth: active ? 1.5 : 1,
-                          backgroundImage: `linear-gradient(${fillBg}, ${fillBg}), ${borderGradient}`,
-                          backgroundOrigin: "padding-box, border-box",
-                          backgroundClip: "padding-box, border-box",
-                          backgroundRepeat: "no-repeat",
-                          backgroundSize: "100% 100%, 100% 100%",
-                        }
-                      : undefined
-                  }
                 >
-                  <span className="flex items-center gap-2 px-4">
-                    <span
-                      className="flex size-4 shrink-0 rounded-full ring-1 ring-white/50 transition-transform duration-200 ease-in-out group-hover:scale-110"
-                      style={{
-                        background: theme.gradient,
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
-                      }}
-                      aria-hidden
-                    />
-                    <span
-                      className={active ? `font-semibold ${theme.activeTextClass ?? "text-white"}` : "font-medium"}
-                    >
-                      {pill.label}
-                    </span>
-                  </span>
-                </button>
+                  <h3 className={`m-0 font-sans text-sm font-semibold px-4 ${theme.activeTextClass ?? "text-white"}`}>
+                    {pill.label}
+                  </h3>
+                </Link>
               );
             })}
           </div>
         </div>
 
-        {/* Mobile: "Start browsing" + discovery pills in 2-column grid. */}
+        {/* Mobile: "Browse by use case" + 2x2 grid of pills (links, always-active styling). */}
         <div className="mt-3 md:hidden">
-          <h3 className="mb-3 text-left font-sans text-xl font-bold tracking-tight text-foreground">
-            Start browsing
+          <h3 className="mb-2 text-left font-sans text-xl font-bold tracking-tight text-foreground">
+            Browse by use case
           </h3>
-          <div className="grid grid-cols-2 gap-2">
-          {DISCOVERY_PILLS.map((pill) => {
-            const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
-            const active = isPillActive(pill);
-            const useGradientBorder = active;
-            const borderGradient = active ? theme.gradient : theme.gradient60;
-            const fillBg = active ? theme.activeBgTint : "white";
-            return (
-              <button
-                key={pill.id}
-                type="button"
-                onClick={() => setDiscoveryPill(pill, active)}
-                className={`group flex min-h-[44px] w-full items-center justify-center gap-2 rounded-card font-sans text-xs transition-[background-image,background-size,background-position,border-width,border-color] duration-200 ease-in-out ${
-                  useGradientBorder ? "border border-transparent" : "border border-border/50 bg-white"
-                }`}
-                style={
-                  useGradientBorder
-                    ? {
-                        borderWidth: 1.5,
-                        backgroundImage: `linear-gradient(${fillBg}, ${fillBg}), ${borderGradient}`,
-                        backgroundOrigin: "padding-box, border-box",
-                        backgroundClip: "padding-box, border-box",
-                        backgroundRepeat: "no-repeat",
-                        backgroundSize: "100% 100%, 100% 100%",
-                      }
-                    : undefined
-                }
-              >
-                <span
-                  className="flex size-4 shrink-0 rounded-full ring-1 ring-white/50"
+          <div className="grid grid-cols-2 gap-2.5">
+            {DISCOVERY_PILLS.map((pill) => {
+              const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
+              return (
+                <Link
+                  key={pill.id}
+                  href={vibeHref(pill.id)}
+                  className="group flex h-11 w-full items-center justify-start rounded-card border border-transparent font-sans text-xs transition-[background-image,background-size,background-position] duration-200 ease-in-out"
                   style={{
-                    background: theme.gradient,
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+                    borderWidth: 1.5,
+                    backgroundImage: `linear-gradient(${theme.activeBgTint}, ${theme.activeBgTint}), ${theme.gradient}`,
+                    backgroundOrigin: "padding-box, border-box",
+                    backgroundClip: "padding-box, border-box",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "100% 100%, 100% 100%",
                   }}
-                  aria-hidden
-                />
-                <span
-                  className={active ? `font-semibold ${theme.activeTextClass ?? "text-white"}` : "font-medium"}
                 >
-                  {pill.label}
-                </span>
-              </button>
-            );
-          })}
+                  <h3 className={`m-0 font-sans text-sm font-semibold pl-4 pr-4 ${theme.activeTextClass ?? "text-white"}`}>
+                    {pill.label}
+                  </h3>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
@@ -494,34 +406,8 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
           )}
         </div>
 
-        {/* Mobile only: active vibe + filter chips in one row, chip styling (rounded-full, same size/color as ActiveFilterChips) */}
+        {/* Mobile only: filter chips (no discovery-pill chip). */}
         <div className="mt-3 flex flex-wrap items-center justify-start gap-1.5 md:hidden">
-          {(() => {
-            const activePill = DISCOVERY_PILLS.find((p) => isPillActive(p));
-            if (!activePill) return null;
-            const theme = PILL_THEMES[activePill.id] ?? PILL_THEMES.experimental;
-            return (
-              <button
-                type="button"
-                onClick={() => setDiscoveryPill(activePill, true)}
-                aria-label={`Remove ${activePill.label} filter`}
-                className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-secondary/50 pl-2.5 pr-1.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5"
-              >
-                <span
-                  className="size-4 shrink-0 rounded-full ring-1 ring-white/50"
-                  style={{
-                    background: theme.gradient,
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
-                  }}
-                  aria-hidden
-                />
-                <span className="truncate">{activePill.label}</span>
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary">
-                  <X className="h-3 w-3" aria-hidden />
-                </span>
-              </button>
-            );
-          })()}
           <ActiveFilterChips brands={brands} />
         </div>
       </header>
@@ -566,29 +452,16 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
                 {filtersVibesOpen && (
                   <div className="grid grid-cols-2 gap-2 pb-4">
                     {DISCOVERY_PILLS.map((pill) => {
-                      const active = isPillActive(pill);
                       const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
                       return (
-                        <button
+                        <Link
                           key={pill.id}
-                          type="button"
-                          onClick={() => setDiscoveryPill(pill, active)}
-                          className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-[6px] border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                            active
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border/60 bg-secondary/30 text-foreground hover:border-primary/40 hover:bg-primary/5"
-                          }`}
+                          href={vibeHref(pill.id)}
+                          onClick={() => setDrawerOpen(false)}
+                          className="inline-flex h-11 min-w-0 items-center justify-center rounded-[6px] border border-primary bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
                         >
-                          <span
-                            className="size-4 shrink-0 rounded-full ring-1 ring-white/50"
-                            style={{
-                              background: theme.gradient,
-                              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
-                            }}
-                            aria-hidden
-                          />
-                          <span className="truncate">{pill.label}</span>
-                        </button>
+                          <h3 className="m-0 truncate font-sans text-xs font-medium text-primary">{pill.label}</h3>
+                        </Link>
                       );
                     })}
                   </div>
@@ -740,38 +613,21 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
             <div className="grid grid-cols-2">
               {DISCOVERY_PILLS.map((pill, index) => {
                 const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
-                const active = isPillActive(pill);
                 const isFirstColumn = index % 2 === 0;
                 return (
-                  <button
+                  <Link
                     key={pill.id}
-                    type="button"
-                    onClick={() => {
-                      setDiscoveryPill(pill, active);
-                      setTimeout(() => setVibesDrawerOpen(false), 200);
-                    }}
-                    className={`flex h-28 flex-col items-center justify-center gap-3 border-b border-border font-sans text-sm font-medium transition-colors duration-200 active:bg-muted ${
+                    href={vibeHref(pill.id)}
+                    onClick={() => setTimeout(() => setVibesDrawerOpen(false), 200)}
+                    className={`flex h-11 items-center justify-center border-b border-border font-sans text-sm font-medium transition-colors duration-200 active:bg-muted ${
                       isFirstColumn ? "border-r border-slate-100" : ""
-                    } ${active ? "bg-transparent text-black" : "bg-background text-slate-700"}`}
-                    style={
-                      active
-                        ? { backgroundColor: theme.activeBgTint10 }
-                        : undefined
-                    }
+                    } bg-transparent text-black`}
+                    style={{ backgroundColor: theme.activeBgTint10 }}
                   >
-                    <span
-                      className="flex size-4 shrink-0 rounded-full ring-1 ring-white/50 transition-transform duration-200"
-                      style={{
-                        background: theme.gradient,
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
-                        transform: active ? "scale(1.25)" : undefined,
-                      }}
-                      aria-hidden
-                    />
-                    <span className={active ? `font-semibold ${theme.activeTextClass ?? "text-black"}` : ""}>
+                    <h3 className={`m-0 font-sans text-sm font-semibold ${theme.activeTextClass ?? "text-black"}`}>
                       {toSentenceCase(pill.label)}
-                    </span>
-                  </button>
+                    </h3>
+                  </Link>
                 );
               })}
             </div>
