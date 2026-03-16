@@ -232,7 +232,7 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                       {s.imageUrl ? (
                         <Image
                           src={s.imageUrl}
-                          alt={s.caption ?? ""}
+                          alt={s.stockName ?? "Shot"}
                           fill
                           className="object-cover"
                           sizes="50vw"
