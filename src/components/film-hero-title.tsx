@@ -22,7 +22,7 @@ export function FilmHeroTitle({ name, typeLabel, iso, format }: FilmHeroTitlePro
       className="w-full bg-white px-4 py-4 text-center md:hidden sm:px-6"
       data-film-hero-title
     >
-      <h1 className="font-advercase text-3xl font-bold tracking-tight">{name}</h1>
+      <h1 className="font-sans text-2xl font-bold tracking-tight">{name}</h1>
       <p className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {meta}
       </p>

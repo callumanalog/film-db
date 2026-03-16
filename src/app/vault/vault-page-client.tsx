@@ -163,7 +163,7 @@ export function VaultPageClient() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold tracking-tight font-advercase">The Vault</h1>
+      <h1 className="text-2xl font-bold tracking-tight font-sans">The Vault</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Your logged rolls — in the fridge, in camera, processing, or scanned.
       </p>

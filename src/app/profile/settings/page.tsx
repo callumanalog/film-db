@@ -15,7 +15,7 @@ export default function ProfileSettingsPage() {
       >
         ← Back to profile
       </Link>
-      <h1 className="text-2xl font-bold tracking-tight font-advercase">Settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight font-sans">Settings</h1>
       <p className="mt-2 text-sm text-muted-foreground">Account settings will appear here.</p>
     </div>
   );

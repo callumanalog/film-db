@@ -98,7 +98,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
           {profile.displayName.charAt(0)}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight font-advercase">{profile.displayName}</h1>
+          <h1 className="text-2xl font-bold tracking-tight font-sans">{profile.displayName}</h1>
           <p className="text-sm text-muted-foreground">FilmDB member</p>
         </div>
       </div>

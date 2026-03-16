@@ -875,7 +875,7 @@ export function PageTitleHeader({
         data-header-content
       >
         <div className="min-w-0 w-fit flex flex-col items-center md:items-start gap-2">
-          <h1 className="w-fit font-advercase text-3xl font-bold tracking-tight sm:text-4xl md:text-left text-center">
+          <h1 className="w-fit font-sans text-3xl font-bold tracking-tight sm:text-4xl md:text-left text-center">
             {stock.name}
           </h1>
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -1330,7 +1330,7 @@ function OptionF({ stock }: HeroMockupProps) {
 
         {/* Middle: Title + description */}
         <div className="min-w-0 flex-1">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl font-advercase">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl font-sans">
             {stock.name}
           </h1>
 

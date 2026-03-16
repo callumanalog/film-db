@@ -81,7 +81,7 @@ export default async function CameraDetailPage({ params }: CameraDetailPageProps
           >
             {camera.brand.name}
           </Link>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl font-advercase">
+          <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl font-sans">
             {camera.name}
           </h1>
           <div className="mt-3 flex flex-wrap gap-2">

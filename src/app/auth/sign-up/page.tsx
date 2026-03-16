@@ -178,7 +178,7 @@ function SignUpForm() {
 
   return (
     <AuthLayout variant="sign-up">
-      <h1 className="font-advercase mb-2 text-center text-2xl font-bold tracking-tight text-foreground md:text-3xl lg:text-left">
+      <h1 className="font-sans mb-2 text-center text-2xl font-bold tracking-tight text-foreground md:text-3xl lg:text-left">
         Join the Club.
       </h1>
       <p className="mb-6 text-center text-sm text-muted-foreground lg:text-left">

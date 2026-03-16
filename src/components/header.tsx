@@ -123,7 +123,7 @@ export function Header() {
             <span
               className={cn(
                 "mx-auto max-w-[70%] tracking-tight transition-[transform,font-size] duration-200",
-                heroPast ? "font-sans text-lg font-bold" : "font-advercase text-3xl font-bold"
+                heroPast ? "font-sans text-lg font-bold" : "font-sans text-3xl font-bold"
               )}
               style={
                 heroPast

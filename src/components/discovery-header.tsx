@@ -304,7 +304,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
   return (
     <>
       <header className="text-center">
-        <h1 className="font-advercase text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className="font-sans text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           Discover your next film
         </h1>
         <p className="mx-auto mt-2 max-w-xl font-sans text-sm text-muted-foreground sm:text-base">

@@ -4,8 +4,6 @@ import { FilmCard } from "@/components/film-card";
 interface FilmGridProps {
   stocks: (FilmStock & { brand: FilmBrand })[];
   emptyMessage?: string;
-  /** Slugs of films the user has shot — show tick at bottom-left on matching cards. */
-  shotSlugs?: string[];
   /** Optional map of slug -> avgRating so cards show real community rating. */
   statsBySlug?: Record<string, { avgRating: number | null }>;
   /** When true (filter pane open), use 3 columns per row. */
@@ -15,7 +13,6 @@ interface FilmGridProps {
 export function FilmGrid({
   stocks,
   emptyMessage = "No film stocks found matching your filters.",
-  shotSlugs,
   statsBySlug,
   filterPaneOpen = false,
 }: FilmGridProps) {
@@ -36,7 +33,7 @@ export function FilmGrid({
       }
     >
       {stocks.map((stock, index) => (
-        <FilmCard key={stock.id} stock={stock} shotSlugs={shotSlugs} priority={index < 6} />
+        <FilmCard key={stock.id} stock={stock} priority={index < 6} />
       ))}
     </div>
   );

@@ -45,8 +45,7 @@ Use existing scale where it fits: `rounded-sm`, `rounded-md`, `rounded-lg` (from
 ## 3. Typography
 
 ### Font families
-- **h1 only:** Advercase. Use `font-advercase` for the main page heading, or rely on base styles.
-- **h2, h3, h4, h5, h6 and body:** Work Sans (`font-sans`). Use `font-sans` for all other headings and UI copy.
+- **h1, h2, h3, h4, h5, h6 and body:** Work Sans (`font-sans`). Use `font-sans` for page headings and UI copy, or rely on base styles.
 - **Modals and forms:** Use `font-work-sans` or `.work-sans-content` so headings stay Work Sans when needed.
 
 ### Font sizes (use utilities, not arbitrary px)
@@ -63,7 +62,7 @@ Use existing scale where it fits: `rounded-sm`, `rounded-md`, `rounded-lg` (from
 | `text-lg`+    | Headings; use scale (e.g. `text-2xl sm:text-3xl`) |
 
 **Hero (films page):**
-- Title: `font-advercase text-3xl font-bold tracking-tight text-foreground sm:text-4xl`
+- Title: `font-sans text-3xl font-bold tracking-tight text-foreground sm:text-4xl`
 - Subtitle: `font-sans text-sm text-muted-foreground sm:text-base`, container `max-w-xl` (or `max-w-[var(--width-prose-narrow)]`)
 
 ---

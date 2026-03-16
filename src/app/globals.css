@@ -147,7 +147,7 @@
     scroll-behavior: smooth;
   }
   h1 {
-    font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
+    font-family: var(--font-sans), sans-serif !important;
   }
   h2, h3, h4, h5, h6 {
     font-family: var(--font-sans), sans-serif !important;
@@ -224,6 +224,15 @@
     display: none;
   }
   .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Horizontal carousel: hide scrollbar + snap */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }

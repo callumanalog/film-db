@@ -2,7 +2,7 @@
 
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import { FilmGrid } from "@/components/film-grid";
-import { useUserActions } from "@/context/user-actions-context";
+import { FilmCarousels } from "@/components/film-carousels";
 import type { FilmStockStats } from "@/lib/supabase/stats";
 
 interface FilmsListingClientProps {
@@ -13,19 +13,21 @@ interface FilmsListingClientProps {
   filterPaneOpen?: boolean;
 }
 
-/**
- * Client wrapper that reads the user's shot state from UserActionsContext
- * and renders the film grid with shot tick on cards.
- */
 export function FilmsListingClient({ stocks, statsBySlug, filterPaneOpen }: FilmsListingClientProps) {
-  const { shotSlugs } = useUserActions();
-
   return (
-    <FilmGrid
-      stocks={stocks}
-      shotSlugs={shotSlugs}
-      statsBySlug={statsBySlug}
-      filterPaneOpen={filterPaneOpen}
-    />
+    <>
+      {/* Mobile: carousels by category */}
+      <div className="md:hidden">
+        <FilmCarousels stocks={stocks} statsBySlug={statsBySlug} />
+      </div>
+      {/* Desktop: grid */}
+      <div className="hidden md:block">
+        <FilmGrid
+          stocks={stocks}
+          statsBySlug={statsBySlug}
+          filterPaneOpen={filterPaneOpen}
+        />
+      </div>
+    </>
   );
 }

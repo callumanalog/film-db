@@ -43,8 +43,7 @@ const TYPE_TOKENS = [
 ] as const;
 
 const FONT_FAMILY_TOKENS = [
-  { token: "font-advercase", desc: "h1 only" },
-  { token: "font-sans", desc: "h2, h3, h4, h5, h6, body, UI copy" },
+  { token: "font-sans", desc: "h1, h2, h3, h4, h5, h6, body, UI copy" },
 ] as const;
 
 const WIDTH_TOKENS = [
@@ -58,7 +57,7 @@ export default function StyleGuidePage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 pt-20 pb-16 sm:px-6 lg:px-8">
         <header className="mb-12">
-          <h1 className="font-advercase text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="font-sans text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Style guide
           </h1>
           <p className="mt-2 font-sans text-sm text-muted-foreground sm:text-base max-w-xl">
