@@ -21,10 +21,11 @@ interface LoggedRollMenuProps {
 export function LoggedRollMenu({ rollId, filmSlug }: LoggedRollMenuProps) {
   const router = useRouter();
 
-  async function handleValueChange(value: string) {
+  function handleValueChange(value: string | null) {
     if (value !== DELETE_VALUE) return;
-    const { synced } = await deleteLoggedRoll(rollId, filmSlug);
-    if (synced) router.refresh();
+    deleteLoggedRoll(rollId, filmSlug).then(({ synced }) => {
+      if (synced) router.refresh();
+    });
   }
 
   return (
