@@ -15,6 +15,7 @@ import { OverviewTabContent } from "@/components/overview-tab-content";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
 import { getReviewsForSlug } from "@/lib/seed-film-reviews";
 import { getLoggedRollsForFilm } from "@/app/actions/user-actions";
+import { LoggedRollMenu } from "@/components/logged-roll-menu";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -213,35 +214,17 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
       ),
     },
     {
-      id: "gallery",
-      label: "Gallery",
-      content: (
-        <section>
-          <CommunityGallery stockName={stock.name} slug={slug} flickrImages={flickrImages} variant="tab" />
-        </section>
-      ),
-    },
-    {
-      id: "reviews",
-      label: "Reviews",
-      content: (
-        <section className="space-y-10">
-          <CommunityReviews slug={slug} />
-        </section>
-      ),
-    },
-    {
-      id: "logged-rolls",
-      label: "Logged rolls",
+      id: "rolls",
+      label: "Rolls",
       content: (
         <section className="space-y-4">
-          <h2 className="text-lg font-semibold tracking-tight">Your logged rolls</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Your rolls</h2>
           <p className="text-sm text-muted-foreground">
             Rolls you&apos;ve logged for this stock (e.g. In Fridge). Log a roll from the button on this page.
           </p>
           {loggedRolls.length === 0 ? (
             <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
-              No logged rolls yet. Sign in and use &quot;Log a roll&quot; to add one.
+              No rolls yet. Use &quot;Log a roll&quot; above to add one and track it through the fridge, camera, processing, and beyond.
             </p>
           ) : (
             <ul className="space-y-3">
@@ -250,15 +233,20 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
                   key={roll.id}
                   className="rounded-[7px] border border-border/50 bg-card p-4"
                 >
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
-                    {roll.format && <span>Format: {roll.format}</span>}
-                    {roll.status && <span>Status: {roll.status}</span>}
-                    {roll.expiry_date && <span>Expiry: {roll.expiry_date}</span>}
-                    {roll.quantity > 1 && <span>Qty: {roll.quantity}</span>}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+                        {roll.format && <span>Format: {roll.format}</span>}
+                        {roll.status && <span>Status: {roll.status}</span>}
+                        {roll.expiry_date && <span>Expiry: {roll.expiry_date}</span>}
+                        {roll.quantity > 1 && <span>Qty: {roll.quantity}</span>}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Logged {new Date(roll.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                      </p>
+                    </div>
+                    <LoggedRollMenu rollId={roll.id} filmSlug={slug} />
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Logged {new Date(roll.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
-                  </p>
                 </li>
               ))}
             </ul>
@@ -266,9 +254,27 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
         </section>
       ),
     },
+    {
+      id: "shots",
+      label: "Shots",
+      content: (
+        <section>
+          <CommunityGallery stockName={stock.name} slug={slug} flickrImages={flickrImages} variant="tab" />
+        </section>
+      ),
+    },
+    {
+      id: "notes",
+      label: "Notes",
+      content: (
+        <section className="space-y-10">
+          <CommunityReviews slug={slug} />
+        </section>
+      ),
+    },
   ];
 
-  // All film stocks use the same template: sticky left pane + tabs (Overview, Gallery, Reviews)
+  // Film stock page tabs: Overview, Rolls, Shots, Notes
   return (
     <div className="work-sans-content">
       <ScrollToTopOnRouteChange />
@@ -292,7 +298,7 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
           <div className="order-3 min-w-0 -mt-2 md:mt-0">
             <FilmDetailTabs
               tabs={filmTabs}
-              defaultId={tab === "logged-rolls" ? "logged-rolls" : "overview"}
+              defaultId={tab === "rolls" || tab === "logged-rolls" ? "rolls" : tab === "shots" || tab === "gallery" ? "shots" : tab === "notes" || tab === "reviews" ? "notes" : "overview"}
               fullWidthTabBar
             />
           </div>

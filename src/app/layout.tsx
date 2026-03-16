@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { Work_Sans, Geist_Mono, Playfair_Display } from "next/font/google";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { BottomNav } from "@/components/bottom-nav";
 import { UserActionsProvider } from "@/context/user-actions-context";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/toast";
@@ -61,8 +62,9 @@ export default function RootLayout({
                 <UrlToastHandler />
               </Suspense>
               <Header />
-              <main className="flex-1">{children}</main>
+              <main className="flex-1 pb-20 md:pb-0">{children}</main>
               <Footer />
+              <BottomNav />
               <ViewportSize />
             </ToastProvider>
           </UserActionsProvider>

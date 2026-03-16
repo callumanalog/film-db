@@ -1,14 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 import {
   Camera,
-  ListTodo,
   Star,
   StarHalf,
-  NotebookPen,
-  ImagePlus,
   ChevronRight,
 } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
@@ -16,6 +15,7 @@ import { FilmDetailTabs } from "@/components/film-page-tabs";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import type { TrackedEntry } from "@/lib/user-store";
 import type { LoggedRollEntry } from "@/app/actions/user-actions";
+import { LoggedRollMenu } from "@/components/logged-roll-menu";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
@@ -74,205 +74,131 @@ interface ProfileViewProps {
   statsBySlug?: Record<string, { avgRating: number | null }>;
 }
 
-export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: ProfileViewProps) {
-  const ratingsList = Object.entries(profile.ratings).map(([slug, rating]) => ({ slug, rating }));
-  const loggedRolls = profile.loggedRolls ?? [];
+const ROLLS_STATUS_OPTIONS: { value: "all" | "in_fridge" | "in_camera" | "awaiting_dev" | "at_lab"; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "in_fridge", label: "In Fridge" },
+  { value: "in_camera", label: "In Camera" },
+  { value: "awaiting_dev", label: "Processing" },
+  { value: "at_lab", label: "Scanned" },
+];
 
-  const stats = [
-    { label: "Logged rolls", value: loggedRolls.length, icon: ListTodo },
-    { label: "Rated", value: ratingsList.length, icon: Star },
-    ...(typeof profile.reviewCount === "number" && profile.reviewCount > 0
-      ? [{ label: "Shooting Notes", value: profile.reviewCount, icon: NotebookPen }]
-      : []),
-    ...(typeof profile.uploadCount === "number" && profile.uploadCount > 0
-      ? [{ label: "Gallery", value: profile.uploadCount, icon: ImagePlus }]
-      : []),
-  ];
+export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: ProfileViewProps) {
+  const loggedRolls = profile.loggedRolls ?? [];
+  const [rollsStatusFilter, setRollsStatusFilter] = useState<"all" | "in_fridge" | "in_camera" | "awaiting_dev" | "at_lab">("all");
+  const filteredRolls =
+    rollsStatusFilter === "all"
+      ? loggedRolls
+      : loggedRolls.filter((e) => e.status === rollsStatusFilter);
 
   return (
     <div className="space-y-8">
       {/* Profile header */}
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-2xl font-bold text-primary">
-            {profile.displayName.charAt(0)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-bold tracking-tight font-advercase">{profile.displayName}</h1>
-            <p className="text-sm text-muted-foreground">FilmDB member</p>
-          </div>
+      <div className="flex flex-1 items-center gap-4">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-2xl font-bold text-primary">
+          {profile.displayName.charAt(0)}
         </div>
-        <div className="flex flex-wrap gap-4 sm:gap-6">
-          {stats.map(({ label, value, icon: Icon }) => (
-            <div key={label} className="flex items-center gap-2 rounded-card border border-border/50 bg-card px-4 py-2">
-              <Icon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">{value}</span>
-              <span className="text-xs text-muted-foreground">{label}</span>
-            </div>
-          ))}
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-bold tracking-tight font-advercase">{profile.displayName}</h1>
+          <p className="text-sm text-muted-foreground">FilmDB member</p>
         </div>
       </div>
 
       {/* Tabs */}
       <FilmDetailTabs
-        defaultId="logged-rolls"
+        defaultId="rolls"
         tabs={[
           {
-            id: "logged-rolls",
-            label: "Logged Rolls",
+            id: "rolls",
+            label: "Rolls",
             content: (
               <ProfileSection
-                title="Logged Rolls"
-                description="Rolls you've logged (e.g. In Fridge). Tap a film to see its Logged rolls tab."
-                emptyMessage="No logged rolls yet. Open a film page and tap Log a roll to add one."
+                emptyMessage="No rolls yet. Open a film page and tap Log a roll to add one."
                 isEmpty={loggedRolls.length === 0}
               >
-                <ul className="space-y-4">
-                  {loggedRolls.map((entry) => {
-                    const stock = stocksBySlug.get(entry.film_stock_slug);
-                    if (!stock) return null;
-                    return (
-                      <li key={entry.id}>
-                        <Link
-                          href={`/films/${entry.film_stock_slug}?tab=logged-rolls`}
-                          className="block rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                {loggedRolls.length > 0 && (
+                  <>
+                    <div className="mb-4 flex w-full overflow-hidden rounded-[7px] border border-slate-200 bg-background p-0.5">
+                      {ROLLS_STATUS_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setRollsStatusFilter(opt.value)}
+                          className={cn(
+                            "flex-1 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
+                            rollsStatusFilter === opt.value
+                              ? "rounded-md bg-white text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
                         >
-                          <div className="flex flex-wrap items-start gap-4">
-                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-card bg-muted">
-                              {stock.image_url ? (
-                                <Image
-                                  src={stock.image_url}
-                                  alt=""
-                                  width={80}
-                                  height={80}
-                                  className="h-full w-full object-contain"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center">
-                                  <Camera className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-foreground">
-                                {stock.name}
-                              </p>
-                              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                                {entry.format && <span>Format: {entry.format}</span>}
-                                {entry.status && <span>Status: {entry.status}</span>}
-                                {entry.expiry_date && <span>Expiry: {entry.expiry_date}</span>}
-                                {entry.quantity > 1 && <span>Qty: {entry.quantity}</span>}
-                              </div>
-                            </div>
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </ProfileSection>
-            ),
-          },
-          {
-            id: "ratings",
-            label: "My ratings",
-            content: (
-              <ProfileSection
-                title="Your ratings"
-                description="Films you've rated. Click through to edit."
-                emptyMessage="You haven't rated any films yet."
-                isEmpty={ratingsList.length === 0}
-              >
-                <ul className="space-y-3">
-                  {ratingsList.map((r) => {
-                    const stock = stocksBySlug.get(r.slug);
-                    if (!stock) return null;
-                    return (
-                      <li key={r.slug}>
-                        <Link
-                          href={`/films/${r.slug}`}
-                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
-                        >
-                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-card bg-muted">
-                            {stock.image_url ? (
-                              <Image
-                                src={stock.image_url}
-                                alt=""
-                                fill
-                                className="object-contain"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Camera className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="font-semibold text-foreground">
-                              {stock.name}
-                            </span>
-                          </div>
-                          <MiniStars rating={r.rating} size={18} />
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </ProfileSection>
-            ),
-          },
-          ...(typeof profile.reviewCount === "number"
-            ? [
-                {
-                  id: "reviews",
-                  label: "Shooting Notes",
-                  content: (
-                    <ProfileSection
-                      title="Shooting Notes"
-                      description="Notes you've written. Click through to the film to read or edit."
-                      emptyMessage="You haven't written any reviews yet."
-                      isEmpty={!profile.reviews || profile.reviews.length === 0}
-                    >
-                      <ul className="space-y-3">
-                        {(profile.reviews ?? []).map((r) => {
-                          const stock = stocksBySlug.get(r.film_stock_slug);
-                          const stockName = stock?.name ?? r.film_stock_slug;
-                          const dateLabel = formatReviewDate(r.created_at);
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                    {filteredRolls.length > 0 ? (
+                      <ul className="space-y-4">
+                        {filteredRolls.map((entry) => {
+                          const stock = stocksBySlug.get(entry.film_stock_slug);
+                          if (!stock) return null;
                           return (
-                            <li key={r.id}>
-                              <Link
-                                href={`/films/${r.film_stock_slug}`}
-                                className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <span className="font-semibold text-foreground">{stockName}</span>
-                                  {r.review_title && (
-                                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
-                                  )}
-                                  <p className="mt-1 text-xs text-muted-foreground">{dateLabel}</p>
-                                </div>
-                                {r.rating != null && r.rating > 0 && (
-                                  <MiniStars rating={r.rating} size={18} />
-                                )}
-                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                              </Link>
+                            <li key={entry.id}>
+                              <div className="flex items-start gap-2 rounded-[7px] border border-border/50 bg-white p-4 transition-colors hover:border-primary/30 hover:bg-white">
+                                <Link
+                                  href={`/films/${entry.film_stock_slug}?tab=rolls`}
+                                  className="min-w-0 flex-1"
+                                >
+                                  <div className="flex flex-wrap items-start gap-4">
+                                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-card bg-white">
+                                      {stock.image_url ? (
+                                        <Image
+                                          src={stock.image_url}
+                                          alt=""
+                                          width={80}
+                                          height={80}
+                                          className="h-full w-full object-contain"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center">
+                                          <Camera className="h-8 w-8 text-muted-foreground" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-semibold text-foreground">
+                                        {stock.name}
+                                      </p>
+                                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                                        {entry.format && <span>Format: {entry.format}</span>}
+                                        {entry.status && <span>Status: {entry.status}</span>}
+                                        {entry.expiry_date && <span>Expiry: {entry.expiry_date}</span>}
+                                        {entry.quantity > 1 && <span>Qty: {entry.quantity}</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </Link>
+                                <LoggedRollMenu rollId={entry.id} filmSlug={entry.film_stock_slug} />
+                              </div>
                             </li>
                           );
                         })}
                       </ul>
-                    </ProfileSection>
-                  ),
-                },
-              ]
-            : []),
+                    ) : (
+                      <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+                        No rolls in this status.
+                      </p>
+                    )}
+                  </>
+                )}
+              </ProfileSection>
+            ),
+          },
           ...(typeof profile.uploadCount === "number"
             ? [
                 {
-                  id: "uploads",
-                  label: "Gallery",
+                  id: "shots",
+                  label: "Shots",
                   content: (
                     <ProfileSection
-                      title="Gallery"
+                      title="Shots"
                       description="Images you've uploaded for films. Click through to the film page."
                       emptyMessage="You haven't uploaded any images yet."
                       isEmpty={!profile.uploads || profile.uploads.length === 0}
@@ -316,6 +242,50 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                 },
               ]
             : []),
+          ...(typeof profile.reviewCount === "number"
+            ? [
+                {
+                  id: "notes",
+                  label: "Notes",
+                  content: (
+                    <ProfileSection
+                      title="Notes"
+                      description="Notes you've written. Click through to the film to read or edit."
+                      emptyMessage="You haven't written any notes yet."
+                      isEmpty={!profile.reviews || profile.reviews.length === 0}
+                    >
+                      <ul className="space-y-3">
+                        {(profile.reviews ?? []).map((r) => {
+                          const stock = stocksBySlug.get(r.film_stock_slug);
+                          const stockName = stock?.name ?? r.film_stock_slug;
+                          const dateLabel = formatReviewDate(r.created_at);
+                          return (
+                            <li key={r.id}>
+                              <Link
+                                href={`/films/${r.film_stock_slug}`}
+                                className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-semibold text-foreground">{stockName}</span>
+                                  {r.review_title && (
+                                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
+                                  )}
+                                  <p className="mt-1 text-xs text-muted-foreground">{dateLabel}</p>
+                                </div>
+                                {r.rating != null && r.rating > 0 && (
+                                  <MiniStars rating={r.rating} size={18} />
+                                )}
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </ProfileSection>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </div>
@@ -329,17 +299,26 @@ function ProfileSection({
   isEmpty,
   children,
 }: {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   emptyMessage: string;
   isEmpty?: boolean;
   children: React.ReactNode;
 }) {
+  const showHeader = title != null && title !== "" || description != null && description !== "";
   return (
     <div>
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className="mt-6">
+      {showHeader && (
+        <>
+          {title != null && title !== "" && (
+            <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+          )}
+          {description != null && description !== "" && (
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          )}
+        </>
+      )}
+      <div className={showHeader ? "mt-6" : ""}>
         {isEmpty ? (
           <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
             {emptyMessage}

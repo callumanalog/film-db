@@ -641,7 +641,7 @@ export function StickyLeftPane({
             setLogRollDrawerOpen(false);
             if (synced) {
               showToastViaEvent("Roll saved");
-              router.push(`/films/${slug}?tab=logged-rolls`);
+              router.push(`/films/${slug}?tab=rolls`);
             } else {
               showToastViaEvent("Sign in to save rolls");
             }

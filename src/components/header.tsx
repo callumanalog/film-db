@@ -56,10 +56,10 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl font-sans">
       <div className="mx-auto grid h-16 max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8">
-        {/* Left column: on < lg = hamburger only. on lg = nav + Add. Flex + overflow-hidden to avoid wrap. */}
+        {/* Left column: on mobile = empty (bottom nav). md–lg = hamburger. lg+ = nav + Add. */}
         <div className="flex min-w-0 items-center justify-start overflow-hidden gap-1">
           <button
-            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground hidden md:flex lg:hidden"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle menu"
             aria-expanded={mobileOpen}
@@ -243,9 +243,9 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile drawer: < 1024px — all nav links + Log in + Join (or Add actions + Profile + Sign out) */}
+      {/* Mobile drawer: md–lg only (hidden on small mobile where bottom nav is shown) */}
       {mobileOpen && (
-        <div className="border-t border-border/50 bg-background/95 backdrop-blur-xl text-sm font-medium lg:hidden">
+        <div className="border-t border-border/50 bg-background/95 backdrop-blur-xl text-sm font-medium hidden md:block lg:hidden">
           <nav className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
             {navLinks.map((link) => (
               <Link

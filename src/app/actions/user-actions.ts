@@ -213,6 +213,27 @@ export async function saveLoggedRoll(
   return { synced: true };
 }
 
+/** Delete a logged roll by id. Caller must own the roll (enforced by RLS). Pass filmSlug to revalidate that film page. */
+export async function deleteLoggedRoll(rollId: string, filmSlug?: string): Promise<{ synced: boolean }> {
+  const userId = await getCurrentUserId();
+  if (!userId) return { synced: false };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_logged_rolls")
+    .delete()
+    .eq("id", rollId)
+    .eq("user_id", userId);
+  if (error) {
+    console.error("[user-actions] deleteLoggedRoll error:", error.message, { rollId });
+    return { synced: false };
+  }
+  revalidatePath("/profile");
+  if (filmSlug) revalidatePath(`/films/${filmSlug}`);
+  revalidatePath("/films/[slug]", "page");
+  return { synced: true };
+}
+
 /** Fetch logged rolls for the current user for a given film slug (for film page tab). */
 export async function getLoggedRollsForFilm(slug: string): Promise<LoggedRollEntry[]> {
   const userId = await getCurrentUserId();
