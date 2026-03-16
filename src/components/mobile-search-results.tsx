@@ -140,8 +140,45 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
             ? "brands"
             : "users";
 
+  const buildTabHref = (tab: SearchTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("search", searchQuery);
+    if (tab === "stocks") params.delete("tab");
+    else params.set("tab", tab);
+    return `/films?${params.toString()}`;
+  };
+
   return (
     <div className="py-2">
+      <nav className="mb-3 flex gap-4 border-b border-border/50" aria-label="Section tabs">
+        {TABS.map((tab) => {
+          const isActive = tab === activeTab;
+          const label =
+            tab === "stocks"
+              ? "Stocks"
+              : tab === "shots"
+                ? "Shots"
+                : tab === "notes"
+                  ? "Notes"
+                  : tab === "brands"
+                    ? "Brands"
+                    : "Users";
+          return (
+            <Link
+              key={tab}
+              href={buildTabHref(tab)}
+              className={`relative pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap ${
+                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+              {isActive && (
+                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
+              )}
+            </Link>
+          );
+        })}
+      </nav>
       {loading ? (
         <>
           <p className="text-sm text-muted-foreground">

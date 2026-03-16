@@ -1,6 +1,6 @@
 "use server";
 
-import { getFilmStocks, getBrands } from "@/lib/supabase/queries";
+import { getFilmStocks, getBrands, getFeaturedFilmStocks, getFeaturedBrands } from "@/lib/supabase/queries";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { createClient } from "@/lib/supabase/server";
 
@@ -147,4 +147,83 @@ export async function searchFilmsByTab(
     default:
       return {};
   }
+}
+
+const LATEST_SHOTS_LIMIT = 10;
+const LATEST_NOTES_LIMIT = 10;
+const LATEST_USERS_LIMIT = 10;
+
+/** Trending stocks for mobile search empty state (Stocks tab). */
+export async function getTrendingStocks(): Promise<SearchStocksResult[]> {
+  const stocks = await getFeaturedFilmStocks();
+  return stocks.map((s) => ({
+    slug: s.slug,
+    name: s.name,
+    iso: s.iso ?? null,
+    type: s.type ?? undefined,
+    brandName: s.brand?.name ?? "",
+    imageUrl: s.image_url ?? null,
+  }));
+}
+
+/** Trending brands for mobile search empty state (Brands tab). */
+export async function getTrendingBrands(): Promise<SearchBrandsResult[]> {
+  const brands = await getFeaturedBrands();
+  return brands.map((b) => ({
+    slug: b.slug,
+    name: b.name,
+    subMeta: "Brand",
+  }));
+}
+
+/** Latest shots for mobile search empty state (Shots tab). Limit 10. */
+export async function getLatestShots(): Promise<SearchShotsResult[]> {
+  const stocks = await getFilmStocks({ sort: "alphabetical" });
+  const uploads = await getAllCommunityUploadsForGallery(stocks);
+  return uploads.slice(0, LATEST_SHOTS_LIMIT).map((u) => ({
+    id: u.id,
+    stockSlug: u.stockSlug,
+    stockName: u.stockName,
+    brandName: u.brandName,
+    imageUrl: u.imageUrl,
+    username: u.username,
+  }));
+}
+
+/** Latest notes (reviews) for mobile search empty state (Notes tab). Limit 10. */
+export async function getLatestNotes(): Promise<SearchNotesResult[]> {
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("reviews")
+    .select("id, film_stock_slug, review_title, rating")
+    .order("created_at", { ascending: false })
+    .limit(LATEST_NOTES_LIMIT);
+  if (error || !rows?.length) return [];
+  const stocks = await getFilmStocks({ sort: "alphabetical" });
+  const nameBySlug = new Map(stocks.map((s) => [s.slug, s.name]));
+  return (rows as { id: string; film_stock_slug: string; review_title: string | null; rating: number | null }[]).map(
+    (r) => ({
+      id: r.id,
+      film_stock_slug: r.film_stock_slug,
+      review_title: r.review_title,
+      rating: r.rating,
+      stockName: nameBySlug.get(r.film_stock_slug),
+    })
+  );
+}
+
+/** Latest users (profiles) for mobile search empty state (Users tab). Limit 10. Order by created_at desc. */
+export async function getLatestUsers(): Promise<SearchUsersResult[]> {
+  const supabase = await createClient();
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("id, display_name")
+    .order("created_at", { ascending: false })
+    .limit(LATEST_USERS_LIMIT);
+  if (error || !profiles?.length) return [];
+  return (profiles as { id: string; display_name: string | null }[]).map((p) => ({
+    id: p.id,
+    display_name: p.display_name ?? null,
+    handle: p.display_name ? `@${p.display_name.replace(/\s+/g, "_").toLowerCase()}` : null,
+  }));
 }

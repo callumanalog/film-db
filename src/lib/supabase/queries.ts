@@ -331,13 +331,6 @@ export const getFilmStockBySlug = cache(async function getFilmStockBySlug(
   };
 });
 
-export async function getFeaturedFilmStocks(): Promise<
-  (FilmStock & { brand: FilmBrand })[]
-> {
-  const stocks = await getAllFilmStocksMaybeFromSupabase();
-  return stocks.filter((s) => s.featured);
-}
-
 /** Fixed set of 6 "top rated" film stocks for the homepage carousel, in display order. */
 const TOP_RATED_SLUGS = [
   "kodak-portra-400",
@@ -368,6 +361,43 @@ export async function getBrands(): Promise<FilmBrand[]> {
 export async function getTopBrands(): Promise<FilmBrand[]> {
   const brands = await getBrands();
   return brands.slice(0, 4);
+}
+
+const TRENDING_STOCK_SLUGS = [
+  "kodak-gold-200",
+  "cinestill-800t",
+  "ilford-delta-3200",
+  "kodak-ektar-100",
+  "kodak-portra-160",
+] as const;
+
+const TRENDING_BRAND_SLUGS = [
+  "kodak",
+  "fujifilm",
+  "cinestill",
+  "ilford",
+  "harman",
+  "kentmere",
+] as const;
+
+/** Featured stocks for mobile search "Trending Searches". Only from Supabase (featured column). */
+export async function getFeaturedFilmStocks(): Promise<(FilmStock & { brand: FilmBrand })[]> {
+  const fromSupabase = await getFilmStocksFromSupabase();
+  if (!fromSupabase?.length) return [];
+  const featured = fromSupabase.filter((s) => s.featured === true);
+  const bySlug = new Map(featured.map((s) => [s.slug, s]));
+  return TRENDING_STOCK_SLUGS.map((slug) => bySlug.get(slug)).filter(
+    (s): s is FilmStock & { brand: FilmBrand } => s != null
+  );
+}
+
+/** Featured brands for mobile search "Trending brands". Only from Supabase (featured column). */
+export async function getFeaturedBrands(): Promise<FilmBrand[]> {
+  const fromSupabase = await getBrandsFromSupabase();
+  if (!fromSupabase?.length) return [];
+  const featured = fromSupabase.filter((b) => b.featured === true);
+  const bySlug = new Map(featured.map((b) => [b.slug, b]));
+  return TRENDING_BRAND_SLUGS.map((slug) => bySlug.get(slug)).filter((b): b is FilmBrand => b != null);
 }
 
 export async function getBrandBySlug(

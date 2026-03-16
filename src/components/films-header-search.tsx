@@ -54,10 +54,8 @@ export function FilmsHeaderSearch() {
     }
     const q = value.trim();
     const params = new URLSearchParams(searchParams.toString());
-    if (q) {
-      params.set("search", q);
-      filmsSearch?.addRecentSearch(q);
-    } else params.delete("search");
+    if (q) params.set("search", q);
+    else params.delete("search");
     const query = params.toString();
     router.push(query ? `/films?${query}` : "/films");
   };

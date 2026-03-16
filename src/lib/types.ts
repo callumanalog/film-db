@@ -201,6 +201,8 @@ export interface FilmBrand {
   logo_url: string | null;
   description: string | null;
   website_url: string | null;
+  /** When true, brand appears in mobile search Trending brands. */
+  featured?: boolean | null;
   created_at: string;
   updated_at: string;
 }

@@ -47,6 +47,7 @@ function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
     logo_url: (row.logo_url as string) || null,
     description: (row.description as string) || null,
     website_url: (row.website_url as string) || null,
+    featured: row.featured === true ? true : (row.featured === false ? false : null),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };

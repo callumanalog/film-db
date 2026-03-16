@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useFilmsSearch } from "@/context/films-search-context";
-import { RecentSearches } from "@/components/recent-searches";
+import { MobileSearchEmptyState } from "@/components/mobile-search-empty-state";
 import { MobileSearchResults } from "@/components/mobile-search-results";
 
 export function FilmsPageMobileSearchWrapper({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,7 @@ export function FilmsPageMobileSearchWrapper({ children }: { children: React.Rea
         {showSearchPanel && (
           <div className="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-6 lg:px-8">
             {!searchQuery ? (
-              <RecentSearches />
+              <MobileSearchEmptyState />
             ) : (
               <MobileSearchResults searchQuery={searchQuery} />
             )}
