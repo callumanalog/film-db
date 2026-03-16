@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import localFont from "next/font/local";
 import { Work_Sans, Geist_Mono, Playfair_Display } from "next/font/google";
 import { Header } from "@/components/header";
@@ -70,6 +71,7 @@ export default function RootLayout({
               <Footer />
               <BottomNav />
               <ViewportSize />
+              <SpeedInsights />
             </ToastProvider>
             </MobileHeaderTitleProvider>
             </LogRollTriggerProvider>

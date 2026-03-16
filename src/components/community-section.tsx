@@ -194,21 +194,6 @@ const EXAMPLE_TAB_PLACEHOLDERS: { src: string; username: string; camera: string;
   { src: "/placeholders/placeholder-4.png", username: "tokyoframes", camera: "Olympus OM-1 · 28mm", likes: 0 },
 ];
 
-/** 50 placeholder cards for Flickr toggle on Gallery tab — same styling as other image cards. */
-const FLICKR_TAB_PLACEHOLDERS: { id: string; src: string; username: string; camera: string; likes: number }[] = Array.from(
-  { length: 50 },
-  (_, i) => {
-    const placeholders = [
-      { src: "/placeholders/placeholder-1.png", username: "nightcrawler_35mm", camera: "Contax G2 · 45mm" },
-      { src: "/placeholders/placeholder-2.png", username: "analog.sara", camera: "Nikon FM2 · 50mm" },
-      { src: "/placeholders/placeholder-3.png", username: "filmvault", camera: "Canon AE-1 · 50mm" },
-      { src: "/placeholders/placeholder-4.png", username: "tokyoframes", camera: "Olympus OM-1 · 28mm" },
-    ];
-    const p = placeholders[i % 4];
-    return { id: `flickr-placeholder-${i + 1}`, src: p.src, username: p.username, camera: p.camera, likes: Math.floor((i * 7) % 50) };
-  }
-);
-
 type GalleryView = "flickr" | "community" | "you";
 
 /** Initials for avatar (e.g. "analog.sara" → "AS", "You" → "YO"). */
@@ -397,6 +382,9 @@ export function CommunityGallery({
   const [communityUploads, setCommunityUploads] = useState<FilmUploadRow[]>([]);
   const [myUploads, setMyUploads] = useState<FilmUploadRow[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(!!slug);
+  useEffect(() => {
+    if (!useFlickr && view === "flickr") setView("community");
+  }, [useFlickr, view]);
   const [lightboxImage, setLightboxImage] = useState<{
     imageUrl: string;
     alt?: string;
@@ -448,7 +436,7 @@ export function CommunityGallery({
 
   const isTab = variant === "tab";
   const communityItemsCount = slug ? communityUploads.length : EXAMPLE_TAB_PLACEHOLDERS.length + SAMPLE_GALLERY.length;
-  const flickrCount = isTab ? FLICKR_TAB_PLACEHOLDERS.length : flickrImages.length;
+  const flickrCount = flickrImages.length;
   const yourImagesCount = slug
     ? myUploads.length
     : EXAMPLE_TAB_PLACEHOLDERS.filter((p) => p.username === "nightcrawler_35mm").length
@@ -466,7 +454,7 @@ export function CommunityGallery({
             role="tablist"
             aria-label="Image source"
           >
-            {(["flickr", "community", "you"] as const).map((v) => (
+            {(["flickr", "community", "you"] as const).filter((v) => v !== "flickr" || flickrImages.length > 0).map((v) => (
               <button
                 key={v}
                 type="button"
@@ -540,10 +528,8 @@ export function CommunityGallery({
               : showCommunity
                 ? [...EXAMPLE_TAB_PLACEHOLDERS]
                 : [];
-          /** When tab + Flickr view: 50 placeholder cards; otherwise real flickr when community has flickr. */
-          const flickrToShow = showFlickrOnly
-            ? FLICKR_TAB_PLACEHOLDERS
-            : (showCommunity && useFlickr) ? flickrImages : [];
+          /** Real Flickr images only (no placeholders). */
+          const flickrToShow = showFlickrOnly || (showCommunity && useFlickr) ? flickrImages : [];
           const sampleToShow = useRealUploads
             ? []
             : showYouOnly
@@ -673,72 +659,38 @@ export function CommunityGallery({
           </button>
           );
         })}
-        {/* Flickr: 50 placeholder cards (tab) or real Flickr images */}
+        {/* Flickr: real images only (no placeholders) */}
         {flickrToShow.length > 0 &&
-          (showFlickrOnly ? (
-            FLICKR_TAB_PLACEHOLDERS.map((item) => {
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
-                  className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.src} alt="" className="block w-full h-auto" aria-hidden />
-                  <div className="flex items-center gap-2 p-2.5">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
-                      {getInitials(item.username)}
-                    </span>
-                    <p className="min-w-0 flex-1 truncate text-xs font-medium">{item.username}</p>
-                    <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
-                        <Heart className="h-3.5 w-3.5" />
-                      </button>
-                      <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
-                        <Bookmark className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-          flickrToShow.map((item) => {
-              const img = item as FlickrPhoto;
-              return (
-              <button
-                key={img.id}
-                type="button"
-                onClick={() => setLightboxImage({ imageUrl: img.imageUrl, alt: img.title || "", username: img.ownerName })}
-                className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.imageUrl}
-                  alt={img.title || ""}
-                  className="block w-full h-auto"
-                  sizes="(max-width: 768px) 50vw, 33vw"
-                />
-                <div className="flex items-center gap-2 p-2.5">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
-                    {getInitials(img.ownerName)}
-                  </span>
-                  <p className="min-w-0 flex-1 truncate text-xs font-medium">{img.ownerName}</p>
-                  <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
-                      <Heart className="h-3.5 w-3.5" />
-                    </button>
-                    <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
-                      <Bookmark className="h-3.5 w-3.5" />
-                    </button>
-                  </span>
-                </div>
-              </button>
-              );
-            })
-          )
-          )}
+          flickrToShow.map((img) => (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => setLightboxImage({ imageUrl: img.imageUrl, alt: img.title || "", username: img.ownerName })}
+              className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.imageUrl}
+                alt={img.title || ""}
+                className="block w-full h-auto"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
+              <div className="flex items-center gap-2 p-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground" aria-hidden>
+                  {getInitials(img.ownerName)}
+                </span>
+                <p className="min-w-0 flex-1 truncate text-xs font-medium">{img.ownerName}</p>
+                <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Like">
+                    <Heart className="h-3.5 w-3.5" />
+                  </button>
+                  <button type="button" onClick={(e) => e.stopPropagation()} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Save">
+                    <Bookmark className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              </div>
+            </button>
+          ))}
         {sampleToShow.length > 0 &&
           sampleToShow.map((img) => {
               return (

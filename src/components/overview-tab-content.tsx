@@ -26,13 +26,6 @@ const SLIDER_CONFIG: { key: "grain" | "contrast" | "saturation" | "latitude"; la
   { key: "latitude", label: "Latitude", low: "Narrow", high: "Wide" },
 ];
 
-/** Placeholder image paths and usernames for overview grid (same style as example cards, no heart/camera). */
-const OVERVIEW_PLACEHOLDER_ITEMS = [
-  { src: "/placeholders/placeholder-1.png", username: "nightcrawler_35mm" },
-  { src: "/placeholders/placeholder-2.png", username: "analog.sara" },
-  { src: "/placeholders/placeholder-3.png", username: "filmvault" },
-] as const;
-
 /** Extract YouTube video ID from watch or youtu.be URL for thumbnails. */
 function getYouTubeVideoId(url: string): string | null {
   try {
@@ -49,61 +42,39 @@ function getYouTubeVideoId(url: string): string | null {
   return null;
 }
 
-/** Grid of 3 images (Flickr or placeholders) — card style with username only under image, same size. */
+/** Grid of up to 3 real Flickr images — card style with username only under image. No placeholders. */
 const OVERVIEW_IMAGE_WIDTH = 400;
 const OVERVIEW_IMAGE_HEIGHT = 300; // 4:3
 
 function OverviewImageGrid({ flickrImages }: { flickrImages: FlickrPhoto[] }) {
   const images = flickrImages.slice(0, 3);
+  if (images.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-3 gap-3">
-      {OVERVIEW_PLACEHOLDER_ITEMS.map((item, i) => {
-        const flickr = images[i];
-        if (flickr) {
-          return (
-            <a
-              key={flickr.id}
-              href={flickr.flickrPhotoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30"
-            >
-              <div className="relative aspect-[4/3] bg-muted">
-                <Image
-                  src={flickr.imageUrl}
-                  alt={flickr.title || ""}
-                  width={OVERVIEW_IMAGE_WIDTH}
-                  height={OVERVIEW_IMAGE_HEIGHT}
-                  sizes="(max-width: 640px) 33vw, 200px"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="p-3">
-                <p className="text-xs font-medium">{flickr.ownerName}</p>
-              </div>
-            </a>
-          );
-        }
-        return (
-          <div key={i} className="overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30">
-            <div className="relative aspect-[4/3] bg-muted">
-              <Image
-                src={item.src}
-                alt=""
-                width={OVERVIEW_IMAGE_WIDTH}
-                height={OVERVIEW_IMAGE_HEIGHT}
-                sizes="(max-width: 640px) 33vw, 200px"
-                className="h-full w-full object-cover"
-                aria-hidden
-              />
-            </div>
-            <div className="p-3">
-              <p className="text-xs font-medium">{item.username}</p>
-            </div>
+    <div className={`grid gap-3 ${images.length === 1 ? "grid-cols-1 max-w-[200px]" : images.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+      {images.map((flickr) => (
+        <a
+          key={flickr.id}
+          href={flickr.flickrPhotoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block overflow-hidden rounded-[7px] border border-border/50 bg-card transition-all hover:border-primary/30"
+        >
+          <div className="relative aspect-[4/3] bg-muted">
+            <Image
+              src={flickr.imageUrl}
+              alt={flickr.title || ""}
+              width={OVERVIEW_IMAGE_WIDTH}
+              height={OVERVIEW_IMAGE_HEIGHT}
+              sizes="(max-width: 640px) 33vw, 200px"
+              className="h-full w-full object-cover"
+            />
           </div>
-        );
-      })}
+          <div className="p-3">
+            <p className="text-xs font-medium">{flickr.ownerName}</p>
+          </div>
+        </a>
+      ))}
     </div>
   );
 }
