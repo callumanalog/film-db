@@ -46,6 +46,18 @@ const FONT_FAMILY_TOKENS = [
   { token: "font-sans", desc: "h1, h2, h3, h4, h5, h6, body, UI copy" },
 ] as const;
 
+const FONT_WEIGHT_TOKENS = [
+  { token: "font-thin", value: "100" },
+  { token: "font-extralight", value: "200" },
+  { token: "font-light", value: "300" },
+  { token: "font-normal", value: "400" },
+  { token: "font-medium", value: "500" },
+  { token: "font-semibold", value: "600" },
+  { token: "font-bold", value: "700" },
+  { token: "font-extrabold", value: "800" },
+  { token: "font-black", value: "900" },
+] as const;
+
 const WIDTH_TOKENS = [
   { token: "max-w-[var(--width-search-field)]", value: "220px", desc: "Search field" },
   { token: "max-w-[var(--width-chip-label)]", value: "120px", desc: "Chip label truncation" },
@@ -138,6 +150,27 @@ export default function StyleGuidePage() {
           </div>
         </section>
 
+        {/* Typography — font weights (font-sans) */}
+        <section className="mb-14">
+          <h2 className="font-sans text-xl font-bold text-foreground mb-1">Typography — font weights</h2>
+          <p className="font-sans text-sm text-muted-foreground mb-6">
+            All samples use <code className="rounded-control bg-muted px-1 py-0.5 font-mono text-caption">font-sans</code>. Work Sans is loaded with 300, 400, 500, 600, 700; other weights may fall back to the nearest.
+          </p>
+          <div className="rounded-card border border-border/50 bg-card divide-y divide-border/50 overflow-hidden">
+            {FONT_WEIGHT_TOKENS.map(({ token, value }) => (
+              <div key={token} className="flex flex-wrap items-baseline justify-between gap-4 px-4 py-3">
+                <span className={`font-sans ${token} text-base text-foreground`}>
+                  The quick brown fox jumps over the lazy dog.
+                </span>
+                <div className="flex items-center gap-3">
+                  <code className="font-mono text-caption text-muted-foreground">{token}</code>
+                  <span className="font-sans text-tiny text-muted-foreground tabular-nums">{value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Typography — families */}
         <section className="mb-14">
           <h2 className="font-sans text-xl font-bold text-foreground mb-1">Typography — families</h2>
@@ -158,7 +191,7 @@ export default function StyleGuidePage() {
         <section className="mb-14">
           <h2 className="font-sans text-xl font-bold text-foreground mb-1">Widths</h2>
           <p className="font-sans text-sm text-muted-foreground mb-6">
-            Use with <code className="rounded-control bg-muted px-1 py-0.5 font-mono text-caption">max-w-[var(--width-*)]</code>.
+            Use with <code className="rounded-control bg-muted px-1 py-0.5 font-mono text-caption">max-w-[var(--width-search-field)]</code> or other width tokens listed below.
           </p>
           <ul className="font-sans text-sm text-foreground space-y-2">
             {WIDTH_TOKENS.map(({ token, value, desc }) => (

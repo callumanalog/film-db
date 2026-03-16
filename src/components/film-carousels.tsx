@@ -6,7 +6,7 @@ import { FILM_TYPE_LABELS } from "@/lib/types";
 import { FilmCard } from "@/components/film-card";
 import { ChevronRight } from "lucide-react";
 
-/** 10 film stocks generally loved by film photographers, in display order (mixed so Portra isn’t all first). */
+/** 10 film stocks generally loved by film photographers, in display order. */
 const COMMUNITY_FAVOURITES_SLUGS = [
   "cinestill-800t",
   "ilford-hp5-plus",
@@ -25,7 +25,7 @@ const CAROUSEL_TYPE_ORDER: FilmType[] = ["instant"];
 interface FilmCarouselsProps {
   stocks: (FilmStock & { brand: FilmBrand })[];
   statsBySlug?: Record<string, { avgRating: number | null }>;
-  /** Slugs of films the user has logged a roll for; used to show "Shoot something new" from brands they haven't used. */
+  /** Optional, no longer used (Shoot something new carousel removed). */
   loggedSlugs?: string[];
 }
 
@@ -70,38 +70,13 @@ function getBudgetFriendly(
   );
 }
 
-/** Up to 10 films from brands the user has never logged a roll for (one per brand for diversity). When no rolls logged, any brand counts as "new". */
-function getShootSomethingNew(
-  stocks: (FilmStock & { brand: FilmBrand })[],
-  loggedSlugs: string[]
-): (FilmStock & { brand: FilmBrand })[] {
-  const loggedBrandSlugs = new Set(
-    stocks.filter((s) => loggedSlugs.includes(s.slug)).map((s) => s.brand.slug)
-  );
-  const byBrand = new Map<string, (FilmStock & { brand: FilmBrand })[]>();
-  for (const s of stocks) {
-    if (loggedBrandSlugs.has(s.brand.slug)) continue;
-    const list = byBrand.get(s.brand.slug) ?? [];
-    list.push(s);
-    byBrand.set(s.brand.slug, list);
-  }
-  const result: (FilmStock & { brand: FilmBrand })[] = [];
-  for (const [, list] of byBrand) {
-    if (result.length >= 10) break;
-    result.push(list[0]);
-  }
-  return result;
-}
-
-export function FilmCarousels({ stocks, statsBySlug, loggedSlugs = [] }: FilmCarouselsProps) {
+export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
   const byType = groupStocksByType(stocks);
   const communityFavourites = getCommunityFavourites(stocks);
   const budgetFriendly = getBudgetFriendly(stocks);
-  const shootSomethingNew = getShootSomethingNew(stocks, loggedSlugs);
   const typeSections = CAROUSEL_TYPE_ORDER.filter((type) => (byType.get(type)?.length ?? 0) > 0);
   const hasCommunityFavourites = communityFavourites.length > 0;
   const hasBudgetFriendly = budgetFriendly.length > 0;
-  const hasShootSomethingNew = shootSomethingNew.length > 0;
   const allStocksAlphabetical = [...stocks].sort((a, b) => {
     const na = `${a.brand.name} ${a.name}`.toLowerCase();
     const nb = `${b.brand.name} ${b.name}`.toLowerCase();
@@ -110,7 +85,6 @@ export function FilmCarousels({ stocks, statsBySlug, loggedSlugs = [] }: FilmCar
   const hasAnySection =
     hasCommunityFavourites ||
     hasBudgetFriendly ||
-    hasShootSomethingNew ||
     typeSections.length > 0 ||
     stocks.length > 0;
 
@@ -148,7 +122,7 @@ export function FilmCarousels({ stocks, statsBySlug, loggedSlugs = [] }: FilmCar
           <div className="-mx-4 overflow-hidden">
             <div className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4">
               {communityFavourites.map((stock, index) => (
-                <div key={stock.id} className="min-w-0 w-[calc(45%-8px)] shrink-0">
+                <div key={stock.id} className="min-w-0 w-[calc(36%-8px)] shrink-0">
                   <FilmCard stock={stock} priority={index < 4} />
                 </div>
               ))}
@@ -178,41 +152,9 @@ export function FilmCarousels({ stocks, statsBySlug, loggedSlugs = [] }: FilmCar
             </Link>
           </div>
           <div className="-mx-4 overflow-hidden">
-            <div className="scrollbar-hide flex snap-x snap-mandatory overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4 scroll-pl-4">
-              {budgetFriendly.map((stock, index) => (
-                <div key={stock.id} className="w-[120px] min-w-[120px] shrink-0 snap-start">
-                  <FilmCard stock={stock} priority={index < 4} compact />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-      {hasShootSomethingNew && (
-        <section
-          key="shoot-something-new"
-          className="film-row"
-          aria-labelledby="carousel-shoot-something-new"
-        >
-          <div className="mb-3 flex items-end justify-between gap-4">
-            <h3
-              id="carousel-shoot-something-new"
-              className="m-0 font-sans text-xl font-bold tracking-tight text-foreground"
-            >
-              Shoot something new
-            </h3>
-            <Link
-              href="/films"
-              className="shrink-0 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              View all
-              <ChevronRight className="ml-0.5 inline-block h-4 w-4" />
-            </Link>
-          </div>
-          <div className="-mx-4 overflow-hidden">
             <div className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4">
-              {shootSomethingNew.map((stock, index) => (
-                <div key={stock.id} className="min-w-0 w-[calc(45%-8px)] shrink-0">
+              {budgetFriendly.map((stock, index) => (
+                <div key={stock.id} className="min-w-0 w-[calc(36%-8px)] shrink-0">
                   <FilmCard stock={stock} priority={index < 4} />
                 </div>
               ))}
@@ -257,7 +199,7 @@ export function FilmCarousels({ stocks, statsBySlug, loggedSlugs = [] }: FilmCar
             <div className="-mx-4 overflow-hidden">
               <div className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4">
                 {list.map((stock, index) => (
-                  <div key={stock.id} className="min-w-0 w-[calc(45%-8px)] shrink-0">
+                  <div key={stock.id} className="min-w-0 w-[calc(36%-8px)] shrink-0">
                     <FilmCard stock={stock} priority={false} />
                   </div>
                 ))}

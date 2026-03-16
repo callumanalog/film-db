@@ -119,9 +119,11 @@ interface DiscoveryHeaderProps {
   brands: FilmBrand[];
   filterOptions: FilmFilterOptions;
   currentSort: SortValue;
+  /** When false, hide "Browse by use case" on mobile (e.g. when on Shots/Notes/Brands/Users tab). Default true. */
+  showUseCasePills?: boolean;
 }
 
-export function DiscoveryHeader({ brands, filterOptions, currentSort }: DiscoveryHeaderProps) {
+export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCasePills = true }: DiscoveryHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -266,8 +268,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
 
   return (
     <>
-      <header className="text-center pb-0">
-        <h1 className="hidden font-sans text-3xl font-bold tracking-tight text-foreground md:block sm:text-4xl">
+      <h1 className="hidden font-sans text-3xl font-bold tracking-tight text-foreground md:block sm:text-4xl">
           Discover your next film
         </h1>
         <p className="mx-auto mt-2 hidden max-w-xl font-sans text-sm text-muted-foreground md:block sm:text-base">
@@ -302,36 +303,38 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
           </div>
         </div>
 
-        {/* Mobile: "Browse by use case" + 2x2 grid of pills (links, always-active styling). */}
-        <div className="mt-3 md:hidden">
-          <h3 className="mb-2 text-left font-sans text-xl font-bold tracking-tight text-foreground">
-            Browse by use case
-          </h3>
-          <div className="grid grid-cols-2 gap-2.5">
-            {DISCOVERY_PILLS.map((pill) => {
-              const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
-              return (
-                <Link
-                  key={pill.id}
-                  href={vibeHref(pill.id)}
-                  className="group flex h-11 w-full items-center justify-start rounded-card border border-transparent font-sans text-xs transition-[background-image,background-size,background-position] duration-200 ease-in-out"
-                  style={{
-                    borderWidth: 1.5,
-                    backgroundImage: `linear-gradient(${theme.activeBgTint}, ${theme.activeBgTint}), ${theme.gradient}`,
-                    backgroundOrigin: "padding-box, border-box",
-                    backgroundClip: "padding-box, border-box",
-                    backgroundRepeat: "no-repeat",
-                    backgroundSize: "100% 100%, 100% 100%",
-                  }}
-                >
-                  <h3 className={`m-0 font-sans text-sm font-semibold pl-4 pr-4 ${theme.activeTextClass ?? "text-white"}`}>
-                    {pill.label}
-                  </h3>
-                </Link>
-              );
-            })}
+        {/* Mobile: "Browse by use case" + 2x2 grid of pills — only on Film Stocks tab. */}
+        {showUseCasePills && (
+          <div className="mt-3 md:hidden">
+            <h3 className="mb-2 text-left font-sans text-xl font-bold tracking-tight text-foreground">
+              Browse by use case
+            </h3>
+            <div className="grid grid-cols-2 gap-2.5">
+              {DISCOVERY_PILLS.map((pill) => {
+                const theme = PILL_THEMES[pill.id] ?? PILL_THEMES.experimental;
+                return (
+                  <Link
+                    key={pill.id}
+                    href={vibeHref(pill.id)}
+                    className="group flex h-11 w-full items-center justify-start rounded-card border border-transparent font-sans text-xs transition-[background-image,background-size,background-position] duration-200 ease-in-out"
+                    style={{
+                      borderWidth: 1.5,
+                      backgroundImage: `linear-gradient(${theme.activeBgTint}, ${theme.activeBgTint}), ${theme.gradient}`,
+                      backgroundOrigin: "padding-box, border-box",
+                      backgroundClip: "padding-box, border-box",
+                      backgroundRepeat: "no-repeat",
+                      backgroundSize: "100% 100%, 100% 100%",
+                    }}
+                  >
+                    <h3 className={`m-0 font-sans text-sm font-semibold pl-4 pr-4 ${theme.activeTextClass ?? "text-white"}`}>
+                      {pill.label}
+                    </h3>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Utility Row: Mobile = nothing (search in header). Desktop = search icon/form + Filters + Sort. */}
         <div className="mt-0 flex flex-row flex-wrap items-center justify-between gap-4 md:mt-12">
@@ -410,7 +413,6 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort }: Discover
         <div className="mt-3 flex flex-wrap items-center justify-start gap-1.5 md:hidden">
           <ActiveFilterChips brands={brands} />
         </div>
-      </header>
 
       {drawerOpen && (
         <>

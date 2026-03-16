@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/queries";
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getVaultRolls } from "@/app/actions/user-actions";
+import { getLatestShots, getLatestNotes, getLatestUsers } from "@/app/actions/search";
 import { FilmsListingClient } from "@/app/films/films-listing-client";
 import { FilmsPageMobileSearchWrapper } from "@/app/films/films-page-mobile-search-wrapper";
+import { DiscoverTabPanels } from "@/app/films/discover-tab-panels";
 import { DiscoveryHeader } from "@/components/discovery-header";
 import { FiltersLeftPane } from "@/components/filters-left-pane";
 import { FilmsSortBar } from "@/components/films-sort-bar";
@@ -112,6 +114,20 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
     ...isoArr,
   ].filter(Boolean).length;
 
+  const discoverTab = params.tab === "shots" || params.tab === "notes" || params.tab === "brands" || params.tab === "users" ? params.tab : null;
+  const [latestShots, latestNotes, latestUsers] = discoverTab
+    ? await Promise.all([getLatestShots(), getLatestNotes(), getLatestUsers()])
+    : [null, null, null];
+
+  const filmsListing = (
+    <FilmsListingClient
+      stocks={stocks}
+      statsBySlug={statsBySlug}
+      loggedSlugs={loggedSlugs}
+      useCaseFilter={bestForArr.length > 0 || !!vibe}
+    />
+  );
+
   return (
     <FilmsPageMobileSearchWrapper>
     <div className="min-h-screen bg-background">
@@ -121,28 +137,35 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
             brands={brands}
             filterOptions={filterOptions}
             currentSort={params.sort === "alphabetical" ? "alphabetical" : "highest-rated"}
+            showUseCasePills={!discoverTab}
           />
         </div>
         {params.filters === "1" ? (
           <FiltersLeftPane brands={brands} filterOptions={filterOptions}>
             <main className="min-w-0">
-              <FilmsListingClient
-                stocks={stocks}
-                statsBySlug={statsBySlug}
-                loggedSlugs={loggedSlugs}
-                filterPaneOpen
-                useCaseFilter={bestForArr.length > 0 || !!vibe}
-              />
+              {filmsListing}
             </main>
           </FiltersLeftPane>
         ) : (
           <main className="min-w-0">
-            <FilmsListingClient
-              stocks={stocks}
-              statsBySlug={statsBySlug}
-              loggedSlugs={loggedSlugs}
-              useCaseFilter={bestForArr.length > 0 || !!vibe}
-            />
+            {/* Desktop: always show film grid */}
+            <div className="hidden md:block">
+              {filmsListing}
+            </div>
+            {/* Mobile: show film grid or discover tab panel (Shots / Notes / Brands / Users) */}
+            <div className="md:hidden">
+              {discoverTab ? (
+                <DiscoverTabPanels
+                  tab={discoverTab}
+                  latestShots={latestShots}
+                  latestNotes={latestNotes}
+                  brands={brands}
+                  latestUsers={latestUsers}
+                />
+              ) : (
+                filmsListing
+              )}
+            </div>
           </main>
         )}
       </div>

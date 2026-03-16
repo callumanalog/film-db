@@ -4,16 +4,17 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const FILMS_TABS = [
-  { id: "stocks", label: "Stocks" },
+  { id: "stocks", label: "Film Stocks" },
   { id: "shots", label: "Shots" },
   { id: "notes", label: "Notes" },
   { id: "brands", label: "Brands" },
   { id: "users", label: "Users" },
 ] as const;
 
-function buildHref(tabId: string, searchParams: URLSearchParams): string {
+function buildHref(tabId: string, searchParams: URLSearchParams, pathname: string | null): string {
   const hasSearch = searchParams.has("search");
-  if (!hasSearch) {
+  const onFilmsPage = pathname === "/films";
+  if (!hasSearch && !onFilmsPage) {
     if (tabId === "brands") return "/brands";
     if (tabId === "users") return "/community";
   }
@@ -43,7 +44,7 @@ export function FilmsHeaderTabs() {
       <div className="flex gap-6">
         {FILMS_TABS.map((t) => {
           const isActive = t.id === activeId;
-          const href = buildHref(t.id, searchParams);
+          const href = buildHref(t.id, searchParams, pathname);
           return (
             <Link
               key={t.id}

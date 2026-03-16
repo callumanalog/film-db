@@ -44,7 +44,11 @@ function SignInForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      setMessage({ type: "error", text: error.message });
+      const text =
+        error.message === "Invalid login credentials"
+          ? "That email or password didn't look quite right."
+          : error.message;
+      setMessage({ type: "error", text });
       return;
     }
     router.push(redirectTo);
@@ -71,27 +75,32 @@ function SignInForm() {
             required
             autoComplete="email"
           />
-          <TextField
-            id="password"
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-            labelSuffix={
-              <Link
-                href={`/auth/forgot-password?next=${encodeURIComponent(redirectTo)}`}
-                className="text-xs text-foreground hover:underline"
-              >
-                Forgot Password?
-              </Link>
-            }
-          />
-          {message && (
-            <p
-              className={`text-sm ${message.type === "error" ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}
-            >
+          <div>
+            <TextField
+              id="password"
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              labelSuffix={
+                <Link
+                  href={`/auth/forgot-password?next=${encodeURIComponent(redirectTo)}`}
+                  className="text-xs text-foreground hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+              }
+            />
+            {message?.type === "error" && (
+              <p className="mt-1 font-sans text-ui text-destructive">
+                {message.text}
+              </p>
+            )}
+          </div>
+          {message?.type === "success" && (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400">
               {message.text}
             </p>
           )}

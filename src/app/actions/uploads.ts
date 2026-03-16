@@ -34,10 +34,11 @@ export interface CommunityGalleryUpload {
   imageUrl: string | null;
 }
 
-/** All community uploads for the global Community page gallery. Optional search filters by caption and metadata. */
+/** All community uploads for the global Community page gallery. Optional search by caption/metadata and/or by film stock slugs (e.g. match by stock name). */
 export async function getAllCommunityUploadsForGallery(
   stocks: { slug: string; name: string; brand: { name: string } }[],
-  search?: string
+  search?: string,
+  matchingStockSlugs?: string[]
 ): Promise<CommunityGalleryUpload[]> {
   const supabase = await createClient();
   let query = supabase
@@ -46,11 +47,19 @@ export async function getAllCommunityUploadsForGallery(
     .not("image_url", "is", null)
     .order("created_at", { ascending: false });
   const term = search?.trim();
-  if (term) {
+  const slugFilter = matchingStockSlugs?.length ? matchingStockSlugs : [];
+  if (term && slugFilter.length > 0) {
+    const pattern = `%${term}%`;
+    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern}`;
+    const slugIn = `film_stock_slug.in.(${slugFilter.map((s) => `"${s.replace(/"/g, '\\"')}"`).join(",")})`;
+    query = query.or(`${textOr},${slugIn}`);
+  } else if (term) {
     const pattern = `%${term}%`;
     query = query.or(
       `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern}`
     );
+  } else if (slugFilter.length > 0) {
+    query = query.in("film_stock_slug", slugFilter);
   }
   const { data: rows, error } = await query;
 

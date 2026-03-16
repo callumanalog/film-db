@@ -96,8 +96,8 @@ export function FilmsHeaderSearch() {
         onChange={(e) => setValue(e.target.value)}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        placeholder="Search film stocks..."
-        className="min-w-0 flex-1 border-0 bg-transparent py-0 text-base font-medium text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
+        placeholder="Find film stocks, shots, notes, brands, users"
+        className="min-w-0 flex-1 border-0 bg-transparent py-0 text-ui text-foreground placeholder:text-ui placeholder:text-muted-foreground focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
       />
       {showClear && (
         <button

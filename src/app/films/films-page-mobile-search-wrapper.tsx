@@ -21,7 +21,7 @@ export function FilmsPageMobileSearchWrapper({ children }: { children: React.Rea
       <div className="md:hidden">
         {!showSearchPanel && children}
         {showSearchPanel && (
-          <div className="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl bg-white px-4 pt-4 pb-8 sm:px-6 lg:px-8">
             {!searchQuery ? (
               <MobileSearchEmptyState />
             ) : (

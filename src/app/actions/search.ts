@@ -75,12 +75,16 @@ export async function searchFilmsByTab(
       };
     }
     case "brands": {
-      const brands = await getBrands();
+      const [brands, allStocks] = await Promise.all([getBrands(), getFilmStocks({ sort: "alphabetical" })]);
       const lower = q.toLowerCase();
+      const brandSlugsWithMatchingStock = new Set(
+        allStocks.filter((s) => s.name.toLowerCase().includes(lower)).map((s) => s.brand.slug)
+      );
       const filtered = brands.filter(
         (b) =>
           b.name.toLowerCase().includes(lower) ||
-          (b.slug && b.slug.toLowerCase().includes(lower))
+          (b.slug && b.slug.toLowerCase().includes(lower)) ||
+          brandSlugsWithMatchingStock.has(b.slug)
       );
       return {
         brands: filtered.map((b) => ({
@@ -92,9 +96,25 @@ export async function searchFilmsByTab(
     }
     case "shots": {
       const stocks = await getFilmStocks({ sort: "alphabetical" });
-      const uploads = await getAllCommunityUploadsForGallery(stocks, q);
+      const matchingStockSlugs = new Set(
+        stocks.filter((s) => s.name.toLowerCase().includes(q.toLowerCase())).map((s) => s.slug)
+      );
+      const uploadsByText = await getAllCommunityUploadsForGallery(stocks, q);
+      const uploadsByStockName =
+        matchingStockSlugs.size > 0
+          ? await getAllCommunityUploadsForGallery(stocks, undefined, [...matchingStockSlugs])
+          : [];
+      const seenIds = new Set(uploadsByText.map((u) => u.id));
+      const merged = [...uploadsByText];
+      for (const u of uploadsByStockName) {
+        if (!seenIds.has(u.id)) {
+          seenIds.add(u.id);
+          merged.push(u);
+        }
+      }
+      merged.sort((a, b) => 0); // keep order stable (uploadsByText first, then by stock name)
       return {
-        shots: uploads.map((u) => ({
+        shots: merged.map((u) => ({
           id: u.id,
           stockSlug: u.stockSlug,
           stockName: u.stockName,

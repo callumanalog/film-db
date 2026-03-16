@@ -380,7 +380,7 @@ const TRENDING_BRAND_SLUGS = [
   "kentmere",
 ] as const;
 
-/** Featured stocks for mobile search "Trending Searches". Only from Supabase (featured column). */
+/** Featured stocks for mobile search "Trending film stocks". Only from Supabase (featured column). */
 export async function getFeaturedFilmStocks(): Promise<(FilmStock & { brand: FilmBrand })[]> {
   const fromSupabase = await getFilmStocksFromSupabase();
   if (!fromSupabase?.length) return [];

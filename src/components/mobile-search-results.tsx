@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { ChevronRight, Star } from "lucide-react";
+import { SearchListCard } from "@/components/search-list-card";
 import {
   searchFilmsByTab,
   type SearchTab,
@@ -22,7 +23,7 @@ function SearchListSkeleton() {
     <div className="space-y-0 border-b border-slate-50 [&>div]:border-b [&>div]:border-slate-50">
       {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="flex items-center gap-3 py-3">
-          <div className="h-12 w-12 shrink-0 rounded-md bg-slate-100 animate-pulse" />
+          <div className="h-16 w-16 shrink-0 rounded-md bg-slate-100 animate-pulse" />
           <div className="min-w-0 flex-1">
             <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
             <div className="mt-1.5 h-3 w-16 rounded bg-slate-100 animate-pulse" />
@@ -57,34 +58,6 @@ function NotesStackSkeleton() {
         </div>
       ))}
     </div>
-  );
-}
-
-function SearchListRow({
-  href,
-  thumb,
-  title,
-  subMeta,
-}: {
-  href: string;
-  thumb: React.ReactNode;
-  title: string;
-  subMeta: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 border-b border-slate-50 py-3 last:border-b-0"
-    >
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
-        {thumb}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-        <p className="truncate text-xs text-muted-foreground">{subMeta}</p>
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-    </Link>
   );
 }
 
@@ -140,48 +113,11 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
             ? "brands"
             : "users";
 
-  const buildTabHref = (tab: SearchTab) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("search", searchQuery);
-    if (tab === "stocks") params.delete("tab");
-    else params.set("tab", tab);
-    return `/films?${params.toString()}`;
-  };
-
   return (
     <div className="py-2">
-      <nav className="mb-3 flex gap-4 border-b border-border/50" aria-label="Section tabs">
-        {TABS.map((tab) => {
-          const isActive = tab === activeTab;
-          const label =
-            tab === "stocks"
-              ? "Stocks"
-              : tab === "shots"
-                ? "Shots"
-                : tab === "notes"
-                  ? "Notes"
-                  : tab === "brands"
-                    ? "Brands"
-                    : "Users";
-          return (
-            <Link
-              key={tab}
-              href={buildTabHref(tab)}
-              className={`relative pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap ${
-                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {label}
-              {isActive && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
       {loading ? (
         <>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             Searching for <strong>{searchQuery}</strong> in {tabLabel}…
           </p>
           {activeTab === "stocks" || activeTab === "brands" || activeTab === "users" ? (
@@ -194,18 +130,18 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
         </>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-label text-muted-foreground">
             {summary === 0 ? (
               <>No {tabLabel} match <strong>{searchQuery}</strong></>
             ) : (
               <>Showing {summary} {tabLabel} that match <strong>{searchQuery}</strong></>
             )}
           </p>
-          <div className="mt-3">
+          <div className="mt-1.5">
             {activeTab === "stocks" && result?.stocks && (
               <div className="space-y-0">
                 {(result.stocks as SearchStocksResult[]).map((s) => (
-                  <SearchListRow
+                  <SearchListCard
                     key={s.slug}
                     href={`/films/${s.slug}`}
                     thumb={
@@ -213,8 +149,8 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                         <Image
                           src={s.imageUrl}
                           alt=""
-                          width={48}
-                          height={48}
+                          width={64}
+                          height={64}
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -222,7 +158,6 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                       )
                     }
                     title={s.name}
-                    subMeta={[s.iso ? `ISO ${s.iso}` : null, s.type ?? null].filter(Boolean).join(" · ") || s.brandName}
                   />
                 ))}
               </div>
@@ -230,12 +165,11 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
             {activeTab === "brands" && result?.brands && (
               <div className="space-y-0">
                 {(result.brands as SearchBrandsResult[]).map((b) => (
-                  <SearchListRow
+                  <SearchListCard
                     key={b.slug}
                     href={`/brands/${b.slug}`}
                     thumb={<div className="h-full w-full bg-slate-100" />}
                     title={b.name}
-                    subMeta={b.subMeta}
                   />
                 ))}
               </div>
@@ -243,7 +177,7 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
             {activeTab === "users" && result?.users && (
               <div className="space-y-0">
                 {(result.users as SearchUsersResult[]).map((u) => (
-                  <SearchListRow
+                  <SearchListCard
                     key={u.id}
                     href={`/profile/${u.id}`}
                     thumb={
@@ -252,7 +186,6 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                       </div>
                     }
                     title={u.display_name ?? "Unknown"}
-                    subMeta={u.handle ?? `@${(u.display_name ?? "").replace(/\s+/g, "_").toLowerCase()}`}
                   />
                 ))}
               </div>

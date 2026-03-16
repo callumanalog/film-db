@@ -72,9 +72,9 @@ export function FilmCard({
           </div>
         </div>
         {/* Title below the card */}
-        <div className="mt-2 flex min-w-0 px-0.5">
+        <div className="mt-1 flex min-w-0 px-0.5">
           <h3
-            className={`m-0 min-w-0 truncate font-semibold leading-tight text-foreground font-sans transition-colors group-hover:text-primary ${compact ? "text-xs" : "text-sm"}`}
+            className={`m-0 min-w-0 truncate font-medium leading-tight text-foreground font-sans transition-colors group-hover:text-primary ${compact ? "text-xs" : "text-sm"}`}
           >
             {displayName}
           </h3>

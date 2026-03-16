@@ -40,6 +40,7 @@ export function Header() {
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
+  const isFilmsPage = pathname === "/films";
   const [scrollY, setScrollY] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -48,12 +49,12 @@ export function Header() {
   const moreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isFilmHero) return;
+    if (!isFilmHero && !isFilmsPage) return;
     const onScroll = () => setScrollY(typeof window !== "undefined" ? window.scrollY : 0);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [isFilmHero]);
+  }, [isFilmHero, isFilmsPage]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -81,7 +82,6 @@ export function Header() {
   const heroPast = scrollY >= EXPANDED_HERO_HEIGHT;
   const borderOpacity = heroPast ? 1 : Math.min(1, scrollY / Math.max(1, EXPANDED_HERO_HEIGHT));
   const h1Scale = Math.max(0.6, 1 - (scrollY / Math.max(1, EXPANDED_HERO_HEIGHT)) * 0.4);
-  const isFilmsPage = pathname === "/films";
 
   return (
     <header
@@ -164,10 +164,17 @@ export function Header() {
               <FilmsHeaderSearch />
             </Suspense>
           </div>
-          <div className="px-4 sm:px-6 lg:px-8">
-            <Suspense fallback={<div className="h-9 border-b border-border/50" />}>
-              <FilmsHeaderTabs />
-            </Suspense>
+          <div
+            className={cn(
+              "overflow-hidden transition-[max-height,opacity] duration-200 ease-out",
+              scrollY > 60 ? "max-h-0 opacity-0" : "max-h-12 opacity-100"
+            )}
+          >
+            <div className="px-4 sm:px-6 lg:px-8">
+              <Suspense fallback={<div className="h-9 border-b border-border/50" />}>
+                <FilmsHeaderTabs />
+              </Suspense>
+            </div>
           </div>
         </div>
       )}

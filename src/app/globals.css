@@ -115,13 +115,13 @@
   --sidebar-border: oklch(0.88 0.01 70);
   --sidebar-ring: #D97706;
 
-  /* Layout / width tokens (films landing reference). Use with max-w-[var(--width-*)]. */
+  /* Layout / width tokens (films landing reference). Use with e.g. max-w-[var(--width-search-field)]. */
   --width-search-field: 220px;
   --width-chip-label: 120px;
   /** Inline content max (e.g. hero subtitle). */
   --width-prose-narrow: 36rem; /* max-w-xl */
 
-  /* Button/control height scale (responsive). Use with h-[var(--height-*)]. */
+  /* Button/control height scale (responsive). Use with e.g. h-[var(--height-btn-primary)]. */
   --height-btn-primary: 52px;   /* mobile */
   --height-btn-primary-md: 44px; /* md: desktop */
   --height-btn-pill: 44px;      /* secondary/pill mobile */

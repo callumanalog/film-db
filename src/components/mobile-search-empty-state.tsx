@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { ChevronRight, Star } from "lucide-react";
+import { Star } from "lucide-react";
+import { SearchListCard } from "@/components/search-list-card";
 import {
   getTrendingStocks,
   getTrendingBrands,
@@ -20,42 +21,6 @@ import {
 } from "@/app/actions/search";
 
 const TABS: SearchTab[] = ["stocks", "shots", "notes", "brands", "users"];
-
-function SearchListRow({
-  href,
-  thumb,
-  title,
-  subMeta,
-}: {
-  href: string;
-  thumb: React.ReactNode;
-  title: string;
-  subMeta: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 border-b border-slate-50 py-3 last:border-b-0"
-    >
-      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
-        {thumb}
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-        <p className="truncate text-xs text-muted-foreground">{subMeta}</p>
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-    </Link>
-  );
-}
-
-function buildTabHref(tab: SearchTab, searchParams: URLSearchParams): string {
-  const params = new URLSearchParams(searchParams.toString());
-  if (tab === "stocks") params.delete("tab");
-  else params.set("tab", tab);
-  const q = params.toString();
-  return q ? `/films?${q}` : "/films";
-}
 
 export function MobileSearchEmptyState() {
   const searchParams = useSearchParams();
@@ -97,42 +62,11 @@ export function MobileSearchEmptyState() {
 
   return (
     <div className="py-2">
-      <nav className="mb-3 flex gap-4 border-b border-border/50" aria-label="Section tabs">
-        {TABS.map((tab) => {
-          const isActive = tab === activeTab;
-          const href = buildTabHref(tab, searchParams);
-          const label =
-            tab === "stocks"
-              ? "Stocks"
-              : tab === "shots"
-                ? "Shots"
-                : tab === "notes"
-                  ? "Notes"
-                  : tab === "brands"
-                    ? "Brands"
-                    : "Users";
-          return (
-            <Link
-              key={tab}
-              href={href}
-              className={`relative pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap ${
-                isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {label}
-              {isActive && (
-                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
       {loading ? (
         <div className="space-y-0 border-b border-slate-50 [&>div]:border-b [&>div]:border-slate-50">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex items-center gap-3 py-3">
-              <div className="h-12 w-12 shrink-0 rounded-md bg-slate-100 animate-pulse" />
+              <div className="h-16 w-16 shrink-0 rounded-md bg-slate-100 animate-pulse" />
               <div className="min-w-0 flex-1">
                 <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
                 <div className="mt-1.5 h-3 w-16 rounded bg-slate-100 animate-pulse" />
@@ -144,13 +78,13 @@ export function MobileSearchEmptyState() {
         <>
           {activeTab === "stocks" && (
             <>
-              <h2 className="text-sm font-semibold text-foreground">Trending Searches</h2>
+              <h2 className="text-sm font-semibold text-foreground">Trending film stocks</h2>
               <div className="mt-2 space-y-0 border-b border-slate-50">
                 {stocks.length === 0 ? (
                   <p className="py-4 text-sm text-muted-foreground">No trending stocks.</p>
                 ) : (
                   stocks.map((s) => (
-                    <SearchListRow
+                    <SearchListCard
                       key={s.slug}
                       href={`/films/${s.slug}`}
                       thumb={
@@ -158,8 +92,8 @@ export function MobileSearchEmptyState() {
                           <Image
                             src={s.imageUrl}
                             alt=""
-                            width={48}
-                            height={48}
+                            width={64}
+                            height={64}
                             className="h-full w-full object-cover"
                           />
                         ) : (
@@ -167,7 +101,6 @@ export function MobileSearchEmptyState() {
                         )
                       }
                       title={s.name}
-                      subMeta={[s.iso ? `ISO ${s.iso}` : null, s.type ?? null].filter(Boolean).join(" · ") || s.brandName}
                     />
                   ))
                 )}
@@ -255,12 +188,11 @@ export function MobileSearchEmptyState() {
                   <p className="py-4 text-sm text-muted-foreground">No trending brands.</p>
                 ) : (
                   brands.map((b) => (
-                    <SearchListRow
+                    <SearchListCard
                       key={b.slug}
                       href={`/brands/${b.slug}`}
                       thumb={<div className="h-full w-full bg-slate-100" />}
                       title={b.name}
-                      subMeta={b.subMeta}
                     />
                   ))
                 )}
@@ -276,7 +208,7 @@ export function MobileSearchEmptyState() {
                   <p className="py-4 text-sm text-muted-foreground">No users yet.</p>
                 ) : (
                   users.map((u) => (
-                    <SearchListRow
+                    <SearchListCard
                       key={u.id}
                       href={`/profile/${u.id}`}
                       thumb={
@@ -285,7 +217,6 @@ export function MobileSearchEmptyState() {
                         </div>
                       }
                       title={u.display_name ?? "Unknown"}
-                      subMeta={u.handle ?? `@${(u.display_name ?? "").replace(/\s+/g, "_").toLowerCase()}`}
                     />
                   ))
                 )}
