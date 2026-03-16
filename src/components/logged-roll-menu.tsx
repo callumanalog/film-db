@@ -9,6 +9,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { deleteLoggedRoll } from "@/app/actions/user-actions";
+import { invalidateVaultCache } from "@/app/vault/vault-page-client";
 
 const DELETE_VALUE = "delete";
 
@@ -24,7 +25,10 @@ export function LoggedRollMenu({ rollId, filmSlug }: LoggedRollMenuProps) {
   function handleValueChange(value: string | null) {
     if (value !== DELETE_VALUE) return;
     deleteLoggedRoll(rollId, filmSlug).then(({ synced }) => {
-      if (synced) router.refresh();
+      if (synced) {
+        invalidateVaultCache();
+        router.refresh();
+      }
     });
   }
 

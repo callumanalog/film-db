@@ -260,3 +260,29 @@ export async function getLoggedRollsForFilm(slug: string): Promise<LoggedRollEnt
     created_at: r.created_at,
   }));
 }
+
+/** Fetch all logged rolls for the current user (for Vault page). Lightweight: one query only. */
+export async function getVaultRolls(): Promise<LoggedRollEntry[]> {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("user_logged_rolls")
+    .select("id, film_stock_slug, format, status, expiry_date, quantity, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("[user-actions] getVaultRolls error:", error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    film_stock_slug: r.film_stock_slug,
+    format: r.format ?? "",
+    status: r.status ?? "",
+    expiry_date: r.expiry_date,
+    quantity: Number(r.quantity) || 1,
+    created_at: r.created_at,
+  }));
+}

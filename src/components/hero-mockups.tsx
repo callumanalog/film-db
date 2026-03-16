@@ -63,6 +63,7 @@ import {
 import { useUserActions } from "@/context/user-actions-context";
 import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
 import { saveLoggedRoll } from "@/app/actions/user-actions";
+import { invalidateVaultCache } from "@/app/vault/vault-page-client";
 import { useAuth } from "@/context/auth-context";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import type { BestFor } from "@/lib/types";
@@ -672,6 +673,7 @@ export function StickyLeftPane({
             const { synced } = await saveLoggedRoll(slug, format, "in_fridge", payload.expiry, payload.quantity);
             setLogRollDrawerOpen(false);
             if (synced) {
+              invalidateVaultCache();
               showToastViaEvent("Roll saved");
               router.push(`/films/${slug}?tab=rolls`);
             } else {

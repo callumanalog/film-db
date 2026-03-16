@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getProfileFromSupabase } from "@/app/actions/get-profile";
+import { getVaultRolls } from "@/app/actions/user-actions";
 import { getStocksBySlugs } from "@/app/actions/get-film-stocks";
 import { LoggedRollMenu } from "@/components/logged-roll-menu";
 import { useAuth } from "@/context/auth-context";
@@ -14,6 +14,33 @@ import type { FilmStock, FilmBrand } from "@/lib/types";
 import type { LoggedRollEntry } from "@/app/actions/user-actions";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
+
+const VAULT_CACHE_STALE_MS = 2 * 60 * 1000; // 2 minutes
+const VAULT_INVALIDATE_EVENT = "vault-invalidate";
+
+type VaultCacheEntry = {
+  loggedRolls: LoggedRollEntry[];
+  stocksBySlug: Map<string, StockWithBrand>;
+  ts: number;
+};
+
+let vaultCache: { userId: string; data: VaultCacheEntry } | null = null;
+
+function getCachedVault(userId: string): VaultCacheEntry | null {
+  if (!vaultCache || vaultCache.userId !== userId) return null;
+  const { data } = vaultCache;
+  if (Date.now() - data.ts > VAULT_CACHE_STALE_MS) return null;
+  return data;
+}
+
+function setCachedVault(userId: string, data: Omit<VaultCacheEntry, "ts">) {
+  vaultCache = { userId, data: { ...data, ts: Date.now() } };
+}
+
+export function invalidateVaultCache() {
+  vaultCache = null;
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(VAULT_INVALIDATE_EVENT));
+}
 
 const ROLLS_STATUS_OPTIONS: { value: "all" | "in_fridge" | "in_camera" | "awaiting_dev" | "at_lab"; label: string }[] = [
   { value: "all", label: "All" },
@@ -37,28 +64,87 @@ export function VaultPageClient() {
       router.replace("/auth/sign-in?next=/vault");
       return;
     }
+    const userId = user.id;
+    const cached = getCachedVault(userId);
+    if (cached) {
+      setLoggedRolls(cached.loggedRolls);
+      setStocksBySlug(cached.stocksBySlug);
+      setLoading(false);
+      // Optionally revalidate in background
+      getVaultRolls()
+        .then((rolls) => {
+          const slugs = [...new Set(rolls.map((r) => r.film_stock_slug))];
+          if (slugs.length === 0) {
+            setCachedVault(userId, { loggedRolls: rolls, stocksBySlug: new Map() });
+            setLoggedRolls(rolls);
+            setStocksBySlug(new Map());
+            return;
+          }
+          return getStocksBySlugs(slugs).then((stocks) => {
+            const map = new Map<string, StockWithBrand>();
+            (stocks ?? []).forEach((s) => map.set(s.slug, s as StockWithBrand));
+            setCachedVault(userId, { loggedRolls: rolls, stocksBySlug: map });
+            setLoggedRolls(rolls);
+            setStocksBySlug(map);
+          });
+        })
+        .catch(() => {});
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
-    getProfileFromSupabase()
-      .then((p) => {
-        if (cancelled || !p) return;
-        const rolls = p.loggedRolls ?? [];
+    getVaultRolls()
+      .then((rolls) => {
+        if (cancelled) return;
         setLoggedRolls(rolls);
         const slugs = [...new Set(rolls.map((r) => r.film_stock_slug))];
-        if (slugs.length === 0) return Promise.resolve([]);
-        return getStocksBySlugs(slugs);
+        if (slugs.length === 0) {
+          setCachedVault(userId, { loggedRolls: rolls, stocksBySlug: new Map() });
+          return null;
+        }
+        return getStocksBySlugs(slugs).then((s) => ({ rolls, stocks: s ?? [] }));
       })
-      .then((stocks) => {
-        if (cancelled || !stocks) return;
+      .then((result) => {
+        if (cancelled || result == null) return;
+        const { rolls, stocks } = result;
         const map = new Map<string, StockWithBrand>();
         stocks.forEach((s) => map.set(s.slug, s as StockWithBrand));
         setStocksBySlug(map);
+        setCachedVault(userId, { loggedRolls: rolls, stocksBySlug: map });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    const onInvalidate = () => {
+      vaultCache = null;
+      setLoading(true);
+      if (!user) return;
+      getVaultRolls()
+        .then((rolls) => {
+          setLoggedRolls(rolls);
+          const slugs = [...new Set(rolls.map((r) => r.film_stock_slug))];
+          if (slugs.length === 0) {
+            setStocksBySlug(new Map());
+            setLoading(false);
+            return;
+          }
+          return getStocksBySlugs(slugs).then((stocks) => {
+            const map = new Map<string, StockWithBrand>();
+            (stocks ?? []).forEach((s) => map.set(s.slug, s as StockWithBrand));
+            setStocksBySlug(map);
+            setCachedVault(user.id, { loggedRolls: rolls, stocksBySlug: map });
+          });
+        })
+        .finally(() => setLoading(false));
+    };
+    window.addEventListener(VAULT_INVALIDATE_EVENT, onInvalidate);
+    return () => window.removeEventListener(VAULT_INVALIDATE_EVENT, onInvalidate);
+  }, [user]);
 
   const filteredRolls =
     statusFilter === "all"
