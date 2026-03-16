@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import type { FilmStock, FilmBrand, FilmType } from "@/lib/types";
 import { FILM_TYPE_LABELS } from "@/lib/types";
 import { FilmCard } from "@/components/film-card";
-import { ChevronRight } from "lucide-react";
 
 /** 10 film stocks generally loved by film photographers, in display order. */
 const COMMUNITY_FAVOURITES_SLUGS = [
@@ -22,11 +20,16 @@ const COMMUNITY_FAVOURITES_SLUGS = [
 
 const CAROUSEL_TYPE_ORDER: FilmType[] = ["instant"];
 
+/** When "for-you", show only curated sections (no All stocks). When "index", show only All stocks grid. When "all", show everything (desktop default). */
+export type FilmCarouselsViewMode = "for-you" | "index" | "all";
+
 interface FilmCarouselsProps {
   stocks: (FilmStock & { brand: FilmBrand })[];
   statsBySlug?: Record<string, { avgRating: number | null }>;
   /** Optional, no longer used (Shoot something new carousel removed). */
   loggedSlugs?: string[];
+  /** Mobile tab view: "for-you" = curated only, "index" = All stocks only, "all" = everything (default). */
+  viewMode?: FilmCarouselsViewMode;
 }
 
 function groupStocksByType(
@@ -70,7 +73,7 @@ function getBudgetFriendly(
   );
 }
 
-export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
+export function FilmCarousels({ stocks, statsBySlug, viewMode = "all" }: FilmCarouselsProps) {
   const byType = groupStocksByType(stocks);
   const communityFavourites = getCommunityFavourites(stocks);
   const budgetFriendly = getBudgetFriendly(stocks);
@@ -82,11 +85,11 @@ export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
     const nb = `${b.brand.name} ${b.name}`.toLowerCase();
     return na.localeCompare(nb);
   });
+  const showForYouSections = viewMode === "all" || viewMode === "for-you";
+  const showAllStocksSection = viewMode === "all" || viewMode === "index";
   const hasAnySection =
-    hasCommunityFavourites ||
-    hasBudgetFriendly ||
-    typeSections.length > 0 ||
-    stocks.length > 0;
+    (showForYouSections && (hasCommunityFavourites || hasBudgetFriendly || typeSections.length > 0)) ||
+    (showAllStocksSection && stocks.length > 0);
 
   if (!hasAnySection) {
     return (
@@ -98,27 +101,18 @@ export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
 
   return (
     <div className="flex flex-col gap-12">
-      {hasCommunityFavourites && (
+      {showForYouSections && hasCommunityFavourites && (
         <section
           key="community-favourites"
           className="film-row"
           aria-labelledby="carousel-community-favourites"
         >
-          <div className="mb-3 flex items-end justify-between gap-4">
-            <h3
-              id="carousel-community-favourites"
-              className="m-0 font-sans text-xl font-bold tracking-tight text-foreground"
-            >
-              Community Favourites
-            </h3>
-            <Link
-              href="/films"
-              className="shrink-0 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              View all
-              <ChevronRight className="ml-0.5 inline-block h-4 w-4" />
-            </Link>
-          </div>
+          <h3
+            id="carousel-community-favourites"
+            className="mb-3 m-0 font-sans text-xl font-bold tracking-tight text-foreground"
+          >
+            Community Favourites
+          </h3>
           <div className="-mx-4 overflow-hidden">
             <div className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4">
               {communityFavourites.map((stock, index) => (
@@ -130,27 +124,18 @@ export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
           </div>
         </section>
       )}
-      {hasBudgetFriendly && (
+      {showForYouSections && hasBudgetFriendly && (
         <section
           key="budget-friendly"
           className="film-row"
           aria-labelledby="carousel-budget-friendly"
         >
-          <div className="mb-3 flex items-end justify-between gap-4">
-            <h3
-              id="carousel-budget-friendly"
-              className="m-0 font-sans text-xl font-bold tracking-tight text-foreground"
-            >
-              Budget-friendly film
-            </h3>
-            <Link
-              href="/films"
-              className="shrink-0 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-            >
-              View all
-              <ChevronRight className="ml-0.5 inline-block h-4 w-4" />
-            </Link>
-          </div>
+          <h3
+            id="carousel-budget-friendly"
+            className="mb-3 m-0 font-sans text-xl font-bold tracking-tight text-foreground"
+          >
+            Budget-friendly film
+          </h3>
           <div className="-mx-4 overflow-hidden">
             <div className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4">
               {budgetFriendly.map((stock, index) => (
@@ -162,7 +147,7 @@ export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
           </div>
         </section>
       )}
-      {allStocksAlphabetical.length > 0 && (
+      {showAllStocksSection && allStocksAlphabetical.length > 0 && (
         <section
           key="all-stocks"
           className="film-row"
@@ -181,7 +166,7 @@ export function FilmCarousels({ stocks, statsBySlug }: FilmCarouselsProps) {
           </div>
         </section>
       )}
-      {typeSections.map((type) => {
+      {showForYouSections && typeSections.map((type) => {
         const list = byType.get(type)!;
         const label = FILM_TYPE_LABELS[type];
         return (

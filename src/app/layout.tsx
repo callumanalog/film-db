@@ -10,7 +10,6 @@ import { UserActionsProvider } from "@/context/user-actions-context";
 import { AuthProvider } from "@/context/auth-context";
 import { ToastProvider } from "@/components/toast";
 import { UrlToastHandler } from "@/components/url-toast-handler";
-import { ViewportSize } from "@/components/viewport-size";
 import { LogRollTriggerProvider } from "@/context/log-roll-trigger-context";
 import { MobileHeaderTitleProvider } from "@/context/mobile-header-title-context";
 import { FilmsSearchProvider } from "@/context/films-search-context";
@@ -72,7 +71,6 @@ export default function RootLayout({
               <main className="flex-1 pb-20 md:pb-0">{children}</main>
               <Footer />
               <BottomNav />
-              <ViewportSize />
               <SpeedInsights />
             </ToastProvider>
             </FilmsSearchProvider>

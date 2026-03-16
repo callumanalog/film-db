@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2 } from "lucide-react";
+import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Search } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
-import { useFilmsSearch } from "@/context/films-search-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { buttonVariants } from "@/components/ui/button";
 import { FilmsHeaderSearch } from "@/components/films-header-search";
+import { FilmsViewTabs } from "@/components/films-view-tabs";
+import { GlobalSearchOverlay } from "@/components/global-search-overlay";
 
 const navLinks = [
   { href: "/community", label: "Community" },
@@ -31,20 +32,20 @@ const MAIN_LANDING_PATHS = ["/", "/films", "/vault", "/profile"];
 const EXPANDED_HERO_HEIGHT = 52;
 /** Height of the sticky nav bar when scrolled past the hero. */
 const COLLAPSED_NAV_HEIGHT = 52;
-/** Scroll threshold (px) for collapsing the Discover H1 into the small navbar title on films mobile. */
-const DISCOVER_HERO_THRESHOLD = 60;
-
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
   const { mobileHeaderTitle, mobileHeroMeta } = useMobileHeaderTitle() ?? {};
-  const filmsSearch = useFilmsSearch();
-  const isSearchFocused = filmsSearch?.isSearchFocused ?? false;
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
   const isFilmsPage = pathname === "/films";
+  const searchParams = useSearchParams();
+  const filmsViewTab = searchParams.get("tab") === "index" ? "index" : "for-you";
+  /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
+  const showFilmsSearchIcon = isFilmsPage;
+  const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -160,31 +161,11 @@ export function Header() {
         </div>
       )}
 
-      {/* Standard nav: desktop = always 3-column (logo center, nav left, profile right). Mobile = 3-column unless films page (then full-width discover hero + search). DO NOT change desktop nav without asking. */}
-      {isFilmsPage && (
-        <div className="mx-auto w-full max-w-7xl md:hidden">
-          {/* Film archive hero: H1 visible at top when not searching; when search focused or scrolled, H1 disappears and search bar is fixed to top. */}
-          <div
-            className={cn(
-              "overflow-hidden bg-background transition-[max-height] duration-200 ease-out",
-              isSearchFocused || scrollY >= DISCOVER_HERO_THRESHOLD ? "max-h-0" : "max-h-32"
-            )}
-          >
-            <h1 className="px-4 pt-6 text-2xl font-sans font-bold tracking-tight text-slate-900 mb-1 bg-background sm:px-6 lg:px-8">
-              Film archive
-            </h1>
-          </div>
-          <div className="flex h-16 items-center bg-background px-4 sm:px-6 lg:px-8">
-            <Suspense fallback={<div className="h-12 w-full rounded-card border border-slate-200 bg-white" />}>
-              <FilmsHeaderSearch />
-            </Suspense>
-          </div>
-        </div>
-      )}
+      {/* Top nav: 3-column (logo center, nav left, profile right). Always visible so films page has it above Film archive + search. */}
       <div
         className={cn(
           "mx-auto grid max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
-          isFilmHero ? "hidden md:grid h-16" : isFilmsPage ? "hidden md:grid h-16" : "grid h-16"
+          isFilmHero ? "hidden md:grid h-16" : "grid h-16"
         )}
       >
         <div className="flex min-w-0 items-center justify-start overflow-hidden gap-1">
@@ -336,8 +317,24 @@ export function Header() {
           </Link>
         </div>
 
-        {/* Right column: Share when back; else profile / sign-in */}
+        {/* Right column: Share when back; FOR YOU mobile = search icon; else profile / sign-in */}
         <div className="flex items-center justify-end gap-2">
+          {showFilmsSearchIcon && (
+            <button
+              type="button"
+              onClick={() => setSearchOverlayOpen(true)}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+              aria-label="Open search"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+          )}
+          <div
+            className={cn(
+              "flex items-center justify-end gap-2",
+              showFilmsSearchIcon && "hidden md:flex"
+            )}
+          >
           {showBack && (
             <button
               type="button"
@@ -366,19 +363,12 @@ export function Header() {
                   Create account
                 </Link>
               </div>
-              <Link
-                href="/auth/sign-in?next=/profile"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/50 bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
-                aria-label="Log in"
-              >
-                <UserRound className="h-5 w-5" />
-              </Link>
             </>
           )}
           {!showBack && !loading && user && (
             <Link
               href="/profile"
-              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/50 bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="hidden h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/50 bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex"
               aria-label="Profile"
             >
               {(user.user_metadata?.avatar_url as string) ? (
@@ -400,8 +390,24 @@ export function Header() {
               )}
             </Link>
           )}
+          </div>
         </div>
       </div>
+
+      {/* Films mobile: Tabs only (FOR YOU | INDEX). Search via 🔍 in nav on FOR YOU; no inline search bar on INDEX. */}
+      {isFilmsPage && (
+        <div className="mx-auto w-full max-w-7xl md:hidden">
+          <Suspense fallback={null}>
+            <FilmsViewTabs />
+          </Suspense>
+        </div>
+      )}
+
+      <GlobalSearchOverlay
+        open={searchOverlayOpen}
+        onClose={() => setSearchOverlayOpen(false)}
+        closeOnSubmit
+      />
 
       {/* Mobile drawer: md–lg only (hidden on small mobile where bottom nav is shown) */}
       {mobileOpen && (

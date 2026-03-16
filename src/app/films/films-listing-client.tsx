@@ -4,7 +4,7 @@ import type { FilmStock, FilmBrand } from "@/lib/types";
 import { FilmCard } from "@/components/film-card";
 import { FilmGrid } from "@/components/film-grid";
 import { VirtualizedFilmGrid } from "@/components/virtualized-film-grid";
-import { FilmCarousels } from "@/components/film-carousels";
+import { FilmCarousels, type FilmCarouselsViewMode } from "@/components/film-carousels";
 import type { FilmStockStats } from "@/lib/supabase/stats";
 
 interface FilmsListingClientProps {
@@ -17,9 +17,13 @@ interface FilmsListingClientProps {
   filterPaneOpen?: boolean;
   /** When true (use-case / discovery pill filter), show results in a 2-column grid. */
   useCaseFilter?: boolean;
+  /** Mobile tab: "for-you" = curated sections only, "index" = All stocks only. Undefined = show all (e.g. desktop). */
+  filmsViewTab?: "for-you" | "index";
 }
 
-export function FilmsListingClient({ stocks, statsBySlug, loggedSlugs, filterPaneOpen, useCaseFilter }: FilmsListingClientProps) {
+export function FilmsListingClient({ stocks, statsBySlug, loggedSlugs, filterPaneOpen, useCaseFilter, filmsViewTab }: FilmsListingClientProps) {
+  const viewMode: FilmCarouselsViewMode =
+    filmsViewTab === "index" ? "index" : filmsViewTab === "for-you" ? "for-you" : "all";
   if (useCaseFilter) {
     if (stocks.length === 0) {
       return (
@@ -39,7 +43,7 @@ export function FilmsListingClient({ stocks, statsBySlug, loggedSlugs, filterPan
 
   return (
     <>
-      <FilmCarousels stocks={stocks} statsBySlug={statsBySlug} loggedSlugs={loggedSlugs} />
+      <FilmCarousels stocks={stocks} statsBySlug={statsBySlug} loggedSlugs={loggedSlugs} viewMode={viewMode} />
       <div className="hidden md:block mt-6">
         <VirtualizedFilmGrid
           stocks={stocks}

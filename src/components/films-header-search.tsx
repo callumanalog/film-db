@@ -7,13 +7,21 @@ import { useFilmsSearch } from "@/context/films-search-context";
 
 const DEBOUNCE_MS = 300;
 
-export function FilmsHeaderSearch() {
+interface FilmsHeaderSearchProps {
+  /** When "overlay", hide the back/exit button (overlay has its own Cancel). */
+  variant?: "default" | "overlay";
+  /** Called after form submit (navigation); e.g. close overlay. */
+  onAfterSubmit?: () => void;
+}
+
+export function FilmsHeaderSearch({ variant = "default", onAfterSubmit }: FilmsHeaderSearchProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const filmsSearch = useFilmsSearch();
   const [value, setValue] = useState(searchParams.get("search") ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isOverlay = variant === "overlay";
 
   useEffect(() => {
     setValue(searchParams.get("search") ?? "");
@@ -58,6 +66,7 @@ export function FilmsHeaderSearch() {
     else params.delete("search");
     const query = params.toString();
     router.push(query ? `/films?${query}` : "/films");
+    onAfterSubmit?.();
   };
 
   const handleClear = () => {
@@ -93,9 +102,9 @@ export function FilmsHeaderSearch() {
     <form
       role="search"
       onSubmit={handleSubmit}
-      className="flex h-12 w-full min-w-0 items-center gap-2 rounded-card border border-slate-200 bg-white pl-4 pr-2"
+      className="flex h-[52px] w-full min-w-0 items-center gap-2 rounded-card border border-slate-200 bg-white pl-4 pr-2"
     >
-      {isFocused ? (
+      {!isOverlay && isFocused ? (
         <button
           type="button"
           onClick={handleExitSearch}

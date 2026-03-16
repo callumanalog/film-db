@@ -335,33 +335,6 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
           </div>
         </div>
 
-        {/* Mobile: "Start browsing" — text-only cards, inverted (dark bg, light text). */}
-        {showUseCasePills && (
-          <div className="mt-3 md:hidden">
-            <h3 className="mb-2 text-left font-sans text-xl font-bold tracking-tight text-foreground">
-              Start browsing
-            </h3>
-            <div className="grid grid-cols-2 gap-2.5">
-              {[
-                { id: "all-film", href: "/films", label: "All Film" },
-                { id: "all-brands", href: "/brands", label: "All Brands" },
-                { id: "color-negative", href: buildUrl({ type: "color_negative" }), label: "Color Negative" },
-                { id: "black-white", href: buildUrl({ type: "bw_negative,bw_reversal" }), label: "Black & White" },
-              ].map(({ id, href, label }) => (
-                <Link
-                  key={id}
-                  href={href}
-                  className="flex h-[70px] w-full items-start rounded-[7px] bg-foreground px-4 pt-4 transition-colors hover:bg-foreground/90"
-                >
-                  <span className="font-sans text-sm font-semibold text-background">
-                    {label}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Utility Row: Mobile = nothing (search in header). Desktop = search icon/form + Filters + Sort. */}
         <div className="mt-0 flex flex-row flex-wrap items-center justify-between gap-4 md:mt-12">
           {isMobile ? (

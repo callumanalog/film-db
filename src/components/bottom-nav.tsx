@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
 
 const LEFT_ITEMS = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/films", label: "Library", icon: Search },
+  { href: "/films", label: "Home", icon: Home },
+  { href: "/", label: "Library", icon: Search },
 ] as const;
 
 const RIGHT_ITEMS = [
