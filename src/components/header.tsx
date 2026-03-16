@@ -25,7 +25,7 @@ const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 const MAIN_LANDING_PATHS = ["/", "/films", "/vault", "/profile"];
 
 /** Height of the integrated film hero header when scroll is 0 (mobile). */
-const EXPANDED_HERO_HEIGHT = 50;
+const EXPANDED_HERO_HEIGHT = 52;
 /** Height of the sticky nav bar when scrolled past the hero. */
 const COLLAPSED_NAV_HEIGHT = 52;
 
@@ -36,7 +36,7 @@ export function Header() {
   const { mobileHeaderTitle, mobileHeroMeta } = useMobileHeaderTitle() ?? {};
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
-  const isFilmHero = showBack && mobileHeaderTitle && mobileHeroMeta != null;
+  const isFilmHero = showBack && mobileHeaderTitle != null;
   const [scrollY, setScrollY] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -133,7 +133,7 @@ export function Header() {
             >
               {mobileHeaderTitle}
             </span>
-            {scrollY < EXPANDED_HERO_HEIGHT && (
+            {scrollY < EXPANDED_HERO_HEIGHT && mobileHeroMeta != null && mobileHeroMeta !== "" && (
               <p className="mt-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 {mobileHeroMeta}
               </p>

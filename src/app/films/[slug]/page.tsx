@@ -286,6 +286,9 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
       />
       <ScrollToTopOnRouteChange />
       <MobileFilmHero stock={stockProps.stock} />
+      <p className="mb-3 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground md:hidden">
+        {(FILM_TYPE_LABELS[stock.type] ?? "—").toUpperCase()} | {stock.iso != null ? `ISO ${stock.iso}` : "ISO —"} | {(stock.format ?? []).length ? (stock.format ?? []).map((f) => f.toUpperCase()).join(", ") : "—"}
+      </p>
       <div className="mx-auto max-w-6xl px-4 pt-0 pb-8 sm:px-6 md:py-8 lg:px-8">
         <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
           <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
