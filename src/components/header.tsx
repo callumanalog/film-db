@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2 } from "lucide-react";
@@ -11,7 +12,11 @@ import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { buttonVariants } from "@/components/ui/button";
 import { FilmsHeaderSearch } from "@/components/films-header-search";
-import { GlobalSearchOverlay } from "@/components/global-search-overlay";
+
+const GlobalSearchOverlay = dynamic(
+  () => import("@/components/global-search-overlay").then((m) => ({ default: m.GlobalSearchOverlay })),
+  { ssr: false }
+);
 
 const navLinks = [
   { href: "/community", label: "Community" },

@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { preload } from "swr";
 import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,17 +38,39 @@ function getActiveHref(pathname: string | null): string | null {
   return null;
 }
 
+const ICON_LINK_CLASS =
+  "flex items-center justify-center rounded-lg p-3 transition-transform duration-150 ease-out active:scale-95 touch-manipulation";
+
 export function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const trigger = useLogRollTrigger();
   const onFilmPage = isFilmDetailPath(pathname);
-  const activeHref = getActiveHref(pathname);
+
+  /** Optimistic: highlight the tapped icon immediately (<50ms) before pathname updates. */
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const resolvedActive = getActiveHref(pathname);
+  const activeHref = pendingPath ?? resolvedActive;
+
+  useEffect(() => {
+    if (pendingPath != null && resolvedActive === pendingPath) {
+      setPendingPath(null);
+    }
+  }, [pendingPath, resolvedActive]);
+
   const handlePlus = () => {
     if (onFilmPage && trigger) {
       trigger.openLogRoll();
     } else {
       openLogRollChoiceDrawer();
     }
+  };
+
+  const handleNavPointerDown = (e: React.PointerEvent, href: string) => {
+    if (e.button !== 0) return;
+    setPendingPath(href);
+    e.preventDefault();
+    router.push(href);
   };
 
   return (
@@ -64,8 +87,9 @@ export function BottomNav() {
             key={href}
             href={href}
             onMouseEnter={onPrefetch}
+            onPointerDown={(e) => handleNavPointerDown(e, href)}
             className={cn(
-              "flex items-center justify-center rounded-lg p-3 transition-transform active:scale-110",
+              ICON_LINK_CLASS,
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
             )}
             aria-current={isActive ? "page" : undefined}
@@ -77,9 +101,17 @@ export function BottomNav() {
       })}
       <button
         type="button"
-        onClick={handlePlus}
+        onClick={(e) => {
+          if ((e as React.MouseEvent).detail === 0) handlePlus();
+        }}
+        onPointerDown={(e) => {
+          if (e.button === 0) {
+            e.preventDefault();
+            handlePlus();
+          }
+        }}
         aria-label="Log a roll"
-        className="flex items-center justify-center rounded-lg p-3 text-muted-foreground transition-transform hover:text-foreground active:scale-110"
+        className={cn(ICON_LINK_CLASS, "text-muted-foreground hover:text-foreground")}
       >
         <Plus className="h-6 w-6 shrink-0" aria-hidden />
       </button>
@@ -91,8 +123,9 @@ export function BottomNav() {
             key={href}
             href={href}
             onMouseEnter={onPrefetch}
+            onPointerDown={(e) => handleNavPointerDown(e, href)}
             className={cn(
-              "flex items-center justify-center rounded-lg p-3 transition-transform active:scale-110",
+              ICON_LINK_CLASS,
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
             )}
             aria-current={isActive ? "page" : undefined}

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
 
 export interface FilmStockStats {
   shotByCount: number;
@@ -34,8 +35,7 @@ export async function getFilmStockStats(slug: string): Promise<FilmStockStats> {
   }
 }
 
-/** Fetches stats for multiple slugs in one round-trip (e.g. for grids). Returns a map slug -> stats for use in cards. Falls back to per-slug RPC if batch RPC is unavailable. Returns empty map if Supabase is not configured. */
-export async function getFilmStockStatsForSlugs(slugs: string[]): Promise<Record<string, FilmStockStats>> {
+async function fetchFilmStockStatsForSlugs(slugs: string[]): Promise<Record<string, FilmStockStats>> {
   if (slugs.length === 0) return {};
   try {
     const supabase = await createClient();
@@ -69,4 +69,15 @@ export async function getFilmStockStatsForSlugs(slugs: string[]): Promise<Record
     console.warn("[getFilmStockStatsForSlugs] Supabase unavailable, using empty stats:", e);
     return {};
   }
+}
+
+/** Cached 30s so listing pages don't refetch stats on every request. */
+export async function getFilmStockStatsForSlugs(slugs: string[]): Promise<Record<string, FilmStockStats>> {
+  if (slugs.length === 0) return {};
+  const key = [...slugs].sort().join(",");
+  return unstable_cache(
+    () => fetchFilmStockStatsForSlugs(slugs),
+    ["film-stock-stats", key],
+    { revalidate: 30 }
+  )();
 }

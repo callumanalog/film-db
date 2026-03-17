@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import type {
   FilmStock,
   FilmStockWithRelations,
@@ -75,10 +76,17 @@ async function getAllFilmStocksMaybeFromSupabase(): Promise<(FilmStock & { brand
   return getAllFilmStocks();
 }
 
+/** Cached 60s so listing pages and filters avoid repeated DB round-trips. */
+const getCachedAllFilmStocks = unstable_cache(
+  getAllFilmStocksMaybeFromSupabase,
+  ["film-stocks-all"],
+  { revalidate: 60, tags: ["film-stocks"] }
+);
+
 export async function getFilmStocks(
   filters?: FilmStockFilters
 ): Promise<(FilmStock & { brand: FilmBrand })[]> {
-  let stocks = await getAllFilmStocksMaybeFromSupabase();
+  let stocks = await getCachedAllFilmStocks();
 
   if (filters) {
     if (filters.vibe) {
@@ -264,8 +272,8 @@ function sortByOrder<T>(arr: T[], order: T[]): T[] {
   });
 }
 
-export async function getFilmFilterOptions(): Promise<FilmFilterOptions> {
-  const stocks = await getAllFilmStocksMaybeFromSupabase();
+/** Derive filter options from an existing stocks array (avoids a second cache lookup). */
+export function getFilmFilterOptionsFromStocks(stocks: (FilmStock & { brand: FilmBrand })[]): FilmFilterOptions {
   const types = sortByOrder(
     [...new Set(stocks.map((s) => s.type))],
     TYPE_ORDER
@@ -297,6 +305,22 @@ export async function getFilmFilterOptions(): Promise<FilmFilterOptions> {
   );
   const bestFor = [...new Set(stocks.flatMap((s) => s.best_for))].sort();
   return { types, isos, formats, grains, contrasts, latitudes, saturations, bestFor };
+}
+
+export async function getFilmFilterOptions(): Promise<FilmFilterOptions> {
+  const stocks = await getCachedAllFilmStocks();
+  return getFilmFilterOptionsFromStocks(stocks);
+}
+
+/** Single loader: brands + all stocks + filter options. Use in listing/nav to avoid multiple cache lookups. */
+export async function getCatalogForListings(): Promise<{
+  brands: FilmBrand[];
+  filterOptions: FilmFilterOptions;
+  allStocks: (FilmStock & { brand: FilmBrand })[];
+}> {
+  const [brands, allStocks] = await Promise.all([getBrands(), getCachedAllFilmStocks()]);
+  const filterOptions = getFilmFilterOptionsFromStocks(allStocks);
+  return { brands, filterOptions, allStocks };
 }
 
 /** Cached per-request so generateMetadata and page share one fetch. */
@@ -351,11 +375,17 @@ export async function getTopRatedFilmStocks(): Promise<
   );
 }
 
-export async function getBrands(): Promise<FilmBrand[]> {
+async function getBrandsUncached(): Promise<FilmBrand[]> {
   const fromSupabase = await getBrandsFromSupabase();
   if (fromSupabase && fromSupabase.length > 0) return fromSupabase;
   return getAllBrands();
 }
+
+/** Cached 60s so nav, filters, and listings avoid repeated DB round-trips. */
+export const getBrands = unstable_cache(getBrandsUncached, ["brands-all"], {
+  revalidate: 60,
+  tags: ["brands"],
+});
 
 /** First 4 brands for the home page "Shop by Brand" section (Kodak, Fujifilm, Ilford, CineStill). */
 export async function getTopBrands(): Promise<FilmBrand[]> {
@@ -382,9 +412,8 @@ const TRENDING_BRAND_SLUGS = [
 
 /** Featured stocks for mobile search "Trending film stocks". Only from Supabase (featured column). */
 export async function getFeaturedFilmStocks(): Promise<(FilmStock & { brand: FilmBrand })[]> {
-  const fromSupabase = await getFilmStocksFromSupabase();
-  if (!fromSupabase?.length) return [];
-  const featured = fromSupabase.filter((s) => s.featured === true);
+  const all = await getCachedAllFilmStocks();
+  const featured = all.filter((s) => s.featured === true);
   const bySlug = new Map(featured.map((s) => [s.slug, s]));
   return TRENDING_STOCK_SLUGS.map((slug) => bySlug.get(slug)).filter(
     (s): s is FilmStock & { brand: FilmBrand } => s != null
@@ -393,9 +422,9 @@ export async function getFeaturedFilmStocks(): Promise<(FilmStock & { brand: Fil
 
 /** Featured brands for mobile search "Trending brands". Only from Supabase (featured column). */
 export async function getFeaturedBrands(): Promise<FilmBrand[]> {
-  const fromSupabase = await getBrandsFromSupabase();
-  if (!fromSupabase?.length) return [];
-  const featured = fromSupabase.filter((b) => b.featured === true);
+  const brands = await getBrands();
+  if (!brands?.length) return [];
+  const featured = brands.filter((b) => b.featured === true);
   const bySlug = new Map(featured.map((b) => [b.slug, b]));
   return TRENDING_BRAND_SLUGS.map((slug) => bySlug.get(slug)).filter((b): b is FilmBrand => b != null);
 }
@@ -411,7 +440,7 @@ export async function getBrandBySlug(
 export async function getFilmStocksByBrand(
   brandSlug: string
 ): Promise<(FilmStock & { brand: FilmBrand })[]> {
-  const stocks = await getAllFilmStocksMaybeFromSupabase();
+  const stocks = await getCachedAllFilmStocks();
   return stocks.filter((s) => s.brand.slug === brandSlug);
 }
 
@@ -419,7 +448,7 @@ export async function getFilmStocksByBrand(
 export async function getFilmStocksBySlugs(
   slugs: string[]
 ): Promise<(FilmStock & { brand: FilmBrand })[]> {
-  const all = await getAllFilmStocksMaybeFromSupabase();
+  const all = await getCachedAllFilmStocks();
   const bySlug = new Map(all.map((s) => [s.slug, s]));
   return slugs.map((slug) => bySlug.get(slug)).filter((s): s is FilmStock & { brand: FilmBrand } => s != null);
 }
@@ -437,7 +466,7 @@ export async function getRelatedStocks(
   stock: FilmStock,
   limit = 6
 ): Promise<(FilmStock & { brand: FilmBrand })[]> {
-  const allStocks = await getAllFilmStocksMaybeFromSupabase();
+  const allStocks = await getCachedAllFilmStocks();
   const candidates = allStocks.filter(
     (s) => s.id !== stock.id && s.type === stock.type
   );

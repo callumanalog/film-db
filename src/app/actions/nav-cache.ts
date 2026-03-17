@@ -1,6 +1,6 @@
 "use server";
 
-import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/queries";
+import { getFilmStocks, getCatalogForListings } from "@/lib/supabase/queries";
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getVaultRolls } from "@/app/actions/user-actions";
 import { getLatestShots, getLatestNotes, getLatestUsers } from "@/app/actions/search";
@@ -59,9 +59,8 @@ export async function getSearchPageData(params: SearchPageParams): Promise<Searc
     .filter((n) => !Number.isNaN(n));
   const sortParam = params.sort === "popular" ? "popular" : "alphabetical";
 
-  const [brandsRes, filterOptionsRes, stocksBase] = await Promise.all([
-    getBrands(),
-    getFilmFilterOptions(),
+  const [catalog, stocksBase] = await Promise.all([
+    getCatalogForListings(),
     getFilmStocks({
       search: params.search,
       brand: brandArr.length ? brandArr : undefined,
@@ -76,8 +75,8 @@ export async function getSearchPageData(params: SearchPageParams): Promise<Searc
       sort: sortParam,
     }),
   ]);
-  const brands = Array.isArray(brandsRes) ? [...brandsRes].sort((a, b) => a.name.localeCompare(b.name)) : [];
-  const filterOptions = filterOptionsRes ?? {
+  const brands = catalog.brands;
+  const filterOptions = catalog.filterOptions ?? {
     types: [],
     isos: [],
     formats: [],
@@ -152,9 +151,8 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
   const vibe = vibeParam && VALID_VIBES.includes(vibeParam) ? vibeParam : undefined;
   const sortParam = params.sort === "alphabetical" ? "alphabetical" : "highest-rated";
 
-  const [brandsRes, filterOptionsRes, stocksUnsorted] = await Promise.all([
-    getBrands(),
-    getFilmFilterOptions(),
+  const [catalog, stocksUnsorted] = await Promise.all([
+    getCatalogForListings(),
     getFilmStocks({
       search: params.search,
       vibe,
@@ -170,8 +168,8 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
       sort: "alphabetical",
     }),
   ]);
-  const brands = Array.isArray(brandsRes) ? [...brandsRes].sort((a, b) => a.name.localeCompare(b.name)) : [];
-  const filterOptions = filterOptionsRes ?? {
+  const brands = catalog.brands;
+  const filterOptions = catalog.filterOptions ?? {
     types: [],
     isos: [],
     formats: [],

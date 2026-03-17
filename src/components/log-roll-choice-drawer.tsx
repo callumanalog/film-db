@@ -146,7 +146,10 @@ export function LogRollChoiceDrawer() {
                               alt=""
                               width={64}
                               height={64}
+                              sizes="64px"
                               className="h-full w-full object-cover"
+                              placeholder="blur"
+                              blurDataURL="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgdmlld0JveD0iMCAwIDEwIDEwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTVlN2ViIi8+PC9zdmc+"
                             />
                           ) : (
                             <div className="h-full w-full bg-slate-100" />

@@ -4,6 +4,8 @@ import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { GalleryGrid, type StockOption } from "@/components/gallery-grid";
 import type { GalleryImage } from "@/lib/sample-images";
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Discover",
   description:

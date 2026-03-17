@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { getFilmStocks, getBrands, getFilmFilterOptions } from "@/lib/supabase/queries";
+import { getFilmStocks, getCatalogForListings } from "@/lib/supabase/queries";
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
 import { SearchPageClient } from "@/app/search/search-page-client";
 import { FilmsAllFiltersSheet } from "@/components/films-all-filters-sheet";
-import { FilmCard } from "@/components/film-card";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Search",
@@ -45,9 +46,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const isoArr = parseMultiParam(params.iso).map((s) => Number(s)).filter((n) => !Number.isNaN(n));
   const sortParam = params.sort === "popular" ? "popular" : "alphabetical";
 
-  const [brandsRes, filterOptionsRes, stocksBase] = await Promise.all([
-    getBrands(),
-    getFilmFilterOptions(),
+  const [catalog, stocksBase] = await Promise.all([
+    getCatalogForListings(),
     getFilmStocks({
       search: params.search,
       brand: brandArr.length ? brandArr : undefined,
@@ -62,8 +62,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       sort: sortParam,
     }),
   ]);
-  const brands = Array.isArray(brandsRes) ? [...brandsRes].sort((a, b) => a.name.localeCompare(b.name)) : [];
-  const filterOptions = filterOptionsRes ?? { types: [], isos: [], formats: [], grains: [], contrasts: [], latitudes: [], saturations: [], bestFor: [] };
+  const brands = catalog.brands;
+  const filterOptions = catalog.filterOptions ?? { types: [], isos: [], formats: [], grains: [], contrasts: [], latitudes: [], saturations: [], bestFor: [] };
   const statsBySlug = stocksBase.length > 0 ? await getFilmStockStatsForSlugs(stocksBase.map((s) => s.slug)) : {};
 
   // Popularity sort uses user-derived avgRating from stats, not static stock.rating

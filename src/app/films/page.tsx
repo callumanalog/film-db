@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { getFilmsPageData } from "@/app/actions/nav-cache";
 import { FilmsPageClient } from "@/app/films/films-page-client";
+
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Film Stocks",
   description: "Browse and filter every film stock — color negative, slide, black & white, and more.",
