@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import { FilmCard } from "@/components/film-card";
 import { FilmGrid } from "@/components/film-grid";
@@ -19,11 +20,23 @@ interface FilmsListingClientProps {
   useCaseFilter?: boolean;
   /** Mobile tab: "for-you" = curated sections only, "index" = All stocks only. Undefined = show all (e.g. desktop). */
   filmsViewTab?: "for-you" | "index";
+  /** When "for-you", on mobile force carousels-only view (no index). */
+  mobileCarouselsOnly?: "for-you";
 }
 
-export function FilmsListingClient({ stocks, statsBySlug, loggedSlugs, filterPaneOpen, useCaseFilter, filmsViewTab }: FilmsListingClientProps) {
+export function FilmsListingClient({ stocks, statsBySlug, loggedSlugs, filterPaneOpen, useCaseFilter, filmsViewTab, mobileCarouselsOnly }: FilmsListingClientProps) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(m.matches);
+    update();
+    m.addEventListener("change", update);
+    return () => m.removeEventListener("change", update);
+  }, []);
+  const effectiveTab =
+    mobileCarouselsOnly === "for-you" && isMobile ? "for-you" : filmsViewTab;
   const viewMode: FilmCarouselsViewMode =
-    filmsViewTab === "index" ? "index" : filmsViewTab === "for-you" ? "for-you" : "all";
+    effectiveTab === "index" ? "index" : effectiveTab === "for-you" ? "for-you" : "all";
   if (useCaseFilter) {
     if (stocks.length === 0) {
       return (

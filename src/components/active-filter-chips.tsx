@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { FilmBrand, FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor, DiscoveryVibe } from "@/lib/types";
 import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, BEST_FOR_LABELS, DISCOVERY_VIBE_LABELS } from "@/lib/types";
 import { X } from "lucide-react";
@@ -59,7 +59,9 @@ interface ActiveFilterChipsProps {
 
 export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
   const router = useRouter();
+  const pathname = usePathname() ?? "/films";
   const searchParams = useSearchParams();
+  const basePath = pathname.startsWith("/search") ? "/search" : "/films";
 
   const selectedTypes = getParamArray(searchParams, "type");
   const selectedFormats = getParamArray(searchParams, "format");
@@ -128,7 +130,7 @@ export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
 
   function remove(key: string, value: string) {
     const q = removeParamValue(searchParams, key, value);
-    router.push(q ? `/films?${q}` : "/films");
+    router.push(q ? `${basePath}?${q}` : basePath);
   }
 
   return (

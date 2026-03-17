@@ -40,7 +40,7 @@ export interface FilmStockFilters {
   /** Discovery vibe: applies mood-based filter (e.g. golden_hour, neon_nights). */
   vibe?: DiscoveryVibe;
   discontinued?: boolean;
-  /** "popular" (default) = by featured then rating then name; "alphabetical" = by brand + name */
+  /** "popular" (default) = by highest avg rating then featured then name; "alphabetical" = by brand + name */
   sort?: "popular" | "alphabetical";
 }
 
@@ -208,8 +208,8 @@ export async function getFilmStocks(
   const sortBy = filters?.sort ?? "popular";
   if (sortBy === "popular") {
     stocks.sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
       if (a.rating !== b.rating) return b.rating - a.rating;
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
       const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
       const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
       return keyA.localeCompare(keyB);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, startTransition } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useCallback, useState, useEffect, useRef, startTransition } from "react";
 import type { FilmBrand, FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor } from "@/lib/types";
 import type { FilmFilterOptions, IsoFilterOption } from "@/lib/supabase/queries";
 import { FILM_TYPE_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, BEST_FOR_LABELS } from "@/lib/types";
@@ -14,6 +14,8 @@ interface FilterSidebarProps {
   variant?: "drawer" | "specs";
   /** When false, Type accordion starts closed (e.g. when Vibes is first in drawer). Default true. */
   typeDefaultOpen?: boolean;
+  /** When set, the accordion with this title starts open (e.g. "Type", "Format"). */
+  initialOpenCategory?: string;
 }
 
 function getParamArray(searchParams: URLSearchParams, key: string): string[] {
@@ -22,9 +24,11 @@ function getParamArray(searchParams: URLSearchParams, key: string): string[] {
   return v.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeDefaultOpen = true }: FilterSidebarProps) {
+export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeDefaultOpen = true, initialOpenCategory }: FilterSidebarProps) {
   const router = useRouter();
+  const pathname = usePathname() ?? "/films";
   const searchParams = useSearchParams();
+  const basePath = pathname.startsWith("/search") ? "/search" : "/films";
 
   const selectedBrands = getParamArray(searchParams, "brand");
   const selectedTypes = getParamArray(searchParams, "type");
@@ -53,10 +57,10 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeD
         params.set(key, next.join(","));
       }
       startTransition(() => {
-        router.push(`/films?${params.toString()}`);
+        router.push(`${basePath}?${params.toString()}`);
       });
     },
-    [router, searchParams]
+    [router, searchParams, basePath]
   );
 
   const toggleIso8_80 = useCallback(() => {
@@ -72,25 +76,43 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeD
       params.set("iso", next.join(","));
     }
     startTransition(() => {
-      router.push(`/films?${params.toString()}`);
+      router.push(`${basePath}?${params.toString()}`);
     });
-  }, [router, searchParams]);
+  }, [router, searchParams, basePath]);
+
+  const sort = searchParams.get("sort") === "popular" ? "popular" : "alphabetical";
+  const setSort = useCallback(
+    (value: "alphabetical" | "popular") => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === "alphabetical") {
+        params.delete("sort");
+      } else {
+        params.set("sort", "popular");
+      }
+      startTransition(() => {
+        router.push(`${basePath}?${params.toString()}`);
+      });
+    },
+    [router, searchParams, basePath]
+  );
 
   const accordionContent = (
     <>
-      <FilterAccordion defaultOpen={typeDefaultOpen} singleColumn={variant === "specs"} title="Type">
+      <FilterAccordion defaultOpen={initialOpenCategory === "Sort"} scrollIntoViewWhenOpen={variant === "drawer"} title="Sort">
         <FilterPillGrid>
-          {filterOptions.types.map((type) => (
-            <FilterPill
-              key={type}
-              label={FILM_TYPE_LABELS[type]}
-              selected={selectedTypes.includes(type)}
-              onToggle={() => toggleMulti("type", type)}
-            />
-          ))}
+          <FilterPill
+            label="A-Z"
+            selected={sort === "alphabetical"}
+            onToggle={() => setSort("alphabetical")}
+          />
+          <FilterPill
+            label="Popularity"
+            selected={sort === "popular"}
+            onToggle={() => setSort("popular")}
+          />
         </FilterPillGrid>
       </FilterAccordion>
-      <FilterAccordion defaultOpen={false} title="Format" >
+      <FilterAccordion defaultOpen={initialOpenCategory === "Format"} scrollIntoViewWhenOpen={variant === "drawer"} title="Format" >
         <FilterPillGrid>
           {filterOptions.formats.map((format) => (
             <FilterPill
@@ -102,7 +124,7 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeD
           ))}
         </FilterPillGrid>
       </FilterAccordion>
-      <FilterAccordion defaultOpen={false} title="ISO" >
+      <FilterAccordion defaultOpen={initialOpenCategory === "ISO"} scrollIntoViewWhenOpen={variant === "drawer"} title="ISO" >
         <FilterPillGrid>
           {filterOptions.isos.map((iso: IsoFilterOption) =>
             iso === "8-80" ? (
@@ -123,55 +145,19 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeD
           )}
         </FilterPillGrid>
       </FilterAccordion>
-      <FilterAccordion defaultOpen={false} title="Grain">
+      <FilterAccordion defaultOpen={initialOpenCategory === "Type" || typeDefaultOpen} scrollIntoViewWhenOpen={variant === "drawer"} singleColumn={variant === "specs"} title="Type">
         <FilterPillGrid>
-          {filterOptions.grains.map((level) => (
+          {filterOptions.types.map((type) => (
             <FilterPill
-              key={level}
-              label={GRAIN_LABELS[level]}
-              selected={selectedGrains.includes(level)}
-              onToggle={() => toggleMulti("grain", level)}
+              key={type}
+              label={FILM_TYPE_LABELS[type]}
+              selected={selectedTypes.includes(type)}
+              onToggle={() => toggleMulti("type", type)}
             />
           ))}
         </FilterPillGrid>
       </FilterAccordion>
-      <FilterAccordion defaultOpen={false} title="Contrast" >
-        <FilterPillGrid>
-          {filterOptions.contrasts.map((level) => (
-            <FilterPill
-              key={level}
-              label={CONTRAST_LABELS[level]}
-              selected={selectedContrasts.includes(level)}
-              onToggle={() => toggleMulti("contrast", level)}
-            />
-          ))}
-        </FilterPillGrid>
-      </FilterAccordion>
-      <FilterAccordion defaultOpen={false} title="Latitude" >
-        <FilterPillGrid>
-          {filterOptions.latitudes.map((level) => (
-            <FilterPill
-              key={level}
-              label={LATITUDE_LABELS[level]}
-              selected={selectedLatitudes.includes(level)}
-              onToggle={() => toggleMulti("latitude", level)}
-            />
-          ))}
-        </FilterPillGrid>
-      </FilterAccordion>
-      <FilterAccordion defaultOpen={false} title="Saturation" >
-        <FilterPillGrid>
-          {filterOptions.saturations.map((level) => (
-            <FilterPill
-              key={level}
-              label={SATURATION_LABELS[level]}
-              selected={selectedSaturations.includes(level)}
-              onToggle={() => toggleMulti("saturation", level)}
-            />
-          ))}
-        </FilterPillGrid>
-      </FilterAccordion>
-      <FilterAccordion defaultOpen={false} singleColumn={variant === "specs"} title="Brand">
+      <FilterAccordion defaultOpen={initialOpenCategory === "Brand"} scrollIntoViewWhenOpen={variant === "drawer"} singleColumn={variant === "specs"} title="Brand">
         <FilterPillGrid>
           {brands.map((brand) => (
             <FilterPill
@@ -183,7 +169,7 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeD
           ))}
         </FilterPillGrid>
       </FilterAccordion>
-      <FilterAccordion defaultOpen={false} singleColumn={variant === "specs"} title="Use case">
+      <FilterAccordion defaultOpen={initialOpenCategory === "Use case"} scrollIntoViewWhenOpen={variant === "drawer"} singleColumn={variant === "specs"} title="Use case">
         <FilterPillGrid>
           {filterOptions.bestFor.map((bf) => (
             <FilterPill
@@ -191,6 +177,42 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeD
               label={BEST_FOR_LABELS[bf]}
               selected={selectedBestFor.includes(bf)}
               onToggle={() => toggleMulti("bestFor", bf)}
+            />
+          ))}
+        </FilterPillGrid>
+      </FilterAccordion>
+      <FilterAccordion defaultOpen={initialOpenCategory === "Latitude"} scrollIntoViewWhenOpen={variant === "drawer"} title="Latitude" >
+        <FilterPillGrid>
+          {filterOptions.latitudes.map((level) => (
+            <FilterPill
+              key={level}
+              label={LATITUDE_LABELS[level]}
+              selected={selectedLatitudes.includes(level)}
+              onToggle={() => toggleMulti("latitude", level)}
+            />
+          ))}
+        </FilterPillGrid>
+      </FilterAccordion>
+      <FilterAccordion defaultOpen={initialOpenCategory === "Grain"} scrollIntoViewWhenOpen={variant === "drawer"} title="Grain">
+        <FilterPillGrid>
+          {filterOptions.grains.map((level) => (
+            <FilterPill
+              key={level}
+              label={GRAIN_LABELS[level]}
+              selected={selectedGrains.includes(level)}
+              onToggle={() => toggleMulti("grain", level)}
+            />
+          ))}
+        </FilterPillGrid>
+      </FilterAccordion>
+      <FilterAccordion defaultOpen={initialOpenCategory === "Saturation"} scrollIntoViewWhenOpen={variant === "drawer"} title="Saturation" >
+        <FilterPillGrid>
+          {filterOptions.saturations.map((level) => (
+            <FilterPill
+              key={level}
+              label={SATURATION_LABELS[level]}
+              selected={selectedSaturations.includes(level)}
+              onToggle={() => toggleMulti("saturation", level)}
             />
           ))}
         </FilterPillGrid>
@@ -221,18 +243,30 @@ function FilterAccordion({
   title,
   defaultOpen,
   singleColumn = false,
+  scrollIntoViewWhenOpen = false,
   children,
 }: {
   title: string;
   defaultOpen: boolean;
   /** When true, pills layout in one column instead of two */
   singleColumn?: boolean;
+  /** When true (e.g. in sheet), scroll this accordion into view when opened so all buttons stay above fixed footer */
+  scrollIntoViewWhenOpen?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const accordionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || !scrollIntoViewWhenOpen) return;
+    const t = setTimeout(() => {
+      accordionRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [open, scrollIntoViewWhenOpen]);
 
   return (
-    <div className="border-b border-slate-100 last:border-b-0">
+    <div ref={accordionRef} className="border-b border-slate-100 last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -245,7 +279,7 @@ function FilterAccordion({
         />
       </button>
       {open && (
-        <div className={`grid gap-2 pb-4 ${singleColumn ? "grid-cols-1" : "grid-cols-2"}`}>
+        <div className={`flex flex-wrap gap-2 pb-4 ${singleColumn ? "flex-col" : ""}`}>
           {children}
         </div>
       )}
@@ -270,7 +304,7 @@ function FilterPill({
     <button
       type="button"
       onClick={onToggle}
-      className={`inline-flex min-w-0 items-center justify-center rounded-[6px] border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+      className={`inline-flex h-11 min-w-0 shrink-0 items-center justify-center rounded-[6px] border px-2.5 py-1.5 text-xs font-medium transition-colors ${
         selected
           ? "border-primary bg-primary/10 text-primary"
           : "border-border/60 bg-secondary/30 text-foreground hover:border-primary/40 hover:bg-primary/5"

@@ -115,12 +115,14 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
   ].filter(Boolean).length;
 
   const discoverTab = params.tab === "shots" || params.tab === "notes" || params.tab === "brands" || params.tab === "users" ? params.tab : null;
-  /** Mobile view tabs: "for-you" (default) or "index" (full stocks list). */
+  /** Mobile: carousels only ("for-you"). Desktop: "for-you" or "index" from URL. */
   const filmsViewTab = params.tab === "index" ? "index" : "for-you";
   const [latestShots, latestNotes, latestUsers] = discoverTab
     ? await Promise.all([getLatestShots(), getLatestNotes(), getLatestUsers()])
     : [null, null, null];
 
+  /** On mobile, always show only carousels (no FOR YOU | INDEX tabs). */
+  const mobileCarouselsOnly = "for-you";
   const filmsListing = (
     <FilmsListingClient
       stocks={stocks}
@@ -128,6 +130,7 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
       loggedSlugs={loggedSlugs}
       useCaseFilter={bestForArr.length > 0 || !!vibe}
       filmsViewTab={filmsViewTab}
+      mobileCarouselsOnly={mobileCarouselsOnly}
     />
   );
 
@@ -135,8 +138,8 @@ export default async function FilmsPage({ searchParams }: FilmsPageProps) {
     <FilmsPageMobileSearchWrapper brands={brands} filterOptions={filterOptions}>
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-6 lg:px-8">
-        {/* Hide DiscoveryHeader on mobile when Index tab is active (FOR YOU | INDEX tabs). */}
-        <div className={params.tab === "index" ? "mb-6 hidden md:block" : "mb-6"}>
+        {/* Mobile: carousels only — hide DiscoveryHeader (no FOR YOU | INDEX, no filter chips). Desktop: full header. */}
+        <div className="mb-6 hidden md:block">
           <DiscoveryHeader
             brands={brands}
             filterOptions={filterOptions}

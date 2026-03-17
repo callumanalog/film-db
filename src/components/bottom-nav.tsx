@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, GalleryHorizontalEnd, Plus, Refrigerator, UserRound } from "lucide-react";
+import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
+import { openLogRollChoiceDrawer } from "@/components/log-roll-choice-drawer";
 
 const LEFT_ITEMS = [
   { href: "/films", label: "Home", icon: Home },
-  { href: "/", label: "Library", icon: GalleryHorizontalEnd },
+  { href: "/", label: "Discover", icon: GalleryHorizontalEnd },
 ] as const;
 
 const RIGHT_ITEMS = [
-  { href: "/vault", label: "The Vault", icon: Refrigerator },
+  { href: "/search", label: "Search", icon: Search },
   { href: "/profile", label: "Profile", icon: UserRound },
 ] as const;
 
@@ -23,12 +24,12 @@ function isFilmDetailPath(pathname: string | null): boolean {
   return parts[0] === "films" && parts.length >= 2;
 }
 
-/** Single active nav destination: /, /films, /vault, or /profile. Film detail pages count as /films (Library). */
+/** Single active nav destination: /, /films, /search, or /profile. Film detail pages count as /films. */
 function getActiveHref(pathname: string | null): string | null {
   if (!pathname) return null;
   if (pathname === "/") return "/";
   if (pathname === "/films" || pathname.startsWith("/films/")) return "/films";
-  if (pathname === "/vault" || pathname.startsWith("/vault/")) return "/vault";
+  if (pathname === "/search" || pathname.startsWith("/search")) return "/search";
   if (pathname === "/profile" || pathname.startsWith("/profile/")) return "/profile";
   return null;
 }
@@ -39,7 +40,11 @@ export function BottomNav() {
   const onFilmPage = isFilmDetailPath(pathname);
   const activeHref = getActiveHref(pathname);
   const handlePlus = () => {
-    if (onFilmPage && trigger) trigger.openLogRoll();
+    if (onFilmPage && trigger) {
+      trigger.openLogRoll();
+    } else {
+      openLogRollChoiceDrawer();
+    }
   };
 
   return (

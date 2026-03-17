@@ -25,7 +25,7 @@ const PRIORITY_NAV_COUNT = 2;
 const priorityNavLinks = navLinks.slice(0, PRIORITY_NAV_COUNT);
 const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 
-const MAIN_LANDING_PATHS = ["/", "/films", "/vault", "/profile"];
+const MAIN_LANDING_PATHS = ["/", "/films", "/search", "/profile"];
 
 /** Height of the integrated film hero header when scroll is 0 (mobile). */
 const EXPANDED_HERO_HEIGHT = 52;
@@ -40,6 +40,7 @@ export function Header() {
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
   const isFilmsPage = pathname === "/films";
+  const isSearchPage = pathname === "/search";
   const searchParams = useSearchParams();
   const filmsViewTab = searchParams.get("tab") === "index" ? "index" : "for-you";
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
@@ -159,11 +160,14 @@ export function Header() {
         </div>
       )}
 
-      {/* Top nav: 3-column (logo center, nav left, profile right). Always visible so films page has it above Film archive + search. */}
+      {/* Search page: search bar lives in SearchConsole on the page, not in header */}
+
+      {/* Top nav: 3-column (logo center, nav left, profile right). Hidden on search mobile (single-column layout used). */}
       <div
         className={cn(
           "mx-auto grid max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
-          isFilmHero ? "hidden md:grid h-16" : "grid h-16"
+          isFilmHero ? "hidden md:grid h-16" : "grid h-16",
+          isSearchPage && "hidden md:grid"
         )}
       >
         <div className="flex min-w-0 items-center justify-start overflow-hidden gap-1">
@@ -297,22 +301,22 @@ export function Header() {
           )}
         </div>
 
-        {/* Center column: logo (FilmDB / mobile stock name) */}
+        {/* Center column: logo (FilmDB / mobile stock name). Search page mobile uses single-column block above. */}
         <div className="flex min-w-0 flex-1 items-center justify-center">
-          {/* Desktop: always FilmDB */}
           <Link
             href="/"
             className="hidden whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80 md:inline-block"
           >
             FilmDB
           </Link>
-          {/* Mobile: stock name when on film detail (else FilmDB); film hero mode uses integrated header instead */}
-          <Link
-            href={mobileHeaderTitle && pathname ? pathname : "/"}
-            className="whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80 md:hidden font-sans"
-          >
-            {mobileHeaderTitle ?? "FilmDB"}
-          </Link>
+          {!isSearchPage && (
+            <Link
+              href={mobileHeaderTitle && pathname ? pathname : "/"}
+              className="whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80 md:hidden font-sans"
+            >
+              {mobileHeaderTitle ?? "FilmDB"}
+            </Link>
+          )}
         </div>
 
         {/* Right column: Share when back; else profile / sign-in */}
@@ -375,26 +379,6 @@ export function Header() {
         </div>
       </div>
 
-      {/* Films page: search bar + All Filters gear below main nav (mobile) */}
-      {isFilmsPage && (
-        <div className="mx-auto w-full max-w-7xl px-4 pb-3 pt-1 sm:px-6 lg:px-8 md:hidden">
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <Suspense fallback={<div className="h-[52px] w-full rounded-card border border-slate-200 bg-slate-50" />}>
-                <FilmsHeaderSearch />
-              </Suspense>
-            </div>
-            <button
-              type="button"
-              onClick={() => typeof window !== "undefined" && window.dispatchEvent(new CustomEvent("openFilmsAllFilters"))}
-              className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-card border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-foreground"
-              aria-label="All filters"
-            >
-              <Settings2 className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
 
       <GlobalSearchOverlay
         open={searchOverlayOpen}
