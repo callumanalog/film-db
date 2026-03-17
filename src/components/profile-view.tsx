@@ -117,22 +117,24 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
               >
                 {loggedRolls.length > 0 && (
                   <>
-                    <div className="mb-4 flex w-full overflow-hidden rounded-[7px] border border-slate-200 bg-background p-0.5">
-                      {ROLLS_STATUS_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setRollsStatusFilter(opt.value)}
-                          className={cn(
-                            "flex-1 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
-                            rollsStatusFilter === opt.value
-                              ? "rounded-md bg-white text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                    <div className="mb-4 w-full overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        {ROLLS_STATUS_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setRollsStatusFilter(opt.value)}
+                            className={cn(
+                              "flex h-11 shrink-0 items-center rounded-full border px-3 py-2 text-sm font-medium transition-colors last:mr-4 sm:last:mr-6",
+                              rollsStatusFilter === opt.value
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/50"
+                            )}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     {filteredRolls.length > 0 ? (
                       <ul className="space-y-4">

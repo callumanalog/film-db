@@ -46,6 +46,7 @@ export function Header() {
   const isFilmHero = showBack && mobileHeaderTitle != null;
   const isFilmsPage = pathname === "/films";
   const isSearchPage = pathname === "/search";
+  const isProfilePage = pathname === "/profile" || pathname?.startsWith("/profile/");
   const searchParams = useSearchParams();
   const filmsViewTab = searchParams.get("tab") === "index" ? "index" : "for-you";
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
@@ -54,8 +55,10 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const actionsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isFilmHero && !isFilmsPage) return;
@@ -86,6 +89,17 @@ export function Header() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [moreMenuOpen]);
+
+  useEffect(() => {
+    if (!settingsMenuOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target as Node)) {
+        setSettingsMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [settingsMenuOpen]);
 
   const heroHeight = Math.max(COLLAPSED_NAV_HEIGHT, EXPANDED_HERO_HEIGHT - scrollY);
   const heroPast = scrollY >= EXPANDED_HERO_HEIGHT;
@@ -324,8 +338,45 @@ export function Header() {
           )}
         </div>
 
-        {/* Right column: Share when back; else profile / sign-in */}
+        {/* Right column: Share when back; on profile, settings icon; else profile / sign-in */}
         <div className="flex items-center justify-end gap-2">
+          {isProfilePage && (
+            <div className="relative" ref={settingsMenuRef}>
+              <button
+                type="button"
+                onClick={() => setSettingsMenuOpen((o) => !o)}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                aria-label="Settings"
+                aria-expanded={settingsMenuOpen}
+                aria-haspopup="true"
+              >
+                <Settings2 className="h-5 w-5" />
+              </button>
+              {settingsMenuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
+                  <Link
+                    href="/profile/settings"
+                    onClick={() => setSettingsMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
+                  >
+                    <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    Settings
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      signOut();
+                      setSettingsMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted/50"
+                  >
+                    <LogOut className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {showBack && (
             <button
               type="button"

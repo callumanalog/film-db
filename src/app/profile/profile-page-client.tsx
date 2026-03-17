@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Settings, LogOut } from "lucide-react";
 import { getStocksBySlugs, getStatsForSlugs } from "@/app/actions/get-film-stocks";
 import { getProfileFromSupabase } from "@/app/actions/get-profile";
 import { ProfileView, type ProfileData } from "@/components/profile-view";
@@ -18,7 +16,7 @@ type StockWithBrand = FilmStock & { brand: FilmBrand };
 
 export function ProfilePageClient() {
   const router = useRouter();
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { shotSlugs, favouriteSlugs, tracked, ratings } = useUserActions();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stocksBySlug, setStocksBySlug] = useState<Map<string, StockWithBrand>>(new Map());
@@ -124,7 +122,7 @@ export function ProfilePageClient() {
 
   if (authLoading || !user || profileLoading || !profile) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 pt-4 pb-8 sm:px-6">
         <div className="animate-pulse space-y-6">
           <div className="h-16 w-64 rounded-card bg-muted" />
           <div className="h-32 rounded-card bg-muted" />
@@ -134,7 +132,7 @@ export function ProfilePageClient() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 pt-4 pb-8 sm:px-6">
       {isUnverified && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">
@@ -150,23 +148,6 @@ export function ProfilePageClient() {
           </button>
         </div>
       )}
-      <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
-        <Link
-          href="/profile/settings"
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <Settings className="h-4 w-4 shrink-0" aria-hidden />
-          Settings
-        </Link>
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <LogOut className="h-4 w-4 shrink-0" aria-hidden />
-          Log out
-        </button>
-      </div>
       <ProfileView profile={profile} stocksBySlug={stocksBySlug} statsBySlug={statsBySlug} />
     </div>
   );

@@ -102,8 +102,8 @@ export function GalleryGrid({
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Filters — hidden on mobile */}
+      <div className="hidden flex-wrap items-center gap-3 md:flex">
         <span className="text-sm font-medium text-muted-foreground">Brand</span>
         <select
           value={brandFilter}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getFilmStocks } from "@/lib/supabase/queries";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { GalleryGrid, type StockOption } from "@/components/gallery-grid";
+import { FilmNativeGrid } from "@/components/film-native-grid";
 import type { GalleryImage } from "@/lib/sample-images";
 
 export const revalidate = 60;
@@ -28,8 +29,8 @@ export default async function DiscoverPage() {
   }));
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 pb-24 md:pb-8">
-      <header className="mb-6">
+    <div className="mx-auto max-w-6xl px-4 pt-0 pb-24 sm:px-6 md:pb-8">
+      <header className="mb-6 hidden md:block">
         <h1 className="text-2xl font-bold tracking-tight font-sans">Discover</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Community uploads from across the database.
@@ -46,12 +47,21 @@ export default async function DiscoverPage() {
           </p>
         </div>
       ) : (
-        <GalleryGrid
-          images={images}
-          brands={brands}
-          stocks={stockOptions}
-          initialSelectedStockSlugs={[]}
-        />
+        <>
+          {/* Mobile: full-bleed 3-column 3:2 Film Native grid */}
+          <div className="md:hidden w-screen max-w-none relative left-1/2 -translate-x-1/2">
+            <FilmNativeGrid images={images} />
+          </div>
+          {/* Desktop: filters + grid */}
+          <div className="hidden md:block">
+            <GalleryGrid
+              images={images}
+              brands={brands}
+              stocks={stockOptions}
+              initialSelectedStockSlugs={[]}
+            />
+          </div>
+        </>
       )}
     </div>
   );
