@@ -1,48 +1,22 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { Settings2 } from "lucide-react";
 
-/** Search form only — use with flex-1 min-w-0 so it fills the header row. */
-export function SearchPageHeaderForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const searchFromUrl = searchParams.get("search")?.trim() ?? "";
-  const [value, setValue] = useState(searchFromUrl);
+interface SearchPageHeaderFormProps {
+  /** Controlled value for instant-as-you-type filtering. */
+  value: string;
+  onChange: (value: string) => void;
+  onClear?: () => void;
+}
 
-  useEffect(() => {
-    setValue(searchFromUrl);
-  }, [searchFromUrl]);
-
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const q = value.trim();
-      const params = new URLSearchParams(searchParams.toString());
-      if (q) params.set("search", q);
-      else params.delete("search");
-      const query = params.toString();
-      router.push(query ? `/search?${query}` : "/search");
-    },
-    [value, router, searchParams]
-  );
-
-  const handleClear = () => {
-    setValue("");
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("search");
-    const query = params.toString();
-    router.push(query ? `/search?${query}` : "/search");
-  };
-
+/** Search input only — instant filter on change (debounced by parent). No Enter required. */
+export function SearchPageHeaderForm({ value, onChange, onClear }: SearchPageHeaderFormProps) {
   const showClear = value.trim() !== "";
 
   return (
-    <form
+    <div
       role="search"
-      onSubmit={handleSubmit}
       className="flex h-[52px] min-h-[52px] w-full min-w-0 shrink-0 items-center gap-2 rounded-card border border-border bg-white pl-3 pr-2"
     >
       <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -52,21 +26,22 @@ export function SearchPageHeaderForm() {
         enterKeyHint="search"
         autoComplete="off"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Search film stocks"
         className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
+        aria-label="Search film stocks"
       />
-      {showClear && (
+      {showClear && onClear && (
         <button
           type="button"
-          onClick={handleClear}
+          onClick={onClear}
           aria-label="Clear search"
           className="flex shrink-0 items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
       )}
-    </form>
+    </div>
   );
 }
 

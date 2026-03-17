@@ -12,7 +12,7 @@ import {
 type SortValue = "highest-rated" | "alphabetical";
 
 const SORT_OPTIONS: { value: SortValue; label: string }[] = [
-  { value: "highest-rated", label: "Highest rated" },
+  { value: "highest-rated", label: "Popularity" },
   { value: "alphabetical", label: "Alphabetical" },
 ];
 
@@ -36,7 +36,7 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
   }
 
   const currentLabel =
-    SORT_OPTIONS.find((o) => o.value === currentSort)?.label ?? "Highest rated";
+    SORT_OPTIONS.find((o) => o.value === currentSort)?.label ?? "Popularity";
 
   return (
     <Select value={currentSort} onValueChange={(v) => setSort(v as SortValue)}>

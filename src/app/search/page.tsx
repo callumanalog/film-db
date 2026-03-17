@@ -49,7 +49,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const [catalog, stocksBase] = await Promise.all([
     getCatalogForListings(),
     getFilmStocks({
-      search: params.search,
       brand: brandArr.length ? brandArr : undefined,
       type: typeArr.length ? typeArr : undefined,
       format: formatArr.length ? formatArr : undefined,
@@ -80,7 +79,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       : stocksBase;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <FilmsAllFiltersSheet brands={brands} filterOptions={filterOptions} />
       <SearchPageClient
         fallbackData={{

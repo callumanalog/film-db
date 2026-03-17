@@ -46,10 +46,12 @@ async function fetchFilmStockStatsForSlugs(slugs: string[]): Promise<Record<stri
       for (const row of rows) {
         const slug = row?.slug as string | undefined;
         if (slug == null) continue;
+        const raw = row as Record<string, unknown>;
+        const avgRatingRaw = raw.avg_rating ?? raw.avg_r;
         map[slug] = {
           shotByCount: Number(row.shot_by_count ?? 0),
           favouritesCount: Number(row.favourites_count ?? 0),
-          avgRating: row.avg_rating != null ? Number(row.avg_rating) : null,
+          avgRating: avgRatingRaw != null ? Number(avgRatingRaw) : null,
           ratingCount: Number(row.rating_count ?? 0),
           shotsCount: Number(row.shots_count ?? 0),
         };

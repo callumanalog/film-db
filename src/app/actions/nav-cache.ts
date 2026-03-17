@@ -89,12 +89,16 @@ export async function getSearchPageData(params: SearchPageParams): Promise<Searc
   const statsBySlug =
     stocksBase.length > 0 ? await getFilmStockStatsForSlugs(stocksBase.map((s) => s.slug)) : {};
 
+  // Popularity = highest avg rating first; nulls (no ratings) last; then alphabetical tie-break
   const stocks =
     sortParam === "popular" && stocksBase.length > 0
       ? [...stocksBase].sort((a, b) => {
-          const ra = statsBySlug[a.slug]?.avgRating ?? 0;
-          const rb = statsBySlug[b.slug]?.avgRating ?? 0;
-          if (ra !== rb) return rb - ra;
+          const ra = statsBySlug[a.slug]?.avgRating ?? null;
+          const rb = statsBySlug[b.slug]?.avgRating ?? null;
+          if (ra == null && rb == null) return 0;
+          if (ra == null) return 1;
+          if (rb == null) return -1;
+          if (rb !== ra) return rb - ra;
           const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
           const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
           return keyA.localeCompare(keyB);
@@ -185,6 +189,7 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
   const vaultRolls = await getVaultRolls();
   const loggedSlugs = [...new Set(vaultRolls.map((r) => r.film_stock_slug))];
 
+  // Popularity = highest avg rating first; nulls (no ratings) last; then alphabetical tie-break
   const stocks =
     sortParam === "highest-rated"
       ? [...stocksUnsorted].sort((a, b) => {
@@ -193,7 +198,10 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
           if (ra == null && rb == null) return 0;
           if (ra == null) return 1;
           if (rb == null) return -1;
-          return rb - ra;
+          if (rb !== ra) return rb - ra;
+          const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
+          const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
+          return keyA.localeCompare(keyB);
         })
       : stocksUnsorted;
 

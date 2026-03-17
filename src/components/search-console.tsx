@@ -15,13 +15,24 @@ interface SearchConsoleProps {
   filterOptions: FilmFilterOptions;
   /** When true, carousel stays visible on scroll (e.g. when any filter is applied). */
   hasActiveFilters?: boolean;
+  /** Controlled value for instant search (no Enter required). */
+  searchInputValue?: string;
+  onSearchInputChange?: (value: string) => void;
+  onClearSearch?: () => void;
 }
 
 /**
  * Search Bar + Filter Carousel in a single sticky unit.
  * Shadow appears when scrolled; carousel hides on scroll down and reappears on scroll up (unless hasActiveFilters).
  */
-export function SearchConsole({ brands, filterOptions, hasActiveFilters = false }: SearchConsoleProps) {
+export function SearchConsole({
+  brands,
+  filterOptions,
+  hasActiveFilters = false,
+  searchInputValue = "",
+  onSearchInputChange,
+  onClearSearch,
+}: SearchConsoleProps) {
   const [scrolled, setScrolled] = useState(false);
   const [carouselVisible, setCarouselVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -57,7 +68,11 @@ export function SearchConsole({ brands, filterOptions, hasActiveFilters = false 
     >
       {/* Search bar: aligned with page content, reduced bottom margin */}
       <div className="mb-2 px-4 sm:px-6 lg:px-8">
-        <SearchPageHeaderForm />
+        <SearchPageHeaderForm
+          value={searchInputValue}
+          onChange={onSearchInputChange ?? (() => {})}
+          onClear={onClearSearch}
+        />
       </div>
 
       {/* Full-bleed filter carousel: hides on scroll down, reappears on scroll up */}

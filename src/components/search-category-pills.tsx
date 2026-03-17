@@ -127,7 +127,7 @@ export function SearchCategoryPills({ brands = [], filterOptions }: SearchCatego
               "flex h-11 shrink-0 items-center gap-1 rounded-full border px-3 py-2 text-sm font-medium transition-colors last:mr-4 sm:last:mr-6 lg:last:mr-8",
               active
                 ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-accent/50"
+                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/50"
             )}
           >
             <span className="truncate max-w-[140px]">
@@ -138,7 +138,7 @@ export function SearchCategoryPills({ brands = [], filterOptions }: SearchCatego
                 </span>
               )}
             </span>
-            <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           </button>
         );
       })}

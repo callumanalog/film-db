@@ -17,11 +17,11 @@ AS $$
   upload_counts AS (SELECT film_stock_slug AS slug, COUNT(*)::bigint AS cnt FROM user_uploads WHERE film_stock_slug = ANY(p_slugs) GROUP BY film_stock_slug)
   SELECT
     s.slug,
-    COALESCE(sc.cnt, 0),
-    COALESCE(fc.cnt, 0),
-    rs.avg_r,
-    COALESCE(rs.cnt, 0),
-    COALESCE(uc.cnt, 0)
+    COALESCE(sc.cnt, 0) AS shot_by_count,
+    COALESCE(fc.cnt, 0) AS favourites_count,
+    rs.avg_r AS avg_rating,
+    COALESCE(rs.cnt, 0) AS rating_count,
+    COALESCE(uc.cnt, 0) AS shots_count
   FROM slugs s
   LEFT JOIN shot_counts sc ON sc.slug = s.slug
   LEFT JOIN fav_counts fc ON fc.slug = s.slug
