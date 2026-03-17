@@ -83,10 +83,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     <div className="min-h-screen bg-background">
       <FilmsAllFiltersSheet brands={brands} filterOptions={filterOptions} />
       <SearchPageClient
-        brands={brands}
-        filterOptions={filterOptions}
-        stocks={stocks}
-        statsBySlug={statsBySlug}
+        fallbackData={{
+          brands,
+          filterOptions,
+          stocks,
+          statsBySlug,
+        }}
       />
     </div>
   );

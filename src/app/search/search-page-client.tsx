@@ -1,11 +1,10 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import type { FilmBrand } from "@/lib/types";
-import type { FilmFilterOptions } from "@/lib/supabase/queries";
-import type { FilmStockStats } from "@/lib/supabase/stats";
+import type { SearchPageData, SearchPageParams } from "@/app/actions/nav-cache";
 import { FilmStockListCard } from "@/components/film-stock-list-card";
 import { SearchConsole } from "@/components/search-console";
+import { useSearchPageData } from "@/lib/nav-cache-swr";
 
 const FILTER_PARAMS = ["brand", "type", "format", "grain", "latitude", "saturation", "bestFor", "iso"];
 
@@ -17,16 +16,49 @@ function hasAnyFilter(searchParams: URLSearchParams): boolean {
   });
 }
 
-interface SearchPageClientProps {
-  brands: FilmBrand[];
-  filterOptions: FilmFilterOptions;
-  stocks: (import("@/lib/types").FilmStock & { brand: FilmBrand })[];
-  statsBySlug: Record<string, FilmStockStats>;
+function searchParamsToNavParams(searchParams: URLSearchParams): SearchPageParams {
+  return {
+    search: searchParams.get("search") ?? undefined,
+    sort: searchParams.get("sort") ?? undefined,
+    brand: searchParams.get("brand") ?? undefined,
+    type: searchParams.get("type") ?? undefined,
+    format: searchParams.get("format") ?? undefined,
+    grain: searchParams.get("grain") ?? undefined,
+    contrast: searchParams.get("contrast") ?? undefined,
+    latitude: searchParams.get("latitude") ?? undefined,
+    saturation: searchParams.get("saturation") ?? undefined,
+    bestFor: searchParams.get("bestFor") ?? undefined,
+    iso: searchParams.get("iso") ?? undefined,
+  };
 }
 
-export function SearchPageClient({ brands, filterOptions, stocks }: SearchPageClientProps) {
+export interface SearchPageClientProps {
+  /** Server-passed data on first load; when navigating back, SWR cache is used so this can be undefined. */
+  fallbackData?: SearchPageData;
+}
+
+export function SearchPageClient({ fallbackData }: SearchPageClientProps) {
   const searchParams = useSearchParams();
+  const params = searchParamsToNavParams(searchParams);
+  const { data, isLoading } = useSearchPageData({ params, fallbackData });
   const hasActiveFilters = hasAnyFilter(searchParams);
+
+  if (!data && isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 pt-4 pb-24 md:pb-8 sm:px-6 lg:px-8">
+          <div className="h-12 animate-pulse rounded-lg bg-muted/50 mb-4" />
+          <div className="space-y-2">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-lg bg-muted/30" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { brands = [], filterOptions = { types: [], isos: [], formats: [], grains: [], contrasts: [], latitudes: [], saturations: [], bestFor: [] }, stocks = [] } = data ?? {};
 
   return (
     <>

@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { preload } from "swr";
 import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
 import { openLogRollChoiceDrawer } from "@/components/log-roll-choice-drawer";
+import { searchPageDataKey, filmsPageDataKey } from "@/lib/nav-cache-swr";
+import { getSearchPageData, getFilmsPageData } from "@/app/actions/nav-cache";
 
 const LEFT_ITEMS = [
   { href: "/films", label: "Home", icon: Home },
@@ -55,10 +58,12 @@ export function BottomNav() {
     >
       {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = href === activeHref;
+        const onPrefetch = href === "/films" ? () => preload(filmsPageDataKey({}), () => getFilmsPageData({})) : undefined;
         return (
           <Link
             key={href}
             href={href}
+            onMouseEnter={onPrefetch}
             className={cn(
               "flex items-center justify-center rounded-lg p-3 transition-transform active:scale-110",
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -80,10 +85,12 @@ export function BottomNav() {
       </button>
       {RIGHT_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = href === activeHref;
+        const onPrefetch = href === "/search" ? () => preload(searchPageDataKey({}), () => getSearchPageData({})) : undefined;
         return (
           <Link
             key={href}
             href={href}
+            onMouseEnter={onPrefetch}
             className={cn(
               "flex items-center justify-center rounded-lg p-3 transition-transform active:scale-110",
               isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"

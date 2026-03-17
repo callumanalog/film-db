@@ -14,6 +14,7 @@ import { UrlToastHandler } from "@/components/url-toast-handler";
 import { LogRollTriggerProvider } from "@/context/log-roll-trigger-context";
 import { MobileHeaderTitleProvider } from "@/context/mobile-header-title-context";
 import { FilmsSearchProvider } from "@/context/films-search-context";
+import { NavSWRProvider } from "@/components/nav-swr-provider";
 import "./globals.css";
 
 const advercase = localFont({
@@ -64,6 +65,7 @@ export default function RootLayout({
             <LogRollTriggerProvider>
             <MobileHeaderTitleProvider>
             <FilmsSearchProvider>
+            <NavSWRProvider>
             <ToastProvider>
               <Suspense fallback={null}>
                 <UrlToastHandler />
@@ -77,6 +79,7 @@ export default function RootLayout({
               <LogRollChoiceDrawer />
               <SpeedInsights />
             </ToastProvider>
+            </NavSWRProvider>
             </FilmsSearchProvider>
             </MobileHeaderTitleProvider>
             </LogRollTriggerProvider>
