@@ -181,13 +181,23 @@ export interface LoggedRollEntry {
   created_at: string;
 }
 
+export interface SaveLoggedRollExtras {
+  camera?: string;
+  lens?: string;
+  shotIso?: string;
+  notes?: string;
+  lab?: string;
+  dateLoaded?: string;
+}
+
 /** Save logged roll(s). Inserts one row per roll so each appears as a separate card and can be managed individually. */
 export async function saveLoggedRoll(
   film_stock_slug: string,
   format: string,
   status: string,
   expiry_date: string,
-  quantity: number
+  quantity: number,
+  extras?: SaveLoggedRollExtras
 ): Promise<{ synced: boolean }> {
   const userId = await getCurrentUserId();
   if (!userId) return { synced: false };
@@ -201,6 +211,12 @@ export async function saveLoggedRoll(
     status: status || "in_fridge",
     expiry_date: expiry_date || null,
     quantity: 1,
+    camera: extras?.camera || null,
+    lens: extras?.lens || null,
+    shot_iso: extras?.shotIso || null,
+    notes: extras?.notes || null,
+    lab: extras?.lab || null,
+    date_loaded: extras?.dateLoaded || null,
   }));
   const { error } = await supabase.from("user_logged_rolls").insert(rows);
   if (error) {

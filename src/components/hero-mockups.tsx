@@ -50,8 +50,7 @@ import {
   FileVideo,
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
-import { TrackFilmModal } from "@/components/track-film-modal";
-import { LogRollStatusDrawer } from "@/components/log-roll-status-drawer";
+import { LogRollStatusDrawer, type LogRollSavePayload } from "@/components/log-roll-status-drawer";
 import { AddReviewModal } from "@/components/add-review-modal";
 import { showToastViaEvent } from "@/components/toast";
 import {
@@ -469,7 +468,6 @@ export function StickyLeftPane({
   const {
     favouriteSlugs,
     toggleFavourite,
-    addOrUpdateTracked,
     setRating: persistRating,
     ratings,
     shotSlugs,
@@ -480,21 +478,14 @@ export function StickyLeftPane({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [trackModalOpen, setTrackModalOpen] = useState(false);
   const [logRollDrawerOpen, setLogRollDrawerOpen] = useState(false);
-  const [trackInitialStatus, setTrackInitialStatus] = useState<string | undefined>(undefined);
-  const [trackInitialFormat, setTrackInitialFormat] = useState<string | undefined>(undefined);
 
-  // Intent continuity: if user just returned from sign-in/sign-up with action=log-roll, open drawer (mobile) or modal (desktop)
+  // Intent continuity: if user just returned from sign-in/sign-up with action=log-roll, open drawer
   const didHandleLogRollIntent = useRef(false);
   useEffect(() => {
     if (!user || searchParams.get("action") !== "log-roll" || didHandleLogRollIntent.current) return;
     didHandleLogRollIntent.current = true;
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setLogRollDrawerOpen(true);
-    } else {
-      setTrackModalOpen(true);
-    }
+    setLogRollDrawerOpen(true);
     const next = new URLSearchParams(searchParams);
     next.delete("action");
     const qs = next.toString();
@@ -540,18 +531,6 @@ export function StickyLeftPane({
     shotsCount: stats?.shotsCount ?? 0,
   };
 
-  const handleTrackSave = (entry: { format: string; status: string; expiryDate: string; notes: string }) => {
-    addOrUpdateTracked({
-      slug,
-      format: entry.format,
-      status: entry.status,
-      expiryDate: entry.expiryDate,
-      notes: entry.notes,
-    });
-    showToastViaEvent("Added to Tracked");
-    setTrackModalOpen(false);
-  };
-
   const closeDrawerThen = (fn: () => void) => {
     setReviewDrawerOpen(false);
     const t = setTimeout(fn, 150);
@@ -568,11 +547,7 @@ export function StickyLeftPane({
         router.push(`/auth/sign-in?next=${encodeURIComponent(nextUrl)}`);
         return;
       }
-      if (typeof window !== "undefined" && window.innerWidth < 768) {
-        setLogRollDrawerOpen(true);
-      } else {
-        setTrackModalOpen(true);
-      }
+      setLogRollDrawerOpen(true);
     };
     logRollTrigger.registerOpenLogRoll(openLogRoll);
     return () => logRollTrigger.unregisterOpenLogRoll();
@@ -687,50 +662,23 @@ export function StickyLeftPane({
         open={logRollDrawerOpen}
         onOpenChange={setLogRollDrawerOpen}
         stock={{ slug: stock.slug, name: stock.name, format: stock.format ?? [], image_url: stock.image_url ?? null }}
-        onContinue={async (statusId, format, payload) => {
-          if (statusId === "in_fridge" && payload && format) {
-            const { synced } = await saveLoggedRoll(slug, format, "in_fridge", payload.expiry, payload.quantity);
-            setLogRollDrawerOpen(false);
-            if (synced) {
-              invalidateVaultCache();
-              showToastViaEvent("Roll saved");
-              router.push(`/films/${slug}?tab=rolls`);
-            } else {
-              showToastViaEvent("Sign in to save rolls");
-            }
-            return;
-          }
-          const statusMap: Record<string, string> = {
-            in_fridge: "In Fridge",
-            in_camera: "In camera",
-            awaiting_dev: "Awaiting development",
-            at_lab: "Scanned",
-          };
-          setTrackInitialStatus(statusMap[statusId] ?? "");
-          setTrackInitialFormat(format);
+        onSave={async (payload: LogRollSavePayload) => {
+          const { synced } = await saveLoggedRoll(slug, payload.format, payload.statusId, payload.expiry, payload.quantity, {
+            camera: payload.camera,
+            lens: payload.lens,
+            shotIso: payload.shotIso,
+            notes: payload.notes,
+            lab: payload.lab,
+            dateLoaded: payload.dateLoaded,
+          });
           setLogRollDrawerOpen(false);
-          setTrackModalOpen(true);
-        }}
-      />
-      <TrackFilmModal
-        open={trackModalOpen}
-        onOpenChange={(open) => {
-          setTrackModalOpen(open);
-          if (!open) {
-            setTrackInitialStatus(undefined);
-            setTrackInitialFormat(undefined);
+          if (synced) {
+            invalidateVaultCache();
+            showToastViaEvent("Roll saved");
+          } else {
+            showToastViaEvent("Sign in to save rolls");
           }
         }}
-        onSave={handleTrackSave}
-        stock={{
-          slug: stock.slug,
-          name: stock.name,
-          brand: stock.brand,
-          format: stock.format ?? [],
-          image_url: stock.image_url,
-        }}
-        initialStatus={trackInitialStatus}
-        initialFormat={trackInitialFormat}
       />
 
       <AddReviewModal

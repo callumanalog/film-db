@@ -21,7 +21,6 @@ const TRACK_STATUSES = [
   "In camera",
   "Awaiting development",
   "Developed",
-  "Scanned",
 ] as const;
 
 export interface TrackFilmModalStock {

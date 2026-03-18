@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Sheet,
@@ -10,18 +10,9 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Refrigerator,
   Camera,
   FlaskConical,
-  CircleCheck,
-  ChevronLeft,
   Minus,
   Plus,
   type LucideIcon,
@@ -34,10 +25,8 @@ const STATUSES: { id: string; label: string; phase: string; icon: LucideIcon }[]
   { id: "in_fridge", label: "In Fridge", phase: "INVENTORY", icon: Refrigerator },
   { id: "in_camera", label: "In Camera", phase: "currently shooting", icon: Camera },
   { id: "awaiting_dev", label: "Processing", phase: "awaiting results", icon: FlaskConical },
-  { id: "at_lab", label: "Scanned", phase: "completed roll", icon: CircleCheck },
 ];
 
-/** Default exposure count when a format is selected. */
 const FORMAT_EXPOSURE_DEFAULTS: Record<string, number> = {
   "35mm": 36,
   "120": 12,
@@ -56,38 +45,66 @@ export interface LogRollStatusDrawerStock {
   image_url?: string | null;
 }
 
-export interface InFridgePayload {
+export interface LogRollSavePayload {
+  statusId: string;
+  format: string;
+  exposures: number;
   expiry: string;
   quantity: number;
+  camera?: string;
+  lens?: string;
+  shotIso?: string;
+  notes?: string;
+  lab?: string;
+  dateLoaded?: string;
 }
 
 interface LogRollStatusDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   stock: LogRollStatusDrawerStock;
-  onContinue: (statusId: string, format?: string, payload?: InFridgePayload) => void;
+  onSave: (payload: LogRollSavePayload) => void;
 }
 
 export function LogRollStatusDrawer({
   open,
   onOpenChange,
   stock,
-  onContinue,
+  onSave,
 }: LogRollStatusDrawerProps) {
-  const [step, setStep] = useState<"status" | "format">("status");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<string>("");
-  const advanceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // In Fridge step 2 form state
-  const [vaultFormat, setVaultFormat] = useState<string>(() => (stock.format ?? [])[0] ?? "");
+
+  const [vaultFormat, setVaultFormat] = useState<string>("");
   const [vaultExposures, setVaultExposures] = useState<number>(36);
   const [vaultExpiry, setVaultExpiry] = useState<string>("");
   const [vaultQuantity, setVaultQuantity] = useState<number>(1);
+
+  const [camera, setCamera] = useState("");
+  const [lens, setLens] = useState("");
+  const [shotIso, setShotIso] = useState("");
+  const [notes, setNotes] = useState("");
+  const [lab, setLab] = useState("");
+  const [dateLoaded, setDateLoaded] = useState("");
 
   const formatOptions = stock.format ?? [];
 
   const expiryMonth = vaultExpiry.slice(0, 2);
   const expiryYear = vaultExpiry.slice(2, 6);
+
+  const resetForm = () => {
+    setSelectedId(null);
+    const firstFormat = (stock.format ?? [])[0] ?? "";
+    setVaultFormat(firstFormat);
+    setVaultExposures(getDefaultExposuresForFormat(firstFormat));
+    setVaultExpiry("");
+    setVaultQuantity(1);
+    setCamera("");
+    setLens("");
+    setShotIso("");
+    setNotes("");
+    setLab("");
+    setDateLoaded("");
+  };
 
   useEffect(() => {
     if (open) {
@@ -95,74 +112,32 @@ export function LogRollStatusDrawer({
       setVaultFormat(firstFormat);
       setVaultExposures(getDefaultExposuresForFormat(firstFormat));
     } else {
-      if (advanceTimeoutRef.current) {
-        clearTimeout(advanceTimeoutRef.current);
-        advanceTimeoutRef.current = null;
-      }
-      setStep("status");
-      setSelectedId(null);
-      setSelectedFormat("");
-      const firstFormat = (stock.format ?? [])[0] ?? "";
-      setVaultFormat(firstFormat);
-      setVaultExposures(getDefaultExposuresForFormat(firstFormat));
-      setVaultExpiry("");
-      setVaultQuantity(1);
+      resetForm();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, stock.format]);
 
-  const handleTileClick = (id: string) => {
-    setSelectedId(id);
-    setSelectedFormat("");
-    if (advanceTimeoutRef.current) clearTimeout(advanceTimeoutRef.current);
-    advanceTimeoutRef.current = setTimeout(() => {
-      advanceTimeoutRef.current = null;
-      setStep("format");
-    }, 800);
-  };
-
-  const handleBack = () => {
-    setStep("status");
-    setSelectedId(null);
-    setSelectedFormat("");
-    const firstFormat = (stock.format ?? [])[0] ?? "";
-    setVaultFormat(firstFormat);
-    setVaultExposures(getDefaultExposuresForFormat(firstFormat));
-    setVaultExpiry("");
-    setVaultQuantity(1);
-  };
-
-  const handleDone = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedId) return;
-    onContinue(selectedId, selectedFormat || undefined);
-    onOpenChange(false);
-    setSelectedId(null);
-    setSelectedFormat("");
-    const firstFormat = (stock.format ?? [])[0] ?? "";
-    setVaultFormat(firstFormat);
-    setVaultExposures(getDefaultExposuresForFormat(firstFormat));
-    setVaultExpiry("");
-    setVaultQuantity(1);
-    setStep("status");
-  };
-
-  const handleInFridgeSubmit = () => {
     const formatStr = `${vaultFormat}-${vaultExposures}`;
-    onContinue("in_fridge", formatStr, {
+    onSave({
+      statusId: selectedId,
+      format: formatStr,
+      exposures: vaultExposures,
       expiry: vaultExpiry ? `${expiryMonth} / ${expiryYear}`.trim() : "",
       quantity: vaultQuantity,
+      camera: camera || undefined,
+      lens: lens || undefined,
+      shotIso: shotIso || undefined,
+      notes: notes || undefined,
+      lab: lab || undefined,
+      dateLoaded: dateLoaded || undefined,
     });
-    onOpenChange(false);
-    setSelectedId(null);
-    setSelectedFormat("");
-    const firstFormat = (stock.format ?? [])[0] ?? "";
-    setVaultFormat(firstFormat);
-    setVaultExposures(getDefaultExposuresForFormat(firstFormat));
-    setVaultExpiry("");
-    setVaultQuantity(1);
-    setStep("status");
   };
 
-  const selectedStatusLabel = STATUSES.find((s) => s.id === selectedId)?.label ?? "";
+  const showExtendedFields = selectedId === "in_camera" || selectedId === "awaiting_dev";
+  const dateLabel = selectedId === "awaiting_dev" ? "Date sent to lab" : "Date loaded";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -172,21 +147,7 @@ export function LogRollStatusDrawer({
         showCloseButton={true}
         className="flex max-h-[90dvh] flex-col gap-0 bg-white p-0"
       >
-        {/* Back button: same size/color as close (absolute top-3 left-4), icon only */}
-        {step === "format" ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="absolute left-3 top-3 z-10"
-            onClick={handleBack}
-            aria-label="Back to status"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        ) : null}
-        {/* Permanent header: identity + contextual dek */}
-        <SheetHeader className="flex items-center gap-3 border-b border-slate-200 px-4 pb-4 pt-2 mb-4">
+        <SheetHeader className="flex items-center gap-3 border-b border-slate-200 px-4 pb-4 pt-2 mb-0">
           {stock.image_url ? (
             <Image
               src={stock.image_url}
@@ -202,73 +163,42 @@ export function LogRollStatusDrawer({
           )}
           <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
             <SheetTitle
-              className={cn(
-                "text-base font-semibold tracking-tight text-foreground [font-family:var(--font-playfair),serif]"
-              )}
+              className="text-base font-semibold tracking-tight text-foreground [font-family:var(--font-playfair),serif]"
             >
               {stock.name}
             </SheetTitle>
-            {step === "status" ? (
-              <p className="mt-1 font-sans text-ui font-medium tracking-tight text-muted-foreground">
-                Select the status of your roll
-              </p>
-            ) : selectedId ? (
-              (() => {
-                const s = STATUSES.find((x) => x.id === selectedId);
-                if (!s) return null;
-                const Icon = s.icon;
-                return (
-                  <div className="mt-1 inline-flex items-center gap-2 rounded-full border border-slate-100 bg-background px-3 py-1">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      {s.label}
-                    </span>
-                  </div>
-                );
-              })()
-            ) : null}
           </div>
         </SheetHeader>
 
-        {/* Step content: contextual dek + body */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-8">
-          {step === "status" ? (
-            <div
-              key="status"
-              className="animate-in fade-in-0 slide-in-from-bottom-2 duration-200"
-            >
-              <div className="grid grid-cols-2 gap-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <form
+            className="flex flex-col gap-5 px-4 pt-4 pb-8"
+            onSubmit={handleSubmit}
+          >
+            {/* Status tiles */}
+            <div className="grid grid-cols-3 gap-2">
               {STATUSES.map(({ id, label, phase, icon: Icon }) => (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => handleTileClick(id)}
+                  onClick={() => setSelectedId(id)}
                   className={cn(
-                    "flex h-[120px] flex-col items-center justify-center rounded-[7px] border p-4 text-center transition-all active:scale-[0.98]",
+                    "flex h-[100px] flex-col items-center justify-center rounded-[7px] border p-3 text-center transition-all active:scale-[0.98]",
                     selectedId === id
                       ? "border-primary bg-primary/10 ring-1 ring-primary"
                       : "border-slate-100 bg-background hover:border-slate-200"
                   )}
                 >
-                  <Icon className="h-6 w-6 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-                  <h5 className="mt-2 font-sans text-ui font-medium leading-snug text-foreground">{label}</h5>
+                  <Icon className="h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                  <h5 className="mt-1.5 font-sans text-[13px] font-medium leading-snug text-foreground">{label}</h5>
                   <p className="text-[8px] uppercase tracking-tighter text-muted-foreground">{phase}</p>
                 </button>
               ))}
-              </div>
             </div>
-          ) : selectedId === "in_fridge" ? (
-            <div
-              key="in-fridge"
-              className="animate-in fade-in-0 slide-in-from-right-10 duration-200"
-            >
-              <form
-                className="mt-6 space-y-6"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleInFridgeSubmit();
-                }}
-              >
+
+            {selectedId && (
+              <div className="flex flex-col gap-5 animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
+                {/* Format */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-foreground">
                     Format
@@ -280,9 +210,9 @@ export function LogRollStatusDrawer({
                           key={fmt}
                           type="button"
                           onClick={() => {
-                          setVaultFormat(fmt);
-                          setVaultExposures(getDefaultExposuresForFormat(fmt));
-                        }}
+                            setVaultFormat(fmt);
+                            setVaultExposures(getDefaultExposuresForFormat(fmt));
+                          }}
                           className={cn(
                             "flex-1 px-4 py-2 text-sm font-medium transition-colors",
                             vaultFormat === fmt
@@ -298,6 +228,8 @@ export function LogRollStatusDrawer({
                     )}
                   </div>
                 </div>
+
+                {/* Expiry + Quantity */}
                 <div className="grid grid-cols-[2fr_1fr] gap-4">
                   <div className="flex min-w-0 flex-col">
                     <label
@@ -347,17 +279,113 @@ export function LogRollStatusDrawer({
                     </div>
                   </div>
                 </div>
+
+                {/* Exposures */}
                 <div>
-                    <label className="mb-1 block text-sm font-medium text-foreground">
-                      Exposures
-                    </label>
-                    <div className="px-5">
-                      <ExposuresRulerPicker
-                        value={vaultExposures}
-                        onChange={setVaultExposures}
+                  <label className="mb-1 block text-sm font-medium text-foreground">
+                    Exposures
+                  </label>
+                  <div className="px-5">
+                    <ExposuresRulerPicker
+                      value={vaultExposures}
+                      onChange={setVaultExposures}
+                    />
+                  </div>
+                </div>
+
+                {/* Extended fields for In Camera / Processing */}
+                {showExtendedFields && (
+                  <div className="flex flex-col gap-4 border-t border-slate-100 pt-5 animate-in fade-in-0 duration-150">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="log-roll-camera" className="mb-1.5 block text-sm font-medium text-foreground">
+                          Camera
+                        </label>
+                        <input
+                          id="log-roll-camera"
+                          type="text"
+                          value={camera}
+                          onChange={(e) => setCamera(e.target.value)}
+                          placeholder="e.g. Canon AE-1"
+                          className="h-11 w-full rounded-[7px] border border-slate-200 bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="log-roll-lens" className="mb-1.5 block text-sm font-medium text-foreground">
+                          Lens
+                        </label>
+                        <input
+                          id="log-roll-lens"
+                          type="text"
+                          value={lens}
+                          onChange={(e) => setLens(e.target.value)}
+                          placeholder="e.g. 50mm f/1.4"
+                          className="h-11 w-full rounded-[7px] border border-slate-200 bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="log-roll-shot-iso" className="mb-1.5 block text-sm font-medium text-foreground">
+                          Shot ISO
+                        </label>
+                        <input
+                          id="log-roll-shot-iso"
+                          type="text"
+                          inputMode="numeric"
+                          value={shotIso}
+                          onChange={(e) => setShotIso(e.target.value)}
+                          placeholder="e.g. 1600"
+                          className="h-11 w-full rounded-[7px] border border-slate-200 bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="log-roll-date-loaded" className="mb-1.5 block text-sm font-medium text-foreground">
+                          {dateLabel}
+                        </label>
+                        <input
+                          id="log-roll-date-loaded"
+                          type="date"
+                          value={dateLoaded}
+                          onChange={(e) => setDateLoaded(e.target.value)}
+                          className="h-11 w-full rounded-[7px] border border-slate-200 bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                        />
+                      </div>
+                    </div>
+
+                    {selectedId === "awaiting_dev" && (
+                      <div>
+                        <label htmlFor="log-roll-lab" className="mb-1.5 block text-sm font-medium text-foreground">
+                          Lab
+                        </label>
+                        <input
+                          id="log-roll-lab"
+                          type="text"
+                          value={lab}
+                          onChange={(e) => setLab(e.target.value)}
+                          placeholder="e.g. The Darkroom"
+                          className="h-11 w-full rounded-[7px] border border-slate-200 bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label htmlFor="log-roll-notes" className="mb-1.5 block text-sm font-medium text-foreground">
+                        Notes <span className="text-muted-foreground">(Optional)</span>
+                      </label>
+                      <textarea
+                        id="log-roll-notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Any notes about this roll..."
+                        rows={2}
+                        className="w-full rounded-[7px] border border-slate-200 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                       />
                     </div>
                   </div>
+                )}
+
                 <Button
                   type="submit"
                   variant="default"
@@ -366,47 +394,9 @@ export function LogRollStatusDrawer({
                 >
                   Save
                 </Button>
-              </form>
-            </div>
-          ) : (
-            <div
-              key="format"
-              className="animate-in fade-in-0 slide-in-from-right-10 duration-200"
-            >
-              <div className="flex flex-1 flex-col gap-4">
-                <p className="text-xs text-muted-foreground">Status: {selectedStatusLabel}</p>
-                <div>
-                  <label
-                    htmlFor="log-roll-format"
-                    className="mb-1.5 block text-sm font-medium text-foreground"
-                  >
-                    Format
-                  </label>
-                  <Select value={selectedFormat} onValueChange={(v) => setSelectedFormat(v ?? "")}>
-                    <SelectTrigger id="log-roll-format" className="w-full">
-                      <SelectValue placeholder="Select format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formatOptions.map((f) => (
-                        <SelectItem key={f} value={f}>
-                          {f}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="cta"
-                  className="mt-4 w-full"
-                  onClick={handleDone}
-                >
-                  Done
-                </Button>
               </div>
-            </div>
-          )}
+            )}
+          </form>
         </div>
       </SheetContent>
     </Sheet>
