@@ -124,7 +124,7 @@ export function LogRollChoiceDrawer() {
         side="bottom"
         className={cn(
           "flex flex-col overflow-hidden gap-0 p-0",
-          step === "search" ? "h-[85dvh] max-h-[85dvh]" : "max-h-[85dvh]"
+          step === "search" ? "h-[92dvh] max-h-[92dvh]" : "max-h-[85dvh]"
         )}
         showDragHandle
         showCloseButton={false}
@@ -235,7 +235,7 @@ export function LogRollChoiceDrawer() {
                 />
               </div>
               <div className="bg-white px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                <div className="h-[445px] overflow-y-auto">
+                <div className="h-[623px] overflow-y-auto">
                   {suggestedLoading ? (
                     <div className="space-y-3 pt-2">
                       {Array.from({ length: 5 }).map((_, i) => (
