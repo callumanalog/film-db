@@ -502,6 +502,25 @@ export function StickyLeftPane({
   }, [user, searchParams, pathname, router]);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
+
+  // Intent continuity: ?action=upload opens upload modal directly
+  const didHandleUploadIntent = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("action") !== "upload" || didHandleUploadIntent.current) return;
+    didHandleUploadIntent.current = true;
+    if (!user) {
+      const returnPath = pathname ?? "/";
+      const nextUrl = returnPath + (returnPath.includes("?") ? "&" : "?") + "action=upload";
+      router.push(`/auth/sign-in?next=${encodeURIComponent(nextUrl)}`);
+      return;
+    }
+    setReviewModalMode("upload");
+    setReviewModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("action");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname ?? "/", { scroll: false });
+  }, [user, searchParams, pathname, router]);
   const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false);
 
   const isFavourite = favouriteSlugs.includes(slug);

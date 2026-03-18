@@ -1,16 +1,30 @@
 "use server";
 
 import { getFilmStocks, getBrands, getFeaturedFilmStocks, getFeaturedBrands } from "@/lib/supabase/queries";
+import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { createClient } from "@/lib/supabase/server";
 
 export type SearchTab = "stocks" | "shots" | "notes" | "brands" | "users";
+
+function stockToSearchResult(s: { slug: string; name: string; iso?: number | null; type?: string; format?: string[] | null; brand?: { name: string } | null; image_url?: string | null }): SearchStocksResult {
+  return {
+    slug: s.slug,
+    name: s.name,
+    iso: s.iso ?? null,
+    type: s.type ?? undefined,
+    format: s.format ?? undefined,
+    brandName: s.brand?.name ?? "",
+    imageUrl: s.image_url ?? null,
+  };
+}
 
 export interface SearchStocksResult {
   slug: string;
   name: string;
   iso?: number | null;
   type?: string;
+  format?: string[];
   brandName: string;
   imageUrl?: string | null;
 }
@@ -63,16 +77,7 @@ export async function searchFilmsByTab(
   switch (tab) {
     case "stocks": {
       const stocks = await getFilmStocks({ search: q, sort: "alphabetical" });
-      return {
-        stocks: stocks.map((s) => ({
-          slug: s.slug,
-          name: s.name,
-          iso: s.iso ?? null,
-          type: s.type ?? undefined,
-          brandName: s.brand?.name ?? "",
-          imageUrl: s.image_url ?? null,
-        })),
-      };
+      return { stocks: stocks.map(stockToSearchResult) };
     }
     case "brands": {
       const [brands, allStocks] = await Promise.all([getBrands(), getFilmStocks({ sort: "alphabetical" })]);
@@ -176,14 +181,7 @@ const LATEST_USERS_LIMIT = 10;
 /** Trending stocks for mobile search empty state (Stocks tab). */
 export async function getTrendingStocks(): Promise<SearchStocksResult[]> {
   const stocks = await getFeaturedFilmStocks();
-  return stocks.map((s) => ({
-    slug: s.slug,
-    name: s.name,
-    iso: s.iso ?? null,
-    type: s.type ?? undefined,
-    brandName: s.brand?.name ?? "",
-    imageUrl: s.image_url ?? null,
-  }));
+  return stocks.map(stockToSearchResult);
 }
 
 /** Trending brands for mobile search empty state (Brands tab). */
@@ -246,4 +244,75 @@ export async function getLatestUsers(): Promise<SearchUsersResult[]> {
     display_name: p.display_name ?? null,
     handle: p.display_name ? `@${p.display_name.replace(/\s+/g, "_").toLowerCase()}` : null,
   }));
+}
+
+export interface SuggestedStocksResult {
+  label: string;
+  stocks: SearchStocksResult[];
+  /** Full stock catalog for instant client-side filtering. */
+  allStocks: SearchStocksResult[];
+}
+
+/**
+ * Returns 5 suggested film stocks for the drawer search empty state,
+ * plus the complete stock list for instant client-side filtering.
+ * Signed-in users with logged rolls → most recently logged (unique by slug).
+ * Otherwise → top 5 by avg user rating (popular/trending).
+ */
+export async function getSuggestedStocks(): Promise<SuggestedStocksResult> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const allStocks = await getFilmStocks({ sort: "alphabetical" });
+  const allMapped: SearchStocksResult[] = allStocks.map(stockToSearchResult);
+
+  if (user) {
+    const { data: rolls } = await supabase
+      .from("user_logged_rolls")
+      .select("film_stock_slug")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (rolls && rolls.length > 0) {
+      const seen = new Set<string>();
+      const uniqueSlugs: string[] = [];
+      for (const r of rolls) {
+        if (!seen.has(r.film_stock_slug)) {
+          seen.add(r.film_stock_slug);
+          uniqueSlugs.push(r.film_stock_slug);
+          if (uniqueSlugs.length >= 5) break;
+        }
+      }
+
+      const bySlug = new Map(allMapped.map((s) => [s.slug, s]));
+      const recentStocks: SearchStocksResult[] = [];
+      for (const slug of uniqueSlugs) {
+        const s = bySlug.get(slug);
+        if (s) recentStocks.push(s);
+      }
+      if (recentStocks.length > 0) {
+        return { label: "Recently logged", stocks: recentStocks, allStocks: allMapped };
+      }
+    }
+  }
+
+  const popularStocks = await getFilmStocks({ sort: "popular" });
+  const topSlugs = popularStocks.slice(0, 20).map((s) => s.slug);
+  const statsBySlug = topSlugs.length > 0 ? await getFilmStockStatsForSlugs(topSlugs) : {};
+
+  const sorted = popularStocks
+    .slice(0, 20)
+    .sort((a, b) => {
+      const ra = statsBySlug[a.slug]?.avgRating ?? 0;
+      const rb = statsBySlug[b.slug]?.avgRating ?? 0;
+      return rb - ra;
+    })
+    .slice(0, 5);
+
+  return {
+    label: "Trending film stocks",
+    stocks: sorted.map(stockToSearchResult),
+    allStocks: allMapped,
+  };
 }

@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { preload } from "swr";
 import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
 import { openLogRollChoiceDrawer } from "@/components/log-roll-choice-drawer";
 import { searchPageDataKey, filmsPageDataKey } from "@/lib/nav-cache-swr";
 import { getSearchPageData, getFilmsPageData } from "@/app/actions/nav-cache";
@@ -21,11 +20,22 @@ const RIGHT_ITEMS = [
   { href: "/profile", label: "Profile", icon: UserRound },
 ] as const;
 
-/** True when pathname is a film stock detail page, e.g. /films/kodak-gold-200 */
-function isFilmDetailPath(pathname: string | null): boolean {
-  if (!pathname) return false;
+/** Extract slug from a film detail path like /films/kodak-gold-200 */
+function getFilmSlug(pathname: string | null): string | null {
+  if (!pathname) return null;
   const parts = pathname.split("/").filter(Boolean);
-  return parts[0] === "films" && parts.length >= 2;
+  if (parts[0] === "films" && parts.length >= 2 && !["images"].includes(parts[parts.length - 1])) {
+    return parts[1];
+  }
+  return null;
+}
+
+/** Format slug into readable name: "kodak-gold-200" → "Kodak Gold 200" */
+function slugToName(slug: string): string {
+  return slug
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 /** Single active nav destination: /, /films, /search, or /profile. Film detail pages count as /films. */
@@ -44,8 +54,6 @@ const ICON_LINK_CLASS =
 export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const trigger = useLogRollTrigger();
-  const onFilmPage = isFilmDetailPath(pathname);
 
   /** Optimistic: highlight the tapped icon immediately (<50ms) before pathname updates. */
   const [pendingPath, setPendingPath] = useState<string | null>(null);
@@ -59,8 +67,9 @@ export function BottomNav() {
   }, [pendingPath, resolvedActive]);
 
   const handlePlus = () => {
-    if (onFilmPage && trigger) {
-      trigger.openLogRoll();
+    const filmSlug = getFilmSlug(pathname);
+    if (filmSlug) {
+      openLogRollChoiceDrawer({ filmSlug, filmName: slugToName(filmSlug) });
     } else {
       openLogRollChoiceDrawer();
     }
@@ -101,16 +110,18 @@ export function BottomNav() {
       })}
       <button
         type="button"
-        onClick={(e) => {
-          if ((e as React.MouseEvent).detail === 0) handlePlus();
-        }}
         onPointerDown={(e) => {
-          if (e.button === 0) {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          handlePlus();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             handlePlus();
           }
         }}
-        aria-label="Log a roll"
+        aria-label="Add"
         className={cn(ICON_LINK_CLASS, "text-muted-foreground hover:text-foreground")}
       >
         <Plus className="h-6 w-6 shrink-0" aria-hidden />
