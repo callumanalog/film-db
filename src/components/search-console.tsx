@@ -92,7 +92,7 @@ export function SearchConsole({
               "flex shrink-0 items-center justify-center rounded-full p-1 text-foreground transition-all md:hidden",
               searchActive
                 ? "w-8 opacity-100"
-                : "w-0 overflow-hidden opacity-0 pointer-events-none"
+                : "hidden"
             )}
           >
             <ChevronLeft className="h-5 w-5" />

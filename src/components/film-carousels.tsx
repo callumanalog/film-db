@@ -109,7 +109,7 @@ export function FilmCarousels({ stocks, statsBySlug, viewMode = "all" }: FilmCar
         >
           <h3
             id="carousel-community-favourites"
-            className="mb-3 m-0 font-sans text-xl font-bold tracking-tight text-foreground"
+            className="mb-3 m-0 font-cabinet text-xl font-extrabold tracking-tight text-foreground"
           >
             Community Favourites
           </h3>
@@ -132,7 +132,7 @@ export function FilmCarousels({ stocks, statsBySlug, viewMode = "all" }: FilmCar
         >
           <h3
             id="carousel-budget-friendly"
-            className="mb-3 m-0 font-sans text-xl font-bold tracking-tight text-foreground"
+            className="mb-3 m-0 font-cabinet text-xl font-extrabold tracking-tight text-foreground"
           >
             Budget-friendly film
           </h3>

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { FilmStock, FilmBrand } from "@/lib/types";
-import { FILM_TYPE_LABELS } from "@/lib/types";
 import { Camera } from "lucide-react";
 
 interface FilmCardProps {
@@ -75,13 +74,10 @@ export function FilmCard({
         {/* Title below the card */}
         <div className="mt-1 flex min-w-0 flex-col gap-0.5 px-0.5">
           <h3
-            className={`m-0 min-w-0 truncate font-medium leading-tight text-foreground font-sans transition-colors group-hover:text-primary ${compact ? "text-xs" : "text-sm"}`}
+            className={`m-0 min-w-0 truncate font-semibold leading-tight text-foreground font-sans transition-colors group-hover:text-primary ${compact ? "text-xs" : "text-sm"}`}
           >
             {displayName}
           </h3>
-          <p className="m-0 min-w-0 truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {[FILM_TYPE_LABELS[stock.type] ?? stock.type, `ISO ${stock.iso}`].join(" | ")}
-          </p>
         </div>
       </Link>
     </div>

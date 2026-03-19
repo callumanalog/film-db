@@ -5,7 +5,7 @@ import type { FilmsPageData, FilmsPageParams } from "@/app/actions/nav-cache";
 import { FilmsListingClient } from "@/app/films/films-listing-client";
 import { FilmsPageMobileSearchWrapper } from "@/app/films/films-page-mobile-search-wrapper";
 import { DiscoverTabPanels } from "@/app/films/discover-tab-panels";
-import { DiscoveryHeader, DiscoveryVibePills } from "@/components/discovery-header";
+import { DiscoveryHeader } from "@/components/discovery-header";
 import { FiltersLeftPane } from "@/components/filters-left-pane";
 import { useFilmsPageData } from "@/lib/nav-cache-swr";
 
@@ -124,10 +124,7 @@ export function FilmsPageClient({ fallbackData }: FilmsPageClientProps) {
                     latestUsers={latestUsers}
                   />
                 ) : (
-                  <>
-                    {filmsListing}
-                    <DiscoveryVibePills />
-                  </>
+                  filmsListing
                 )}
               </div>
             </main>

@@ -49,6 +49,8 @@ import {
   Lightbulb,
   FileVideo,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { QuickActions } from "@/components/community-section";
 import { AddReviewModal } from "@/components/add-review-modal";
 import { InCameraDrawer } from "@/components/in-camera-drawer";
@@ -427,30 +429,283 @@ function UserStarRating({
 
 /* ─── Mobile full-bleed hero (film detail only) ─── */
 
-export function MobileFilmHero({ stock }: HeroMockupProps) {
+export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: FilmStockStatsProp | null }) {
   const { slug } = stock;
   const isWide = slug === "cinestill-800t";
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const ctx = useMobileHeaderTitle();
+
+  const {
+    favouriteSlugs,
+    toggleFavourite,
+    inCameraSlugs,
+    toggleInCamera,
+    setRating: persistRating,
+    ratings,
+    shotSlugs,
+    toggleShot,
+  } = useUserActions();
+  const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
+  const [inCameraDrawerOpen, setInCameraDrawerOpen] = useState(false);
+
+  const didHandleUploadIntent = useRef(false);
+  useEffect(() => {
+    if (searchParams.get("action") !== "upload" || didHandleUploadIntent.current) return;
+    didHandleUploadIntent.current = true;
+    if (!user) {
+      const returnPath = pathname ?? "/";
+      const nextUrl = returnPath + (returnPath.includes("?") ? "&" : "?") + "action=upload";
+      router.push(`/auth/sign-in?next=${encodeURIComponent(nextUrl)}`);
+      return;
+    }
+    setReviewModalMode("upload");
+    setReviewModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("action");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname ?? "/", { scroll: false });
+  }, [user, searchParams, pathname, router]);
+
+  const isFavourite = favouriteSlugs.includes(slug);
+  const isInCamera = inCameraSlugs.includes(slug);
+  const isShot = shotSlugs.includes(slug);
+  const rating = ratings[slug] ?? 0;
+
+  const handleRatingChange = (value: number) => {
+    persistRating(slug, value);
+    if (value > 0 && !shotSlugs.includes(slug)) {
+      toggleShot(slug);
+      showToastViaEvent("Added to stocks you've shot");
+    }
+  };
+
+  const handleShotIt = () => {
+    if (!isShot) {
+      toggleShot(slug);
+      showToastViaEvent("Marked as shot");
+    }
+    setReviewModalMode("review");
+    setReviewModalOpen(true);
+  };
+
+  const handleInCameraToggle = () => {
+    if (isInCamera) {
+      toggleInCamera(slug);
+      showToastViaEvent("Removed from in camera");
+    } else {
+      setInCameraDrawerOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el || !ctx) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => ctx.setTitleScrolledPast(!entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ctx]);
+
   return (
-    <div
-      className="relative left-1/2 flex w-screen -translate-x-1/2 items-center justify-center border-b border-slate-100 bg-white shadow-[0_1px_0_0_rgba(0,0,0,0.03)] md:hidden"
-      style={{ height: isWide ? 160 : 192 }}
-    >
-      <div className={isWide ? "h-40 w-48" : "h-48 w-40"}>
-        <FilmImage
-          stock={stock}
-          size={192}
-          priority
-          {...(isWide ? { width: 192, height: 160 } : {})}
-        />
+    <div className="md:hidden">
+      {/* Image card */}
+      <div className="flex items-center justify-center bg-background px-4">
+        <div className="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-card border border-border/50 bg-card">
+          {stock.discontinued && (
+            <span
+              className="absolute left-1.5 top-1.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              aria-hidden
+            >
+              Discontinued
+            </span>
+          )}
+          <div className="flex h-full w-full items-center justify-center bg-white p-2">
+            <FilmImage
+              stock={stock}
+              size={192}
+              priority
+              {...(isWide ? { width: 192, height: 160 } : {})}
+            />
+          </div>
+        </div>
       </div>
-      {stock.discontinued && (
-        <span
-          className="absolute left-3 top-3 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-          aria-hidden
+
+      {/* Title */}
+      <h1
+        ref={titleRef}
+        className="mt-4 text-center font-sans text-2xl font-bold tracking-tight"
+      >
+        {stock.name}
+      </h1>
+
+      {/* Action buttons */}
+      <div className="mx-auto mt-3 w-full max-w-[200px] px-4">
+        {/* Shot It — primary */}
+        <button
+          type="button"
+          onClick={handleShotIt}
+          className={cn(
+            "flex w-full items-center justify-center gap-2 rounded-card border py-3.5 text-sm font-semibold transition-colors",
+            isShot
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+              : "border-foreground bg-foreground text-background hover:bg-foreground/90"
+          )}
         >
-          Discontinued
-        </span>
-      )}
+          {isShot ? <Check className="h-4.5 w-4.5" /> : <CheckCircle2 className="h-4.5 w-4.5" />}
+          {isShot ? "Shot — Review" : "Shot It"}
+        </button>
+
+        {/* Loaded + Wishlist — secondary pair */}
+        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={handleInCameraToggle}
+            className={cn(
+              "flex aspect-square flex-col items-center justify-center gap-1 rounded-card border text-xs font-medium transition-colors",
+              isInCamera
+                ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
+                : "border-border/50 bg-card text-muted-foreground hover:border-border hover:text-foreground"
+            )}
+          >
+            <Camera className="h-5 w-5" />
+            <span className="text-[10px] font-medium uppercase tracking-wider">Loaded</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const { added } = toggleFavourite(slug);
+              showToastViaEvent(added ? "Added to wishlist" : "Removed from wishlist");
+            }}
+            className={cn(
+              "flex aspect-square flex-col items-center justify-center gap-1 rounded-card border text-xs font-medium transition-colors",
+              isFavourite
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border/50 bg-card text-muted-foreground hover:border-border hover:text-foreground"
+            )}
+          >
+            <Bookmark className={cn("h-5 w-5", isFavourite && "fill-current")} />
+            <span className="text-[10px] font-medium uppercase tracking-wider">Wishlist</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="mx-auto mt-4 grid w-full max-w-[240px] grid-cols-3 px-4">
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-semibold text-foreground/70">{stats?.shotByCount ?? 0}</span>
+          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">Shot It</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-semibold text-foreground/70">
+            {stats?.avgRating != null ? stats.avgRating.toFixed(1) : "—"}
+          </span>
+          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">Avg. rating</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-semibold text-foreground/70">{stats?.shotsCount ?? 0}</span>
+          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">Shots</span>
+        </div>
+      </div>
+
+      <InCameraDrawer
+        open={inCameraDrawerOpen}
+        onOpenChange={setInCameraDrawerOpen}
+        stockName={stock.name}
+        stockFormats={stock.format ?? []}
+        onSave={(metadata) => {
+          toggleInCamera(slug, metadata);
+          setInCameraDrawerOpen(false);
+          showToastViaEvent("Marked as in camera");
+        }}
+      />
+
+      <AddReviewModal
+        open={reviewModalOpen}
+        onOpenChange={setReviewModalOpen}
+        mode={reviewModalMode}
+        slotsUsed={reviewModalMode === "upload" ? 1 : 0}
+        initialRating={rating}
+        stock={{
+          slug: stock.slug,
+          name: stock.name,
+          brand: stock.brand,
+          format: stock.format ?? [],
+          image_url: stock.image_url,
+        }}
+        onSubmit={async (payload: AddReviewModalPayload) => {
+          if (user) {
+            const formData = new FormData();
+            formData.set("film_stock_slug", slug);
+            formData.set("mode", reviewModalMode);
+            formData.set("rating", String(payload.rating));
+            if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
+            if (payload.reviewText) formData.set("review_text", payload.reviewText);
+            if (payload.camera) formData.set("camera", payload.camera);
+            if (payload.lens) formData.set("lens", payload.lens);
+            if (payload.developedAt) formData.set("developed_at", payload.developedAt);
+            if (payload.caption) formData.set("caption", payload.caption);
+            if (payload.shotIso) formData.set("shot_iso", payload.shotIso);
+            if (payload.lab) formData.set("lab", payload.lab);
+            if (payload.filter) formData.set("filter", payload.filter);
+            if (payload.scanner) formData.set("scanner", payload.scanner);
+            if (payload.format) formData.set("format", payload.format);
+            if (payload.location) formData.set("location", payload.location);
+            if (payload.iso) formData.set("iso", payload.iso);
+            if (payload.pushPull) formData.set("push_pull", payload.pushPull);
+            const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
+            if (usedPreUpload) {
+              formData.set("image_url", payload.uploadedImageUrl!);
+            } else {
+              payload.files.forEach((file, i) => formData.append(`file_${i}`, file));
+            }
+            try {
+              const res = await fetch("/api/user/reviews", {
+                method: "POST",
+                body: formData,
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                showToastViaEvent(data.error || "Failed to submit");
+                return;
+              }
+              const uploadSucceeded = data.uploaded > 0;
+              if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
+                window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
+              }
+              showToastViaEvent(
+                reviewModalMode === "upload"
+                  ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your images have been uploaded." : "Done.")
+                  : payload.files.length > 0
+                    ? "Thanks! Your photos and review have been submitted."
+                    : "Thanks! Your review has been submitted."
+              );
+              if (reviewModalMode === "upload" && (payload.uploadedImageUrl || payload.files.length > 0) && uploadSucceeded) {
+                return { success: true };
+              }
+            } catch {
+              showToastViaEvent("Failed to submit");
+              return;
+            }
+          } else {
+            if (payload.rating > 0) persistRating(slug, payload.rating);
+            showToastViaEvent(
+              reviewModalMode === "upload"
+                ? (payload.files.length > 0 ? "Log in to save your uploads." : "Done.")
+                : payload.files.length > 0
+                  ? "Log in to save your photos and review."
+                  : "Your rating was saved locally. Log in to save reviews and uploads."
+            );
+          }
+        }}
+      />
     </div>
   );
 }
@@ -541,7 +796,7 @@ export function StickyLeftPane({
     <div className="w-full min-w-0 flex flex-col md:w-56 md:min-w-[14rem] md:shrink-0 md:self-start md:overflow-visible">
       <div className="grid grid-cols-1 gap-4">
       <div className="flex min-w-0 flex-col gap-3">
-      <div className="relative mx-auto w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-white md:mx-0 md:max-w-none md:w-full">
+      <div className="relative mx-auto hidden w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-white md:mx-0 md:block md:max-w-none md:w-full">
         {/* Image — desktop only */}
         <div className="relative hidden md:block">
           {stock.discontinued && (
@@ -564,8 +819,8 @@ export function StickyLeftPane({
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2 border-t-0 bg-card px-3 py-3 md:border-t md:border-border/50">
+        {/* Stats row — mobile version is in MobileFilmActionRow area */}
+        <div className="hidden md:grid grid-cols-3 gap-2 border-t border-border/50 bg-card px-3 py-3">
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -591,8 +846,8 @@ export function StickyLeftPane({
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="border-t border-border/50 bg-card px-3 py-3">
+        {/* Action buttons — hidden on mobile (shown in MobileFilmActions) */}
+        <div className="hidden md:block border-t border-border/50 bg-card px-3 py-3">
           {/* Tier 1: Want to Shoot + In Camera toggles */}
           <div className="flex gap-2">
             <button

@@ -6,11 +6,13 @@ import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 /** Call from film detail page to set nav hero title on mobile (metadata is shown below image). */
 export function SetFilmMobileHeader({
   name,
+  slug,
   typeLabel,
   iso,
   format,
 }: {
   name: string;
+  slug: string;
   typeLabel: string;
   iso: number | null;
   format: string[];
@@ -19,11 +21,13 @@ export function SetFilmMobileHeader({
   useEffect(() => {
     if (!ctx) return;
     ctx.setMobileHeaderTitle(name);
-    ctx.setMobileHeroMeta(null); // metadata line moved below image
+    ctx.setMobileHeroMeta(null);
+    ctx.setFilmSlug(slug);
     return () => {
       ctx.setMobileHeaderTitle(null);
       ctx.setMobileHeroMeta(null);
+      ctx.setFilmSlug(null);
     };
-  }, [name, ctx]);
+  }, [name, slug, ctx]);
   return null;
 }

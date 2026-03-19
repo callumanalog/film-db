@@ -47,6 +47,16 @@ const youngSerif = Young_Serif({
   weight: "400",
 });
 
+const cabinetGrotesk = localFont({
+  variable: "--font-cabinet",
+  src: [
+    { path: "../../fonts/CabinetGrotesk-Regular.otf", weight: "400", style: "normal" },
+    { path: "../../fonts/CabinetGrotesk-Medium.otf", weight: "500", style: "normal" },
+    { path: "../../fonts/CabinetGrotesk-Bold.otf", weight: "700", style: "normal" },
+    { path: "../../fonts/CabinetGrotesk-Extrabold.otf", weight: "800", style: "normal" },
+  ],
+});
+
 export const metadata: Metadata = {
   title: {
     default: "FilmDB — Your Film Photography Database",
@@ -62,7 +72,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${advercase.variable} ${workSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${youngSerif.variable}`}>
+    <html lang="en" className={`${advercase.variable} ${workSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${youngSerif.variable} ${cabinetGrotesk.variable}`}>
       <body className="antialiased" style={{ pointerEvents: 'auto' }}>
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>
           <AuthProvider>

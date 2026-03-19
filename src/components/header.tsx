@@ -32,15 +32,12 @@ const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 
 const MAIN_LANDING_PATHS = ["/", "/films", "/search", "/profile"];
 
-/** Height of the integrated film hero header when scroll is 0 (mobile). */
-const EXPANDED_HERO_HEIGHT = 52;
-/** Height of the sticky nav bar when scrolled past the hero. */
 const COLLAPSED_NAV_HEIGHT = 52;
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
-  const { mobileHeaderTitle, mobileHeroMeta } = useMobileHeaderTitle() ?? {};
+  const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast } = useMobileHeaderTitle() ?? {};
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
@@ -51,7 +48,6 @@ export function Header() {
   const filmsViewTab = searchParams.get("tab") === "index" ? "index" : "for-you";
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -59,14 +55,6 @@ export function Header() {
   const actionsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isFilmHero && !isFilmsPage) return;
-    const onScroll = () => setScrollY(typeof window !== "undefined" ? window.scrollY : 0);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isFilmHero, isFilmsPage]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -101,10 +89,6 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [settingsMenuOpen]);
 
-  const heroHeight = Math.max(COLLAPSED_NAV_HEIGHT, EXPANDED_HERO_HEIGHT - scrollY);
-  const heroPast = scrollY >= EXPANDED_HERO_HEIGHT;
-  const borderOpacity = heroPast ? 1 : Math.min(1, scrollY / Math.max(1, EXPANDED_HERO_HEIGHT));
-  const h1Scale = Math.max(0.6, 1 - (scrollY / Math.max(1, EXPANDED_HERO_HEIGHT)) * 0.4);
 
   return (
     <header
@@ -113,68 +97,47 @@ export function Header() {
         isFilmsPage
           ? "bg-background"
           : isFilmHero
-            ? "border-0 bg-white md:border-b md:border-border/50 md:bg-background/80 md:backdrop-blur-xl"
+            ? cn(
+                "bg-background/80 backdrop-blur-xl md:border-b md:border-border/50",
+                titleScrolledPast ? "border-b border-border/50" : "border-b border-transparent"
+              )
             : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
       )}
       style={
         isFilmHero
-          ? {
-              paddingTop: heroPast
-                ? "env(safe-area-inset-top, 0px)"
-                : "calc(env(safe-area-inset-top, 0px) + 20px)",
-              paddingBottom: undefined,
-              borderBottomWidth: 1,
-              borderBottomStyle: "solid",
-              borderBottomColor: `rgba(241, 245, 249, ${borderOpacity})`,
-            }
+          ? { paddingTop: "env(safe-area-inset-top, 0px)" }
           : undefined
       }
     >
-      {/* Film hero integrated header: mobile only — flex row, icons aligned to first line of title */}
+      {/* Film hero integrated header: mobile only — compact title appears when in-page title scrolls out of view */}
       {isFilmHero && (
         <div
-          className={cn(
-            "flex w-full justify-between px-4 md:hidden",
-            heroPast ? "items-center" : "items-start"
-          )}
-          style={{ minHeight: heroPast ? COLLAPSED_NAV_HEIGHT : heroHeight }}
+          className="flex w-full items-center justify-between px-4 md:hidden"
+          style={{ minHeight: COLLAPSED_NAV_HEIGHT }}
         >
           <button
             type="button"
             onClick={() => router.back()}
             className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label="Go back"
-            style={{ marginTop: heroPast ? 0 : "-4px" }}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
             <span
               className={cn(
-                "mx-auto max-w-[70%] tracking-tight transition-[transform,font-size] duration-200",
-                heroPast ? "font-sans text-lg font-bold" : "font-sans text-3xl font-bold"
+                "mx-auto max-w-[70%] font-sans text-lg font-bold tracking-tight transition-opacity duration-200",
+                titleScrolledPast ? "opacity-100" : "opacity-0"
               )}
-              style={
-                heroPast
-                  ? undefined
-                  : { transform: `scale(${h1Scale})`, transformOrigin: "center center" }
-              }
             >
               {mobileHeaderTitle}
             </span>
-            {scrollY < EXPANDED_HERO_HEIGHT && mobileHeroMeta != null && mobileHeroMeta !== "" && (
-              <p className="mt-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                {mobileHeroMeta}
-              </p>
-            )}
           </div>
           <button
             type="button"
-            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            aria-label="Share"
-            style={{ marginTop: heroPast ? 0 : "-4px" }}
+            className="flex-shrink-0 rounded-full border border-border/60 px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
-            <Share2 className="h-5 w-5" />
+            Follow
           </button>
         </div>
       )}
@@ -324,14 +287,14 @@ export function Header() {
         <div className="flex min-w-0 flex-1 items-center justify-center">
           <Link
             href="/"
-            className="hidden whitespace-nowrap text-2xl font-bold tracking-tight transition-opacity hover:opacity-80 md:inline-block font-young-serif"
+            className="hidden whitespace-nowrap text-2xl font-extrabold tracking-tight transition-opacity hover:opacity-80 md:inline-block font-cabinet"
           >
             exposure club
           </Link>
           {!isSearchPage && (
             <Link
               href={mobileHeaderTitle && pathname ? pathname : "/"}
-              className={`whitespace-nowrap font-bold tracking-tight transition-opacity hover:opacity-80 md:hidden ${mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-young-serif"}`}
+              className={`whitespace-nowrap font-extrabold tracking-tight transition-opacity hover:opacity-80 md:hidden ${mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-cabinet"}`}
             >
               {mobileHeaderTitle ?? "exposure club"}
             </Link>
