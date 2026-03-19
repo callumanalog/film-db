@@ -48,6 +48,7 @@ import {
   Sunset,
   Lightbulb,
   FileVideo,
+  ListPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
@@ -517,8 +518,8 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
   return (
     <div className="md:hidden">
       {/* Image card */}
-      <div className="flex items-center justify-center bg-background px-4">
-        <div className="relative aspect-square w-full max-w-[200px] overflow-hidden rounded-card border border-border/50 bg-card">
+      <div className="bg-background px-4">
+        <div className="relative w-full overflow-hidden rounded-card border border-border/50 bg-card">
           {stock.discontinued && (
             <span
               className="absolute left-1.5 top-1.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
@@ -527,91 +528,72 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
               Discontinued
             </span>
           )}
-          <div className="flex h-full w-full items-center justify-center bg-white p-2">
-            <FilmImage
-              stock={stock}
-              size={192}
-              priority
-              {...(isWide ? { width: 192, height: 160 } : {})}
-            />
+          <div className="flex w-full items-center justify-center bg-white">
+            <div className={isWide ? "h-40 w-48" : "h-48 w-40"}>
+              <FilmImage
+                stock={stock}
+                size={192}
+                priority
+                {...(isWide ? { width: 192, height: 160 } : {})}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Title */}
-      <h1
-        ref={titleRef}
-        className="mt-4 text-center font-sans text-2xl font-bold tracking-tight"
-      >
-        {stock.name}
-      </h1>
-
-      {/* Action buttons */}
-      <div className="mx-auto mt-3 w-full max-w-[200px] px-4">
-        {/* Shot It — primary */}
+      {/* Title + Shot It toggle */}
+      <div className="mt-4 flex items-center justify-between px-4">
+        <h1
+          ref={titleRef}
+          className="min-w-0 font-sans text-2xl font-bold tracking-tight"
+        >
+          {stock.name}
+        </h1>
         <button
           type="button"
           onClick={handleShotIt}
           className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-card border py-3.5 text-sm font-semibold transition-colors",
-            isShot
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
-              : "border-foreground bg-foreground text-background hover:bg-foreground/90"
+            "shrink-0 transition-colors",
+            isShot ? "text-emerald-600" : "text-muted-foreground hover:text-foreground"
           )}
+          aria-label="Shot it"
         >
-          {isShot ? <Check className="h-4.5 w-4.5" /> : <CheckCircle2 className="h-4.5 w-4.5" />}
-          {isShot ? "Shot — Review" : "Shot It"}
+          {isShot
+            ? <CheckCircle2 className="h-8 w-8 fill-emerald-600 text-white" />
+            : <CirclePlus className="h-8 w-8" />
+          }
         </button>
-
-        {/* Loaded + Wishlist — secondary pair */}
-        <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            onClick={handleInCameraToggle}
-            className={cn(
-              "flex aspect-square flex-col items-center justify-center gap-1 rounded-card border text-xs font-medium transition-colors",
-              isInCamera
-                ? "border-blue-500/40 bg-blue-500/10 text-blue-600"
-                : "border-border/50 bg-card text-muted-foreground hover:border-border hover:text-foreground"
-            )}
-          >
-            <Camera className="h-5 w-5" />
-            <span className="text-[10px] font-medium uppercase tracking-wider">Loaded</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const { added } = toggleFavourite(slug);
-              showToastViaEvent(added ? "Added to wishlist" : "Removed from wishlist");
-            }}
-            className={cn(
-              "flex aspect-square flex-col items-center justify-center gap-1 rounded-card border text-xs font-medium transition-colors",
-              isFavourite
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-border/50 bg-card text-muted-foreground hover:border-border hover:text-foreground"
-            )}
-          >
-            <Bookmark className={cn("h-5 w-5", isFavourite && "fill-current")} />
-            <span className="text-[10px] font-medium uppercase tracking-wider">Wishlist</span>
-          </button>
-        </div>
       </div>
 
+      {/* Metadata */}
+      <p className="mt-1 px-4 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {stock.typeLabel} | ISO {stock.iso} | {(stock.format ?? []).join(", ") || "—"}
+      </p>
+
       {/* Stats row */}
-      <div className="mx-auto mt-4 grid w-full max-w-[240px] grid-cols-3 px-4">
+      <div className="mx-auto mt-5 grid w-full max-w-xs grid-cols-3 gap-2 px-4">
         <div className="flex flex-col items-center">
-          <span className="text-sm font-semibold text-foreground/70">{stats?.shotByCount ?? 0}</span>
-          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">Shot It</span>
+          <div className="flex items-center justify-center gap-1.5">
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="text-sm font-semibold tracking-tight text-foreground">{stats?.shotByCount ?? 0}</span>
+          </div>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot It</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-sm font-semibold text-foreground/70">
-            {stats?.avgRating != null ? stats.avgRating.toFixed(1) : "—"}
-          </span>
-          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">Avg. rating</span>
+          <div className="flex items-center justify-center gap-1.5">
+            <Star className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="text-sm font-semibold tracking-tight text-foreground">
+              {stats?.avgRating != null ? stats.avgRating.toFixed(1) : "—"}
+            </span>
+          </div>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avg. rating</span>
         </div>
         <div className="flex flex-col items-center">
-          <span className="text-sm font-semibold text-foreground/70">{stats?.shotsCount ?? 0}</span>
-          <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">Shots</span>
+          <div className="flex items-center justify-center gap-1.5">
+            <ImageIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <span className="text-sm font-semibold tracking-tight text-foreground">{stats?.shotsCount ?? 0}</span>
+          </div>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shots</span>
         </div>
       </div>
 
