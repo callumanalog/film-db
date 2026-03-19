@@ -1,16 +1,14 @@
 "use client";
 
 /**
- * User actions (shot, favourite, track, rate) are tied to the logged-in user and shown on their profile.
+ * User actions (shot, favourite, in camera, rate) are tied to the logged-in user.
  *
  * When logged in:
- *   - Source of truth is Supabase (user_shot, user_favourites, user_tracked, user_ratings by user_id).
+ *   - Source of truth is Supabase (user_shot, user_favourites, user_in_camera, user_ratings).
  *   - Context is hydrated from getProfileFromSupabase() on load and after each action.
- *   - Every action persists to Supabase then refetches profile and refreshes the page so stats and profile stay in sync.
  *
  * When not logged in:
- *   - No actions are saved. Tapping any action (shot, favourite, track, rate) redirects to log-in/sign-up
-  *   - with ?next= current path so the user returns to the page after logging in.
+ *   - No actions are saved. Tapping any action redirects to sign-in with ?next= current path.
  */
 
 import {
@@ -22,7 +20,6 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import type { StoredUserProfile, TrackedEntry } from "@/lib/user-store";
 import { useAuth } from "@/context/auth-context";
 import { getProfileFromSupabase } from "@/app/actions/get-profile";
 import type { ProfileFromDb } from "@/app/actions/get-profile";
@@ -30,29 +27,36 @@ import {
   toggleShotInSupabase,
   toggleFavouriteInSupabase,
   setRatingInSupabase,
-  upsertTrackedInSupabase,
+  toggleInCameraInSupabase,
 } from "@/app/actions/user-actions";
 
-function toStoredProfile(p: ProfileFromDb): StoredUserProfile {
+interface UserProfile {
+  shotSlugs: string[];
+  favouriteSlugs: string[];
+  inCameraSlugs: string[];
+  ratings: Record<string, number>;
+}
+
+function toUserProfile(p: ProfileFromDb): UserProfile {
   return {
     shotSlugs: p.shotSlugs,
     favouriteSlugs: p.favouriteSlugs,
-    tracked: p.tracked,
+    inCameraSlugs: p.inCameraEntries.map((e) => e.film_stock_slug),
     ratings: p.ratings,
   };
 }
 
-const EMPTY_PROFILE: StoredUserProfile = {
+const EMPTY_PROFILE: UserProfile = {
   shotSlugs: [],
   favouriteSlugs: [],
-  tracked: [],
+  inCameraSlugs: [],
   ratings: {},
 };
 
-interface UserActionsContextValue extends StoredUserProfile {
+interface UserActionsContextValue extends UserProfile {
   toggleShot: (slug: string) => { added: boolean };
   toggleFavourite: (slug: string) => { added: boolean };
-  addOrUpdateTracked: (entry: TrackedEntry) => void;
+  toggleInCamera: (slug: string, metadata?: { camera?: string; format?: string }) => { added: boolean };
   setRating: (slug: string, rating: number) => void;
   refresh: () => void;
 }
@@ -63,11 +67,11 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [profile, setProfile] = useState<StoredUserProfile>(EMPTY_PROFILE);
+  const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
 
   const refetchProfile = useCallback(() => {
     getProfileFromSupabase().then((p) => {
-      if (p) setProfile(toStoredProfile(p));
+      if (p) setProfile(toUserProfile(p));
     });
   }, []);
 
@@ -86,7 +90,7 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
       return;
     }
     getProfileFromSupabase().then((p) => {
-      if (p) setProfile(toStoredProfile(p));
+      if (p) setProfile(toUserProfile(p));
     });
   }, [user?.id]);
 
@@ -130,24 +134,25 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
     return { added: false };
   }, [user, profile.favouriteSlugs, refetchProfile, router, redirectToSignIn]);
 
-  const addOrUpdateTracked = useCallback((entry: TrackedEntry) => {
+  const toggleInCamera = useCallback((slug: string, metadata?: { camera?: string; format?: string }) => {
     if (user) {
+      const has = profile.inCameraSlugs.includes(slug);
       setProfile((prev) => {
-        const idx = prev.tracked.findIndex((t) => t.slug === entry.slug);
-        const next = idx >= 0 ? [...prev.tracked] : [...prev.tracked, entry];
-        if (idx >= 0) next[idx] = entry;
-        return { ...prev, tracked: next };
+        if (prev.inCameraSlugs.includes(slug))
+          return { ...prev, inCameraSlugs: prev.inCameraSlugs.filter((s) => s !== slug) };
+        return { ...prev, inCameraSlugs: [...prev.inCameraSlugs, slug] };
       });
-      upsertTrackedInSupabase(entry).then((res) => {
+      toggleInCameraInSupabase(slug, metadata).then((res) => {
         if (res.synced) {
           refetchProfile();
           router.refresh();
         }
       });
-      return;
+      return { added: !has };
     }
     redirectToSignIn();
-  }, [user, refetchProfile, router, redirectToSignIn]);
+    return { added: false };
+  }, [user, profile.inCameraSlugs, refetchProfile, router, redirectToSignIn]);
 
   const setRating = useCallback((slug: string, rating: number) => {
     if (user) {
@@ -173,7 +178,7 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
     ...profile,
     toggleShot,
     toggleFavourite,
-    addOrUpdateTracked,
+    toggleInCamera,
     setRating,
     refresh,
   };

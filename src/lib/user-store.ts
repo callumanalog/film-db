@@ -1,22 +1,14 @@
 /**
- * Single user for now. When adding auth/Supabase, replace with current user id from session.
+ * Local storage fallback for user actions. Used when not logged in for session-local state.
  */
 export const CURRENT_USER_ID = "user-alex";
 
 const STORAGE_KEY_PREFIX = "film-db-user-";
 
-export interface TrackedEntry {
-  slug: string;
-  format: string;
-  status: string;
-  expiryDate: string;
-  notes: string;
-}
-
 export interface StoredUserProfile {
   shotSlugs: string[];
   favouriteSlugs: string[];
-  tracked: TrackedEntry[];
+  inCameraSlugs: string[];
   /** slug -> 1-5 rating */
   ratings: Record<string, number>;
 }
@@ -24,7 +16,7 @@ export interface StoredUserProfile {
 const DEFAULT_PROFILE: StoredUserProfile = {
   shotSlugs: [],
   favouriteSlugs: [],
-  tracked: [],
+  inCameraSlugs: [],
   ratings: {},
 };
 
@@ -41,7 +33,7 @@ export function getStoredProfile(userId: string): StoredUserProfile {
     return {
       shotSlugs: Array.isArray(parsed.shotSlugs) ? parsed.shotSlugs : DEFAULT_PROFILE.shotSlugs,
       favouriteSlugs: Array.isArray(parsed.favouriteSlugs) ? parsed.favouriteSlugs : DEFAULT_PROFILE.favouriteSlugs,
-      tracked: Array.isArray(parsed.tracked) ? parsed.tracked : DEFAULT_PROFILE.tracked,
+      inCameraSlugs: Array.isArray(parsed.inCameraSlugs) ? parsed.inCameraSlugs : DEFAULT_PROFILE.inCameraSlugs,
       ratings: parsed.ratings && typeof parsed.ratings === "object" ? parsed.ratings : DEFAULT_PROFILE.ratings,
     };
   } catch {
@@ -82,24 +74,6 @@ export function toggleFavourite(userId: string, slug: string): { added: boolean 
   profile.favouriteSlugs = [...profile.favouriteSlugs, slug];
   setStoredProfile(userId, profile);
   return { added: true };
-}
-
-/** Add or update tracked entry for this slug (one entry per slug). */
-export function addOrUpdateTracked(userId: string, entry: TrackedEntry): void {
-  const profile = getStoredProfile(userId);
-  const idx = profile.tracked.findIndex((t) => t.slug === entry.slug);
-  if (idx >= 0) {
-    profile.tracked[idx] = entry;
-  } else {
-    profile.tracked.push(entry);
-  }
-  setStoredProfile(userId, profile);
-}
-
-export function removeTracked(userId: string, slug: string): void {
-  const profile = getStoredProfile(userId);
-  profile.tracked = profile.tracked.filter((t) => t.slug !== slug);
-  setStoredProfile(userId, profile);
 }
 
 export function setRating(userId: string, slug: string, rating: number): void {

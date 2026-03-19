@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { SearchPageHeaderFiltersButton } from "@/components/search-page-header";
@@ -19,11 +20,16 @@ interface SearchConsoleProps {
   searchInputValue?: string;
   onSearchInputChange?: (value: string) => void;
   onClearSearch?: () => void;
+  /** Whether search mode is active (input focused, showing list + filters). Mobile only. */
+  searchActive?: boolean;
+  onSearchActivate?: () => void;
+  onSearchDeactivate?: () => void;
 }
 
 /**
  * Search Bar + Filter Carousel in a single sticky unit.
  * Shadow appears when scrolled; carousel hides on scroll down and reappears on scroll up (unless hasActiveFilters).
+ * On mobile, shows a back chevron when search is active.
  */
 export function SearchConsole({
   brands,
@@ -32,6 +38,9 @@ export function SearchConsole({
   searchInputValue = "",
   onSearchInputChange,
   onClearSearch,
+  searchActive = false,
+  onSearchActivate,
+  onSearchDeactivate,
 }: SearchConsoleProps) {
   const [scrolled, setScrolled] = useState(false);
   const [carouselVisible, setCarouselVisible] = useState(true);
@@ -58,6 +67,11 @@ export function SearchConsole({
     return () => window.removeEventListener("scroll", onScroll);
   }, [hasActiveFilters]);
 
+  const handleBack = () => {
+    onClearSearch?.();
+    onSearchDeactivate?.();
+  };
+
   return (
     <header
       aria-label="Search and filters"
@@ -66,20 +80,41 @@ export function SearchConsole({
         scrolled && "shadow-sm"
       )}
     >
-      {/* Search bar: aligned with page content, reduced bottom margin */}
+      {/* Search bar row: back chevron (mobile, when active) + search input */}
       <div className="mb-2 px-4 sm:px-6 lg:px-8">
-        <SearchPageHeaderForm
-          value={searchInputValue}
-          onChange={onSearchInputChange ?? (() => {})}
-          onClear={onClearSearch}
-        />
+        <div className="flex items-center gap-2">
+          {/* Back chevron — mobile only, visible when search is active */}
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Close search"
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-full p-1 text-foreground transition-all md:hidden",
+              searchActive
+                ? "w-8 opacity-100"
+                : "w-0 overflow-hidden opacity-0 pointer-events-none"
+            )}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <SearchPageHeaderForm
+              value={searchInputValue}
+              onChange={onSearchInputChange ?? (() => {})}
+              onClear={onClearSearch}
+              onFocus={onSearchActivate}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Full-bleed filter carousel: hides on scroll down, reappears on scroll up */}
+      {/* Filter pills: on mobile hidden unless search active; on desktop follows scroll-hide logic */}
       <div
         className={cn(
-          "grid w-full transition-[grid-template-rows] duration-200 ease-out",
-          carouselVisible ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          "grid w-full transition-[grid-template-rows] duration-200 ease-out grid-rows-[0fr]",
+          (searchActive && carouselVisible) && "max-md:grid-rows-[1fr]",
+          carouselVisible && "md:grid-rows-[1fr]"
         )}
       >
         <div className="min-h-0 overflow-hidden">

@@ -254,9 +254,9 @@ export interface SuggestedStocksResult {
 }
 
 /**
- * Returns 5 suggested film stocks for the drawer search empty state,
+ * Returns 5 suggested film stocks for the action sheet search empty state,
  * plus the complete stock list for instant client-side filtering.
- * Signed-in users with logged rolls → most recently logged (unique by slug).
+ * Signed-in users who have shot stocks → most recently shot (unique by slug).
  * Otherwise → top 5 by avg user rating (popular/trending).
  */
 export async function getSuggestedStocks(): Promise<SuggestedStocksResult> {
@@ -267,32 +267,22 @@ export async function getSuggestedStocks(): Promise<SuggestedStocksResult> {
   const allMapped: SearchStocksResult[] = allStocks.map(stockToSearchResult);
 
   if (user) {
-    const { data: rolls } = await supabase
-      .from("user_logged_rolls")
+    const { data: shots } = await supabase
+      .from("user_shot")
       .select("film_stock_slug")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(5);
 
-    if (rolls && rolls.length > 0) {
-      const seen = new Set<string>();
-      const uniqueSlugs: string[] = [];
-      for (const r of rolls) {
-        if (!seen.has(r.film_stock_slug)) {
-          seen.add(r.film_stock_slug);
-          uniqueSlugs.push(r.film_stock_slug);
-          if (uniqueSlugs.length >= 5) break;
-        }
-      }
-
+    if (shots && shots.length > 0) {
       const bySlug = new Map(allMapped.map((s) => [s.slug, s]));
       const recentStocks: SearchStocksResult[] = [];
-      for (const slug of uniqueSlugs) {
-        const s = bySlug.get(slug);
+      for (const r of shots) {
+        const s = bySlug.get(r.film_stock_slug);
         if (s) recentStocks.push(s);
       }
       if (recentStocks.length > 0) {
-        return { label: "Recently logged", stocks: recentStocks, allStocks: allMapped };
+        return { label: "Recently shot", stocks: recentStocks, allStocks: allMapped };
       }
     }
   }

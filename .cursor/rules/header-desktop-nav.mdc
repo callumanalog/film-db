@@ -1,0 +1,8 @@
+# Desktop top navigation
+
+The desktop top nav in `src/components/header.tsx` must stay fixed:
+
+- **Layout:** 3 columns — nav links (left), logo (center), user/profile (right).
+- **Do not change** the desktop nav structure, visibility, or order without **asking the user first**.
+
+Mobile nav can be changed as needed (e.g. films page full-width search bar).

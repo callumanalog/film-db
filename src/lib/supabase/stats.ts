@@ -7,9 +7,10 @@ export interface FilmStockStats {
   avgRating: number | null;
   ratingCount: number;
   shotsCount: number;
+  inCameraCount: number;
 }
 
-const EMPTY_STATS: FilmStockStats = { shotByCount: 0, favouritesCount: 0, avgRating: null, ratingCount: 0, shotsCount: 0 };
+const EMPTY_STATS: FilmStockStats = { shotByCount: 0, favouritesCount: 0, avgRating: null, ratingCount: 0, shotsCount: 0, inCameraCount: 0 };
 
 /** Fetches real stats from Supabase (user_shot, user_favourites, user_ratings, user_uploads). */
 export async function getFilmStockStats(slug: string): Promise<FilmStockStats> {
@@ -28,6 +29,7 @@ export async function getFilmStockStats(slug: string): Promise<FilmStockStats> {
       avgRating: row.avg_rating != null ? Number(row.avg_rating) : null,
       ratingCount: Number(row.rating_count ?? 0),
       shotsCount: Number(row.shots_count ?? 0),
+      inCameraCount: Number(row.in_camera_count ?? 0),
     };
   } catch (e) {
     console.warn("[getFilmStockStats]", slug, e);
@@ -54,6 +56,7 @@ async function fetchFilmStockStatsForSlugs(slugs: string[]): Promise<Record<stri
           avgRating: avgRatingRaw != null ? Number(avgRatingRaw) : null,
           ratingCount: Number(row.rating_count ?? 0),
           shotsCount: Number(row.shots_count ?? 0),
+          inCameraCount: Number(raw.in_camera_count ?? 0),
         };
       }
       return map;

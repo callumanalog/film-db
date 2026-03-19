@@ -9,16 +9,16 @@ interface SimilarStocksGridProps {
   statsBySlug?: Record<string, { avgRating: number | null }>;
 }
 
-/**
- * Renders the similar stocks grid with the same FilmCard styling as the film stocks
- * landing page.
- */
 export function SimilarStocksGrid({ stocks, statsBySlug }: SimilarStocksGridProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-      {stocks.map((s) => (
-        <FilmCard key={s.id} stock={s} />
-      ))}
+    <div className="-mx-4 overflow-hidden sm:-mx-6 lg:-mx-8">
+      <div className="scrollbar-hide flex overflow-x-auto overflow-y-hidden gap-2 pl-4 pr-4 sm:pl-6 sm:pr-6 lg:pl-8 lg:pr-8">
+        {stocks.map((s, index) => (
+          <div key={s.id} className="min-w-0 w-[calc(43.2%-8px)] shrink-0">
+            <FilmCard stock={s} priority={index < 4} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

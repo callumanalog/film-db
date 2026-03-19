@@ -8,10 +8,11 @@ interface SearchPageHeaderFormProps {
   value: string;
   onChange: (value: string) => void;
   onClear?: () => void;
+  onFocus?: () => void;
 }
 
 /** Search input only — instant filter on change (debounced by parent). No Enter required. */
-export function SearchPageHeaderForm({ value, onChange, onClear }: SearchPageHeaderFormProps) {
+export function SearchPageHeaderForm({ value, onChange, onClear, onFocus }: SearchPageHeaderFormProps) {
   const showClear = value.trim() !== "";
 
   return (
@@ -27,6 +28,7 @@ export function SearchPageHeaderForm({ value, onChange, onClear }: SearchPageHea
         autoComplete="off"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={onFocus}
         placeholder="Search film stocks"
         className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
         aria-label="Search film stocks"

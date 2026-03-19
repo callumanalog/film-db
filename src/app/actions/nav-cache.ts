@@ -2,7 +2,6 @@
 
 import { getFilmStocks, getCatalogForListings } from "@/lib/supabase/queries";
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
-import { getVaultRolls } from "@/app/actions/user-actions";
 import { getLatestShots, getLatestNotes, getLatestUsers } from "@/app/actions/search";
 import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor, DiscoveryVibe } from "@/lib/types";
 import type { FilmFilterOptions } from "@/lib/supabase/queries";
@@ -186,8 +185,7 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
 
   const statsBySlug =
     stocksUnsorted.length > 0 ? await getFilmStockStatsForSlugs(stocksUnsorted.map((s) => s.slug)) : {};
-  const vaultRolls = await getVaultRolls();
-  const loggedSlugs = [...new Set(vaultRolls.map((r) => r.film_stock_slug))];
+  const loggedSlugs: string[] = [];
 
   // Popularity = highest avg rating first; nulls (no ratings) last; then alphabetical tie-break
   const stocks =

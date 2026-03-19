@@ -17,7 +17,7 @@ type StockWithBrand = FilmStock & { brand: FilmBrand };
 export function ProfilePageClient() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { shotSlugs, favouriteSlugs, tracked, ratings } = useUserActions();
+  const { shotSlugs, favouriteSlugs, inCameraSlugs, ratings } = useUserActions();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stocksBySlug, setStocksBySlug] = useState<Map<string, StockWithBrand>>(new Map());
   const [statsBySlug, setStatsBySlug] = useState<Record<string, { avgRating: number | null }>>({});
@@ -38,8 +38,7 @@ export function ProfilePageClient() {
             displayName: p.displayName,
             shotSlugs: p.shotSlugs,
             favouriteSlugs: p.favouriteSlugs,
-            tracked: p.tracked,
-            loggedRolls: p.loggedRolls ?? [],
+            inCameraEntries: p.inCameraEntries,
             ratings: p.ratings,
             reviewCount: p.reviewCount,
             uploadCount: p.uploadCount,
@@ -51,8 +50,7 @@ export function ProfilePageClient() {
             displayName: user.user_metadata?.full_name || user.email?.split("@")[0] || "Member",
             shotSlugs: [],
             favouriteSlugs: [],
-            tracked: [],
-            loggedRolls: [],
+            inCameraEntries: [],
             ratings: {},
           });
         }
@@ -69,13 +67,12 @@ export function ProfilePageClient() {
     ? [
         ...profile.shotSlugs,
         ...profile.favouriteSlugs,
-        ...profile.tracked.map((t) => t.slug),
-        ...(profile.loggedRolls?.map((r) => r.film_stock_slug) ?? []),
+        ...(profile.inCameraEntries?.map((e) => e.film_stock_slug) ?? []),
         ...Object.keys(profile.ratings),
         ...(profile.reviews?.map((r) => r.film_stock_slug) ?? []),
         ...(profile.uploads?.map((u) => u.film_stock_slug) ?? []),
       ]
-    : [...shotSlugs, ...favouriteSlugs, ...tracked.map((t) => t.slug), ...Object.keys(ratings)];
+    : [...shotSlugs, ...favouriteSlugs, ...inCameraSlugs, ...Object.keys(ratings)];
   const uniqueSlugs = [...new Set(allSlugs)];
 
   useEffect(() => {

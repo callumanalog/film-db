@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import type { SearchPageData, SearchPageParams } from "@/app/actions/nav-cache";
 import type { FilmStock } from "@/lib/types";
 import type { FilmBrand } from "@/lib/types";
 import { FilmStockListCard } from "@/components/film-stock-list-card";
 import { SearchConsole } from "@/components/search-console";
+import { SearchExploreCarousels } from "@/components/search-explore-carousels";
 import { useSearchPageData } from "@/lib/nav-cache-swr";
 
 const FILTER_PARAMS = ["brand", "type", "format", "grain", "latitude", "saturation", "bestFor", "iso"];
@@ -67,12 +68,14 @@ export function SearchPageClient({ fallbackData }: SearchPageClientProps) {
   const initialSearch = searchParams.get("search")?.trim() ?? "";
   const [inputValue, setInputValue] = useState(initialSearch);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
+  const [searchActive, setSearchActive] = useState(() => !!initialSearch || hasActiveFilters);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setInputValue(initialSearch);
     setSearchTerm(initialSearch);
-  }, [initialSearch]);
+    if (initialSearch || hasActiveFilters) setSearchActive(true);
+  }, [initialSearch, hasActiveFilters]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -92,6 +95,12 @@ export function SearchPageClient({ fallbackData }: SearchPageClientProps) {
     setInputValue("");
     setSearchTerm("");
   };
+
+  const handleSearchActivate = useCallback(() => setSearchActive(true), []);
+  const handleSearchDeactivate = useCallback(() => {
+    setSearchActive(false);
+    window.scrollTo({ top: 0 });
+  }, []);
 
   if (!data && isLoading) {
     return (
@@ -126,9 +135,20 @@ export function SearchPageClient({ fallbackData }: SearchPageClientProps) {
         searchInputValue={inputValue}
         onSearchInputChange={setInputValue}
         onClearSearch={handleClearSearch}
+        searchActive={searchActive}
+        onSearchActivate={handleSearchActivate}
+        onSearchDeactivate={handleSearchDeactivate}
       />
 
-      <div className="mx-auto max-w-7xl bg-white px-4 pb-[88px] sm:px-6 lg:px-8 md:pb-[88px]">
+      {/* Mobile: show carousels when search is not active */}
+      {!searchActive && (
+        <div className="mx-auto max-w-7xl bg-white px-4 pb-[88px] sm:px-6 lg:px-8 md:hidden">
+          <SearchExploreCarousels stocks={stocks} />
+        </div>
+      )}
+
+      {/* Search results list — always visible on desktop, mobile only when search active */}
+      <div className={`mx-auto max-w-7xl bg-white px-4 pb-[88px] sm:px-6 lg:px-8 md:pb-[88px] ${searchActive ? "" : "max-md:hidden"}`}>
         <section aria-label="Film stocks">
           {noResultsFromSearch ? (
             <div className="mt-2 rounded-[7px] border border-dashed border-border bg-secondary/20 p-4 py-16 text-center">

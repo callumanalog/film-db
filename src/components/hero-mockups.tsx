@@ -50,8 +50,8 @@ import {
   FileVideo,
 } from "lucide-react";
 import { QuickActions } from "@/components/community-section";
-import { LogRollStatusDrawer, type LogRollSavePayload } from "@/components/log-roll-status-drawer";
 import { AddReviewModal } from "@/components/add-review-modal";
+import { InCameraDrawer } from "@/components/in-camera-drawer";
 import { showToastViaEvent } from "@/components/toast";
 import {
   Sheet,
@@ -60,9 +60,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useUserActions } from "@/context/user-actions-context";
-import { useLogRollTrigger } from "@/context/log-roll-trigger-context";
-import { saveLoggedRoll } from "@/app/actions/user-actions";
-import { invalidateVaultCache } from "@/app/vault/vault-page-client";
 import { useAuth } from "@/context/auth-context";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import type { BestFor } from "@/lib/types";
@@ -468,6 +465,8 @@ export function StickyLeftPane({
   const {
     favouriteSlugs,
     toggleFavourite,
+    inCameraSlugs,
+    toggleInCamera,
     setRating: persistRating,
     ratings,
     shotSlugs,
@@ -478,21 +477,9 @@ export function StickyLeftPane({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [logRollDrawerOpen, setLogRollDrawerOpen] = useState(false);
-
-  // Intent continuity: if user just returned from sign-in/sign-up with action=log-roll, open drawer
-  const didHandleLogRollIntent = useRef(false);
-  useEffect(() => {
-    if (!user || searchParams.get("action") !== "log-roll" || didHandleLogRollIntent.current) return;
-    didHandleLogRollIntent.current = true;
-    setLogRollDrawerOpen(true);
-    const next = new URLSearchParams(searchParams);
-    next.delete("action");
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname ?? "/", { scroll: false });
-  }, [user, searchParams, pathname, router]);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
+  const [inCameraDrawerOpen, setInCameraDrawerOpen] = useState(false);
 
   // Intent continuity: ?action=upload opens upload modal directly
   const didHandleUploadIntent = useRef(false);
@@ -512,9 +499,10 @@ export function StickyLeftPane({
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname ?? "/", { scroll: false });
   }, [user, searchParams, pathname, router]);
-  const [reviewDrawerOpen, setReviewDrawerOpen] = useState(false);
 
   const isFavourite = favouriteSlugs.includes(slug);
+  const isInCamera = inCameraSlugs.includes(slug);
+  const isShot = shotSlugs.includes(slug);
   const rating = ratings[slug] ?? 0;
 
   const handleRatingChange = (value: number) => {
@@ -531,35 +519,30 @@ export function StickyLeftPane({
     shotsCount: stats?.shotsCount ?? 0,
   };
 
-  const closeDrawerThen = (fn: () => void) => {
-    setReviewDrawerOpen(false);
-    const t = setTimeout(fn, 150);
-    return () => clearTimeout(t);
+  const handleShotIt = () => {
+    if (!isShot) {
+      toggleShot(slug);
+      showToastViaEvent("Marked as shot");
+    }
+    setReviewModalMode("review");
+    setReviewModalOpen(true);
   };
 
-  const logRollTrigger = useLogRollTrigger();
-  useEffect(() => {
-    if (!logRollTrigger) return;
-    const openLogRoll = () => {
-      if (!user) {
-        const returnPath = pathname ?? "/";
-        const nextUrl = returnPath + (returnPath.includes("?") ? "&" : "?") + "action=log-roll";
-        router.push(`/auth/sign-in?next=${encodeURIComponent(nextUrl)}`);
-        return;
-      }
-      setLogRollDrawerOpen(true);
-    };
-    logRollTrigger.registerOpenLogRoll(openLogRoll);
-    return () => logRollTrigger.unregisterOpenLogRoll();
-  }, [logRollTrigger, user, pathname, router]);
+  const handleInCameraToggle = () => {
+    if (isInCamera) {
+      toggleInCamera(slug);
+      showToastViaEvent("Removed from in camera");
+    } else {
+      setInCameraDrawerOpen(true);
+    }
+  };
 
   return (
     <div className="w-full min-w-0 flex flex-col md:w-56 md:min-w-[14rem] md:shrink-0 md:self-start md:overflow-visible">
-      {/* Mobile: stats card only (image is full-bleed above via MobileFilmHero). Desktop: image + stats card. */}
       <div className="grid grid-cols-1 gap-4">
       <div className="flex min-w-0 flex-col gap-3">
       <div className="relative mx-auto w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-white md:mx-0 md:max-w-none md:w-full">
-        {/* Image — desktop only; on mobile image is full-bleed in MobileFilmHero */}
+        {/* Image — desktop only */}
         <div className="relative hidden md:block">
           {stock.discontinued && (
             <span
@@ -579,24 +562,9 @@ export function StickyLeftPane({
               />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const { added } = toggleFavourite(slug);
-              showToastViaEvent(added ? "Added to shootlist" : "Removed from shootlist");
-            }}
-            title={isFavourite ? "Remove from shootlist" : "Save to shootlist"}
-            aria-pressed={isFavourite}
-            aria-label={isFavourite ? "Remove from shootlist" : "Save to shootlist"}
-            className="absolute right-2.5 bottom-2.5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/80 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:text-foreground"
-          >
-            <Bookmark
-              className={`h-5 w-5 shrink-0 ${isFavourite ? "fill-primary text-primary" : "text-muted-foreground"}`}
-              aria-hidden
-            />
-          </button>
         </div>
-        {/* Stats — connected section (Shot It | Avg. rating | Shots); on mobile no border-t (no image above) */}
+
+        {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 border-t-0 bg-card px-3 py-3 md:border-t md:border-border/50">
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center gap-1.5">
@@ -622,62 +590,79 @@ export function StickyLeftPane({
             <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shots</span>
           </div>
         </div>
-      </div>
 
-      </div>
-      </div>
-
-      <Sheet open={reviewDrawerOpen} onOpenChange={setReviewDrawerOpen}>
-        <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">
-          <SheetHeader className="pb-2">
-            <SheetTitle>Rate &amp; review</SheetTitle>
-          </SheetHeader>
-          <div className="flex flex-col items-center gap-6 px-4 pt-2">
-            <div className="flex flex-col items-center gap-2">
-              <UserStarRating value={rating} onChange={handleRatingChange} rowHover={false} />
-              <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Rate</p>
-            </div>
+        {/* Action buttons */}
+        <div className="border-t border-border/50 bg-card px-3 py-3">
+          {/* Tier 1: Want to Shoot + In Camera toggles */}
+          <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => closeDrawerThen(() => { setReviewModalMode("review"); setReviewModalOpen(true); })}
-              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[7px] bg-primary/10 py-3 text-base font-semibold text-foreground transition-colors hover:bg-primary/15"
+              onClick={() => {
+                const { added } = toggleFavourite(slug);
+                showToastViaEvent(added ? "Added to want to shoot" : "Removed from want to shoot");
+              }}
+              aria-pressed={isFavourite}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full border py-2 text-xs font-semibold transition-colors ${
+                isFavourite
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border/60 bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              }`}
             >
-              <Pencil className="h-5 w-5 shrink-0" aria-hidden />
-              Add Shooting Notes
+              <Bookmark className={`h-3.5 w-3.5 shrink-0 ${isFavourite ? "fill-primary" : ""}`} aria-hidden />
+              Want to shoot
             </button>
-          </div>
-          <div className="mt-6 flex justify-center pb-2">
             <button
               type="button"
-              onClick={() => setReviewDrawerOpen(false)}
-              className="text-sm font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              onClick={handleInCameraToggle}
+              aria-pressed={isInCamera}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full border py-2 text-xs font-semibold transition-colors ${
+                isInCamera
+                  ? "border-blue-500 bg-blue-500/10 text-blue-600"
+                  : "border-border/60 bg-card text-muted-foreground hover:border-blue-400/40 hover:text-foreground"
+              }`}
             >
-              Close
+              <Camera className={`h-3.5 w-3.5 shrink-0 ${isInCamera ? "text-blue-500" : ""}`} aria-hidden />
+              In camera
             </button>
           </div>
-        </SheetContent>
-      </Sheet>
 
-      <LogRollStatusDrawer
-        open={logRollDrawerOpen}
-        onOpenChange={setLogRollDrawerOpen}
-        stock={{ slug: stock.slug, name: stock.name, format: stock.format ?? [], image_url: stock.image_url ?? null }}
-        onSave={async (payload: LogRollSavePayload) => {
-          const { synced } = await saveLoggedRoll(slug, payload.format, payload.statusId, payload.expiry, payload.quantity, {
-            camera: payload.camera,
-            lens: payload.lens,
-            shotIso: payload.shotIso,
-            notes: payload.notes,
-            lab: payload.lab,
-            dateLoaded: payload.dateLoaded,
-          });
-          setLogRollDrawerOpen(false);
-          if (synced) {
-            invalidateVaultCache();
-            showToastViaEvent("Roll saved");
-          } else {
-            showToastViaEvent("Sign in to save rolls");
-          }
+          {/* Tier 2: Shot It CTA */}
+          <button
+            type="button"
+            onClick={handleShotIt}
+            className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-[7px] py-3 text-sm font-semibold transition-colors ${
+              isShot
+                ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15"
+                : "bg-foreground text-background hover:bg-foreground/90"
+            }`}
+          >
+            {isShot ? (
+              <>
+                <Check className="h-4 w-4 shrink-0" aria-hidden />
+                Shot — Add review or shots
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+                Shot it
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      </div>
+      </div>
+
+      <InCameraDrawer
+        open={inCameraDrawerOpen}
+        onOpenChange={setInCameraDrawerOpen}
+        stockName={stock.name}
+        stockFormats={stock.format ?? []}
+        onSave={(metadata) => {
+          toggleInCamera(slug, metadata);
+          setInCameraDrawerOpen(false);
+          showToastViaEvent("Marked as in camera");
         }}
       />
 

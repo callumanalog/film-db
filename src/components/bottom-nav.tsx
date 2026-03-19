@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { preload } from "swr";
 import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { openLogRollChoiceDrawer } from "@/components/log-roll-choice-drawer";
+import { openPlusActionSheet } from "@/components/plus-action-sheet";
 import { searchPageDataKey, filmsPageDataKey } from "@/lib/nav-cache-swr";
 import { getSearchPageData, getFilmsPageData } from "@/app/actions/nav-cache";
 
@@ -20,7 +20,6 @@ const RIGHT_ITEMS = [
   { href: "/profile", label: "Profile", icon: UserRound },
 ] as const;
 
-/** Extract slug from a film detail path like /films/kodak-gold-200 */
 function getFilmSlug(pathname: string | null): string | null {
   if (!pathname) return null;
   const parts = pathname.split("/").filter(Boolean);
@@ -30,7 +29,6 @@ function getFilmSlug(pathname: string | null): string | null {
   return null;
 }
 
-/** Format slug into readable name: "kodak-gold-200" → "Kodak Gold 200" */
 function slugToName(slug: string): string {
   return slug
     .split("-")
@@ -38,7 +36,6 @@ function slugToName(slug: string): string {
     .join(" ");
 }
 
-/** Single active nav destination: /, /films, /search, or /profile. Film detail pages count as /films. */
 function getActiveHref(pathname: string | null): string | null {
   if (!pathname) return null;
   if (pathname === "/") return "/";
@@ -55,7 +52,6 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  /** Optimistic: highlight the tapped icon immediately (<50ms) before pathname updates. */
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const resolvedActive = getActiveHref(pathname);
   const activeHref = pendingPath ?? resolvedActive;
@@ -69,9 +65,9 @@ export function BottomNav() {
   const handlePlus = () => {
     const filmSlug = getFilmSlug(pathname);
     if (filmSlug) {
-      openLogRollChoiceDrawer({ filmSlug, filmName: slugToName(filmSlug) });
+      openPlusActionSheet({ filmSlug, filmName: slugToName(filmSlug) });
     } else {
-      openLogRollChoiceDrawer();
+      openPlusActionSheet();
     }
   };
 

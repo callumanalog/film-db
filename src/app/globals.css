@@ -165,6 +165,10 @@
   font-family: var(--font-advercase), "Advercase", var(--font-sans), sans-serif !important;
 }
 
+@utility font-young-serif {
+  font-family: var(--font-young-serif), "Young Serif", serif;
+}
+
 /* Film page: body copy in Work Sans; h2–h6 inherit so they use Work Sans (not Advercase) */
 .work-sans-content {
   font-family: var(--font-sans), sans-serif;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -13,9 +14,7 @@ import {
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import type { FilmStock, FilmBrand } from "@/lib/types";
-import type { TrackedEntry } from "@/lib/user-store";
-import type { LoggedRollEntry } from "@/app/actions/user-actions";
-import { LoggedRollMenu } from "@/components/logged-roll-menu";
+import type { InCameraEntry } from "@/app/actions/user-actions";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
@@ -58,8 +57,7 @@ export interface ProfileData {
   displayName: string;
   shotSlugs: string[];
   favouriteSlugs: string[];
-  tracked: TrackedEntry[];
-  loggedRolls?: LoggedRollEntry[];
+  inCameraEntries?: InCameraEntry[];
   ratings: Record<string, number>;
   reviewCount?: number;
   uploadCount?: number;
@@ -70,25 +68,25 @@ export interface ProfileData {
 interface ProfileViewProps {
   profile: ProfileData;
   stocksBySlug: Map<string, StockWithBrand>;
-  /** Optional map of slug -> stats so cards show real avg rating. */
   statsBySlug?: Record<string, { avgRating: number | null }>;
 }
 
-const ROLLS_STATUS_OPTIONS: { value: "all" | "in_fridge" | "in_camera" | "awaiting_dev" | "at_lab"; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "in_fridge", label: "In Fridge" },
-  { value: "in_camera", label: "In Camera" },
-  { value: "awaiting_dev", label: "Processing" },
-  { value: "at_lab", label: "Scanned" },
-];
+function StockGrid({ slugs, stocksBySlug }: { slugs: string[]; stocksBySlug: Map<string, StockWithBrand> }) {
+  if (slugs.length === 0) return null;
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+      {slugs.map((slug) => {
+        const stock = stocksBySlug.get(slug);
+        if (!stock) return null;
+        return <FilmCard key={slug} stock={stock} />;
+      })}
+    </div>
+  );
+}
 
 export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: ProfileViewProps) {
-  const loggedRolls = profile.loggedRolls ?? [];
-  const [rollsStatusFilter, setRollsStatusFilter] = useState<"all" | "in_fridge" | "in_camera" | "awaiting_dev" | "at_lab">("all");
-  const filteredRolls =
-    rollsStatusFilter === "all"
-      ? loggedRolls
-      : loggedRolls.filter((e) => e.status === rollsStatusFilter);
+  const inCameraEntries = profile.inCameraEntries ?? [];
+  const inCameraSlugs = inCameraEntries.map((e) => e.film_stock_slug);
 
   return (
     <div className="space-y-8">
@@ -105,189 +103,194 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
 
       {/* Tabs */}
       <FilmDetailTabs
-        defaultId="rolls"
+        defaultId="want"
         tabs={[
           {
-            id: "rolls",
-            label: "Rolls",
+            id: "want",
+            label: "Want to Shoot",
             content: (
               <ProfileSection
-                emptyMessage="No rolls yet. Open a film page and tap Log a roll to add one."
-                isEmpty={loggedRolls.length === 0}
+                emptyMessage="No stocks on your want to shoot list yet. Tap the bookmark on any film page."
+                isEmpty={profile.favouriteSlugs.length === 0}
               >
-                {loggedRolls.length > 0 && (
-                  <>
-                    <div className="mb-4 w-full overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        {ROLLS_STATUS_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => setRollsStatusFilter(opt.value)}
-                            className={cn(
-                              "flex h-11 shrink-0 items-center rounded-full border px-3 py-2 text-sm font-medium transition-colors last:mr-4 sm:last:mr-6",
-                              rollsStatusFilter === opt.value
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/50"
-                            )}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {filteredRolls.length > 0 ? (
-                      <ul className="space-y-4">
-                        {filteredRolls.map((entry) => {
-                          const stock = stocksBySlug.get(entry.film_stock_slug);
-                          if (!stock) return null;
-                          return (
-                            <li key={entry.id}>
-                              <div className="flex items-start gap-2 rounded-[7px] border border-border/50 bg-white p-4 transition-colors hover:border-primary/30 hover:bg-white">
-                                <Link
-                                  href={`/films/${entry.film_stock_slug}?tab=rolls`}
-                                  className="min-w-0 flex-1"
-                                >
-                                  <div className="flex flex-wrap items-start gap-4">
-                                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-card bg-white">
-                                      {stock.image_url ? (
-                                        <Image
-                                          src={stock.image_url}
-                                          alt=""
-                                          width={80}
-                                          height={80}
-                                          className="h-full w-full object-contain"
-                                        />
-                                      ) : (
-                                        <div className="flex h-full w-full items-center justify-center">
-                                          <Camera className="h-8 w-8 text-muted-foreground" />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="font-semibold text-foreground">
-                                        {stock.name}
-                                      </p>
-                                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                                        {entry.format && <span>Format: {entry.format}</span>}
-                                        {entry.status && <span>Status: {entry.status}</span>}
-                                        {entry.expiry_date && <span>Expiry: {entry.expiry_date}</span>}
-                                        {entry.quantity > 1 && <span>Qty: {entry.quantity}</span>}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </Link>
-                                <LoggedRollMenu rollId={entry.id} filmSlug={entry.film_stock_slug} />
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
-                        No rolls in this status.
-                      </p>
-                    )}
-                  </>
-                )}
+                <StockGrid slugs={profile.favouriteSlugs} stocksBySlug={stocksBySlug} />
               </ProfileSection>
             ),
           },
-          ...(typeof profile.uploadCount === "number"
-            ? [
-                {
-                  id: "shots",
-                  label: "Shots",
-                  content: (
-                    <ProfileSection
-                      title="Shots"
-                      description="Images you've uploaded for films. Click through to the film page."
-                      emptyMessage="You haven't uploaded any images yet."
-                      isEmpty={!profile.uploads || profile.uploads.length === 0}
-                    >
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                        {(profile.uploads ?? []).map((u) => {
-                          const stock = stocksBySlug.get(u.film_stock_slug);
-                          const stockName = stock?.name ?? u.film_stock_slug;
-                          return (
-                            <Link
-                              key={u.id}
-                              href={`/films/${u.film_stock_slug}`}
-                              className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
-                            >
-                              <div className="relative aspect-[4/3] bg-muted">
-                                {u.image_url ? (
-                                  /* eslint-disable-next-line @next/next/no-img-element */
-                                  <img
-                                    src={u.image_url}
-                                    alt={u.caption ?? ""}
-                                    className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center">
-                                    <Camera className="h-8 w-8 text-muted-foreground" />
-                                  </div>
-                                )}
+          {
+            id: "shot",
+            label: "Shot",
+            content: (
+              <ProfileSection
+                emptyMessage="No stocks marked as shot yet."
+                isEmpty={profile.shotSlugs.length === 0}
+              >
+                <StockGrid slugs={profile.shotSlugs} stocksBySlug={stocksBySlug} />
+              </ProfileSection>
+            ),
+          },
+          {
+            id: "in-camera",
+            label: "In Camera",
+            content: (
+              <ProfileSection
+                emptyMessage="No stocks in camera right now."
+                isEmpty={inCameraSlugs.length === 0}
+              >
+                <ul className="space-y-3">
+                  {inCameraEntries.map((entry) => {
+                    const stock = stocksBySlug.get(entry.film_stock_slug);
+                    if (!stock) return null;
+                    return (
+                      <li key={entry.film_stock_slug}>
+                        <Link
+                          href={`/films/${entry.film_stock_slug}`}
+                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                        >
+                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-card bg-white">
+                            {stock.image_url ? (
+                              <Image src={stock.image_url} alt="" width={56} height={56} className="h-full w-full object-contain" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <Camera className="h-6 w-6 text-muted-foreground" />
                               </div>
-                              <div className="p-3">
-                                <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
-                                {u.caption && (
-                                  <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{u.caption}</p>
-                                )}
-                              </div>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </ProfileSection>
-                  ),
-                },
-              ]
-            : []),
-          ...(typeof profile.reviewCount === "number"
-            ? [
-                {
-                  id: "notes",
-                  label: "Notes",
-                  content: (
-                    <ProfileSection
-                      title="Notes"
-                      description="Notes you've written. Click through to the film to read or edit."
-                      emptyMessage="You haven't written any notes yet."
-                      isEmpty={!profile.reviews || profile.reviews.length === 0}
-                    >
-                      <ul className="space-y-3">
-                        {(profile.reviews ?? []).map((r) => {
-                          const stock = stocksBySlug.get(r.film_stock_slug);
-                          const stockName = stock?.name ?? r.film_stock_slug;
-                          const dateLabel = formatReviewDate(r.created_at);
-                          return (
-                            <li key={r.id}>
-                              <Link
-                                href={`/films/${r.film_stock_slug}`}
-                                className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <span className="font-semibold text-foreground">{stockName}</span>
-                                  {r.review_title && (
-                                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
-                                  )}
-                                  <p className="mt-1 text-xs text-muted-foreground">{dateLabel}</p>
-                                </div>
-                                {r.rating != null && r.rating > 0 && (
-                                  <MiniStars rating={r.rating} size={18} />
-                                )}
-                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </ProfileSection>
-                  ),
-                },
-              ]
-            : []),
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-foreground">{stock.name}</p>
+                            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                              {entry.camera && <span>{entry.camera}</span>}
+                              {entry.format && <span>{entry.format}</span>}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ProfileSection>
+            ),
+          },
+          {
+            id: "portfolio",
+            label: "Portfolio",
+            content: (
+              <ProfileSection
+                emptyMessage="You haven't uploaded any images yet."
+                isEmpty={!profile.uploads || profile.uploads.length === 0}
+              >
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                  {(profile.uploads ?? []).map((u) => {
+                    const stock = stocksBySlug.get(u.film_stock_slug);
+                    const stockName = stock?.name ?? u.film_stock_slug;
+                    return (
+                      <Link
+                        key={u.id}
+                        href={`/films/${u.film_stock_slug}`}
+                        className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
+                      >
+                        <div className="relative aspect-[4/3] bg-muted">
+                          {u.image_url ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={u.image_url}
+                              alt={u.caption ?? ""}
+                              className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Camera className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
+                          {u.caption && (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{u.caption}</p>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </ProfileSection>
+            ),
+          },
+          {
+            id: "lists",
+            label: "Lists",
+            content: (
+              <ProfileSection
+                emptyMessage="You haven't created any lists yet. Lists are coming soon!"
+                isEmpty={true}
+              >
+                <div />
+              </ProfileSection>
+            ),
+          },
+          {
+            id: "saved",
+            label: "Saved",
+            content: (
+              <ProfileSection
+                emptyMessage="You haven't saved any community images yet. This feature is coming soon!"
+                isEmpty={true}
+              >
+                <div />
+              </ProfileSection>
+            ),
+          },
+          {
+            id: "reviews",
+            label: "Reviews",
+            content: (
+              <ProfileSection
+                emptyMessage="You haven't written any reviews yet."
+                isEmpty={!profile.reviews || profile.reviews.length === 0}
+              >
+                <ul className="space-y-3">
+                  {(profile.reviews ?? []).map((r) => {
+                    const stock = stocksBySlug.get(r.film_stock_slug);
+                    const stockName = stock?.name ?? r.film_stock_slug;
+                    const dateLabel = formatReviewDate(r.created_at);
+                    return (
+                      <li key={r.id}>
+                        <Link
+                          href={`/films/${r.film_stock_slug}`}
+                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="font-semibold text-foreground">{stockName}</span>
+                            {r.review_title && (
+                              <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
+                            )}
+                            <p className="mt-1 text-xs text-muted-foreground">{dateLabel}</p>
+                          </div>
+                          {r.rating != null && r.rating > 0 && (
+                            <MiniStars rating={r.rating} size={18} />
+                          )}
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ProfileSection>
+            ),
+          },
+          {
+            id: "likes",
+            label: "Likes",
+            content: (
+              <ProfileSection
+                emptyMessage="You haven't liked any reviews yet. This feature is coming soon!"
+                isEmpty={true}
+              >
+                <div />
+              </ProfileSection>
+            ),
+          },
         ]}
       />
     </div>

@@ -13,7 +13,6 @@ import { StickyLeftPane, PageTitleHeader, MobileFilmHero } from "@/components/he
 import { FilmDetailTabsLazy } from "@/components/film-detail-tabs-lazy";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
 import { getReviewsForSlug } from "@/lib/seed-film-reviews";
-import { getLoggedRollsForFilm } from "@/app/actions/user-actions";
 import { SetFilmMobileHeader } from "@/components/set-film-mobile-header";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
@@ -52,12 +51,11 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
 
   if (!stock) notFound();
 
-  const [stats, relatedStocks, moreFromBrandStocks, flickrImages, loggedRolls] = await Promise.all([
+  const [stats, relatedStocks, moreFromBrandStocks, flickrImages] = await Promise.all([
     getFilmStockStats(slug),
     getRelatedStocks(stock, 6),
-    getMoreFromBrand(stock, 6),
+    getMoreFromBrand(stock, 8),
     getFlickrSampleImagesForStock(slug).catch(() => []),
-    getLoggedRollsForFilm(slug),
   ]);
   const typeColor = FILM_TYPE_COLORS[stock.type];
 
@@ -180,8 +178,23 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
     ...moreFromBrandStocks.filter((s) => !relatedStocks.some((r) => r.id === s.id)),
   ].slice(0, 8);
 
-  const discoverySlugs = allDiscoveryStocks.map((s) => s.slug);
-  const discoveryStatsBySlug = discoverySlugs.length > 0 ? await getFilmStockStatsForSlugs(discoverySlugs) : {};
+  const allRecircSlugs = [
+    ...new Set([
+      ...allDiscoveryStocks.map((s) => s.slug),
+      ...moreFromBrandStocks.map((s) => s.slug),
+    ]),
+  ];
+  const recircStatsBySlug = allRecircSlugs.length > 0 ? await getFilmStockStatsForSlugs(allRecircSlugs) : {};
+
+  const similarStockIds = new Set(allDiscoveryStocks.map((s) => s.id));
+  const brandStocksSorted = [...moreFromBrandStocks].sort((a, b) => {
+    const ra = recircStatsBySlug[a.slug]?.avgRating ?? 0;
+    const rb = recircStatsBySlug[b.slug]?.avgRating ?? 0;
+    return rb - ra;
+  });
+  const uniqueToBrand = brandStocksSorted.filter((s) => !similarStockIds.has(s.id));
+  const sharedWithSimilar = brandStocksSorted.filter((s) => similarStockIds.has(s.id));
+  const moreFromBrandOrdered = [...uniqueToBrand, ...sharedWithSimilar].slice(0, 8);
 
   const { web: reviewsFromWeb, video: videoReviews } = getReviewsForSlug(slug);
 
@@ -237,9 +250,8 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
           </div>
           <div className="order-3 min-w-0 -mt-2 md:mt-0">
             <FilmDetailTabsLazy
-              defaultId={tab === "rolls" || tab === "logged-rolls" ? "rolls" : tab === "shots" || tab === "gallery" ? "shots" : tab === "notes" || tab === "reviews" ? "notes" : "overview"}
+              defaultId={tab === "shots" || tab === "gallery" ? "shots" : tab === "notes" || tab === "reviews" ? "notes" : "overview"}
               overviewProps={overviewProps}
-              rollsProps={{ loggedRolls, slug }}
               shotsProps={{ stockName: stock.name, slug, flickrImages }}
               notesProps={{ slug }}
             />
@@ -248,10 +260,19 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
       </div>
 
       {allDiscoveryStocks.length > 0 && (
-        <section className="w-full border-t border-border/50 bg-secondary/30 py-12">
+        <section className="w-full border-t border-border/50 bg-secondary/30 pt-12 pb-6">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <h3 className="mb-6 text-xl font-bold tracking-tight text-foreground">Similar stocks</h3>
-            <SimilarStocksGrid stocks={allDiscoveryStocks} statsBySlug={discoveryStatsBySlug} />
+            <SimilarStocksGrid stocks={allDiscoveryStocks} statsBySlug={recircStatsBySlug} />
+          </div>
+        </section>
+      )}
+
+      {moreFromBrandOrdered.length > 0 && (
+        <section className={`w-full bg-secondary/30 pt-6 pb-12 ${allDiscoveryStocks.length === 0 ? "border-t border-border/50" : ""}`}>
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <h3 className="mb-6 text-xl font-bold tracking-tight text-foreground">More from {stock.brand.name}</h3>
+            <SimilarStocksGrid stocks={moreFromBrandOrdered} statsBySlug={recircStatsBySlug} />
           </div>
         </section>
       )}

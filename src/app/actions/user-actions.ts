@@ -2,10 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { TrackedEntry } from "@/lib/user-store";
 
 export type ToggleResult = { added: boolean; synced: boolean };
 export type SetRatingResult = { synced: boolean };
+
+export interface InCameraEntry {
+  film_stock_slug: string;
+  camera: string | null;
+  format: string | null;
+  created_at: string;
+}
 
 async function getCurrentUserId(): Promise<string | null> {
   const supabase = await createClient();
@@ -126,179 +132,74 @@ export async function setRatingInSupabase(slug: string, rating: number): Promise
   return { synced: true };
 }
 
-/** Upsert tracked (roll) entry for the current user. Persists to Supabase so it appears on their profile. */
-export async function upsertTrackedInSupabase(entry: TrackedEntry): Promise<{ synced: boolean }> {
+/** Toggle "in camera" status for the current user. Insert with optional metadata or delete if already set. */
+export async function toggleInCameraInSupabase(
+  slug: string,
+  metadata?: { camera?: string; format?: string }
+): Promise<ToggleResult> {
   const userId = await getCurrentUserId();
-  if (!userId) return { synced: false };
+  if (!userId) return { added: false, synced: false };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("user_tracked").upsert(
-    {
-      user_id: userId,
-      film_stock_slug: entry.slug,
-      format: entry.format ?? "",
-      status: entry.status ?? "",
-      expiry_date: entry.expiryDate ?? null,
-      notes: entry.notes ?? null,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,film_stock_slug" }
-  );
-  if (error) {
-    console.error("[user-actions] upsertTracked error:", error.message, { slug: entry.slug });
-    return { synced: false };
+  const { data: existing, error: fetchErr } = await supabase
+    .from("user_in_camera")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("film_stock_slug", slug)
+    .maybeSingle();
+
+  if (fetchErr) {
+    console.error("[user-actions] toggleInCamera fetch error:", fetchErr.message, { slug });
+    return { added: false, synced: false };
   }
-  revalidatePath("/films/[slug]", "page");
-  revalidatePath(`/films/${entry.slug}`);
-  revalidatePath("/profile");
-  return { synced: true };
-}
 
-/** Remove a tracked entry for the current user. */
-export async function removeTrackedInSupabase(slug: string): Promise<{ synced: boolean }> {
-  const userId = await getCurrentUserId();
-  if (!userId) return { synced: false };
+  if (existing) {
+    const { error: deleteErr } = await supabase.from("user_in_camera").delete().eq("user_id", userId).eq("film_stock_slug", slug);
+    if (deleteErr) {
+      console.error("[user-actions] toggleInCamera delete error:", deleteErr.message, { slug });
+      return { added: false, synced: false };
+    }
+    revalidatePath("/films/[slug]", "page");
+    revalidatePath(`/films/${slug}`);
+    revalidatePath("/profile");
+    return { added: false, synced: true };
+  }
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("user_tracked").delete().eq("user_id", userId).eq("film_stock_slug", slug);
-  if (error) {
-    console.error("[user-actions] removeTracked error:", error.message, { slug });
-    return { synced: false };
+  const { error: insertErr } = await supabase.from("user_in_camera").insert({
+    user_id: userId,
+    film_stock_slug: slug,
+    camera: metadata?.camera || null,
+    format: metadata?.format || null,
+  });
+  if (insertErr) {
+    console.error("[user-actions] toggleInCamera insert error:", insertErr.message, { slug });
+    return { added: false, synced: false };
   }
   revalidatePath("/films/[slug]", "page");
   revalidatePath(`/films/${slug}`);
   revalidatePath("/profile");
-  return { synced: true };
+  return { added: true, synced: true };
 }
 
-export interface LoggedRollEntry {
-  id: string;
-  film_stock_slug: string;
-  format: string;
-  status: string;
-  expiry_date: string | null;
-  quantity: number;
-  created_at: string;
-}
-
-export interface SaveLoggedRollExtras {
-  camera?: string;
-  lens?: string;
-  shotIso?: string;
-  notes?: string;
-  lab?: string;
-  dateLoaded?: string;
-}
-
-/** Save logged roll(s). Inserts one row per roll so each appears as a separate card and can be managed individually. */
-export async function saveLoggedRoll(
-  film_stock_slug: string,
-  format: string,
-  status: string,
-  expiry_date: string,
-  quantity: number,
-  extras?: SaveLoggedRollExtras
-): Promise<{ synced: boolean }> {
-  const userId = await getCurrentUserId();
-  if (!userId) return { synced: false };
-
-  const qty = Math.max(1, Math.min(999, Math.round(quantity)));
-  const supabase = await createClient();
-  const rows = Array.from({ length: qty }, () => ({
-    user_id: userId,
-    film_stock_slug,
-    format: format || "",
-    status: status || "in_fridge",
-    expiry_date: expiry_date || null,
-    quantity: 1,
-    camera: extras?.camera || null,
-    lens: extras?.lens || null,
-    shot_iso: extras?.shotIso || null,
-    notes: extras?.notes || null,
-    lab: extras?.lab || null,
-    date_loaded: extras?.dateLoaded || null,
-  }));
-  const { error } = await supabase.from("user_logged_rolls").insert(rows);
-  if (error) {
-    console.error("[user-actions] saveLoggedRoll error:", error.message, { film_stock_slug });
-    return { synced: false };
-  }
-  revalidatePath("/films/[slug]", "page");
-  revalidatePath(`/films/${film_stock_slug}`);
-  revalidatePath("/profile");
-  return { synced: true };
-}
-
-/** Delete a logged roll by id. Caller must own the roll (enforced by RLS). Pass filmSlug to revalidate that film page. */
-export async function deleteLoggedRoll(rollId: string, filmSlug?: string): Promise<{ synced: boolean }> {
-  const userId = await getCurrentUserId();
-  if (!userId) return { synced: false };
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("user_logged_rolls")
-    .delete()
-    .eq("id", rollId)
-    .eq("user_id", userId);
-  if (error) {
-    console.error("[user-actions] deleteLoggedRoll error:", error.message, { rollId });
-    return { synced: false };
-  }
-  revalidatePath("/profile");
-  if (filmSlug) revalidatePath(`/films/${filmSlug}`);
-  revalidatePath("/films/[slug]", "page");
-  return { synced: true };
-}
-
-/** Fetch logged rolls for the current user for a given film slug (for film page tab). */
-export async function getLoggedRollsForFilm(slug: string): Promise<LoggedRollEntry[]> {
+/** Fetch all "in camera" stocks for the current user. */
+export async function getInCameraStocks(): Promise<InCameraEntry[]> {
   const userId = await getCurrentUserId();
   if (!userId) return [];
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("user_logged_rolls")
-    .select("id, film_stock_slug, format, status, expiry_date, quantity, created_at")
-    .eq("user_id", userId)
-    .eq("film_stock_slug", slug)
-    .order("created_at", { ascending: false });
-  if (error) {
-    console.error("[user-actions] getLoggedRollsForFilm error:", error.message, { slug });
-    return [];
-  }
-  return (data ?? []).map((r) => ({
-    id: r.id,
-    film_stock_slug: r.film_stock_slug,
-    format: r.format ?? "",
-    status: r.status ?? "",
-    expiry_date: r.expiry_date,
-    quantity: Number(r.quantity) || 1,
-    created_at: r.created_at,
-  }));
-}
-
-/** Fetch all logged rolls for the current user (for Vault page). Lightweight: one query only. */
-export async function getVaultRolls(): Promise<LoggedRollEntry[]> {
-  const userId = await getCurrentUserId();
-  if (!userId) return [];
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("user_logged_rolls")
-    .select("id, film_stock_slug, format, status, expiry_date, quantity, created_at")
+    .from("user_in_camera")
+    .select("film_stock_slug, camera, format, created_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) {
-    console.error("[user-actions] getVaultRolls error:", error.message);
+    console.error("[user-actions] getInCameraStocks error:", error.message);
     return [];
   }
   return (data ?? []).map((r) => ({
-    id: r.id,
     film_stock_slug: r.film_stock_slug,
-    format: r.format ?? "",
-    status: r.status ?? "",
-    expiry_date: r.expiry_date,
-    quantity: Number(r.quantity) || 1,
+    camera: r.camera ?? null,
+    format: r.format ?? null,
     created_at: r.created_at,
   }));
 }

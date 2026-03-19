@@ -14,7 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { TrackFilmModalStock } from "@/components/track-film-modal";
+interface TrackFilmModalStock {
+  slug: string;
+  name: string;
+  brand: { name: string; slug: string };
+  format: string[];
+  image_url: string | null;
+}
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 
 const PUSH_PULL_OPTIONS = ["-2", "-1", "0", "+1", "+2", "+3"] as const;

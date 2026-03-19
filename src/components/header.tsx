@@ -5,7 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Menu, X, UserRound, Plus, ListTodo, NotebookPen, ImagePlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2 } from "lucide-react";
+import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -293,16 +293,8 @@ export function Header() {
                     onClick={() => setActionsOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
-                    <ListTodo className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    Track a roll
-                  </Link>
-                  <Link
-                    href="/films"
-                    onClick={() => setActionsOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
-                  >
                     <NotebookPen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    Add Shooting Notes
+                    Add a review
                   </Link>
                   <Link
                     href="/films"
@@ -310,7 +302,15 @@ export function Header() {
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
                     <ImagePlus className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    Upload images
+                    Add shots
+                  </Link>
+                  <Link
+                    href="/films"
+                    onClick={() => setActionsOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
+                  >
+                    <ListPlus className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    Create a list
                   </Link>
                 </div>
               )}
@@ -320,20 +320,20 @@ export function Header() {
           )}
         </div>
 
-        {/* Center column: logo (FilmDB / mobile stock name). Search page mobile uses single-column block above. */}
+        {/* Center column: logo (exposure club / mobile stock name). Search page mobile uses single-column block above. */}
         <div className="flex min-w-0 flex-1 items-center justify-center">
           <Link
             href="/"
-            className="hidden whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80 md:inline-block"
+            className="hidden whitespace-nowrap text-2xl font-bold tracking-tight transition-opacity hover:opacity-80 md:inline-block font-young-serif"
           >
-            FilmDB
+            exposure club
           </Link>
           {!isSearchPage && (
             <Link
               href={mobileHeaderTitle && pathname ? pathname : "/"}
-              className="whitespace-nowrap text-lg font-bold tracking-tight transition-opacity hover:opacity-80 md:hidden font-sans"
+              className={`whitespace-nowrap font-bold tracking-tight transition-opacity hover:opacity-80 md:hidden ${mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-young-serif"}`}
             >
-              {mobileHeaderTitle ?? "FilmDB"}
+              {mobileHeaderTitle ?? "exposure club"}
             </Link>
           )}
         </div>
@@ -489,16 +489,8 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
-                  <ListTodo className="h-4 w-4 shrink-0" />
-                  Track a roll
-                </Link>
-                <Link
-                  href="/films"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                >
                   <NotebookPen className="h-4 w-4 shrink-0" />
-                  Add Shooting Notes
+                  Add a review
                 </Link>
                 <Link
                   href="/films"
@@ -506,7 +498,15 @@ export function Header() {
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
                   <ImagePlus className="h-4 w-4 shrink-0" />
-                  Upload images
+                  Add shots
+                </Link>
+                <Link
+                  href="/films"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                >
+                  <ListPlus className="h-4 w-4 shrink-0" />
+                  Create a list
                 </Link>
                 <button
                   type="button"

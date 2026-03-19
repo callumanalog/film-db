@@ -1,22 +1,17 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { TrackedEntry } from "@/lib/user-store";
-import type { LoggedRollEntry } from "@/app/actions/user-actions";
+import type { InCameraEntry } from "@/app/actions/user-actions";
 
 export interface ProfileFromDb {
   displayName: string;
   shotSlugs: string[];
   favouriteSlugs: string[];
-  tracked: TrackedEntry[];
-  /** Logged rolls (e.g. In Fridge) for profile "Logged Rolls" tab */
-  loggedRolls: LoggedRollEntry[];
+  inCameraEntries: InCameraEntry[];
   ratings: Record<string, number>;
   reviewCount: number;
   uploadCount: number;
-  /** User's reviews for profile "Shooting Notes" section */
   reviews: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
-  /** User's uploads for profile "Gallery" section */
   uploads: { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[];
 }
 
@@ -30,13 +25,11 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
     }
     if (!user) return null;
 
-    const [profileRes, shotRes, favRes, shootlistRes, trackedRes, loggedRollsRes, ratingsRes, reviewsRes, uploadsRes, reviewsListRes, uploadsListRes] = await Promise.all([
+    const [profileRes, shotRes, favRes, inCameraRes, ratingsRes, reviewsRes, uploadsRes, reviewsListRes, uploadsListRes] = await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).single(),
       supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
       supabase.from("user_favourites").select("film_stock_slug").eq("user_id", user.id),
-      supabase.from("user_shootlist").select("film_stock_slug").eq("user_id", user.id),
-      supabase.from("user_tracked").select("film_stock_slug, format, status, expiry_date, notes").eq("user_id", user.id),
-      supabase.from("user_logged_rolls").select("id, film_stock_slug, format, status, expiry_date, quantity, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("user_in_camera").select("film_stock_slug, camera, format, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
       supabase.from("user_ratings").select("film_stock_slug, rating").eq("user_id", user.id),
       supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("user_uploads").select("id", { count: "exact", head: true }).eq("user_id", user.id),
@@ -53,35 +46,22 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
 
     const shotSlugs = (shotRes.data ?? []).map((r) => r.film_stock_slug);
     const favouriteSlugs = (favRes.data ?? []).map((r) => r.film_stock_slug);
-    const shootlistSlugs = (shootlistRes.data ?? []).map((r) => r.film_stock_slug);
-    const tracked: TrackedEntry[] = (trackedRes.data ?? []).map((r) => ({
-      slug: r.film_stock_slug,
-      format: r.format ?? "",
-      status: r.status ?? "",
-      expiryDate: r.expiry_date ?? "",
-      notes: r.notes ?? "",
+    const inCameraEntries: InCameraEntry[] = (inCameraRes.data ?? []).map((r) => ({
+      film_stock_slug: r.film_stock_slug,
+      camera: r.camera ?? null,
+      format: r.format ?? null,
+      created_at: r.created_at,
     }));
     const ratings: Record<string, number> = {};
     for (const r of ratingsRes.data ?? []) {
       ratings[r.film_stock_slug] = Number(r.rating);
     }
 
-    const loggedRolls: LoggedRollEntry[] = (loggedRollsRes.data ?? []).map((r) => ({
-      id: r.id,
-      film_stock_slug: r.film_stock_slug,
-      format: r.format ?? "",
-      status: r.status ?? "",
-      expiry_date: r.expiry_date,
-      quantity: Number(r.quantity) || 1,
-      created_at: r.created_at,
-    }));
-
     return {
       displayName,
       shotSlugs,
-      favouriteSlugs: favouriteSlugs.length ? favouriteSlugs : shootlistSlugs,
-      tracked,
-      loggedRolls,
+      favouriteSlugs,
+      inCameraEntries,
       ratings,
       reviewCount: reviewsRes.count ?? 0,
       uploadCount: uploadsRes.count ?? 0,

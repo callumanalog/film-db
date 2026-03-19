@@ -4,13 +4,9 @@ import { lazy, Suspense, useState, type ReactNode } from "react";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import type { OverviewTabContentProps } from "@/components/overview-tab-content";
 import type { FlickrPhoto } from "@/lib/flickr";
-import type { LoggedRollEntry } from "@/app/actions/user-actions";
 
 const LazyOverviewTab = lazy(() =>
   import("@/components/overview-tab-content").then((m) => ({ default: m.OverviewTabContent }))
-);
-const LazyRollsTab = lazy(() =>
-  import("@/components/rolls-tab-content").then((m) => ({ default: m.RollsTabContent }))
 );
 const LazyShotsTab = lazy(() =>
   import("@/components/shots-tab-content").then((m) => ({ default: m.ShotsTabContent }))
@@ -32,7 +28,6 @@ function TabSkeleton() {
 export interface FilmDetailTabsLazyProps {
   defaultId: string;
   overviewProps: OverviewTabContentProps;
-  rollsProps: { loggedRolls: LoggedRollEntry[]; slug: string };
   shotsProps: { stockName: string; slug: string; flickrImages: FlickrPhoto[] };
   notesProps: { slug: string };
   rightPane?: ReactNode;
@@ -42,7 +37,6 @@ export interface FilmDetailTabsLazyProps {
 export function FilmDetailTabsLazy({
   defaultId,
   overviewProps,
-  rollsProps,
   shotsProps,
   notesProps,
   rightPane,
@@ -58,16 +52,6 @@ export function FilmDetailTabsLazy({
         activeId === "overview" ? (
           <Suspense fallback={<TabSkeleton />}>
             <LazyOverviewTab {...overviewProps} />
-          </Suspense>
-        ) : null,
-    },
-    {
-      id: "rolls",
-      label: "Rolls",
-      content:
-        activeId === "rolls" ? (
-          <Suspense fallback={<TabSkeleton />}>
-            <LazyRollsTab {...rollsProps} />
           </Suspense>
         ) : null,
     },
