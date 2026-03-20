@@ -50,7 +50,9 @@ import {
   FileVideo,
   ListPlus,
 } from "lucide-react";
+import { IconCircleCheck, IconCrosshair } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { Toggle } from "@/components/ui/toggle";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { QuickActions } from "@/components/community-section";
 import { AddReviewModal } from "@/components/add-review-modal";
@@ -454,6 +456,13 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
   const [inCameraDrawerOpen, setInCameraDrawerOpen] = useState(false);
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setMoreSheetOpen(true);
+    window.addEventListener("film-detail-more", handler);
+    return () => window.removeEventListener("film-detail-more", handler);
+  }, []);
 
   const didHandleUploadIntent = useRef(false);
   useEffect(() => {
@@ -518,8 +527,8 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
   return (
     <div className="md:hidden">
       {/* Image card */}
-      <div className="bg-background px-4">
-        <div className="relative w-full overflow-hidden rounded-card border border-border/50 bg-card">
+      <div className="flex justify-center bg-background px-4">
+        <div className="relative w-full max-w-[280px] overflow-hidden rounded-card border border-border/50 bg-card">
           {stock.discontinued && (
             <span
               className="absolute left-1.5 top-1.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
@@ -541,61 +550,131 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
         </div>
       </div>
 
-      {/* Title + Shot It toggle */}
-      <div className="mt-4 flex items-center justify-between px-4">
-        <h1
-          ref={titleRef}
-          className="min-w-0 font-sans text-2xl font-bold tracking-tight"
-        >
-          {stock.name}
-        </h1>
-        <button
-          type="button"
-          onClick={handleShotIt}
-          className={cn(
-            "shrink-0 transition-colors",
-            isShot ? "text-emerald-600" : "text-muted-foreground hover:text-foreground"
-          )}
-          aria-label="Shot it"
-        >
-          {isShot
-            ? <CheckCircle2 className="h-8 w-8 fill-emerald-600 text-white" />
-            : <CirclePlus className="h-8 w-8" />
-          }
-        </button>
-      </div>
-
-      {/* Metadata */}
-      <p className="mt-1 px-4 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        {stock.typeLabel} | ISO {stock.iso} | {(stock.format ?? []).join(", ") || "—"}
-      </p>
+      {/* Title */}
+      <h1
+        ref={titleRef}
+        className="mt-4 text-center font-sans text-2xl font-bold tracking-tight px-4"
+      >
+        {stock.name}
+      </h1>
 
       {/* Stats row */}
-      <div className="mx-auto mt-5 grid w-full max-w-xs grid-cols-3 gap-2 px-4">
+      <div className="mx-auto mt-2 grid w-full max-w-xs grid-cols-3 gap-2 px-4">
         <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-sm font-semibold tracking-tight text-foreground">{stats?.shotByCount ?? 0}</span>
-          </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot It</span>
+          <span className="text-[22px] font-bold leading-tight text-foreground">{stats?.shotByCount ?? 0}</span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Shot It</span>
         </div>
         <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <Star className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              {stats?.avgRating != null ? stats.avgRating.toFixed(1) : "—"}
-            </span>
-          </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Avg. rating</span>
+          <span className="text-[22px] font-bold leading-tight text-foreground">
+            {stats?.avgRating != null ? stats.avgRating.toFixed(1) : "—"}
+          </span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Avg. rating</span>
         </div>
         <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center gap-1.5">
-            <ImageIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="text-sm font-semibold tracking-tight text-foreground">{stats?.shotsCount ?? 0}</span>
-          </div>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shots</span>
+          <span className="text-[22px] font-bold leading-tight text-foreground">{stats?.shotsCount ?? 0}</span>
+          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Shots</span>
         </div>
       </div>
+
+      {/* Shot It + Want to Shoot */}
+      <div className="mt-5 grid grid-cols-2 gap-2 px-4">
+        <Toggle
+          pressed={isShot}
+          onPressedChange={handleShotIt}
+          className={cn(
+            "!flex !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3",
+            isShot
+              ? "!border-emerald-500/40 !bg-emerald-500/10 !text-emerald-600 hover:!bg-emerald-500/15"
+              : "!border-border/60 !bg-transparent !text-muted-foreground hover:!border-foreground/30 hover:!text-foreground"
+          )}
+        >
+          <IconCircleCheck size={18} stroke={1.5} className={cn(isShot && "fill-emerald-600 text-white")} />
+          Shot It
+        </Toggle>
+        <Toggle
+          pressed={isFavourite}
+          onPressedChange={() => {
+            const { added } = toggleFavourite(slug);
+            showToastViaEvent(added ? "Added to want to shoot" : "Removed from want to shoot");
+          }}
+          className={cn(
+            "!flex !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3",
+            isFavourite
+              ? "!border-primary/40 !bg-primary/10 !text-primary hover:!bg-primary/15"
+              : "!border-border/60 !bg-transparent !text-muted-foreground hover:!border-foreground/30 hover:!text-foreground"
+          )}
+        >
+          <IconCrosshair size={18} stroke={1.5} />
+          Want to Shoot
+        </Toggle>
+      </div>
+
+      <Sheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen}>
+        <SheetContent side="bottom" showCloseButton={false} showDragHandle className="px-0 pb-8">
+          <SheetHeader className="px-6 pb-2">
+            <SheetTitle className="text-left text-base font-bold">{stock.name}</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col">
+            <button
+              type="button"
+              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                setMoreSheetOpen(false);
+                setReviewModalMode("review");
+                setReviewModalOpen(true);
+              }}
+            >
+              <Pencil className="h-5 w-5 text-muted-foreground" />
+              Write a Review
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                setMoreSheetOpen(false);
+                setReviewModalMode("upload");
+                setReviewModalOpen(true);
+              }}
+            >
+              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+              Upload Scans
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                setMoreSheetOpen(false);
+                handleInCameraToggle();
+              }}
+            >
+              <Camera className="h-5 w-5 text-muted-foreground" />
+              {isInCamera ? "Remove from Camera" : "Mark as In Camera"}
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                setMoreSheetOpen(false);
+                showToastViaEvent("Add to list coming soon");
+              }}
+            >
+              <ListPlus className="h-5 w-5 text-muted-foreground" />
+              Add to List
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              onClick={() => {
+                setMoreSheetOpen(false);
+                showToastViaEvent("Rate coming soon");
+              }}
+            >
+              <Star className="h-5 w-5 text-muted-foreground" />
+              Rate
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <InCameraDrawer
         open={inCameraDrawerOpen}

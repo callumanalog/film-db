@@ -9,7 +9,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { PlusActionSheet } from "@/components/plus-action-sheet";
 import { UserActionsProvider } from "@/context/user-actions-context";
 import { AuthProvider } from "@/context/auth-context";
-import { ToastProvider } from "@/components/toast";
+import { Toaster } from "@/components/ui/sonner";
 import { UrlToastHandler } from "@/components/url-toast-handler";
 import { MobileHeaderTitleProvider } from "@/context/mobile-header-title-context";
 import { FilmsSearchProvider } from "@/context/films-search-context";
@@ -80,7 +80,6 @@ export default function RootLayout({
             <MobileHeaderTitleProvider>
             <FilmsSearchProvider>
             <NavSWRProvider>
-            <ToastProvider>
               <Suspense fallback={null}>
                 <UrlToastHandler />
               </Suspense>
@@ -92,7 +91,7 @@ export default function RootLayout({
               <BottomNav />
               <PlusActionSheet />
               <SpeedInsights />
-            </ToastProvider>
+              <Toaster />
             </NavSWRProvider>
             </FilmsSearchProvider>
             </MobileHeaderTitleProvider>

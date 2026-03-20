@@ -135,9 +135,11 @@ export function Header() {
           </div>
           <button
             type="button"
-            className="flex-shrink-0 rounded-full border border-border/60 px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            onClick={() => window.dispatchEvent(new CustomEvent("film-detail-more"))}
+            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="More actions"
           >
-            Follow
+            <MoreHorizontal className="h-5 w-5" />
           </button>
         </div>
       )}

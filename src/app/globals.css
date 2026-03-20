@@ -82,11 +82,11 @@
 
 :root {
   --background: oklch(0.985 0.002 75);
-  --foreground: #1F2937;
+  --foreground: #191919;
   --card: oklch(1 0 0);
-  --card-foreground: #1F2937;
+  --card-foreground: #191919;
   --popover: oklch(1 0 0);
-  --popover-foreground: #1F2937;
+  --popover-foreground: #191919;
   --primary: #D97706;
   --primary-foreground: oklch(0.98 0.005 75);
   --secondary: oklch(0.95 0.005 75);
@@ -94,7 +94,7 @@
   --muted: oklch(0.94 0.005 75);
   --muted-foreground: oklch(0.45 0.02 60);
   --accent: oklch(0.93 0.01 70);
-  --accent-foreground: #1F2937;
+  --accent-foreground: #191919;
   --destructive: oklch(0.55 0.22 27);
   --border: oklch(0.88 0.01 70);
   --input: oklch(0.88 0.01 70);
@@ -107,11 +107,11 @@
   --chart-5: oklch(0.35 0.06 10);
   --radius: 0.625rem;
   --sidebar: oklch(0.97 0.003 75);
-  --sidebar-foreground: #1F2937;
+  --sidebar-foreground: #191919;
   --sidebar-primary: #D97706;
   --sidebar-primary-foreground: oklch(0.98 0.005 75);
   --sidebar-accent: oklch(0.93 0.01 70);
-  --sidebar-accent-foreground: #1F2937;
+  --sidebar-accent-foreground: #191919;
   --sidebar-border: oklch(0.88 0.01 70);
   --sidebar-ring: #D97706;
 
@@ -274,6 +274,21 @@
 }
 .animate-ken-burns {
   animation: ken-burns 20s ease-in-out infinite alternate;
+}
+
+/* Sonner toast overrides — full-width on mobile, clear bottom nav */
+@media (max-width: 639px) {
+  [data-sonner-toaster] {
+    --offset: 88px !important;
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
+    transform: none !important;
+  }
+  [data-sonner-toast] {
+    width: 100% !important;
+    max-width: none !important;
+  }
 }
 
 /* Auth: film grain overlay */
