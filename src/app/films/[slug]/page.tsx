@@ -4,15 +4,16 @@ import type { Metadata } from "next";
 import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand } from "@/lib/supabase/queries";
 import { getFilmStockStats, getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
+import { getUploadsForFilmStock } from "@/app/actions/uploads";
+import { buildLandscapeCommunityHeroSlides } from "@/lib/film-hero-community";
 import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
 import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS, COLOR_SENSITIVITY_LABELS, isBlackAndWhiteFilm } from "@/lib/types";
-import type { LatitudeFilter, DevelopmentProcess } from "@/lib/types";
+import type { DevelopmentProcess } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
-import { CommunityReviews } from "@/components/community-section";
-import { StickyLeftPane, PageTitleHeader, MobileFilmHero } from "@/components/hero-mockups";
-import { FilmDetailTabsLazy } from "@/components/film-detail-tabs-lazy";
+import { StickyLeftPane, PageTitleHeader, FilmDetailMobileStickyBanner, FilmDetailMobileToolbar } from "@/components/hero-mockups";
+import { cn } from "@/lib/utils";
+import { OverviewTabContent } from "@/components/overview-tab-content";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
-import { getReviewsForSlug } from "@/lib/seed-film-reviews";
 import { SetFilmMobileHeader } from "@/components/set-film-mobile-header";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
@@ -23,7 +24,6 @@ export const dynamic = "force-dynamic";
 
 interface FilmDetailPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }
 
 export async function generateMetadata({
@@ -44,20 +44,22 @@ export async function generateStaticParams() {
   return stocks.map((stock) => ({ slug: stock.slug }));
 }
 
-export default async function FilmDetailPage({ params, searchParams }: FilmDetailPageProps) {
+export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   const { slug } = await params;
-  const { tab } = await searchParams;
   const stock = await getFilmStockBySlug(slug);
 
   if (!stock) notFound();
 
-  const [stats, relatedStocks, moreFromBrandStocks, flickrImages] = await Promise.all([
+  const [stats, relatedStocks, moreFromBrandStocks, flickrImages, communityUploads] = await Promise.all([
     getFilmStockStats(slug),
     getRelatedStocks(stock, 6),
     getMoreFromBrand(stock, 8),
     getFlickrSampleImagesForStock(slug).catch(() => []),
+    getUploadsForFilmStock(slug),
   ]);
+
   const typeColor = FILM_TYPE_COLORS[stock.type];
+  const communityHeroSlides = await buildLandscapeCommunityHeroSlides(communityUploads, stock.name);
 
   /** Development process: from stock or derive from type (C-41, E-6, B&W). CineStill films are C-41. */
   const developmentProcessValue: DevelopmentProcess | null =
@@ -96,15 +98,7 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
   /** Release date: year only from year_introduced. */
   const releaseDateValue = stock.year_introduced != null ? String(stock.year_introduced) : "—";
 
-  /** Build specs for overview tab:
-   * Row 1: Format | Release Date
-   * Row 2: Film Type | Latitude
-   * Row 3: ISO | Color Balance
-   * Row 4: Grain | DX Coding
-   * Row 5: Contrast | Development Process
-   * Row 6: Saturation or Color Sensitivity (when set) | —
-   * Row 7: Use case (full width, no dividing line)
-   */
+  /** Build specs for detail pane + sticky sidebar. */
   const pairedSpecsRows: { label: string; value: string }[][] = [
     [
       { label: "Format", value: (stock.format ?? []).join(", ") },
@@ -196,28 +190,6 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
   const sharedWithSimilar = brandStocksSorted.filter((s) => similarStockIds.has(s.id));
   const moreFromBrandOrdered = [...uniqueToBrand, ...sharedWithSimilar].slice(0, 8);
 
-  const { web: reviewsFromWeb, video: videoReviews } = getReviewsForSlug(slug);
-
-  const overviewProps = {
-    description: stock.description,
-    flickrImages,
-    shootingNotes: stock.shooting_notes,
-    reviewsFromWeb,
-    videoReviews,
-    purchaseLinks: sortedLinks,
-    stockName: stock.name,
-    bestFor: stock.best_for ?? [],
-    specs: overviewSpecsFlat,
-    useCaseSpec,
-    characterScales: {
-      grain: stock.grain ?? undefined,
-      contrast: stock.contrast ?? undefined,
-      saturation: stock.saturation ?? undefined,
-      latitude: stock.latitude ?? undefined,
-    },
-    filmType: stock.type,
-  };
-
   return (
     <div className="work-sans-content">
       <SetFilmMobileHeader
@@ -228,31 +200,54 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
         format={stock.format ?? []}
       />
       <ScrollToTopOnRouteChange />
-      <MobileFilmHero stock={stockProps.stock} stats={stockProps.stats} />
-      <div className="mx-auto max-w-6xl px-4 pt-0 pb-8 sm:px-6 md:py-8 lg:px-8">
-        <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
-          <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="font-medium text-foreground">{stock.name}</span>
-        </nav>
+      {/* Mobile: sticky image + one sheet div (toolbar + nav + grid). Desktop: same max-w wrapper, sheet chrome disabled at md+. */}
+      {/* items-start + w-full children: fixes sticky hero (flex stretch breaks position:sticky in some engines). */}
+      <div className="flex flex-col items-start bg-background md:contents">
+        <FilmDetailMobileStickyBanner stock={stockProps.stock} communityHeroSlides={communityHeroSlides} />
+        <div
+          className={cn(
+            "relative z-20 mx-auto w-full max-w-6xl px-6 pb-8 sm:px-6 lg:px-8",
+            /* Mobile: pull up over hero + stronger top shadow so the sheet reads as sliding over the image. */
+            "-mt-3 overflow-hidden rounded-t-[7px] bg-background pt-4 shadow-[0_-8px_28px_-8px_rgba(0,0,0,0.14)] dark:shadow-[0_-8px_32px_-8px_rgba(0,0,0,0.35)]",
+            "md:-mt-0 md:overflow-visible md:rounded-none md:bg-transparent md:pt-8 md:shadow-none"
+          )}
+        >
+          <FilmDetailMobileToolbar stock={stockProps.stock} stats={stockProps.stats} />
+          <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
+            <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="font-medium text-foreground">{stock.name}</span>
+          </nav>
 
-        {/* Mobile: full-bleed image above; no H1; stats card + tabs. md+: Sidebar left, Title+Tabs right. */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
-          <div className="order-2 min-w-0 md:order-1 md:row-span-2">
-            <StickyLeftPane {...stockProps} />
-          </div>
-          <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
-            <PageTitleHeader {...stockProps} />
-          </div>
-          <div className="order-3 min-w-0 -mt-2 md:mt-0">
-            <FilmDetailTabsLazy
-              defaultId={tab === "shots" || tab === "gallery" ? "shots" : tab === "notes" || tab === "reviews" ? "notes" : "overview"}
-              overviewProps={overviewProps}
-              shotsProps={{ stockName: stock.name, slug, flickrImages }}
-              notesProps={{ slug }}
-            />
+          <div className="grid grid-cols-1 gap-0 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
+            <div className="order-2 min-w-0 md:order-1 md:row-span-2">
+              <StickyLeftPane {...stockProps} />
+            </div>
+            <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
+              <PageTitleHeader {...stockProps} />
+            </div>
+            <div className="order-3 min-w-0 pt-4 md:pt-0">
+              <OverviewTabContent
+                description={stock.description}
+                filmSlug={slug}
+                shootingNotes={stock.shooting_notes}
+                purchaseLinks={sortedLinks}
+                stockName={stock.name}
+                bestFor={stock.best_for ?? []}
+                specs={overviewSpecsFlat}
+                useCaseSpec={useCaseSpec}
+                characterScales={{
+                  grain: stock.grain ?? undefined,
+                  contrast: stock.contrast ?? undefined,
+                  saturation: stock.saturation ?? undefined,
+                  latitude: stock.latitude ?? undefined,
+                }}
+                filmType={stock.type}
+                flickrImages={flickrImages}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -277,4 +272,3 @@ export default async function FilmDetailPage({ params, searchParams }: FilmDetai
     </div>
   );
 }
-

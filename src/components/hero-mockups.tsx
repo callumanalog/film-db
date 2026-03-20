@@ -43,14 +43,13 @@ import {
   Calendar,
   CirclePlus,
   Plus,
-  Bookmark,
   Landmark,
   Sunset,
   Lightbulb,
   FileVideo,
   ListPlus,
+  CircleCheck,
 } from "lucide-react";
-import { IconCircleCheck, IconCrosshair } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { Toggle } from "@/components/ui/toggle";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
@@ -69,6 +68,8 @@ import { useAuth } from "@/context/auth-context";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
+import type { HeroCarouselSlide } from "@/lib/film-hero-community";
+import { FilmMobileHeroCarousel } from "@/components/film-mobile-hero-carousel";
 
 const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
   general_purpose: Sun,
@@ -430,11 +431,75 @@ function UserStarRating({
   );
 }
 
-/* ─── Mobile full-bleed hero (film detail only) ─── */
+/* ─── Mobile film detail hero ─── */
 
-export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: FilmStockStatsProp | null }) {
+/**
+ * Mobile film hero: sits below the header (no overlap). Unified carousel: slide 1 = stock can,
+ * then community landscape shots. With no stock URL and no community, shows placeholder can only.
+ */
+export function FilmDetailMobileStickyBanner({
+  stock,
+  communityHeroSlides = [],
+}: Pick<HeroMockupProps, "stock"> & {
+  communityHeroSlides?: HeroCarouselSlide[];
+}) {
   const { slug } = stock;
   const isWide = slug === "cinestill-800t";
+  const hasCommunity = communityHeroSlides.length > 0;
+  const hasStockImage = Boolean(stock.image_url?.trim());
+  const useCarousel = hasStockImage || hasCommunity;
+
+  return (
+    <div
+      className={cn(
+        "md:hidden sticky z-0 w-full max-w-none shrink-0 self-start",
+        "border-b border-border/40 bg-white dark:bg-white"
+      )}
+      style={{ top: "calc(52px + env(safe-area-inset-top, 0px))" }}
+    >
+      {/* overflow on inner only — overflow:hidden on sticky box can prevent sticking in WebKit */}
+      <div className="relative w-full overflow-hidden">
+        {stock.discontinued && (
+          <span
+            className="absolute left-3 top-3 z-20 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+            aria-hidden
+          >
+            Discontinued
+          </span>
+        )}
+        {useCarousel ? (
+          <FilmMobileHeroCarousel
+            stock={{ slug: stock.slug, name: stock.name, image_url: stock.image_url }}
+            communityPhotos={communityHeroSlides}
+          />
+        ) : (
+          <div className="flex h-[220px] w-full shrink-0 items-center justify-center px-4 py-8">
+            <div className={isWide ? "h-40 w-48 shrink-0" : "h-48 w-40 shrink-0"}>
+              <FilmImage
+                stock={stock}
+                size={192}
+                priority
+                {...(isWide ? { width: 192, height: 160 } : {})}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Mobile title / meta / Shot It row + modals. Render inside the same sheet container as overview (film page).
+ * Horizontal padding comes from the parent `max-w-6xl` wrapper.
+ */
+export function FilmDetailMobileToolbar({
+  stock,
+  stats,
+}: HeroMockupProps & {
+  stats?: FilmStockStatsProp | null;
+}) {
+  const { slug } = stock;
   const titleRef = useRef<HTMLHeadingElement>(null);
   const ctx = useMobileHeaderTitle();
 
@@ -487,15 +552,15 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
   const isShot = shotSlugs.includes(slug);
   const rating = ratings[slug] ?? 0;
 
-  const handleRatingChange = (value: number) => {
-    persistRating(slug, value);
-    if (value > 0 && !shotSlugs.includes(slug)) {
-      toggleShot(slug);
-      showToastViaEvent("Added to stocks you've shot");
+  /** Mobile Shot It pill: off → mark shot + open review; on → unmark only (no sheet). */
+  const handleShotItTogglePressed = (nextPressed: boolean) => {
+    if (!nextPressed) {
+      if (isShot) {
+        toggleShot(slug);
+        showToastViaEvent("Removed from stocks you've shot");
+      }
+      return;
     }
-  };
-
-  const handleShotIt = () => {
     if (!isShot) {
       toggleShot(slug);
       showToastViaEvent("Marked as shot");
@@ -525,88 +590,113 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
   }, [ctx]);
 
   return (
-    <div className="md:hidden">
-      {/* Image card */}
-      <div className="flex justify-center bg-background px-4">
-        <div className="relative w-full max-w-[280px] overflow-hidden rounded-card border border-border/50 bg-card">
-          {stock.discontinued && (
-            <span
-              className="absolute left-1.5 top-1.5 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+    <>
+      <div className="md:hidden">
+        <h1
+          ref={titleRef}
+          className="text-left font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
+        >
+          {stock.name}
+        </h1>
+
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-relaxed text-muted-foreground">
+          <span className="inline-flex shrink-0 items-center gap-1">
+            <Star
+              className="size-[1em] shrink-0 fill-amber-400 text-amber-400"
               aria-hidden
+            />
+            {stats?.avgRating != null ? (
+              <button
+                type="button"
+                className="cursor-pointer border-0 bg-transparent p-0 font-semibold tabular-nums text-foreground underline decoration-muted-foreground/55 underline-offset-2 hover:text-primary hover:decoration-primary/80"
+                aria-label="View reviews"
+                onClick={() => {
+                  /* TODO: navigate to reviews section */
+                }}
+              >
+                {stats.avgRating.toFixed(1)}
+              </button>
+            ) : (
+              <span className="tabular-nums">—</span>
+            )}
+          </span>
+          <span className="shrink-0 select-none text-foreground" aria-hidden>
+            ·
+          </span>
+          <span className="min-w-0 shrink-0 text-foreground">{stock.typeLabel}</span>
+          <span className="shrink-0 select-none text-foreground" aria-hidden>
+            ·
+          </span>
+          <span className="min-w-0 shrink-0 tabular-nums text-foreground">
+            ISO {stock.iso != null ? stock.iso : "—"}
+          </span>
+          <span className="shrink-0 select-none text-foreground" aria-hidden>
+            ·
+          </span>
+          <span className="min-w-0 max-w-full text-foreground">
+            {(stock.format ?? []).length > 0 ? (stock.format ?? []).join(", ") : "—"}
+          </span>
+        </div>
+
+        <div className="mt-5 w-full">
+          <div className="grid w-full min-w-0 grid-cols-2 gap-2">
+            <Toggle
+              pressed={isShot}
+              onPressedChange={handleShotItTogglePressed}
+              className={cn(
+                "!flex !min-w-0 !w-full !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
+                isShot
+                  ? "!border-primary aria-pressed:!border-primary"
+                  : "!border-border/60 hover:!border-foreground/30"
+              )}
             >
-              Discontinued
-            </span>
-          )}
-          <div className="flex w-full items-center justify-center bg-white">
-            <div className={isWide ? "h-40 w-48" : "h-48 w-40"}>
-              <FilmImage
-                stock={stock}
-                size={192}
-                priority
-                {...(isWide ? { width: 192, height: 160 } : {})}
-              />
-            </div>
+              {isShot ? (
+                <span
+                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-primary"
+                  aria-hidden
+                >
+                  <Check className="size-2.5 text-white" strokeWidth={3} />
+                </span>
+              ) : (
+                <CircleCheck
+                  className="size-4 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              )}
+              Shot It
+            </Toggle>
+            <Toggle
+              pressed={isFavourite}
+              onPressedChange={() => {
+                const { added } = toggleFavourite(slug);
+                showToastViaEvent(added ? "Added to Shootlist" : "Removed from Shootlist");
+              }}
+              className={cn(
+                "!flex !min-w-0 !w-full !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
+                isFavourite
+                  ? "!border-primary aria-pressed:!border-primary"
+                  : "!border-border/60 hover:!border-foreground/30"
+              )}
+            >
+              {isFavourite ? (
+                <span
+                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-primary"
+                  aria-hidden
+                >
+                  <Plus className="size-2.5 text-white" strokeWidth={3} />
+                </span>
+              ) : (
+                <CirclePlus
+                  className="size-4 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              )}
+              Shootlist
+            </Toggle>
           </div>
         </div>
-      </div>
-
-      {/* Title */}
-      <h1
-        ref={titleRef}
-        className="mt-4 text-center font-sans text-2xl font-bold tracking-tight px-4"
-      >
-        {stock.name}
-      </h1>
-
-      {/* Stats row */}
-      <div className="mx-auto mt-2 grid w-full max-w-xs grid-cols-3 gap-2 px-4">
-        <div className="flex flex-col items-center">
-          <span className="text-[22px] font-bold leading-tight text-foreground">{stats?.shotByCount ?? 0}</span>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Shot It</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-[22px] font-bold leading-tight text-foreground">
-            {stats?.avgRating != null ? stats.avgRating.toFixed(1) : "—"}
-          </span>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Avg. rating</span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-[22px] font-bold leading-tight text-foreground">{stats?.shotsCount ?? 0}</span>
-          <span className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Shots</span>
-        </div>
-      </div>
-
-      {/* Shot It + Want to Shoot */}
-      <div className="mt-5 grid grid-cols-2 gap-2 px-4">
-        <Toggle
-          pressed={isShot}
-          onPressedChange={handleShotIt}
-          className={cn(
-            "!flex !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3",
-            isShot
-              ? "!border-emerald-500/40 !bg-emerald-500/10 !text-emerald-600 hover:!bg-emerald-500/15"
-              : "!border-border/60 !bg-transparent !text-muted-foreground hover:!border-foreground/30 hover:!text-foreground"
-          )}
-        >
-          <IconCircleCheck size={18} stroke={1.5} className={cn(isShot && "fill-emerald-600 text-white")} />
-          Shot It
-        </Toggle>
-        <Toggle
-          pressed={isFavourite}
-          onPressedChange={() => {
-            const { added } = toggleFavourite(slug);
-            showToastViaEvent(added ? "Added to want to shoot" : "Removed from want to shoot");
-          }}
-          className={cn(
-            "!flex !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3",
-            isFavourite
-              ? "!border-primary/40 !bg-primary/10 !text-primary hover:!bg-primary/15"
-              : "!border-border/60 !bg-transparent !text-muted-foreground hover:!border-foreground/30 hover:!text-foreground"
-          )}
-        >
-          <IconCrosshair size={18} stroke={1.5} />
-          Want to Shoot
-        </Toggle>
       </div>
 
       <Sheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen}>
@@ -767,7 +857,7 @@ export function MobileFilmHero({ stock, stats }: HeroMockupProps & { stats?: Fil
           }
         }}
       />
-    </div>
+    </>
   );
 }
 
@@ -909,29 +999,35 @@ export function StickyLeftPane({
 
         {/* Action buttons — hidden on mobile (shown in MobileFilmActions) */}
         <div className="hidden md:block border-t border-border/50 bg-card px-3 py-3">
-          {/* Tier 1: Want to Shoot + In Camera toggles */}
-          <div className="flex gap-2">
+          {/* Tier 1: Shootlist + In Camera toggles */}
+          <div className="grid w-full grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => {
                 const { added } = toggleFavourite(slug);
-                showToastViaEvent(added ? "Added to want to shoot" : "Removed from want to shoot");
+                showToastViaEvent(added ? "Added to Shootlist" : "Removed from Shootlist");
               }}
               aria-pressed={isFavourite}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full border py-2 text-xs font-semibold transition-colors ${
+              className={`flex min-w-0 w-full items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
                 isFavourite
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-transparent text-muted-foreground hover:bg-muted/40"
                   : "border-border/60 bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
               }`}
             >
-              <Bookmark className={`h-3.5 w-3.5 shrink-0 ${isFavourite ? "fill-primary" : ""}`} aria-hidden />
-              Want to shoot
+              {isFavourite ? (
+                <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-primary">
+                  <Plus className="size-2 text-white" strokeWidth={3} />
+                </span>
+              ) : (
+                <CirclePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+              )}
+              Shootlist
             </button>
             <button
               type="button"
               onClick={handleInCameraToggle}
               aria-pressed={isInCamera}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full border py-2 text-xs font-semibold transition-colors ${
+              className={`flex min-w-0 w-full items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
                 isInCamera
                   ? "border-blue-500 bg-blue-500/10 text-blue-600"
                   : "border-border/60 bg-card text-muted-foreground hover:border-blue-400/40 hover:text-foreground"
@@ -946,20 +1042,22 @@ export function StickyLeftPane({
           <button
             type="button"
             onClick={handleShotIt}
-            className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-[7px] py-3 text-sm font-semibold transition-colors ${
+            className={`mt-2.5 flex w-full items-center justify-center gap-2 border-2 py-3 text-sm font-semibold transition-colors ${
               isShot
-                ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15"
-                : "bg-foreground text-background hover:bg-foreground/90"
-            }`}
+                ? "border-primary bg-transparent text-muted-foreground hover:bg-muted/40"
+                : "border-transparent bg-foreground text-background hover:bg-foreground/90"
+            } rounded-[7px]`}
           >
             {isShot ? (
               <>
-                <Check className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary">
+                  <Check className="size-2.5 text-white" strokeWidth={3} />
+                </span>
                 Shot — Add review or shots
               </>
             ) : (
               <>
-                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-background" aria-hidden />
                 Shot it
               </>
             )}

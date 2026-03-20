@@ -107,10 +107,10 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
         tabs={[
           {
             id: "want",
-            label: "Want to Shoot",
+            label: "Shootlist",
             content: (
               <ProfileSection
-                emptyMessage="No stocks on your want to shoot list yet. Tap the bookmark on any film page."
+                emptyMessage="Nothing on your Shootlist yet. Tap the bookmark on any film page."
                 isEmpty={profile.favouriteSlugs.length === 0}
               >
                 <StockGrid slugs={profile.favouriteSlugs} stocksBySlug={stocksBySlug} />

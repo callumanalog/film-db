@@ -1,17 +1,14 @@
 "use client";
 
-import { toast } from "sonner";
-
+/**
+ * Toast bridge: dispatches a DOM event so Sonner can show the message without
+ * importing `sonner` here (avoids duplicate resolution paths / install edge cases).
+ */
 export const TOAST_EVENT_NAME = "film-db-toast";
 
-/**
- * Trigger a toast from anywhere — inside or outside React.
- * Uses Sonner's toast() directly when called from client code.
- * Also dispatches a CustomEvent for legacy listeners.
- */
 export function showToastViaEvent(message: string): void {
   if (typeof window === "undefined") return;
-  toast(message);
+  window.dispatchEvent(new CustomEvent(TOAST_EVENT_NAME, { detail: message }));
 }
 
 /**

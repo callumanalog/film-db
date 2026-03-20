@@ -37,11 +37,11 @@ const FILM_TYPE_COLORS = [
 ] as const;
 
 const HARDCODED_COLORS = [
-  { hex: "#E8E0D0", usage: "Stats row top border (MobileFilmHero)", note: "Outside design system — won't respond to dark mode" },
+  { hex: "#E8E0D0", usage: "Legacy stats row (film mobile hero)", note: "Outside design system — won't respond to dark mode" },
 ] as const;
 
 const BG_CLASSES = [
-  { cls: "bg-background", where: "MobileFilmHero, Header, body" },
+  { cls: "bg-background", where: "Film detail sheet, Header, body" },
   { cls: "bg-card", where: "Image card, FilmCard, SearchForm, action buttons" },
   { cls: "bg-white", where: "Image area inner, SearchForm, discovery header" },
   { cls: "bg-muted", where: "Spec icon containers, code blocks" },

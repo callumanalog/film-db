@@ -1,9 +1,25 @@
 "use client"
 
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useEffect } from "react"
+import { Toaster as Sonner, toast, type ToasterProps } from "sonner"
+import { TOAST_EVENT_NAME } from "@/components/toast"
+
+/** Listens for `showToastViaEvent` and forwards to Sonner. */
+function SonnerToastBridge() {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail
+      if (typeof detail === "string" && detail.length > 0) toast(detail)
+    }
+    window.addEventListener(TOAST_EVENT_NAME, handler)
+    return () => window.removeEventListener(TOAST_EVENT_NAME, handler)
+  }, [])
+  return null
+}
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
+    <>
     <Sonner
       theme="light"
       className="toaster group"
@@ -23,6 +39,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       {...props}
     />
+    <SonnerToastBridge />
+    </>
   )
 }
 

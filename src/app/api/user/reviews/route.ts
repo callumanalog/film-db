@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import imageSize from "image-size";
 import { createClient } from "@/lib/supabase/server";
 
 const BUCKET = "user-uploads";
@@ -49,10 +50,11 @@ export async function POST(request: Request) {
 
   // Pre-upload flow (shot sheet): image_url already in storage, only INSERT
   const preUploadedImageUrl = (formData.get("image_url") as string) || null;
-  let uploadedUrls: string[] = [];
+  type UploadedRow = { url: string; image_width: number | null; image_height: number | null };
+  let uploadedRows: UploadedRow[] = [];
 
   if (mode === "upload" && preUploadedImageUrl && preUploadedImageUrl.trim().length > 0) {
-    uploadedUrls = [preUploadedImageUrl.trim()];
+    uploadedRows = [{ url: preUploadedImageUrl.trim(), image_width: null, image_height: null }];
   } else {
     const files: File[] = [];
     for (let i = 0; i < MAX_FILES; i++) {
@@ -70,20 +72,33 @@ export async function POST(request: Request) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) continue;
+      const ab = await file.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+      let image_width: number | null = null;
+      let image_height: number | null = null;
+      try {
+        const dim = imageSize(Buffer.from(bytes));
+        if (dim.width && dim.height) {
+          image_width = dim.width;
+          image_height = dim.height;
+        }
+      } catch {
+        /* dimensions optional */
+      }
       const ext = file.name.split(".").pop() || "jpg";
       const path = `${prefix}/${Date.now()}-${i}.${ext}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(BUCKET)
-        .upload(path, file, { upsert: true });
+        .upload(path, bytes, { upsert: true, contentType: file.type });
       if (uploadError) {
         console.error("[reviews] storage upload error:", uploadError);
         continue;
       }
       const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(uploadData.path);
-      uploadedUrls.push(urlData.publicUrl);
+      uploadedRows.push({ url: urlData.publicUrl, image_width, image_height });
     }
 
-    if (files.length > 0 && uploadedUrls.length === 0) {
+    if (files.length > 0 && uploadedRows.length === 0) {
       return NextResponse.json(
         { error: "Image upload failed. Check that the 'user-uploads' storage bucket exists and allows uploads." },
         { status: 500 }
@@ -128,12 +143,14 @@ export async function POST(request: Request) {
     scanner: scanner || null,
     push_pull: pushPull || null,
   };
-  for (const url of uploadedUrls) {
+  for (const row of uploadedRows) {
     const { error: insertError } = await supabase.from("user_uploads").insert({
       user_id: user.id,
       film_stock_slug: slug,
-      image_url: url,
+      image_url: row.url,
       caption: captionToUse,
+      image_width: row.image_width,
+      image_height: row.image_height,
       ...metadata,
     });
     if (insertError) {
@@ -142,7 +159,7 @@ export async function POST(request: Request) {
     }
   }
 
-  if (uploadedUrls.length > 0 && uploadInsertErrors === uploadedUrls.length) {
+  if (uploadedRows.length > 0 && uploadInsertErrors === uploadedRows.length) {
     return NextResponse.json(
       { error: "Images were uploaded but could not be saved. Ensure migrations 004 and 005 are applied (user_uploads columns and RLS)." },
       { status: 500 }
@@ -151,7 +168,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    uploaded: uploadedUrls.length,
+    uploaded: uploadedRows.length,
     reviewSaved: mode === "review" && (rating > 0 || reviewTitle || reviewText),
   });
 }

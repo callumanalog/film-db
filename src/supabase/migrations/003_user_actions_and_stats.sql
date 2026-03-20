@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS user_tracked (
   UNIQUE(user_id, film_stock_slug)
 );
 
--- Shootlist (want to shoot) — used by get-profile when favourites empty
+-- Shootlist — used by get-profile when favourites empty
 CREATE TABLE IF NOT EXISTS user_shootlist (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,

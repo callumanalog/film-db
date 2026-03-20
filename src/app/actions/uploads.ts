@@ -17,6 +17,9 @@ export interface FilmUploadRow {
   filter?: string | null;
   scanner?: string | null;
   push_pull?: string | null;
+  /** Set on upload when available; used for film hero landscape carousel. */
+  image_width?: number | null;
+  image_height?: number | null;
 }
 
 /** Shape for Community page gallery: one row per upload with stock/brand labels. */
@@ -43,7 +46,7 @@ export async function getAllCommunityUploadsForGallery(
   const supabase = await createClient();
   let query = supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull")
+    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
     .not("image_url", "is", null)
     .order("created_at", { ascending: false });
   const term = search?.trim();
@@ -107,7 +110,7 @@ export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRo
   const supabase = (await createServiceRoleClient()) ?? (await createClient());
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull")
+    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
     .eq("film_stock_slug", slug)
     .order("created_at", { ascending: false });
 
@@ -142,7 +145,7 @@ export async function getMyUploadsForFilmStock(slug: string): Promise<FilmUpload
 
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull")
+    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
     .eq("film_stock_slug", slug)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });

@@ -127,13 +127,28 @@ export function FilmDetailTabs({
 
   const tabNav = (
     <nav className={fullWidthTabBar ? "w-full" : "border-b border-border/50"} aria-label="Film detail tabs">
-      <div className={fullWidthTabBar ? "grid grid-cols-4 gap-0" : "flex gap-8"}>
+      <div
+        className={
+          fullWidthTabBar
+            ? "grid w-full gap-0"
+            : "flex gap-8"
+        }
+        style={
+          fullWidthTabBar
+            ? { gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }
+            : undefined
+        }
+      >
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setActiveId(t.id)}
-            className={`relative w-full pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap ${
+            className={`relative pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap ${
+              fullWidthTabBar
+                ? "flex w-full min-w-0 justify-center px-1 text-center"
+                : "w-full"
+            } ${
               t.id === activeId
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -151,13 +166,11 @@ export function FilmDetailTabs({
 
   return (
     <FilmDetailTabsContext.Provider value={{ activeId, setActiveId }}>
-      {/* Gap between title/stats and tab bar. Tab bar constrained to same width as image card (max-w-sm) on mobile. */}
+      {/* Gap between title/stats and tab bar. Film detail: tab bar spans full content width. */}
       <div className="mt-4">
         {fullWidthTabBar ? (
-          <div className="w-full max-w-sm mx-auto md:max-w-none md:mx-0">
-            <div className="border-b border-border/50">
-              {tabNav}
-            </div>
+          <div className="w-full border-b border-border/50">
+            {tabNav}
           </div>
         ) : (
           tabNav

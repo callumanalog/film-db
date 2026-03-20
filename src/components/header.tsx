@@ -93,13 +93,13 @@ export function Header() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 font-sans transition-[background-color,border-color] duration-200",
+        "sticky top-0 z-50 font-sans transition-[background-color,border-color,backdrop-filter] duration-200",
         isFilmsPage
           ? "bg-background"
           : isFilmHero
             ? cn(
-                "bg-background/80 backdrop-blur-xl md:border-b md:border-border/50",
-                titleScrolledPast ? "border-b border-border/50" : "border-b border-transparent"
+                "border-b border-border/50 bg-background",
+                "md:bg-background/80 md:backdrop-blur-xl"
               )
             : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
       )}
@@ -118,7 +118,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
             aria-label="Go back"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -127,7 +127,7 @@ export function Header() {
             <span
               className={cn(
                 "mx-auto max-w-[70%] font-sans text-lg font-bold tracking-tight transition-opacity duration-200",
-                titleScrolledPast ? "opacity-100" : "opacity-0"
+                titleScrolledPast ? "opacity-100 text-foreground" : "pointer-events-none opacity-0"
               )}
             >
               {mobileHeaderTitle}
@@ -136,7 +136,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent("film-detail-more"))}
-            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
             aria-label="More actions"
           >
             <MoreHorizontal className="h-5 w-5" />

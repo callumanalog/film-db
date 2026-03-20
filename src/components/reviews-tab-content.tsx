@@ -68,7 +68,7 @@ function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-function ReviewCard({
+export function ReviewCard({
   review,
   displayName,
   isYou,
@@ -131,12 +131,12 @@ function ReviewCard({
         </div>
 
         {review.review_title && (
-          <p className="mt-3 text-sm font-medium italic text-foreground">
+          <p className="mt-3 text-[13px] font-medium italic text-foreground">
             {review.review_title}
           </p>
         )}
 
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
           {displayText}
           {showMoreText && (
             <button

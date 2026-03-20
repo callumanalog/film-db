@@ -26,6 +26,9 @@ export interface FlickrPhoto {
   /** Link to the photographer's profile. */
   ownerProfileUrl: string;
   license?: string;
+  /** Pixel dimensions of url_c when returned by API (for aspect / landscape filter). */
+  width?: number;
+  height?: number;
 }
 
 interface FlickrPhotosSearchResponse {
@@ -45,6 +48,8 @@ interface FlickrPhotosSearchResponse {
       url_c?: string;
       ownername?: string;
       license?: string;
+      width_c?: number | string;
+      height_c?: number | string;
     }>;
   };
 }
@@ -72,7 +77,7 @@ export async function fetchFlickrPhotosByTag(
     per_page: String(perPage),
     format: "json",
     nojsoncallback: "1",
-    extras: "url_c,owner_name,license",
+    extras: "url_c,owner_name,license,width_c,height_c",
   });
 
   if (options.licenseFilter !== false) {
@@ -98,12 +103,20 @@ export async function fetchFlickrPhotosByTag(
     return [];
   }
 
+  const toNum = (v: number | string | undefined): number | undefined => {
+    if (v == null || v === "") return undefined;
+    const n = typeof v === "number" ? v : parseInt(String(v), 10);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  };
+
   return data.photos.photo.map((p) => {
     const imageUrl =
       p.url_c ||
       `https://live.staticflickr.com/${p.server}/${p.id}_${p.secret}_c.jpg`;
     const flickrPhotoUrl = `${FLICKR_PHOTO_PAGE_BASE}/${p.owner}/${p.id}`;
     const ownerProfileUrl = `${FLICKR_PROFILE_BASE}/${p.owner}/`;
+    const width = toNum(p.width_c);
+    const height = toNum(p.height_c);
 
     return {
       id: p.id,
@@ -114,7 +127,21 @@ export async function fetchFlickrPhotosByTag(
       flickrPhotoUrl,
       ownerProfileUrl,
       license: p.license,
+      width,
+      height,
     };
+  });
+}
+
+/** Keep photos that are clearly wider than tall (for mobile hero carousel). */
+export function filterLandscapeFlickrPhotos(
+  photos: FlickrPhoto[],
+  minWidthOverHeight = 1.08
+): FlickrPhoto[] {
+  return photos.filter((p) => {
+    const { width, height } = p;
+    if (width == null || height == null || height < 1) return false;
+    return width >= height * minWidthOverHeight;
   });
 }
 
