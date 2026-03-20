@@ -228,7 +228,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
             <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
               <PageTitleHeader {...stockProps} />
             </div>
-            <div className="order-3 min-w-0 pt-4 md:pt-0">
+            <div className="order-3 min-w-0 pt-6 md:pt-0">
               <OverviewTabContent
                 description={stock.description}
                 filmSlug={slug}
