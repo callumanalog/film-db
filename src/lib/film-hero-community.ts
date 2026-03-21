@@ -1,4 +1,3 @@
-import imageSize from "image-size";
 import type { FilmUploadRow } from "@/app/actions/uploads";
 
 /** One slide in the mobile film hero community carousel (landscape uploads only). */
@@ -23,6 +22,7 @@ export async function probeRemoteImageDimensions(
     });
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
+    const { default: imageSize } = await import("image-size");
     const dim = imageSize(buf);
     if (!dim.width || !dim.height) return null;
     return { width: dim.width, height: dim.height };

@@ -10,7 +10,7 @@ import {
   Plane,
   Moon,
   LampDesk,
-  Sun,
+  Aperture,
   SunDim,
   Trophy,
   Sparkles,
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
-  general_purpose: Sun,
+  general_purpose: Aperture,
   portrait: UserCircle,
   street: Building2,
   landscapes: Mountain,
@@ -46,23 +46,20 @@ export function BestForSection({ items }: BestForSectionProps) {
   if (!items.length) return null;
 
   return (
-    <section>
-      <h2 className="mb-4 text-xl font-bold tracking-tight">Best for</h2>
-      <div className="flex flex-wrap gap-3">
-        {items.map((key) => {
-          const Icon = BEST_FOR_ICONS[key];
-          const label = BEST_FOR_LABELS[key];
-          return (
-            <div
-              key={key}
-              className="flex items-center gap-2 rounded-[7px] border border-border/50 bg-card px-4 py-3"
-            >
-              <Icon className="h-5 w-5 text-primary" aria-hidden />
-              <span className="text-sm font-medium">{label}</span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+    <div className="flex flex-wrap gap-2">
+      {items.map((key) => {
+        const Icon = BEST_FOR_ICONS[key];
+        const label = BEST_FOR_LABELS[key];
+        return (
+          <span
+            key={key}
+            className="inline-flex items-center gap-1.5 rounded-[7px] border border-border/50 bg-background px-3 py-1.5 text-xs font-medium text-foreground/80"
+          >
+            <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+            {label}
+          </span>
+        );
+      })}
+    </div>
   );
 }

@@ -216,66 +216,6 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Row 1: [Everyone | You] ............................... + Add Shooting Notes */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div
-          className="inline-flex rounded-card border border-border/60 bg-secondary/30 p-0.5"
-          role="tablist"
-          aria-label="Review view"
-        >
-          {(["everyone", "you"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={view === v}
-              onClick={() => setView(v)}
-              className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                view === v
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {v === "everyone" ? "Everyone" : "You"}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Add Shooting Notes
-        </button>
-      </div>
-
-      {/* Row 2: Showing 1-50 of 152 reviews    [Sort dropdown] */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-sm text-muted-foreground">
-          {loading
-            ? "Loading…"
-            : displayTotal === 0
-              ? "No reviews yet"
-              : `Showing ${start}–${end} of ${displayTotal} reviews`}
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Sort by:
-          </span>
-          <Select value={sort} onValueChange={(v) => setSort(v ?? "popular")}>
-            <SelectTrigger className="w-[140px]" size="sm">
-              <span>{SORT_OPTIONS.find((o) => o.value === sort)?.label ?? "Popular"}</span>
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
       {/* Long scroll: list of review cards */}
       <div className="space-y-4">

@@ -644,7 +644,7 @@ export function FilmDetailMobileToolbar({
               pressed={isShot}
               onPressedChange={handleShotItTogglePressed}
               className={cn(
-                "!flex !min-w-0 !w-full !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
+                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
                 isShot
                   ? "!border-primary aria-pressed:!border-primary"
                   : "!border-border/60 hover:!border-foreground/30"
@@ -652,14 +652,14 @@ export function FilmDetailMobileToolbar({
             >
               {isShot ? (
                 <span
-                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-primary"
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary"
                   aria-hidden
                 >
-                  <Check className="size-2.5 text-white" strokeWidth={3} />
+                  <Check className="size-3 text-white" strokeWidth={3} />
                 </span>
               ) : (
                 <CircleCheck
-                  className="size-4 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
+                  className="size-5 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
                   strokeWidth={2}
                   aria-hidden
                 />
@@ -673,7 +673,7 @@ export function FilmDetailMobileToolbar({
                 showToastViaEvent(added ? "Added to Shootlist" : "Removed from Shootlist");
               }}
               className={cn(
-                "!flex !min-w-0 !w-full !items-center !justify-center !gap-1.5 !rounded-full !border !text-xs !font-semibold !transition-colors !h-10 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
+                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
                 isFavourite
                   ? "!border-primary aria-pressed:!border-primary"
                   : "!border-border/60 hover:!border-foreground/30"
@@ -681,14 +681,14 @@ export function FilmDetailMobileToolbar({
             >
               {isFavourite ? (
                 <span
-                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-primary"
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary"
                   aria-hidden
                 >
-                  <Plus className="size-2.5 text-white" strokeWidth={3} />
+                  <Plus className="size-3 text-white" strokeWidth={3} />
                 </span>
               ) : (
                 <CirclePlus
-                  className="size-4 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
+                  className="size-5 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
                   strokeWidth={2}
                   aria-hidden
                 />

@@ -449,48 +449,7 @@ export function CommunityGallery({
   return (
     <div className="space-y-6">
       {isTab && (
-        <>
-          <div
-            className="inline-flex rounded-card border border-border/60 bg-secondary/30 p-0.5"
-            role="tablist"
-            aria-label="Image source"
-          >
-            {(["flickr", "community", "you"] as const).filter((v) => v !== "flickr" || flickrImages.length > 0).map((v) => (
-              <button
-                key={v}
-                type="button"
-                role="tab"
-                aria-selected={view === v}
-                onClick={() => setView(v)}
-                className={`rounded-card px-4 py-2 text-sm font-medium transition-colors ${
-                  view === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {v === "flickr" ? "Flickr" : v === "community" ? "Community" : "You"}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-muted-foreground">
-              {galleryLoading ? "Loading…" : displayTotal === 0 ? "No images yet" : `Showing ${displayStart}–${displayEnd} of ${displayTotal} images`}
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sort by:</span>
-              <Select value={sort} onValueChange={(v) => setSort(v ?? "newest")}>
-                <SelectTrigger className="w-[140px]" size="sm">
-                  <span>{GALLERY_SORT_OPTIONS.find((o) => o.value === sort)?.label ?? "Newest"}</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {GALLERY_SORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </>
+        <></>
       )}
 
       {!isTab && (
