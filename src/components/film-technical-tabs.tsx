@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useLayoutEffect, useMemo, useState } from "react";
+import { Fragment, useMemo } from "react";
 import type { BestFor, FilmType, ShootingNote } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
 import { isBlackAndWhiteFilm } from "@/lib/types";
@@ -237,12 +237,12 @@ export function FilmCharacteristicsTabContent({ characterScales, filmType }: Fil
   return (
     <div className="min-w-0 space-y-10">
       <section aria-labelledby="film-characteristics-heading">
-        <div className="-mx-6 -mt-2 mb-5 border-t border-border/40 px-6 pt-8 lg:-mx-8 lg:px-8">
-          <h3 id="film-characteristics-heading" className="text-xl font-bold tracking-tight text-foreground">
+        <div className="mb-3">
+          <h3 id="film-characteristics-heading" className="text-base font-semibold tracking-tight text-foreground">
             Characteristics
           </h3>
         </div>
-        <div className="min-w-0 w-full" role="list" aria-label="Film characteristics">
+        <div className="min-w-0 w-full rounded-[7px] border border-border/50 bg-card p-4" role="list" aria-label="Film characteristics">
           {characterSliders.map((item, i) => {
             const isLast = i === characterSliders.length - 1;
             return (
@@ -271,20 +271,13 @@ export type FilmPerformanceTabContentProps = {
   shootingNotes: ShootingNote[];
 };
 
-function performanceNotePillLabel(note: ShootingNote, index: number): string {
-  const h = note.header?.trim();
-  if (h) return h;
-  return `Note ${index + 1}`;
+function splitFirstSentence(text: string): [string, string] {
+  const match = text.match(/^(.+?[.!?])\s+([\s\S]+)$/);
+  if (match) return [match[1], match[2]];
+  return [text, ""];
 }
 
 export function FilmPerformanceTabContent({ shootingNotes }: FilmPerformanceTabContentProps) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
-  useLayoutEffect(() => {
-    if (shootingNotes.length === 0) return;
-    setSelectedIndex((i) => (i >= 0 && i < shootingNotes.length ? i : 0));
-  }, [shootingNotes]);
-
   if (shootingNotes.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -293,47 +286,34 @@ export function FilmPerformanceTabContent({ shootingNotes }: FilmPerformanceTabC
     );
   }
 
-  const safeIndex = Math.min(Math.max(0, selectedIndex), shootingNotes.length - 1);
-  const active = shootingNotes[safeIndex]!;
-  const activeTabId = `performance-tab-${safeIndex}`;
-  const panelId = "film-performance-panel";
-
   return (
-    <div className="min-w-0 space-y-10">
+    <div className="min-w-0">
       <section aria-labelledby="film-performance-heading">
-        <div className="-mx-6 -mt-2 mb-5 border-t border-border/40 px-6 pt-8 lg:-mx-8 lg:px-8">
-          <h3 id="film-performance-heading" className="text-xl font-bold tracking-tight text-foreground">
+        <div className="mb-3">
+          <h3 id="film-performance-heading" className="text-base font-semibold tracking-tight text-foreground">
             Performance
           </h3>
         </div>
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Choose a performance note">
-            {shootingNotes.map((note, i) => (
-              <button
-                key={i}
-                type="button"
-                role="tab"
-                id={`performance-tab-${i}`}
-                aria-selected={safeIndex === i}
-                aria-controls={panelId}
-                tabIndex={safeIndex === i ? 0 : -1}
-                className={cn(
-                  "inline-flex rounded-md border px-2.5 py-1 text-[13px] font-normal leading-none transition-colors",
-                  safeIndex === i
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border/60 bg-white text-foreground hover:border-border/80 dark:border-border dark:bg-background"
+        <div className="min-w-0 w-full rounded-[7px] border border-border/50 bg-card p-4 divide-y divide-border/40">
+          {shootingNotes.map((note, i) => {
+            const label = note.header?.trim() || `Note ${i + 1}`;
+            const [firstSentence, rest] = splitFirstSentence(note.dek?.trim() ?? "");
+            return (
+              <div key={i} className={i === 0 ? "pb-4" : i === shootingNotes.length - 1 ? "pt-4" : "py-4"}>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {label}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {firstSentence}
+                </p>
+                {rest && (
+                  <p className="mt-1 text-sm leading-relaxed text-foreground/70">
+                    {rest}
+                  </p>
                 )}
-                onClick={() => setSelectedIndex(i)}
-              >
-                {performanceNotePillLabel(note, i)}
-              </button>
-            ))}
-          </div>
-          <div id={panelId} role="tabpanel" aria-labelledby={activeTabId} className="min-w-0">
-            <p className="hyphens-auto text-[13px] leading-relaxed text-foreground text-justify md:text-left md:hyphens-none">
-              {active.dek}
-            </p>
-          </div>
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>

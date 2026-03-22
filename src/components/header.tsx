@@ -98,8 +98,8 @@ export function Header() {
           ? "bg-background"
           : isFilmHero
             ? cn(
-                "border-b border-border/50 bg-background",
-                "md:bg-background/80 md:backdrop-blur-xl"
+                "bg-white",
+                "md:border-b md:border-border/50 md:bg-background/80 md:backdrop-blur-xl"
               )
             : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
       )}

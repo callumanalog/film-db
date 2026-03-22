@@ -64,12 +64,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useUserActions } from "@/context/user-actions-context";
+import { useFilmMobileTab, type FilmMobileTab } from "@/context/film-mobile-tab-context";
 import { useAuth } from "@/context/auth-context";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
-import type { HeroCarouselSlide } from "@/lib/film-hero-community";
-import { FilmMobileHeroCarousel } from "@/components/film-mobile-hero-carousel";
 
 const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
   general_purpose: Sun,
@@ -439,15 +438,9 @@ function UserStarRating({
  */
 export function FilmDetailMobileStickyBanner({
   stock,
-  communityHeroSlides = [],
-}: Pick<HeroMockupProps, "stock"> & {
-  communityHeroSlides?: HeroCarouselSlide[];
-}) {
+}: Pick<HeroMockupProps, "stock">) {
   const { slug } = stock;
   const isWide = slug === "cinestill-800t";
-  const hasCommunity = communityHeroSlides.length > 0;
-  const hasStockImage = Boolean(stock.image_url?.trim());
-  const useCarousel = hasStockImage || hasCommunity;
 
   return (
     <div
@@ -457,7 +450,6 @@ export function FilmDetailMobileStickyBanner({
       )}
       style={{ top: "calc(52px + env(safe-area-inset-top, 0px))" }}
     >
-      {/* overflow on inner only — overflow:hidden on sticky box can prevent sticking in WebKit */}
       <div className="relative w-full overflow-hidden">
         {stock.discontinued && (
           <span
@@ -467,25 +459,69 @@ export function FilmDetailMobileStickyBanner({
             Discontinued
           </span>
         )}
-        {useCarousel ? (
-          <FilmMobileHeroCarousel
-            stock={{ slug: stock.slug, name: stock.name, image_url: stock.image_url }}
-            communityPhotos={communityHeroSlides}
-          />
-        ) : (
-          <div className="flex h-[220px] w-full shrink-0 items-center justify-center px-4 py-8">
-            <div className={isWide ? "h-40 w-48 shrink-0" : "h-48 w-40 shrink-0"}>
-              <FilmImage
-                stock={stock}
-                size={192}
-                priority
-                {...(isWide ? { width: 192, height: 160 } : {})}
-              />
-            </div>
+        <div className="flex h-[220px] w-full shrink-0 items-center justify-center px-4 py-8">
+          <div className={isWide ? "h-40 w-48 shrink-0" : "h-48 w-40 shrink-0"}>
+            <FilmImage
+              stock={stock}
+              size={192}
+              priority
+              {...(isWide ? { width: 192, height: 160 } : {})}
+            />
           </div>
-        )}
+        </div>
       </div>
     </div>
+  );
+}
+
+const MOBILE_TABS: { id: FilmMobileTab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "scans", label: "Scans" },
+  { id: "reviews", label: "Reviews" },
+  { id: "lists", label: "Lists" },
+];
+
+const HEADER_HEIGHT = 52;
+
+function FilmMobileTabBar() {
+  const ctx = useFilmMobileTab();
+  const navRef = useRef<HTMLElement>(null);
+  if (!ctx) return null;
+  const { activeTab, setActiveTab } = ctx;
+
+  const handleTabClick = (tab: FilmMobileTab) => {
+    setActiveTab(tab);
+    if (tab !== "overview" && navRef.current) {
+      const top = navRef.current.getBoundingClientRect().top + window.scrollY - HEADER_HEIGHT;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  };
+
+  return (
+    <nav ref={navRef} className="mt-8 w-full border-b border-border/50" aria-label="Film detail tabs">
+      <div
+        className="grid w-full"
+        style={{ gridTemplateColumns: `repeat(${MOBILE_TABS.length}, minmax(0, 1fr))` }}
+      >
+        {MOBILE_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => handleTabClick(t.id)}
+            className={`relative py-3 text-center text-sm font-semibold transition-colors ${
+              t.id === activeTab
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+            {t.id === activeTab && (
+              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" />
+            )}
+          </button>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -697,6 +733,7 @@ export function FilmDetailMobileToolbar({
             </Toggle>
           </div>
         </div>
+        <FilmMobileTabBar />
       </div>
 
       <Sheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen}>

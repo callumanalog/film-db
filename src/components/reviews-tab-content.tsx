@@ -90,64 +90,61 @@ export function ReviewCard({
   const rating = review.rating != null && review.rating > 0 ? Number(review.rating) : 0;
 
   return (
-    <article className="rounded-[7px] border border-border/50 bg-card overflow-hidden transition-colors hover:border-border">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-              {isYou ? "You" : (displayName || "Member").charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Review by{" "}
-                <span className="font-medium text-foreground">
-                  {isYou ? "You" : displayName || "Member"}
-                </span>
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                {rating > 0 && <MiniStars rating={rating} size={14} />}
-                {rating > 0 && <span className="text-muted-foreground/60">·</span>}
-                <span className="text-xs text-muted-foreground">
-                  {formatReviewDate(review.created_at)}
-                </span>
-              </div>
-            </div>
+    <article className="py-5 first:pt-0">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+            {isYou ? "You" : (displayName || "Member").charAt(0).toUpperCase()}
           </div>
-          <div className="flex items-center gap-2">
-            {review.camera && (
-              <div className="hidden items-center gap-1 rounded-md bg-secondary/80 px-2 py-1 sm:flex">
-                <Camera className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">{review.camera}</span>
-              </div>
-            )}
-            <button
-              type="button"
-              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-              aria-label="More options"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </div>
+          <span className="text-xs font-medium text-foreground">
+            {isYou ? "You" : displayName || "Member"}
+          </span>
         </div>
+        <button
+          type="button"
+          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          aria-label="More options"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      </div>
 
-        {review.review_title && (
-          <p className="mt-3 text-[13px] font-medium italic text-foreground">
-            {review.review_title}
-          </p>
-        )}
+      {rating > 0 && (
+        <div className="mt-3">
+          <MiniStars rating={rating} size={16} />
+        </div>
+      )}
 
-        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-          {displayText}
-          {showMoreText && (
-            <button
-              type="button"
-              onClick={() => onToggleText(review.id)}
-              className="ml-1 font-medium text-primary hover:underline"
-            >
-              {textExpanded ? " Show less" : " More"}
-            </button>
-          )}
+      {review.review_title && (
+        <p className="mt-2.5 text-sm font-medium italic text-foreground">
+          {review.review_title}
         </p>
+      )}
+
+      <p className="mt-2 text-sm leading-relaxed text-foreground/80">
+        {displayText}
+        {showMoreText && (
+          <button
+            type="button"
+            onClick={() => onToggleText(review.id)}
+            className="ml-1 font-medium text-primary hover:underline"
+          >
+            {textExpanded ? " Show less" : " More"}
+          </button>
+        )}
+      </p>
+
+      <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+        <span>{formatReviewDate(review.created_at)}</span>
+        {review.camera && (
+          <>
+            <span className="text-border">·</span>
+            <span className="flex items-center gap-1">
+              <Camera className="h-3 w-3" />
+              {review.camera}
+            </span>
+          </>
+        )}
       </div>
     </article>
   );
@@ -217,8 +214,8 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
   return (
     <div className="space-y-6">
 
-      {/* Long scroll: list of review cards */}
-      <div className="space-y-4">
+      {/* Long scroll: list of reviews */}
+      <div className="divide-y divide-border/40">
         {loading ? (
           <div className="rounded-[7px] border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
             Loading reviews…

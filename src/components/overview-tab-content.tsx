@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import type { BestFor, FilmType, ShootingNote } from "@/lib/types";
 import { ExternalLink, ChevronRight } from "lucide-react";
+import { GalleryPreview } from "@/components/gallery-preview";
 import type { FlickrPhoto } from "@/lib/flickr";
 import { CommunityGallery, CommunityReviews } from "@/components/community-section";
 import {
@@ -13,8 +13,6 @@ import {
   buildBestForPillTags,
 } from "@/components/film-technical-tabs";
 import { BestForSection } from "@/components/best-for-section";
-import { GalleryPreview } from "@/components/gallery-preview";
-import { cn } from "@/lib/utils";
 
 interface PurchaseLink {
   id: string;
@@ -55,40 +53,23 @@ export function OverviewTabContent({
   filmType,
   flickrImages = [],
 }: OverviewTabContentProps) {
-  const [expanded, setExpanded] = useState(false);
   const gallerySlug = filmSlug ?? "";
   const galleryName = stockName ?? "This stock";
   const bestForPillTags = buildBestForPillTags(bestFor, useCaseSpec);
 
   return (
     <div className="space-y-14">
-      <div className="min-w-0 space-y-10">
+      <div className="min-w-0 space-y-8">
         {(description || bestFor.length > 0) && (
           <section>
             {description && (
-              <p className="hyphens-auto text-sm leading-relaxed text-foreground text-justify md:text-left md:hyphens-none">
+              <p className="text-sm leading-relaxed text-foreground">
                 {description}
               </p>
             )}
             {bestFor.length > 0 && (
               <div className={description ? "mt-4" : ""}>
-                {/* Mobile: clip to one row with gradient when collapsed */}
-                <div className={cn("relative md:max-h-none md:overflow-visible", !expanded && "max-h-[36px] overflow-hidden")}>
-                  <BestForSection items={bestFor} />
-                  {!expanded && (
-                    <div className="absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t from-background to-transparent md:hidden" />
-                  )}
-                </div>
-                {/* See more / Show less toggle — mobile only */}
-                <div className="mt-2 flex justify-center md:hidden">
-                  <button
-                    type="button"
-                    onClick={() => setExpanded((v) => !v)}
-                    className="rounded-full border border-border/60 bg-background px-5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-secondary/40"
-                  >
-                    {expanded ? "Show less" : "See more"}
-                  </button>
-                </div>
+                <BestForSection items={bestFor} />
               </div>
             )}
           </section>
@@ -101,16 +82,14 @@ export function OverviewTabContent({
         <div className="hidden md:block">
           <FilmSpecsTabContent specs={specs} />
         </div>
-        <div className={cn("contents md:contents", !expanded && "hidden md:contents")}>
-          <FilmCharacteristicsTabContent characterScales={characterScales} filmType={filmType} />
-          <FilmPerformanceTabContent shootingNotes={shootingNotes} />
-        </div>
+        <FilmCharacteristicsTabContent characterScales={characterScales} filmType={filmType} />
+        <FilmPerformanceTabContent shootingNotes={shootingNotes} />
 
         {filmSlug ? (
           <section aria-labelledby="film-scans-heading">
-            <div className="-mx-6 -mt-2 mb-5 border-t border-border/40 px-6 pt-8 lg:-mx-8 lg:px-8">
+            <div className="mb-3">
               <div className="flex items-center justify-between">
-                <h3 id="film-scans-heading" className="text-xl font-bold tracking-tight text-foreground">
+                <h3 id="film-scans-heading" className="text-base font-semibold tracking-tight text-foreground">
                   {stockName ? `Shot on ${stockName}` : "Scans"}
                 </h3>
                 <ChevronRight className="h-5 w-5 text-muted-foreground md:hidden" aria-hidden />
@@ -127,8 +106,8 @@ export function OverviewTabContent({
 
         {filmSlug ? (
           <section aria-labelledby="film-reviews-heading" className="space-y-6">
-            <div className="-mx-6 -mt-2 mb-5 border-t border-border/40 px-6 pt-8 lg:-mx-8 lg:px-8">
-              <h3 id="film-reviews-heading" className="text-xl font-bold tracking-tight text-foreground">
+            <div className="mb-3">
+              <h3 id="film-reviews-heading" className="text-base font-semibold tracking-tight text-foreground">
                 Reviews
               </h3>
             </div>
@@ -139,7 +118,7 @@ export function OverviewTabContent({
 
       {purchaseLinks.length > 0 && (
         <section aria-labelledby="overview-buy-heading">
-          <h3 id="overview-buy-heading" className="mb-4 text-xl font-bold tracking-tight text-foreground">
+          <h3 id="overview-buy-heading" className="mb-4 text-base font-semibold tracking-tight text-foreground">
             {stockName ? `Where to buy ${stockName}` : "Where to buy"}
           </h3>
           <div className="grid grid-cols-2 gap-3 sm:gap-4">

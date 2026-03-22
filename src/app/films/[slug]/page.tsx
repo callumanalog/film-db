@@ -5,7 +5,6 @@ import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand }
 import { getFilmStockStats, getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
 import { getUploadsForFilmStock } from "@/app/actions/uploads";
-import { buildLandscapeCommunityHeroSlides } from "@/lib/film-hero-community";
 import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
 import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS, COLOR_SENSITIVITY_LABELS, isBlackAndWhiteFilm } from "@/lib/types";
 import type { DevelopmentProcess } from "@/lib/types";
@@ -15,6 +14,10 @@ import { cn } from "@/lib/utils";
 import { OverviewTabContent } from "@/components/overview-tab-content";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
 import { SetFilmMobileHeader } from "@/components/set-film-mobile-header";
+import { FilmMobileTabProvider } from "@/context/film-mobile-tab-context";
+import { FilmMobileTabContent } from "@/components/film-mobile-tab-content";
+import { GalleryPreview } from "@/components/gallery-preview";
+import { CommunityReviews } from "@/components/community-section";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -59,7 +62,6 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
   ]);
 
   const typeColor = FILM_TYPE_COLORS[stock.type];
-  const communityHeroSlides = await buildLandscapeCommunityHeroSlides(communityUploads, stock.name);
 
   /** Development process: from stock or derive from type (C-41, E-6, B&W). CineStill films are C-41. */
   const developmentProcessValue: DevelopmentProcess | null =
@@ -202,55 +204,71 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
       <ScrollToTopOnRouteChange />
       {/* Mobile: sticky image + one sheet div (toolbar + nav + grid). Desktop: same max-w wrapper, sheet chrome disabled at md+. */}
       {/* items-start + w-full children: fixes sticky hero (flex stretch breaks position:sticky in some engines). */}
-      <div className="flex flex-col items-start bg-background md:contents">
-        <FilmDetailMobileStickyBanner stock={stockProps.stock} communityHeroSlides={communityHeroSlides} />
-        <div
-          className={cn(
-            "relative z-20 mx-auto w-full max-w-6xl px-6 pb-8 sm:px-6 lg:px-8",
-            /* Mobile: pull up over hero + stronger top shadow so the sheet reads as sliding over the image. */
-            "-mt-3 overflow-hidden rounded-t-[7px] bg-background pt-4 shadow-[0_-8px_28px_-8px_rgba(0,0,0,0.14)] dark:shadow-[0_-8px_32px_-8px_rgba(0,0,0,0.35)]",
-            "md:-mt-0 md:overflow-visible md:rounded-none md:bg-transparent md:pt-8 md:shadow-none"
-          )}
-        >
-          <FilmDetailMobileToolbar stock={stockProps.stock} stats={stockProps.stats} />
-          <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
-            <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="font-medium text-foreground">{stock.name}</span>
-          </nav>
+      <FilmMobileTabProvider>
+        <div className="flex flex-col items-start md:contents">
+          <FilmDetailMobileStickyBanner stock={stockProps.stock} />
+          <div
+            className={cn(
+              "relative z-20 mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 lg:px-8",
+              "overflow-hidden bg-background pt-4",
+              "md:overflow-visible md:rounded-none md:bg-transparent md:pt-8 md:shadow-none"
+            )}
+          >
+            <FilmDetailMobileToolbar stock={stockProps.stock} stats={stockProps.stats} />
+            <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
+              <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
+              <ChevronRight className="h-3.5 w-3.5" />
+              <span className="font-medium text-foreground">{stock.name}</span>
+            </nav>
 
-          <div className="grid grid-cols-1 gap-0 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
-            <div className="order-2 min-w-0 md:order-1 md:row-span-2">
-              <StickyLeftPane {...stockProps} />
-            </div>
-            <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
-              <PageTitleHeader {...stockProps} />
-            </div>
-            <div className="order-3 min-w-0 pt-6 md:pt-0">
-              <OverviewTabContent
-                description={stock.description}
-                filmSlug={slug}
-                shootingNotes={stock.shooting_notes}
-                purchaseLinks={sortedLinks}
-                stockName={stock.name}
-                bestFor={stock.best_for ?? []}
-                specs={overviewSpecsFlat}
-                useCaseSpec={useCaseSpec}
-                characterScales={{
-                  grain: stock.grain ?? undefined,
-                  contrast: stock.contrast ?? undefined,
-                  saturation: stock.saturation ?? undefined,
-                  latitude: stock.latitude ?? undefined,
-                }}
-                filmType={stock.type}
-                flickrImages={flickrImages}
-              />
+            <div className="grid grid-cols-1 gap-0 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
+              <div className="order-2 min-w-0 md:order-1 md:row-span-2">
+                <StickyLeftPane {...stockProps} />
+              </div>
+              <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
+                <PageTitleHeader {...stockProps} />
+              </div>
+              <div className="order-3 min-w-0 pt-6 md:pt-0">
+                <FilmMobileTabContent
+                  overview={
+                    <OverviewTabContent
+                      description={stock.description}
+                      filmSlug={slug}
+                      shootingNotes={stock.shooting_notes}
+                      purchaseLinks={sortedLinks}
+                      stockName={stock.name}
+                      bestFor={stock.best_for ?? []}
+                      specs={overviewSpecsFlat}
+                      useCaseSpec={useCaseSpec}
+                      characterScales={{
+                        grain: stock.grain ?? undefined,
+                        contrast: stock.contrast ?? undefined,
+                        saturation: stock.saturation ?? undefined,
+                        latitude: stock.latitude ?? undefined,
+                      }}
+                      filmType={stock.type}
+                      flickrImages={flickrImages}
+                    />
+                  }
+                  scans={
+                    <GalleryPreview slug={slug} stockName={stock.name} flickrImages={flickrImages} />
+                  }
+                  reviews={
+                    <CommunityReviews slug={slug} />
+                  }
+                  lists={
+                    <div className="py-12 text-center">
+                      <p className="text-sm font-medium text-muted-foreground">Lists coming soon</p>
+                    </div>
+                  }
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </FilmMobileTabProvider>
 
       {allDiscoveryStocks.length > 0 && (
         <section className="w-full border-t border-border/50 bg-secondary/30 pt-12 pb-6">

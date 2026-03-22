@@ -99,41 +99,43 @@ export function GalleryPreview({
 
   return (
     <div className="space-y-4">
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
-      >
-        {images.map((img) => (
-          <div
-            key={img.id}
-            className="w-full shrink-0 snap-start"
-          >
-            <div className="aspect-[3/2] overflow-hidden rounded-[7px]">
-              <LazyImage
-                src={img.imageUrl}
-                alt={img.alt}
-                wrapperClassName="h-full w-full"
-                className="!h-full !w-full !max-h-none object-cover"
-                sizes="100vw"
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {images.length > 1 && (
-        <div className="flex justify-center gap-1.5">
-          {images.map((img, i) => (
-            <span
+      <div className="relative">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
+        >
+          {images.map((img) => (
+            <div
               key={img.id}
-              className={`block h-1.5 rounded-full transition-all ${
-                i === activeIndex ? "w-4 bg-foreground" : "w-1.5 bg-foreground/20"
-              }`}
-            />
+              className="w-full shrink-0 snap-start"
+            >
+              <div className="aspect-[3/2] overflow-hidden rounded-[7px]">
+                <LazyImage
+                  src={img.imageUrl}
+                  alt={img.alt}
+                  wrapperClassName="h-full w-full"
+                  className="!h-full !w-full !max-h-none object-cover"
+                  sizes="100vw"
+                />
+              </div>
+            </div>
           ))}
         </div>
-      )}
+
+        {images.length > 1 && (
+          <div className="absolute inset-x-0 bottom-2.5 flex justify-center gap-1.5">
+            {images.map((img, i) => (
+              <span
+                key={img.id}
+                className={`block h-1.5 rounded-full transition-all ${
+                  i === activeIndex ? "w-4 bg-white" : "w-1.5 bg-white/40"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       <UploadCTA stockName={stockName} />
     </div>
@@ -144,14 +146,10 @@ function UploadCTA({ stockName }: { stockName: string }) {
   return (
     <button
       type="button"
-      className="flex w-full items-center gap-3 rounded-[7px] border border-dashed border-border bg-secondary/10 px-4 py-4 text-left transition-colors hover:bg-secondary/20"
+      className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border/60 bg-white px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-neutral-50 hover:text-primary"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
-        <Camera className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <p className="text-sm font-medium text-muted-foreground">
-        Share your {stockName} shots
-      </p>
+      <Camera className="size-5 shrink-0" aria-hidden />
+      Add your own scans
     </button>
   );
 }
