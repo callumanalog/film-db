@@ -19,7 +19,8 @@ import {
   Eye,
   ExternalLink,
   CheckCircle2,
-  CirclePlus,
+  Clock,
+  ClockPlus,
   X,
   Heart,
   MessageCircle,
@@ -160,10 +161,14 @@ export function QuickActions() {
       >
         {saved ? (
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary" aria-hidden>
-            <Plus className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+            <Clock
+              className="size-3.5 text-white [&>circle]:hidden"
+              strokeWidth={2.75}
+              aria-hidden
+            />
           </span>
         ) : (
-          <CirclePlus className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+          <ClockPlus className="h-4 w-4 text-muted-foreground group-hover:text-primary" aria-hidden />
         )}
         {saved ? "On Shootlist" : "Shootlist"}
       </button>

@@ -37,7 +37,8 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
-  const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast } = useMobileHeaderTitle() ?? {};
+  const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast, filmMobileActiveTab } =
+    useMobileHeaderTitle() ?? {};
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
@@ -133,14 +134,26 @@ export function Header() {
               {mobileHeaderTitle}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent("film-detail-more"))}
-            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
-            aria-label="More actions"
-          >
-            <MoreHorizontal className="h-5 w-5" />
-          </button>
+          <div className="flex flex-shrink-0 items-center">
+            {filmMobileActiveTab === "reviews" && (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("film-detail-open-review"))}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
+                aria-label="Add review"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent("film-detail-more"))}
+              className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
+              aria-label="More actions"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       )}
 

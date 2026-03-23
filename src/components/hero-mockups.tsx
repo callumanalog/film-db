@@ -41,8 +41,9 @@ import {
   Image as ImageIcon,
   Pencil,
   Calendar,
-  CirclePlus,
   Plus,
+  Clock,
+  ClockPlus,
   Landmark,
   Sunset,
   Lightbulb,
@@ -485,7 +486,20 @@ const HEADER_HEIGHT = 52;
 
 function FilmMobileTabBar() {
   const ctx = useFilmMobileTab();
+  const headerCtx = useMobileHeaderTitle();
   const navRef = useRef<HTMLElement>(null);
+  const activeTabForHeader = ctx?.activeTab ?? null;
+
+  useEffect(() => {
+    if (!headerCtx) return;
+    if (activeTabForHeader == null) {
+      headerCtx.setFilmMobileActiveTab(null);
+      return;
+    }
+    headerCtx.setFilmMobileActiveTab(activeTabForHeader);
+    return () => headerCtx.setFilmMobileActiveTab(null);
+  }, [activeTabForHeader, headerCtx]);
+
   if (!ctx) return null;
   const { activeTab, setActiveTab } = ctx;
 
@@ -563,6 +577,15 @@ export function FilmDetailMobileToolbar({
     const handler = () => setMoreSheetOpen(true);
     window.addEventListener("film-detail-more", handler);
     return () => window.removeEventListener("film-detail-more", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => {
+      setReviewModalMode("review");
+      setReviewModalOpen(true);
+    };
+    window.addEventListener("film-detail-open-review", handler);
+    return () => window.removeEventListener("film-detail-open-review", handler);
   }, []);
 
   const didHandleUploadIntent = useRef(false);
@@ -691,10 +714,15 @@ export function FilmDetailMobileToolbar({
                 }
               }}
               className={cn(
-                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
+                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3",
                 isShot
-                  ? "!border-primary aria-pressed:!border-primary"
-                  : "!border-border/60 hover:!border-foreground/30"
+                  ? "!bg-[#ffffff] hover:!bg-neutral-50 aria-pressed:!bg-[#ffffff] data-[state=on]:!bg-[#ffffff] dark:!bg-[#ffffff] dark:hover:!bg-neutral-100 dark:aria-pressed:!bg-[#ffffff] dark:data-[state=on]:!bg-[#ffffff]"
+                  : "!bg-background hover:!bg-muted/50 aria-pressed:!bg-background data-[state=on]:!bg-background",
+                "!text-muted-foreground hover:!text-primary",
+                "shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-none",
+                isShot
+                  ? "!border-primary aria-pressed:!border-primary dark:!border-primary"
+                  : "!border-border/70 hover:!border-foreground/30 dark:!border-border"
               )}
             >
               {isShot ? (
@@ -720,10 +748,15 @@ export function FilmDetailMobileToolbar({
                 showToastViaEvent(added ? "Added to Shootlist" : "Removed from Shootlist");
               }}
               className={cn(
-                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
+                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3",
                 isFavourite
-                  ? "!border-primary aria-pressed:!border-primary"
-                  : "!border-border/60 hover:!border-foreground/30"
+                  ? "!bg-[#ffffff] hover:!bg-neutral-50 aria-pressed:!bg-[#ffffff] data-[state=on]:!bg-[#ffffff] dark:!bg-[#ffffff] dark:hover:!bg-neutral-100 dark:aria-pressed:!bg-[#ffffff] dark:data-[state=on]:!bg-[#ffffff]"
+                  : "!bg-background hover:!bg-muted/50 aria-pressed:!bg-background data-[state=on]:!bg-background",
+                "!text-muted-foreground hover:!text-primary",
+                "shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-none",
+                isFavourite
+                  ? "!border-primary aria-pressed:!border-primary dark:!border-primary"
+                  : "!border-border/70 hover:!border-foreground/30 dark:!border-border"
               )}
             >
               {isFavourite ? (
@@ -731,10 +764,14 @@ export function FilmDetailMobileToolbar({
                   className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary"
                   aria-hidden
                 >
-                  <Plus className="size-3 text-white" strokeWidth={3} />
+                  <Clock
+                    className="size-[18px] shrink-0 text-white [&>circle]:hidden"
+                    strokeWidth={3}
+                    aria-hidden
+                  />
                 </span>
               ) : (
-                <CirclePlus
+                <ClockPlus
                   className="size-5 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
                   strokeWidth={2}
                   aria-hidden
@@ -785,10 +822,14 @@ export function FilmDetailMobileToolbar({
             >
               {isFavourite ? (
                 <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-                  <Plus className="h-4 w-4 text-white" strokeWidth={3} />
+                  <Clock
+                    className="h-7 w-7 text-white [&>circle]:hidden"
+                    strokeWidth={3}
+                    aria-hidden
+                  />
                 </span>
               ) : (
-                <CirclePlus className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+                <ClockPlus className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} aria-hidden />
               )}
               <span className="text-xs font-medium text-foreground">Shootlist</span>
             </button>
@@ -1164,10 +1205,14 @@ export function StickyLeftPane({
             >
               {isFavourite ? (
                 <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-primary">
-                  <Plus className="size-2 text-white" strokeWidth={3} />
+                  <Clock
+                    className="size-3 text-white [&>circle]:hidden"
+                    strokeWidth={2.75}
+                    aria-hidden
+                  />
                 </span>
               ) : (
-                <CirclePlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+                <ClockPlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
               )}
               Shootlist
             </button>
@@ -1860,7 +1905,7 @@ function OptionF({ stock }: HeroMockupProps) {
           <div className="rounded-[7px] border border-border/50 bg-card divide-y divide-border/50">
             <CommunityActionRow icon={CheckCircle2} label="I've Shot This" activeColor="emerald" />
             <CommunityActionRow icon={Film} label="Track" activeColor="blue" />
-            <CommunityActionRow icon={CirclePlus} label="Shootlist" activeColor="primary" />
+            <CommunityActionRow icon={ClockPlus} label="Shootlist" activeColor="primary" />
 
             <div className="px-4 py-3">
               <p className="text-xs font-medium text-muted-foreground mb-2">Rate</p>

@@ -250,6 +250,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
                       }}
                       filmType={stock.type}
                       flickrImages={flickrImages}
+                      avgRating={stats.avgRating}
                     />
                   }
                   scans={

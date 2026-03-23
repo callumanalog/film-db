@@ -27,6 +27,7 @@ export function SetFilmMobileHeader({
       ctx.setMobileHeaderTitle(null);
       ctx.setMobileHeroMeta(null);
       ctx.setFilmSlug(null);
+      ctx.setFilmMobileActiveTab(null);
     };
   }, [name, slug, ctx]);
   return null;

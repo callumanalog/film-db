@@ -1,7 +1,7 @@
 "use client";
 
 import type { BestFor, FilmType, ShootingNote } from "@/lib/types";
-import { ExternalLink, ChevronRight } from "lucide-react";
+import { ExternalLink, ChevronRight, Star } from "lucide-react";
 import { GalleryPreview } from "@/components/gallery-preview";
 import type { FlickrPhoto } from "@/lib/flickr";
 import { CommunityGallery, CommunityReviews } from "@/components/community-section";
@@ -52,6 +52,7 @@ export function OverviewTabContent({
   characterScales,
   filmType,
   flickrImages = [],
+  avgRating,
 }: OverviewTabContentProps) {
   const gallerySlug = filmSlug ?? "";
   const galleryName = stockName ?? "This stock";
@@ -106,10 +107,21 @@ export function OverviewTabContent({
 
         {filmSlug ? (
           <section aria-labelledby="film-reviews-heading" className="space-y-6">
-            <div className="mb-3">
+            <div className="mb-3 space-y-1">
               <h3 id="film-reviews-heading" className="text-base font-semibold tracking-tight text-foreground">
                 Reviews
               </h3>
+              <p className="inline-flex items-center gap-1.5 text-base font-semibold tracking-tight text-foreground">
+                <Star
+                  className="size-[1em] shrink-0 fill-amber-400 text-amber-400"
+                  aria-hidden
+                />
+                {avgRating != null ? (
+                  <span className="tabular-nums">{avgRating.toFixed(1)}</span>
+                ) : (
+                  <span className="tabular-nums text-muted-foreground">—</span>
+                )}
+              </p>
             </div>
             <CommunityReviews slug={gallerySlug} showViewFilter={false} />
           </section>
