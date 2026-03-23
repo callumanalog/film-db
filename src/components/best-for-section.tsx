@@ -20,7 +20,7 @@ import {
   FileVideo,
 } from "lucide-react";
 
-const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
+export const BEST_FOR_ICONS: Record<BestFor, React.ElementType> = {
   general_purpose: Aperture,
   portrait: UserCircle,
   street: Building2,

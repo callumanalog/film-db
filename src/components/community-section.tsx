@@ -506,8 +506,9 @@ export function CommunityGallery({
         {communityUploadsToShow.map((u) => {
           const displayName = u.display_name ?? "Member";
           return (
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             key={u.id}
             onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: u.display_name ?? undefined, metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
@@ -541,13 +542,14 @@ export function CommunityGallery({
                 <Camera className="h-8 w-8 text-muted-foreground" />
               </div>
             )}
-          </button>
+          </div>
           );
         })}
         {/* Real user uploads (when slug and You tab) */}
         {myUploadsToShow.map((u) => (
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             key={u.id}
             onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: "You", metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
@@ -581,15 +583,16 @@ export function CommunityGallery({
                 <Camera className="h-8 w-8 text-muted-foreground" />
               </div>
             )}
-          </button>
+          </div>
         ))}
         {/* Placeholder cards (when no slug) */}
         {placeholdersToShow.map((item, i) => {
           const cardId = `placeholder-${i}`;
           return (
-          <button
+          <div
             key={cardId}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
@@ -608,15 +611,16 @@ export function CommunityGallery({
                 </button>
               </span>
             </div>
-          </button>
+          </div>
           );
         })}
         {/* Flickr: real images only (no placeholders) */}
         {flickrToShow.length > 0 &&
           flickrToShow.map((img) => (
-            <button
+            <div
               key={img.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => setLightboxImage({ imageUrl: img.imageUrl, alt: img.title || "", username: img.ownerName })}
               className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
             >
@@ -640,14 +644,15 @@ export function CommunityGallery({
                   </button>
                 </span>
               </div>
-            </button>
+            </div>
           ))}
         {sampleToShow.length > 0 &&
           sampleToShow.map((img) => {
               return (
-              <button
+              <div
                 key={img.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => img.imageUrl && setLightboxImage({ imageUrl: img.imageUrl!, username: img.username })}
                 className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
               >
@@ -677,7 +682,7 @@ export function CommunityGallery({
                     </button>
                   </span>
                 </div>
-              </button>
+              </div>
               );
             })}
             </>

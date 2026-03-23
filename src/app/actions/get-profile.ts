@@ -13,6 +13,14 @@ export interface ProfileFromDb {
   uploadCount: number;
   reviews: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
   uploads: { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[];
+  likedReviews: {
+    review_id: string;
+    film_stock_slug: string;
+    review_title: string | null;
+    rating: number | null;
+    review_created_at: string;
+    liked_at: string;
+  }[];
 }
 
 export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
@@ -25,7 +33,18 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
     }
     if (!user) return null;
 
-    const [profileRes, shotRes, favRes, inCameraRes, ratingsRes, reviewsRes, uploadsRes, reviewsListRes, uploadsListRes] = await Promise.all([
+    const [
+      profileRes,
+      shotRes,
+      favRes,
+      inCameraRes,
+      ratingsRes,
+      reviewsRes,
+      uploadsRes,
+      reviewsListRes,
+      uploadsListRes,
+      likedReviewsRes,
+    ] = await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).single(),
       supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
       supabase.from("user_favourites").select("film_stock_slug").eq("user_id", user.id),
@@ -57,6 +76,43 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       ratings[r.film_stock_slug] = Number(r.rating);
     }
 
+    if (likedReviewsRes.error) {
+      console.error("[get-profile] review_likes:", likedReviewsRes.error.message);
+    }
+    const likedReviewsRaw = likedReviewsRes.error ? [] : (likedReviewsRes.data ?? []);
+    const likedReviews: ProfileFromDb["likedReviews"] = [];
+    for (const row of likedReviewsRaw as {
+      created_at: string;
+      reviews:
+        | {
+            id: string;
+            film_stock_slug: string;
+            review_title: string | null;
+            rating: number | string | null;
+            created_at: string;
+          }
+        | {
+            id: string;
+            film_stock_slug: string;
+            review_title: string | null;
+            rating: number | string | null;
+            created_at: string;
+          }[]
+        | null;
+    }[]) {
+      const raw = row.reviews;
+      const rev = Array.isArray(raw) ? raw[0] : raw;
+      if (!rev) continue;
+      likedReviews.push({
+        review_id: rev.id,
+        film_stock_slug: rev.film_stock_slug,
+        review_title: rev.review_title,
+        rating: rev.rating != null ? Number(rev.rating) : null,
+        review_created_at: rev.created_at,
+        liked_at: row.created_at,
+      });
+    }
+
     return {
       displayName,
       shotSlugs,
@@ -79,6 +135,7 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
         caption: u.caption,
         created_at: u.created_at,
       })),
+      likedReviews,
     };
   } catch (err) {
     console.error("[get-profile] unexpected error:", err);

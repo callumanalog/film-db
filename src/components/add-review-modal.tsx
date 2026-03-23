@@ -2,18 +2,23 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Dialog } from "@base-ui/react/dialog";
-import { Star, Camera, XIcon, ImagePlus, ChevronDown, Plus, Loader2 } from "lucide-react";
+import { Star, StarHalf, Camera, XIcon, ImagePlus, ChevronLeft, ChevronRight, Plus, Loader2, Bold, Italic, Quote, Strikethrough, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import type { BestFor } from "@/lib/types";
+import { BEST_FOR_LABELS } from "@/lib/types";
+import { BEST_FOR_ICONS } from "@/components/best-for-section";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
+import TiptapPlaceholder from "@tiptap/extension-placeholder";
+
 interface TrackFilmModalStock {
   slug: string;
   name: string;
@@ -21,102 +26,117 @@ interface TrackFilmModalStock {
   format: string[];
   image_url: string | null;
 }
-import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 
-const PUSH_PULL_OPTIONS = ["-2", "-1", "0", "+1", "+2", "+3"] as const;
+const BEST_FOR_OPTIONS: BestFor[] = [
+  "general_purpose", "portrait", "street", "landscapes", "architecture", "documentary",
+  "sports", "travel", "weddings", "studio", "bright_sun", "golden_hour", "low_light",
+  "artificial_light", "experimental",
+];
 
-const SLOTS_PER_STOCK = 3;
-
-/** Subtle film-grain SVG pattern for darkroom aesthetic */
-function FilmGrainPattern({ className }: { className?: string }) {
-  return (
-    <svg className={cn("absolute inset-0 h-full w-full opacity-[0.04] mix-blend-multiply", className)} aria-hidden>
-      <filter id="post-shot-grain">
-        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch" />
-      </filter>
-      <rect width="100%" height="100%" filter="url(#post-shot-grain)" />
-    </svg>
-  );
+export interface AddReviewModalPayload {
+  rating: number;
+  reviewText: string;
+  files: File[];
+  camera?: string;
+  reviewTitle?: string;
+  shootingTip?: string;
+  bestFor?: BestFor[];
+  format?: string;
+  location?: string;
+  iso?: string;
+  lens?: string;
+  developedAt?: string;
+  caption?: string;
+  shotIso?: string;
+  lab?: string;
+  filter?: string;
+  scanner?: string;
+  uploadedImageUrl?: string;
+  uploadedStoragePath?: string;
 }
 
-/** L-shaped crop marks for the four corners (viewfinder/darkroom style) */
-function CropMarks({ className }: { className?: string }) {
-  const corner = "absolute w-4 h-4 border-muted-foreground/40 border-solid";
-  return (
-    <>
-      <span className={cn(corner, "left-0 top-0 border-r-2 border-b-2 rounded-tl", className)} aria-hidden />
-      <span className={cn(corner, "right-0 top-0 border-l-2 border-b-2 rounded-tr", className)} aria-hidden />
-      <span className={cn(corner, "left-0 bottom-0 border-r-2 border-t-2 rounded-bl", className)} aria-hidden />
-      <span className={cn(corner, "right-0 bottom-0 border-l-2 border-t-2 rounded-br", className)} aria-hidden />
-    </>
-  );
+interface AddReviewModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (payload: AddReviewModalPayload) => void | Promise<void | { success?: boolean }>;
+  stock: TrackFilmModalStock;
+  initialRating?: number;
+  mode?: "review" | "upload";
+  slotsUsed?: number;
 }
 
-/** Minimal border-bottom-only input style for curation station */
-const underlineInputClass =
-  "w-full border-0 border-b border-border bg-transparent px-0 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:border-primary transition-colors";
-
-function StockImage({ stock, size = 240 }: { stock: TrackFilmModalStock; size?: number }) {
+function StockThumbnail({ stock }: { stock: TrackFilmModalStock }) {
   if (stock.image_url) {
     return (
       <Image
         src={stock.image_url}
         alt={stock.name}
-        width={size}
-        height={size}
+        width={64}
+        height={64}
         className="h-full w-full object-cover"
       />
     );
   }
   return (
-    <div className="flex h-full w-full items-center justify-center border border-border/30 bg-muted/30">
-      <Camera className="h-14 w-14 text-muted-foreground/40" />
+    <div className="flex h-full w-full items-center justify-center bg-muted/30">
+      <Camera className="h-6 w-6 text-muted-foreground/40" />
     </div>
   );
 }
 
-/** Interactive half-star rating for the modal */
-function ModalStarRating({
+function HalfStarRating({
   value,
   onChange,
+  size = 32,
+  readonly = false,
 }: {
   value: number;
-  onChange: (value: number) => void;
+  onChange: (v: number) => void;
+  size?: number;
+  readonly?: boolean;
 }) {
-  const [hover, setHover] = useState(0);
-  const display = hover || value;
-
-  function getValueFromEvent(e: React.MouseEvent<HTMLDivElement>, starIndex: number) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const isLeft = x < rect.width / 2;
-    return starIndex + (isLeft ? 0.5 : 1);
-  }
-
   return (
-    <div
-      className="flex justify-start gap-1"
-      onMouseLeave={() => setHover(0)}
-    >
-      {Array.from({ length: 5 }).map((_, i) => {
-        const full = display >= i + 1;
-        const half = !full && display >= i + 0.5;
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((star) => {
+        const halfVal = star - 0.5;
+        const fullVal = star;
+        const isFull = value >= fullVal;
+        const isHalf = !isFull && value >= halfVal;
+
+        const apply = (val: number) => onChange(value === val ? 0 : val);
+
         return (
-          <div
-            key={i}
-            className="relative h-8 w-8 cursor-pointer"
-            onMouseMove={(e) => setHover(getValueFromEvent(e, i))}
-            onClick={(e) => {
-              const val = getValueFromEvent(e, i);
-              onChange(val === value ? 0 : val);
-            }}
-          >
-            <Star className="absolute inset-0 h-8 w-8 text-muted-foreground/20" />
-            {full && <Star className="absolute inset-0 h-8 w-8 fill-primary text-primary" />}
-            {half && (
-              <div className="absolute inset-0 overflow-hidden" style={{ width: "50%" }}>
-                <Star className="h-8 w-8 fill-primary text-primary" />
-              </div>
+          <div key={star} className="relative" style={{ width: size, height: size, padding: 2 }}>
+            <div className="pointer-events-none relative" style={{ width: size - 4, height: size - 4 }}>
+              <Star
+                className={cn(
+                  "transition-colors",
+                  isFull ? "fill-primary text-primary" : "fill-none text-muted-foreground/25"
+                )}
+                style={{ width: size - 4, height: size - 4 }}
+              />
+              {isHalf && (
+                <StarHalf
+                  className="absolute inset-0 fill-primary text-primary"
+                  style={{ width: size - 4, height: size - 4 }}
+                />
+              )}
+            </div>
+            {!readonly && (
+              <>
+                <button
+                  type="button"
+                  className="absolute inset-y-0 left-0 w-1/2"
+                  onClick={() => apply(halfVal)}
+                  aria-label={`Rate ${halfVal} stars`}
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 w-1/2"
+                  onClick={() => apply(fullVal)}
+                  aria-label={`Rate ${fullVal} star${fullVal > 1 ? "s" : ""}`}
+                />
+              </>
             )}
           </div>
         );
@@ -125,46 +145,6 @@ function ModalStarRating({
   );
 }
 
-export interface AddReviewModalPayload {
-  rating: number;
-  reviewText: string;
-  files: File[];
-  camera?: string;
-  reviewTitle?: string;
-  format?: string;
-  location?: string;
-  iso?: string;
-  pushPull?: string;
-  /** Upload mode */
-  lens?: string;
-  developedAt?: string;
-  caption?: string;
-  shotIso?: string;
-  lab?: string;
-  filter?: string;
-  scanner?: string;
-  /** Pre-upload: URL and path from immediate upload (no second upload on submit) */
-  uploadedImageUrl?: string;
-  uploadedStoragePath?: string;
-}
-
-interface AddReviewModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** May return { success: true } in upload mode to show success state instead of closing */
-  onSubmit: (payload: AddReviewModalPayload) => void | Promise<void | { success?: boolean }>;
-  stock: TrackFilmModalStock;
-  initialRating?: number;
-  /** When 'upload', only show image upload + camera + additional details (no rating, review title, review body) */
-  mode?: "review" | "upload";
-  /** Number of slots already used for this stock (upload mode). Used for "X of 3 slots used" and limit. */
-  slotsUsed?: number;
-}
-
-/**
- * Modal for adding a review: layout inspired by review/log release modals —
- * image on left, title styling on right, then rating and form fields.
- */
 export function AddReviewModal({
   open,
   onOpenChange,
@@ -172,223 +152,168 @@ export function AddReviewModal({
   stock,
   initialRating = 0,
   mode = "review",
-  slotsUsed = 0,
 }: AddReviewModalProps) {
+  const enteredViaUpload = mode === "upload";
+  const [step, setStep] = useState<1 | 2>(enteredViaUpload ? 2 : 1);
+
+  // Step 1 fields
   const [rating, setRating] = useState(initialRating);
-  const [reviewText, setReviewText] = useState("");
-  const [reviewTitle, setReviewTitle] = useState("");
+  const [shootingTip, setShootingTip] = useState("");
+  const [bestFor, setBestFor] = useState<BestFor[]>([]);
   const [camera, setCamera] = useState("");
-  const [lens, setLens] = useState("");
-  const [developedAt, setDevelopedAt] = useState("");
+
+  const REVIEW_MAX_LENGTH = 10_000;
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+        codeBlock: false,
+        code: false,
+        horizontalRule: false,
+        listItem: false,
+        bulletList: false,
+        orderedList: false,
+      }),
+      Link.configure({ openOnClick: false, HTMLAttributes: { class: "review-link" } }),
+      TiptapPlaceholder.configure({ placeholder: "What do you think?" }),
+    ],
+    editorProps: {
+      attributes: {
+        class: "review-editor min-h-[120px] px-3 py-2.5 text-sm focus:outline-none",
+      },
+    },
+    content: "",
+  });
+
+  // Step 2 fields
+  const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState(stock.format.length === 1 ? stock.format[0] : "");
+  const [lens, setLens] = useState("");
   const [shotIso, setShotIso] = useState("");
+  const [location, setLocation] = useState("");
   const [lab, setLab] = useState("");
   const [filter, setFilter] = useState("");
   const [scanner, setScanner] = useState("");
-  const [format, setFormat] = useState("");
-  const [location, setLocation] = useState("");
-  const [iso, setIso] = useState("");
-  const [pushPull, setPushPull] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [uploadDetailsOpen, setUploadDetailsOpen] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
-  const [uploadedStoragePath, setUploadedStoragePath] = useState<string | null>(null);
+  const [shootingOpen, setShootingOpen] = useState(false);
+  const [processingOpen, setProcessingOpen] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // Upload state
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null); // blob URL while uploading
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_SHOT_SIZE_BYTES = 50 * 1024 * 1024;
   const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
-  const formatOptions = stock.format ?? [];
-
-  const cleanupOrphan = useCallback(async (storagePath: string) => {
-    try {
-      await fetch("/api/user/reviews/orphan-shot", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storage_path: storagePath }),
-      });
-    } catch {
-      // Best-effort cleanup; orphan may remain
-    }
-  }, []);
-
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (!next) {
-        if (mode === "upload" && uploadedStoragePath) {
-          cleanupOrphan(uploadedStoragePath);
-        }
-        setPreviewUrls((urls) => {
-          urls.forEach((u) => URL.revokeObjectURL(u));
-          return [];
-        });
-        setRating(initialRating);
-        setReviewText("");
-        setReviewTitle("");
-        setCamera("");
-        setLens("");
-        setDevelopedAt("");
-        setCaption("");
-        setShotIso("");
-        setLab("");
-        setFilter("");
-        setScanner("");
-        setFormat("");
-        setLocation("");
-        setIso("");
-        setPushPull("");
-        setFiles([]);
-        setDetailsOpen(false);
-        setUploadDetailsOpen(false);
-        setUploadSuccess(false);
-        setUploadedImageUrl(null);
-        setUploadedStoragePath(null);
-        setIsUploading(false);
-        setUploadError(null);
-        setUploadPreviewUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return null;
-        });
-      }
-      onOpenChange(next);
-    },
-    [mode, uploadedStoragePath, cleanupOrphan, onOpenChange]
-  );
+  const resetAll = useCallback(() => {
+    setStep(enteredViaUpload ? 2 : 1);
+    setRating(initialRating);
+    editor?.commands.clearContent();
+    setShootingTip("");
+    setCamera("");
+    setBestFor([]);
+    setFiles([]);
+    setPreviewUrls((urls) => {
+      urls.forEach((u) => URL.revokeObjectURL(u));
+      return [];
+    });
+    setCaption("");
+    setSelectedFormat(stock.format.length === 1 ? stock.format[0] : "");
+    setLens("");
+    setShotIso("");
+    setLocation("");
+    setLab("");
+    setFilter("");
+    setScanner("");
+    setShootingOpen(false);
+    setProcessingOpen(false);
+    setIsUploading(false);
+    setUploadError(null);
+    setSubmitting(false);
+  }, [enteredViaUpload, initialRating, editor, stock.format]);
 
   useEffect(() => {
-    if (open) {
-      setRating(initialRating);
-      setReviewText("");
-      setReviewTitle("");
-      setCamera("");
-      setLens("");
-      setDevelopedAt("");
-      setCaption("");
-      setShotIso("");
-      setLab("");
-      setFilter("");
-      setScanner("");
-      setFormat("");
-      setLocation("");
-      setIso("");
-      setPushPull("");
-      setFiles([]);
-      setPreviewUrls((urls) => {
-        urls.forEach((u) => URL.revokeObjectURL(u));
-        return [];
-      });
-      setDetailsOpen(false);
-      setUploadDetailsOpen(false);
-      setUploadSuccess(false);
-      setUploadedImageUrl(null);
-      setUploadedStoragePath(null);
-      setIsUploading(false);
-      setUploadError(null);
-    }
-  }, [open, initialRating]);
+    if (open) resetAll();
+  }, [open, resetAll]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload: AddReviewModalPayload = {
-      rating,
-      reviewText,
-      files: mode === "upload" ? [] : files,
-      camera: camera || undefined,
-      reviewTitle: reviewTitle || undefined,
-      format: format || undefined,
-      location: location || undefined,
-      iso: iso || undefined,
-      pushPull: pushPull || undefined,
-      lens: lens || undefined,
-      developedAt: developedAt || lab || undefined,
-      caption: caption || undefined,
-      shotIso: shotIso || undefined,
-      lab: lab || undefined,
-      filter: filter || undefined,
-      scanner: scanner || undefined,
-    };
-    if (mode === "upload") {
-      payload.uploadedImageUrl = uploadedImageUrl ?? undefined;
-      payload.uploadedStoragePath = uploadedStoragePath ?? undefined;
-    }
-    const result = await Promise.resolve(onSubmit(payload));
-    if (mode === "upload" && (result as { success?: boolean } | void)?.success) {
-      setUploadSuccess(true);
-      setFiles([]);
-      setPreviewUrls((urls) => {
-        urls.forEach((u) => URL.revokeObjectURL(u));
-        return [];
-      });
-      setUploadedImageUrl(null);
-      setUploadedStoragePath(null);
-    } else {
-      handleOpenChange(false);
+  const handleClose = useCallback(() => {
+    setPreviewUrls((urls) => {
+      urls.forEach((u) => URL.revokeObjectURL(u));
+      return [];
+    });
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const editorTextLength = editor?.getText().length ?? 0;
+  const editorHtml = editor?.getHTML() ?? "";
+  const editorIsEmpty = !editor || editor.isEmpty;
+
+  const buildPayload = (): AddReviewModalPayload => ({
+    rating,
+    reviewText: editorIsEmpty ? "" : editorHtml,
+    files,
+    camera: camera || undefined,
+    reviewTitle: undefined,
+    shootingTip: shootingTip || undefined,
+    bestFor: bestFor.length > 0 ? bestFor : undefined,
+    format: selectedFormat || undefined,
+    location: location || undefined,
+    lens: lens || undefined,
+    caption: caption || undefined,
+    shotIso: shotIso || undefined,
+    lab: lab || undefined,
+    filter: filter || undefined,
+    scanner: scanner || undefined,
+  });
+
+  const handleLogSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await Promise.resolve(onSubmit(buildPayload()));
+      handleClose();
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const toggleBestFor = useCallback((tag: BestFor) => {
+    setBestFor((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  }, []);
+
+  const handlePostScans = async () => {
+    setSubmitting(true);
+    try {
+      await Promise.resolve(onSubmit(buildPayload()));
+      handleClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (selected.length === 0) return;
 
-    if (mode === "upload") {
-      const file = selected[0];
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        setUploadError("Invalid file type. Use PNG, JPG, or WebP.");
-        return;
-      }
-      if (file.size > MAX_SHOT_SIZE_BYTES) {
-        setUploadError("File too large. Max 50MB.");
-        return;
-      }
-      setUploadError(null);
-      const blobUrl = URL.createObjectURL(file);
-      setUploadPreviewUrl(blobUrl);
-      setIsUploading(true);
-      try {
-        const supabase = createSupabaseClient();
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-          setUploadError("You must be signed in to upload.");
-          return;
-        }
-        const slug = stock.slug.trim();
-        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-        const safeExt = ["png", "jpeg", "jpg", "webp"].includes(ext) ? ext : "jpg";
-        const path = `${user.id}/${slug}/${Date.now()}.${safeExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("user-uploads")
-          .upload(path, file, { upsert: false });
-        if (uploadError) {
-          const message =
-            uploadError.message === "The resource already exists"
-              ? "File with this name already exists. Try again."
-              : uploadError.message || "Upload failed. Try again.";
-          setUploadError(message);
-          return;
-        }
-        const { data: urlData } = supabase.storage.from("user-uploads").getPublicUrl(uploadData.path);
-        setUploadedImageUrl(urlData.publicUrl);
-        setUploadedStoragePath(uploadData.path);
-      } catch {
-        setUploadError("Upload failed. Try again.");
-      } finally {
-        setIsUploading(false);
-        URL.revokeObjectURL(blobUrl);
-        setUploadPreviewUrl(null);
-      }
+    const valid = selected.filter(
+      (f) => ALLOWED_IMAGE_TYPES.includes(f.type) && f.size <= MAX_SHOT_SIZE_BYTES
+    );
+    if (valid.length === 0) {
+      setUploadError("Invalid files. Use PNG, JPG, or WebP under 50MB.");
       return;
     }
-
-    const images = selected.filter((f) => f.type.startsWith("image/"));
+    setUploadError(null);
     const maxFiles = 10;
-    const next = [...files, ...images].slice(0, maxFiles);
+    const next = [...files, ...valid].slice(0, maxFiles);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return next.map((f) => URL.createObjectURL(f));
@@ -396,554 +321,485 @@ export function AddReviewModal({
     setFiles(next);
   };
 
-  const removeUploadedImage = useCallback(() => {
-    const path = uploadedStoragePath;
-    setUploadedImageUrl(null);
-    setUploadedStoragePath(null);
-    setUploadError(null);
-    if (path) cleanupOrphan(path);
-  }, [uploadedStoragePath, cleanupOrphan]);
-
   const removeFile = (index: number) => {
     setPreviewUrls((urls) => {
       URL.revokeObjectURL(urls[index]);
       return urls.filter((_, i) => i !== index);
     });
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (currentSlide >= next.length) setCurrentSlide(Math.max(0, next.length - 1));
+      return next;
+    });
   };
 
+  const scrollToSlide = useCallback((index: number) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const slideWidth = el.offsetWidth;
+    el.scrollTo({ left: slideWidth * index, behavior: "smooth" });
+  }, []);
+
+  const handleCarouselScroll = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const index = Math.round(el.scrollLeft / el.offsetWidth);
+    setCurrentSlide(index);
+  }, []);
+
+  const handleInsertLink = useCallback(() => {
+    if (!editor) return;
+    const url = window.prompt("URL");
+    if (url) {
+      editor.chain().focus().setLink({ href: url }).run();
+    }
+  }, [editor]);
+
+  const hasReviewContent = rating > 0 || !editorIsEmpty || shootingTip.trim() || bestFor.length > 0;
+
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
-      <Dialog.Portal>
-        {mode === "upload" ? (
-          <>
-            {/* Sheet backdrop: blur main content to pull focus to the sheet */}
-            <Dialog.Backdrop
-              className="fixed inset-0 z-50 bg-black/20 backdrop-blur-[4px] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-              aria-hidden
-            />
-            {/* Half-width slide-over sheet: 50vw desktop, 100vw mobile */}
-            <Dialog.Popup
-              className={cn(
-                "fixed inset-y-0 right-0 z-50 h-full w-[100vw] md:w-[50vw] flex flex-col bg-card shadow-xl border-l border-border/50 work-sans-content",
-                "data-open:animate-in data-open:slide-in-from-right-10 data-open:fade-in-0 data-closed:animate-out data-closed:slide-out-to-right-10 data-closed:fade-out-0"
-              )}
-              aria-labelledby="add-review-title"
-              aria-describedby="add-review-desc"
-            >
-              {uploadSuccess ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
-                  <p className="text-xl font-semibold text-foreground font-work-sans" style={{ fontFamily: "var(--font-work-sans), var(--font-sans), sans-serif" }}>
-                    Your frame is live.
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-md"
-                      onClick={() => {
-                        setUploadSuccess(false);
-                        setCamera("");
-                        setLens("");
-                        setLab("");
-                        setPushPull("");
-                        setCaption("");
-                        setShotIso("");
-                        setFilter("");
-                        setScanner("");
-                        setUploadDetailsOpen(false);
-                      }}
-                    >
-                      Post Another
-                    </Button>
-                    <Button type="button" size="sm" className="rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors" onClick={() => handleOpenChange(false)}>
-                      Close
-                    </Button>
+    <Sheet open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        showDragHandle={false}
+        className="!h-[100dvh] !max-h-[100dvh] !rounded-none gap-0 p-0"
+      >
+        <SheetTitle className="sr-only">
+          {step === 1 ? `Review ${stock.name}` : `Add scans — ${stock.name}`}
+        </SheetTitle>
+
+        {step === 1 ? (
+          /* ──────────── STEP 1: REVIEW ──────────── */
+          <div className="flex h-full flex-col">
+            {/* Top bar */}
+            <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
+              <span className="text-sm font-semibold text-foreground">Review film stock</span>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute right-4 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                aria-label="Close"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Scrollable content */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="px-4 py-5 space-y-6">
+                {/* Stock context */}
+                <div className="flex items-center gap-3">
+                  <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[7px] border border-border/50">
+                    <StockThumbnail stock={stock} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{stock.name}</p>
                   </div>
                 </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="flex h-full flex-col min-h-0">
-                  {!uploadedImageUrl ? (
-                    /* Step 1: Upload takes majority of screen */
-                    <div className="flex flex-col min-h-0 flex-1 gap-5">
-                      <div className="shrink-0 flex flex-col items-center text-center px-5 pt-[100px] pb-0">
-                        <div className="flex h-40 w-40 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted/30">
-                          <StockImage stock={stock} size={160} />
-                        </div>
-                        <Dialog.Title
-                          id="add-review-title"
-                          className="mt-3 text-base font-bold tracking-tight text-foreground font-work-sans"
-                          render={(props) => (
-                            <div
-                              {...props}
-                              role="heading"
-                              aria-level={2}
-                              className={cn(props.className, "text-base font-bold tracking-tight text-foreground font-work-sans")}
-                              style={{ ...props.style, fontFamily: "var(--font-work-sans), var(--font-sans), sans-serif" }}
-                            />
-                          )}
-                        >
-                          Post your {stock.name} shot
-                        </Dialog.Title>
-                        <p id="add-review-desc" className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: "var(--font-work-sans), var(--font-sans), sans-serif" }}>
-                          Select your favorite frame from a roll—quality over quantity.
-                        </p>
-                      </div>
-                      <div className="flex-1 min-h-0 h-[261px] flex items-start justify-center px-5 pt-0 pb-2">
-                        <div className="w-full max-w-[400px] flex flex-col items-center">
-                          <div
-                            className={cn(
-                              "relative w-full aspect-[3/2] rounded-[7px] overflow-hidden",
-                              "border-2 border-dashed border-border bg-muted/20"
-                            )}
-                          >
-                            <FilmGrainPattern />
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="image/png,image/jpeg,image/jpg,image/webp"
-                              className="sr-only"
-                              id="add-review-photos"
-                              onChange={handleFileChange}
-                            />
-                            {isUploading ? (
-                              <div className="absolute inset-0 z-10 flex items-center justify-center">
-                                {uploadPreviewUrl && (
-                                  <>
-                                    <img
-                                      src={uploadPreviewUrl}
-                                      alt=""
-                                      className="absolute inset-0 h-full w-full object-cover rounded-[7px]"
-                                      aria-hidden
-                                    />
-                                    <div
-                                      className="absolute inset-0 rounded-[7px] bg-gradient-to-t from-black/50 via-black/20 to-transparent"
-                                      aria-hidden
-                                    />
-                                  </>
-                                )}
-                                <Loader2 className="relative h-8 w-8 animate-spin text-white drop-shadow-sm" aria-hidden />
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset rounded-[7px]"
-                              >
-                                <Plus className="h-12 w-12 text-muted-foreground" aria-hidden />
-                                <span className="text-sm font-medium text-muted-foreground">Add shot</span>
-                              </button>
-                            )}
-                          </div>
-                          {uploadError ? (
-                            <p className="mt-3 text-center text-xs text-destructive" role="alert">
-                              {uploadError}
-                            </p>
-                          ) : (
-                            <p className="mt-3 text-center text-xs text-muted-foreground">
-                              Max 50MB. PNG, JPG, or WebP.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Step 2: Metadata fields (current layout) */
-                    <>
-                  <div className="min-h-0 flex-1 overflow-y-auto">
-                  <div className="w-full border-b border-border/50">
-                    {/* Image preview: small, flexible aspect */}
-                    <div className="px-5 pt-[50px] pb-4 flex flex-col items-center">
-                      <div className="relative max-w-[360px] rounded-[7px] overflow-hidden w-fit border-0">
-                        <div className="relative">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={uploadedImageUrl}
-                            alt=""
-                            className="max-w-[360px] max-h-[240px] w-auto h-auto object-contain block rounded-[7px]"
-                          />
-                          <button
-                            type="button"
-                            onClick={removeUploadedImage}
-                            className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label="Remove photo"
-                          >
-                            <XIcon className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Form: caption first, then camera and rest */}
-                    <div className="px-5 py-4 space-y-5">
-                      <div>
-                        <label htmlFor="upload-caption-sheet" className="mb-1 block text-xs font-medium text-muted-foreground">Caption</label>
-                        <textarea
-                          id="upload-caption-sheet"
-                          value={caption}
-                          onChange={(e) => setCaption(e.target.value)}
-                          placeholder="Tell the story behind this frame..."
-                          rows={3}
-                          className="w-full rounded-card border border-border/60 bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-primary"
-                        />
-                      </div>
-                      <div className="flex flex-row gap-3 items-end">
-                        <div className="flex-1 min-w-0">
-                          <TextField
-                            id="upload-camera-sheet"
-                            label="Camera"
-                            type="text"
-                            value={camera}
-                            onChange={(e) => setCamera(e.target.value)}
-                            placeholder="Search cameras"
-                          />
-                        </div>
-                        <div className="w-24 shrink-0">
-                          <TextField
-                            id="upload-shot-iso-sheet"
-                            label="Shot at ISO"
-                            type="text"
-                            value={shotIso}
-                            onChange={(e) => setShotIso(e.target.value)}
-                            placeholder="e.g. 400"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setUploadDetailsOpen((o) => !o)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/30 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50",
-                            uploadDetailsOpen && "bg-muted/50"
-                          )}
-                          aria-expanded={uploadDetailsOpen}
-                        >
-                          <Plus className={cn("h-3.5 w-3.5 transition-transform", uploadDetailsOpen && "rotate-45")} />
-                          Additional details
-                        </button>
-                        {uploadDetailsOpen && (
-                          <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3">
-                            <div className="min-w-0">
-                              <TextField
-                                id="upload-lens-sheet"
-                                label="Lens"
-                                type="text"
-                                value={lens}
-                                onChange={(e) => setLens(e.target.value)}
-                                placeholder="e.g. 50mm f/1.4"
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <TextField
-                                id="upload-lab-sheet"
-                                label="Lab / Processing"
-                                type="text"
-                                value={lab}
-                                onChange={(e) => setLab(e.target.value)}
-                                placeholder="e.g. Home dev"
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <TextField
-                                id="upload-push-pull-sheet"
-                                label="Push/Pull"
-                                type="text"
-                                value={pushPull}
-                                onChange={(e) => setPushPull(e.target.value)}
-                                placeholder="e.g. +1"
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <TextField
-                                id="upload-filter-sheet"
-                                label="Filter"
-                                type="text"
-                                value={filter}
-                                onChange={(e) => setFilter(e.target.value)}
-                                placeholder="e.g. None, 81A"
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <TextField
-                                id="upload-scanner-sheet"
-                                label="Scanner"
-                                type="text"
-                                value={scanner}
-                                onChange={(e) => setScanner(e.target.value)}
-                                placeholder="e.g. Epson V600"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                {/* Rating */}
+                <div>
+                  <HalfStarRating value={rating} onChange={setRating} size={36} />
+                </div>
 
-                  {/* Fixed CTA at bottom (step 2 only) */}
-                  <div className="sticky bottom-0 shrink-0 border-t border-border/40 bg-background px-5 py-4">
-                    <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
+                {/* Review text with formatting toolbar */}
+                <div className="overflow-hidden rounded-[7px] border border-border/50 bg-background transition-colors focus-within:border-primary">
+                  <div className="flex items-center gap-0.5 border-b border-border/30 px-2 py-1.5">
+                    {([
+                      { icon: Bold, label: "Bold", active: editor?.isActive("bold"), action: () => editor?.chain().focus().toggleBold().run() },
+                      { icon: Italic, label: "Italic", active: editor?.isActive("italic"), action: () => editor?.chain().focus().toggleItalic().run() },
+                      { icon: Quote, label: "Quote", active: editor?.isActive("blockquote"), action: () => editor?.chain().focus().toggleBlockquote().run() },
+                      { icon: Strikethrough, label: "Strikethrough", active: editor?.isActive("strike"), action: () => editor?.chain().focus().toggleStrike().run() },
+                      { icon: Link2, label: "Link", active: editor?.isActive("link"), action: handleInsertLink },
+                    ] as const).map(({ icon: Icon, label, active, action }) => (
                       <button
+                        key={label}
                         type="button"
-                        onClick={() => handleOpenChange(false)}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-                      >
-                        Cancel
-                      </button>
-                      <Button
-                        type="submit"
-                        size="default"
-                        className="w-full sm:w-auto rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                        disabled={isUploading || !uploadedImageUrl}
-                      >
-                        Post to Gallery
-                      </Button>
-                    </div>
-                  </div>
-                    </>
-                  )}
-                </form>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-3 top-3 z-10 shrink-0 rounded-md"
-                aria-label="Close"
-                onClick={() => handleOpenChange(false)}
-              >
-                <XIcon className="h-4 w-4" />
-              </Button>
-            </Dialog.Popup>
-          </>
-        ) : (
-          <>
-            <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/50 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
-            <Dialog.Popup
-              className={cn(
-                "fixed left-1/2 top-1/2 z-50 w-full max-w-4xl max-h-[90vh] -translate-x-1/2 -translate-y-1/2",
-                "overflow-hidden rounded-[7px] border border-border/50 bg-card shadow-lg flex flex-col",
-                "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-                "work-sans-content"
-              )}
-              aria-labelledby="add-review-title"
-              aria-describedby="add-review-desc"
-            >
-              <div className="relative flex shrink-0 items-center justify-end border-b border-border/50 px-4 py-3">
-                <Button type="button" variant="ghost" size="icon-sm" className="shrink-0" aria-label="Close" onClick={() => handleOpenChange(false)}>
-                  <XIcon className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
-                {mode === "review" && (
-                  <>
-                    {/* Review mode: title in content for consistency */}
-                    <Dialog.Title
-                      id="add-review-title"
-                      className="text-lg font-bold tracking-tight text-foreground font-work-sans"
-                      render={(props) => (
-                        <div
-                          {...props}
-                          role="heading"
-                          aria-level={2}
-                          className={cn(props.className, "text-lg font-bold tracking-tight text-foreground font-work-sans")}
-                          style={{ ...props.style, fontFamily: "var(--font-work-sans), var(--font-sans), ui-sans-serif, system-ui, sans-serif" }}
-                        />
-                      )}
-                    >
-                      Add review & photos
-                      <span className="block text-sm font-normal text-muted-foreground mt-0.5 font-work-sans" style={{ fontFamily: "var(--font-work-sans), var(--font-sans), ui-sans-serif, system-ui, sans-serif" }}>{stock.name}</span>
-                    </Dialog.Title>
-                    {/* 1. Rating */}
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-foreground">Rating</label>
-                      <ModalStarRating value={rating} onChange={setRating} />
-                    </div>
-                    {/* 2. Review title */}
-                    <TextField
-                      id="add-review-title-field"
-                      label="Review title"
-                      type="text"
-                      value={reviewTitle}
-                      onChange={(e) => setReviewTitle(e.target.value)}
-                      placeholder="Optional title for your review"
-                    />
-                    {/* 3. Review body */}
-                    <div>
-                      <label htmlFor="add-review-text" className="mb-1.5 block text-sm font-medium text-foreground">
-                        Review <span className="font-normal text-muted-foreground">(optional)</span>
-                      </label>
-                      <textarea
-                        id="add-review-text"
-                        value={reviewText}
-                        onChange={(e) => setReviewText(e.target.value)}
-                        placeholder="What do you think? How did this film perform?"
-                        rows={4}
+                        onClick={action}
                         className={cn(
-                          "w-full rounded-card border border-input bg-transparent px-2.5 py-2 text-sm transition-colors",
-                          "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:border-ring"
+                          "rounded p-1.5 transition-colors",
+                          active
+                            ? "bg-primary/10 text-primary"
+                            : "text-foreground/70 hover:bg-secondary hover:text-foreground"
                         )}
-                      />
+                        aria-label={label}
+                      >
+                        <Icon className="h-4 w-4" strokeWidth={2.5} />
+                      </button>
+                    ))}
+                    <span className="ml-auto text-[11px] tabular-nums text-muted-foreground/60">
+                      {editorTextLength.toLocaleString()}/{REVIEW_MAX_LENGTH.toLocaleString()}
+                    </span>
+                  </div>
+                  <EditorContent editor={editor} />
+                </div>
+
+                {/* Shooting tips */}
+                <div>
+                  <label htmlFor="review-shooting-tip" className="mb-1 block text-xs font-medium text-muted-foreground">Shooting notes</label>
+                  <textarea
+                    id="review-shooting-tip"
+                    value={shootingTip}
+                    onChange={(e) => setShootingTip(e.target.value)}
+                    placeholder="Any tips for shooting this stock?"
+                    rows={2}
+                    className="w-full resize-none rounded-[7px] border border-border/50 bg-transparent px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Best for tag picker */}
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Best for</p>
+                  <div className="flex flex-wrap gap-2">
+                    {BEST_FOR_OPTIONS.map((tag) => {
+                      const Icon = BEST_FOR_ICONS[tag];
+                      const selected = bestFor.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleBestFor(tag)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-xs font-medium transition-colors",
+                            selected
+                              ? "border-primary/40 bg-primary/10 text-primary"
+                              : "border-border/50 bg-background text-foreground/70 hover:border-primary/30 hover:bg-primary/5"
+                          )}
+                        >
+                          <Icon className="size-3.5" aria-hidden />
+                          {BEST_FOR_LABELS[tag]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom: Next */}
+            <div className="shrink-0 border-t border-border/40 px-4 py-4">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ──────────── STEP 2: ADD SCANS ──────────── */
+          <div className="flex h-full flex-col">
+            {/* Top bar */}
+            <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
+              {!enteredViaUpload && (
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="absolute left-4 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                  aria-label="Back"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              <span className="text-sm font-semibold text-foreground">Add scans</span>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute right-4 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                aria-label="Close"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Scrollable content */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="px-4 py-5 space-y-5">
+                {/* Stock context */}
+                <div className="flex items-center gap-3">
+                  <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[7px] border border-border/50">
+                    <StockThumbnail stock={stock} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{stock.name}</p>
+                  </div>
+                </div>
+
+                {/* Review summary */}
+                {!enteredViaUpload && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="w-full rounded-[7px] border border-border/50 bg-secondary/30 px-3 py-3 text-left transition-colors hover:border-primary/30"
+                  >
+                    <div className="flex items-center justify-between">
+                      <HalfStarRating value={rating} onChange={() => {}} size={16} readonly />
+                      <span className="text-xs font-medium text-primary">Edit</span>
                     </div>
-                  </>
+                    {editor?.getText().trim() && (
+                      <p className="mt-1.5 line-clamp-2 text-xs text-foreground/80">
+                        {editor.getText()}
+                      </p>
+                    )}
+                    {shootingTip.trim() && (
+                      <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground/60">Shooting notes:</span>{" "}
+                        {shootingTip}
+                      </p>
+                    )}
+                    {bestFor.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {bestFor.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary"
+                          >
+                            {BEST_FOR_LABELS[tag]}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </button>
                 )}
 
-                {mode === "review" && (
-                  <>
-                {/* Upload your scans — review mode only */}
+                {/* Upload zone */}
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">
-                    Upload your scans
-                  </label>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
                     multiple
                     className="sr-only"
-                    id="add-review-photos"
                     onChange={handleFileChange}
                   />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={cn(
-                      "flex w-full flex-col items-center justify-center gap-2 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/30 py-8 transition-colors",
-                      "hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    )}
-                  >
-                    <ImagePlus className="h-8 w-8 text-muted-foreground" aria-hidden />
-                    <span className="text-sm font-medium text-muted-foreground">Add scans</span>
-                  </button>
-                  {files.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {files.map((file, i) => (
-                        <div
-                          key={`${file.name}-${i}`}
-                          className="relative h-16 w-16 rounded-card border border-border/50 bg-muted overflow-hidden"
-                        >
-                          <img
-                            src={previewUrls[i]}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeFile(i)}
-                            className="absolute right-0.5 top-0.5 rounded bg-black/60 p-0.5 text-white hover:bg-black/80"
-                            aria-label="Remove photo"
+
+                  {files.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        "flex w-full flex-col items-center justify-center gap-3 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 py-12 transition-colors",
+                        "hover:border-primary/40 hover:bg-primary/5"
+                      )}
+                    >
+                      <Plus className="h-10 w-10 text-muted-foreground" />
+                      <span className="text-sm font-medium text-muted-foreground">Add scans</span>
+                      <span className="px-6 text-center text-xs text-muted-foreground/60">
+                        Upload your scans of {stock.name} to share with the community
+                      </span>
+                    </button>
+                  ) : (
+                    <div>
+                      <div
+                        ref={carouselRef}
+                        onScroll={handleCarouselScroll}
+                        className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
+                      >
+                        {files.map((file, i) => (
+                          <div
+                            key={`${file.name}-${i}`}
+                            className="relative w-full shrink-0 snap-center"
                           >
-                            <XIcon className="h-3 w-3" />
-                          </button>
+                            <div className="overflow-hidden rounded-[7px] border border-border/50">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={previewUrls[i]}
+                                alt=""
+                                className="h-full w-full object-cover"
+                                style={{ aspectRatio: "1 / 1" }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(i)}
+                              className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                              aria-label="Remove"
+                            >
+                              <XIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Carousel indicators + add more */}
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          {files.map((_, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => scrollToSlide(i)}
+                              className={cn(
+                                "h-1.5 rounded-full transition-all",
+                                i === currentSlide
+                                  ? "w-4 bg-primary"
+                                  : "w-1.5 bg-muted-foreground/30"
+                              )}
+                              aria-label={`Go to image ${i + 1}`}
+                            />
+                          ))}
                         </div>
-                      ))}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {files.length} of 10
+                          </span>
+                          {files.length < 10 && (
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="flex items-center gap-1 rounded-[7px] border border-border/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
+                  )}
+
+                  {uploadError && (
+                    <p className="mt-2 text-xs text-destructive" role="alert">{uploadError}</p>
                   )}
                 </div>
 
-                {/* 5. Camera */}
-                <TextField
-                  id="add-review-camera"
-                  label="Camera"
-                  type="text"
-                  value={camera}
-                  onChange={(e) => setCamera(e.target.value)}
-                  placeholder="e.g. Canon AE-1"
-                />
-
-                {/* 6. Additional details — collapsed accordion */}
-                <div className="rounded-card border border-border/50">
-                  <button
-                    type="button"
-                    onClick={() => setDetailsOpen((o) => !o)}
-                    className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-foreground hover:bg-muted/30"
-                    aria-expanded={detailsOpen}
-                  >
-                    Additional details
-                    <ChevronDown
-                      className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", detailsOpen && "rotate-180")}
-                    />
-                  </button>
-                  {detailsOpen && (
-                    <div className="border-t border-border/50 p-4 space-y-3">
-                      {formatOptions.length > 0 && (
-                        <div>
-                          <label htmlFor="add-review-format" className="mb-1 block text-xs font-medium text-muted-foreground">
-                            Format
-                          </label>
-                          <Select value={format} onValueChange={(v) => setFormat(v ?? "")} name="format">
-                            <SelectTrigger id="add-review-format" className="w-full">
-                              <SelectValue placeholder="Select format" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {formatOptions.map((f) => (
-                                <SelectItem key={f} value={f}>
-                                  {f}
-                                </SelectItem>
+                {/* Metadata fields — only shown after scans are added */}
+                {files.length > 0 && (
+                  <div className="space-y-4">
+                    {/* Collapsible: Shooting details */}
+                    <div className="overflow-hidden rounded-[7px] border border-border/50">
+                      <button
+                        type="button"
+                        onClick={() => setShootingOpen((v) => !v)}
+                        className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
+                      >
+                        Add shooting details
+                        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", shootingOpen && "rotate-90")} />
+                      </button>
+                      {shootingOpen && (
+                        <div className="space-y-3 border-t border-border/40 px-3 py-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <TextField
+                              id="scan-camera"
+                              label="Camera"
+                              type="text"
+                              value={camera}
+                              onChange={(e) => setCamera(e.target.value)}
+                              placeholder="e.g. Canon AE-1"
+                            />
+                            <TextField
+                              id="scan-lens"
+                              label="Lens"
+                              type="text"
+                              value={lens}
+                              onChange={(e) => setLens(e.target.value)}
+                              placeholder="e.g. 50mm f/1.4"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <TextField
+                              id="scan-iso"
+                              label="Shot at ISO"
+                              type="text"
+                              value={shotIso}
+                              onChange={(e) => setShotIso(e.target.value)}
+                              placeholder="e.g. 400"
+                            />
+                            <TextField
+                              id="scan-filter"
+                              label="Filter"
+                              type="text"
+                              value={filter}
+                              onChange={(e) => setFilter(e.target.value)}
+                              placeholder="e.g. None, 81A"
+                            />
+                          </div>
+                          <TextField
+                            id="scan-location"
+                            label="Location"
+                            type="text"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            placeholder="e.g. London, UK"
+                          />
+                          <div>
+                            <p className="mb-1 block text-xs font-medium text-muted-foreground">Format</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {stock.format.map((fmt) => (
+                                <button
+                                  key={fmt}
+                                  type="button"
+                                  onClick={() => setSelectedFormat(selectedFormat === fmt ? "" : fmt)}
+                                  className={cn(
+                                    "rounded-[7px] border px-3 py-1.5 text-xs font-medium transition-colors",
+                                    selectedFormat === fmt
+                                      ? "border-primary/40 bg-primary/10 text-primary"
+                                      : "border-border/50 bg-background text-foreground/70 hover:border-primary/30 hover:bg-primary/5"
+                                  )}
+                                >
+                                  {fmt}
+                                </button>
                               ))}
-                            </SelectContent>
-                          </Select>
+                            </div>
+                          </div>
                         </div>
                       )}
-                      <div>
-                        <TextField
-                          id="add-review-location"
-                          label="Location"
-                          type="text"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          placeholder="Where did you shoot?"
-                        />
-                      </div>
-                      <div>
-                        <TextField
-                          id="add-review-iso"
-                          label="ISO"
-                          type="text"
-                          value={iso}
-                          onChange={(e) => setIso(e.target.value)}
-                          placeholder="e.g. 800"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="add-review-push-pull" className="mb-1 block text-xs font-medium text-muted-foreground">
-                          Push/Pull
-                        </label>
-                        <Select value={pushPull} onValueChange={(v) => setPushPull(v ?? "")} name="pushPull">
-                          <SelectTrigger id="add-review-push-pull" className="w-full">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PUSH_PULL_OPTIONS.map((v) => (
-                              <SelectItem key={v} value={v}>
-                                {v}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Footer */}
-                <div className="flex justify-end gap-2 border-t border-border/50 pt-4">
-                  <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Log</Button>
-                </div>
-              </>
+                    {/* Collapsible: Processing details */}
+                    <div className="overflow-hidden rounded-[7px] border border-border/50">
+                      <button
+                        type="button"
+                        onClick={() => setProcessingOpen((v) => !v)}
+                        className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
+                      >
+                        Add processing details
+                        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", processingOpen && "rotate-90")} />
+                      </button>
+                      {processingOpen && (
+                        <div className="space-y-3 border-t border-border/40 px-3 py-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <TextField
+                              id="scan-lab"
+                              label="Lab / Processing"
+                              type="text"
+                              value={lab}
+                              onChange={(e) => setLab(e.target.value)}
+                              placeholder="e.g. Home dev"
+                            />
+                            <TextField
+                              id="scan-scanner"
+                              label="Scanner"
+                              type="text"
+                              value={scanner}
+                              onChange={(e) => setScanner(e.target.value)}
+                              placeholder="e.g. Epson V600"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </form>
+              </div>
+            </div>
+
+            {/* Bottom: Submit */}
+            <div className="shrink-0 border-t border-border/40 px-4 py-4">
+              <button
+                type="button"
+                onClick={handlePostScans}
+                disabled={submitting || (!hasReviewContent && files.length === 0)}
+                className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+              >
+                {submitting ? "Saving..." : "Submit review"}
+              </button>
+            </div>
           </div>
-        </Dialog.Popup>
-          </>
         )}
-      </Dialog.Portal>
-    </Dialog.Root>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -627,7 +627,7 @@ export function FilmDetailMobileToolbar({
 
   return (
     <>
-      <div className="md:hidden">
+      <div className="md:hidden bg-[#ffffff]">
         <h1
           ref={titleRef}
           className="text-left font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
@@ -678,7 +678,18 @@ export function FilmDetailMobileToolbar({
           <div className="grid w-full min-w-0 grid-cols-2 gap-2">
             <Toggle
               pressed={isShot}
-              onPressedChange={handleShotItTogglePressed}
+              onPressedChange={(nextPressed) => {
+                if (nextPressed) {
+                  if (!isShot) {
+                    toggleShot(slug);
+                    showToastViaEvent("Marked as shot");
+                  }
+                  setMoreSheetOpen(true);
+                } else {
+                  toggleShot(slug);
+                  showToastViaEvent("Removed from stocks you've shot");
+                }
+              }}
               className={cn(
                 "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3 !bg-white hover:!bg-neutral-50 aria-pressed:!bg-white data-[state=on]:!bg-white !text-muted-foreground hover:!text-primary",
                 isShot
@@ -737,14 +748,112 @@ export function FilmDetailMobileToolbar({
       </div>
 
       <Sheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen}>
-        <SheetContent side="bottom" showCloseButton={false} showDragHandle className="px-0 pb-8">
-          <SheetHeader className="px-6 pb-2">
-            <SheetTitle className="text-left text-base font-bold">{stock.name}</SheetTitle>
-          </SheetHeader>
-          <div className="flex flex-col">
+        <SheetContent side="bottom" showCloseButton={false} showDragHandle={false} className="gap-0 px-0 pb-8">
+          <SheetTitle className="sr-only">{stock.name} actions</SheetTitle>
+
+          {/* Action icons row */}
+          <div className="grid grid-cols-2 divide-x divide-border/40 pb-5 pt-4">
             <button
               type="button"
-              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className="flex flex-col items-center gap-1.5 py-1"
+              onClick={() => {
+                if (isShot) {
+                  toggleShot(slug);
+                  showToastViaEvent("Removed from stocks you've shot");
+                } else {
+                  toggleShot(slug);
+                  showToastViaEvent("Marked as shot");
+                }
+              }}
+            >
+              {isShot ? (
+                <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+                  <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                </span>
+              ) : (
+                <CircleCheck className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+              )}
+              <span className="text-xs font-medium text-foreground">Shot It</span>
+            </button>
+            <button
+              type="button"
+              className="flex flex-col items-center gap-1.5 py-1"
+              onClick={() => {
+                const { added } = toggleFavourite(slug);
+                showToastViaEvent(added ? "Added to Shootlist" : "Removed from Shootlist");
+              }}
+            >
+              {isFavourite ? (
+                <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+                  <Plus className="h-4 w-4 text-white" strokeWidth={3} />
+                </span>
+              ) : (
+                <CirclePlus className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+              )}
+              <span className="text-xs font-medium text-foreground">Shootlist</span>
+            </button>
+          </div>
+
+          {/* Star rating */}
+          <div className="border-t border-border/40 px-6 py-4">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const halfVal = star - 0.5;
+                  const fullVal = star;
+                  const isFull = rating >= fullVal;
+                  const isHalf = !isFull && rating >= halfVal;
+
+                  const applyRating = (val: number) => {
+                    const newRating = rating === val ? 0 : val;
+                    persistRating(slug, newRating);
+                    if (newRating > 0) {
+                      const label = Number.isInteger(newRating) ? `${newRating}` : `${newRating}`;
+                      showToastViaEvent(`Rated ${label} star${newRating > 1 ? "s" : ""}`);
+                    } else {
+                      showToastViaEvent("Rating cleared");
+                    }
+                  };
+
+                  return (
+                    <div key={star} className="relative h-8 w-8 p-0.5">
+                      {/* Visual star */}
+                      <div className="pointer-events-none relative h-7 w-7">
+                        <Star className={cn(
+                          "h-7 w-7 transition-colors",
+                          isFull ? "fill-primary text-primary" : "fill-none text-muted-foreground/30"
+                        )} />
+                        {isHalf && (
+                          <StarHalf className="absolute inset-0 h-7 w-7 fill-primary text-primary" />
+                        )}
+                      </div>
+                      {/* Left half tap target */}
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 left-0 w-1/2"
+                        onClick={() => applyRating(halfVal)}
+                        aria-label={`Rate ${halfVal} stars`}
+                      />
+                      {/* Right half tap target */}
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 w-1/2"
+                        onClick={() => applyRating(fullVal)}
+                        aria-label={`Rate ${fullVal} star${fullVal > 1 ? "s" : ""}`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <span className="text-xs text-muted-foreground">Your rating</span>
+            </div>
+          </div>
+
+          {/* Action list */}
+          <div className="border-t border-border/40">
+            <button
+              type="button"
+              className="flex w-full items-center gap-3 px-6 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 setMoreSheetOpen(false);
                 setReviewModalMode("review");
@@ -752,11 +861,11 @@ export function FilmDetailMobileToolbar({
               }}
             >
               <Pencil className="h-5 w-5 text-muted-foreground" />
-              Write a Review
+              Write a review...
             </button>
             <button
               type="button"
-              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-3 px-6 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 setMoreSheetOpen(false);
                 setReviewModalMode("upload");
@@ -764,42 +873,40 @@ export function FilmDetailMobileToolbar({
               }}
             >
               <ImageIcon className="h-5 w-5 text-muted-foreground" />
-              Upload Scans
+              Add scans...
             </button>
             <button
               type="button"
-              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-3 px-6 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 setMoreSheetOpen(false);
                 handleInCameraToggle();
               }}
             >
               <Camera className="h-5 w-5 text-muted-foreground" />
-              {isInCamera ? "Remove from Camera" : "Mark as In Camera"}
+              {isInCamera ? "Remove from In Camera..." : "Mark as In Camera..."}
             </button>
             <button
               type="button"
-              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              className="flex w-full items-center gap-3 px-6 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 setMoreSheetOpen(false);
                 showToastViaEvent("Add to list coming soon");
               }}
             >
               <ListPlus className="h-5 w-5 text-muted-foreground" />
-              Add to List
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-3 px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-              onClick={() => {
-                setMoreSheetOpen(false);
-                showToastViaEvent("Rate coming soon");
-              }}
-            >
-              <Star className="h-5 w-5 text-muted-foreground" />
-              Rate
+              Add to lists...
             </button>
           </div>
+
+          {/* Close */}
+          <button
+            type="button"
+            onClick={() => setMoreSheetOpen(false)}
+            className="mx-4 mt-2 w-[calc(100%-2rem)] border-t border-border/40 pt-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Close
+          </button>
         </SheetContent>
       </Sheet>
 
@@ -836,6 +943,7 @@ export function FilmDetailMobileToolbar({
             formData.set("rating", String(payload.rating));
             if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
             if (payload.reviewText) formData.set("review_text", payload.reviewText);
+            if (payload.shootingTip) formData.set("shooting_tip", payload.shootingTip);
             if (payload.camera) formData.set("camera", payload.camera);
             if (payload.lens) formData.set("lens", payload.lens);
             if (payload.developedAt) formData.set("developed_at", payload.developedAt);
@@ -848,6 +956,7 @@ export function FilmDetailMobileToolbar({
             if (payload.location) formData.set("location", payload.location);
             if (payload.iso) formData.set("iso", payload.iso);
             if (payload.pushPull) formData.set("push_pull", payload.pushPull);
+            if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
             const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
             if (usedPreUpload) {
               formData.set("image_url", payload.uploadedImageUrl!);
@@ -867,6 +976,9 @@ export function FilmDetailMobileToolbar({
               const uploadSucceeded = data.uploaded > 0;
               if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
                 window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
+              }
+              if (data.reviewSaved) {
+                window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
               }
               showToastViaEvent(
                 reviewModalMode === "upload"
@@ -1138,6 +1250,7 @@ export function StickyLeftPane({
             formData.set("rating", String(payload.rating));
             if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
             if (payload.reviewText) formData.set("review_text", payload.reviewText);
+            if (payload.shootingTip) formData.set("shooting_tip", payload.shootingTip);
             if (payload.camera) formData.set("camera", payload.camera);
             if (payload.lens) formData.set("lens", payload.lens);
             if (payload.developedAt) formData.set("developed_at", payload.developedAt);
@@ -1150,6 +1263,7 @@ export function StickyLeftPane({
             if (payload.location) formData.set("location", payload.location);
             if (payload.iso) formData.set("iso", payload.iso);
             if (payload.pushPull) formData.set("push_pull", payload.pushPull);
+            if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
             const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
             if (usedPreUpload) {
               formData.set("image_url", payload.uploadedImageUrl!);
@@ -1169,6 +1283,9 @@ export function StickyLeftPane({
               const uploadSucceeded = data.uploaded > 0;
               if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
                 window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
+              }
+              if (data.reviewSaved) {
+                window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
               }
               showToastViaEvent(
                 reviewModalMode === "upload"

@@ -63,6 +63,14 @@ export interface ProfileData {
   uploadCount?: number;
   reviews?: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
   uploads?: { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[];
+  likedReviews?: {
+    review_id: string;
+    film_stock_slug: string;
+    review_title: string | null;
+    rating: number | null;
+    review_created_at: string;
+    liked_at: string;
+  }[];
 }
 
 interface ProfileViewProps {
@@ -284,10 +292,36 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
             label: "Likes",
             content: (
               <ProfileSection
-                emptyMessage="You haven't liked any reviews yet. This feature is coming soon!"
-                isEmpty={true}
+                emptyMessage="You haven't liked any reviews yet. Open a film’s Reviews tab and tap Like on a review."
+                isEmpty={!profile.likedReviews || profile.likedReviews.length === 0}
               >
-                <div />
+                <ul className="space-y-3">
+                  {(profile.likedReviews ?? []).map((r) => {
+                    const stock = stocksBySlug.get(r.film_stock_slug);
+                    const stockName = stock?.name ?? r.film_stock_slug;
+                    const dateLabel = formatReviewDate(r.liked_at);
+                    return (
+                      <li key={r.review_id}>
+                        <Link
+                          href={`/films/${r.film_stock_slug}`}
+                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="font-semibold text-foreground">{stockName}</span>
+                            {r.review_title && (
+                              <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
+                            )}
+                            <p className="mt-1 text-xs text-muted-foreground">Liked {dateLabel}</p>
+                          </div>
+                          {r.rating != null && r.rating > 0 && (
+                            <MiniStars rating={r.rating} size={18} />
+                          )}
+                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
               </ProfileSection>
             ),
           },

@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
 import {
   Star,
   StarHalf,
   Camera,
+  Heart,
+  Lightbulb,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
@@ -15,12 +18,23 @@ import {
   getMyReviewsForFilmStock,
   type FilmReviewRow,
 } from "@/app/actions/reviews";
+import { BEST_FOR_LABELS, type BestFor } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
+import { showToastViaEvent } from "@/components/toast";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+
+const ALLOWED_TAGS = ["p", "strong", "em", "s", "blockquote", "a", "br"];
+const ALLOWED_ATTR = ["href", "target", "rel", "class"];
+
+function sanitizeReviewHtml(html: string): string {
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR });
+}
 
 type ReviewView = "everyone" | "you";
 
@@ -31,18 +45,6 @@ const SORT_OPTIONS = [
 
 const REVIEWS_PER_PAGE = 50;
 const TEXT_PREVIEW_LENGTH = 220;
-
-function formatReviewDate(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const days = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  if (days < 1) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} week(s) ago`;
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
 
 function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
   const full = Math.floor(rating);
@@ -74,20 +76,30 @@ export function ReviewCard({
   isYou,
   expandedTextIds,
   onToggleText,
+  currentUserId,
+  onLikeUpdated,
 }: {
   review: FilmReviewRow;
   displayName: string;
   isYou: boolean;
   expandedTextIds: Set<string>;
   onToggleText: (id: string) => void;
+  currentUserId: string | null;
+  onLikeUpdated: (reviewId: string, liked: boolean, likeCount: number) => void;
 }) {
+  const [likePending, setLikePending] = useState(false);
   const textExpanded = expandedTextIds.has(review.id);
-  const text = review.review_text ?? "";
-  const previewText =
-    text.length <= TEXT_PREVIEW_LENGTH ? text : text.slice(0, TEXT_PREVIEW_LENGTH).trim() + "…";
-  const showMoreText = text.length > TEXT_PREVIEW_LENGTH;
-  const displayText = textExpanded ? text : previewText;
+  const rawText = review.review_text ?? "";
+  const isHtml = /<[a-z][\s\S]*>/i.test(rawText);
+
+  const plainText = isHtml
+    ? rawText.replace(/<[^>]*>/g, "").trim()
+    : rawText;
+  const showMoreText = plainText.length > TEXT_PREVIEW_LENGTH;
   const rating = review.rating != null && review.rating > 0 ? Number(review.rating) : 0;
+  const bestForTags = review.best_for ?? [];
+  const visibleBestFor = bestForTags.slice(0, 3);
+  const hasMoreBestFor = bestForTags.length > 3;
 
   return (
     <article className="py-5 first:pt-0">
@@ -115,48 +127,144 @@ export function ReviewCard({
         </div>
       )}
 
-      {review.review_title && (
-        <p className="mt-2.5 text-sm font-medium italic text-foreground">
-          {review.review_title}
+      {isHtml ? (
+        <div className="mt-2 text-sm leading-relaxed text-foreground/80">
+          {(!showMoreText || textExpanded) ? (
+            <div
+              className="review-html"
+              dangerouslySetInnerHTML={{ __html: sanitizeReviewHtml(rawText) }}
+            />
+          ) : (
+            <p>{plainText.slice(0, TEXT_PREVIEW_LENGTH).trim()}…</p>
+          )}
+          {showMoreText && (
+            <button
+              type="button"
+              onClick={() => onToggleText(review.id)}
+              className="mt-0.5 font-medium text-primary hover:underline"
+            >
+              {textExpanded ? "Show less" : "More"}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
+          {textExpanded || !showMoreText ? rawText : plainText.slice(0, TEXT_PREVIEW_LENGTH).trim() + "…"}
+          {showMoreText && (
+            <button
+              type="button"
+              onClick={() => onToggleText(review.id)}
+              className="ml-1 font-medium text-primary hover:underline"
+            >
+              {textExpanded ? " Show less" : " More"}
+            </button>
+          )}
         </p>
       )}
 
-      <p className="mt-2 text-sm leading-relaxed text-foreground/80">
-        {displayText}
-        {showMoreText && (
+      {review.shooting_tip && (
+        <div className="mt-3 flex gap-2">
+          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <p className="text-sm leading-relaxed text-foreground/70">{review.shooting_tip}</p>
+        </div>
+      )}
+
+      {review.camera && (
+        <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
+          <Camera className="h-3 w-3 shrink-0" />
+          {review.camera}
+        </div>
+      )}
+
+      {bestForTags.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {visibleBestFor.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex rounded-[7px] border border-border/50 bg-secondary/30 px-2 py-0.5 text-[11px] font-medium text-foreground/80"
+            >
+              {BEST_FOR_LABELS[tag as BestFor] ?? tag.replace(/_/g, " ")}
+            </span>
+          ))}
+          {hasMoreBestFor && (
+            <span className="text-xs font-medium text-muted-foreground" aria-hidden>
+              …
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onToggleText(review.id)}
-            className="ml-1 font-medium text-primary hover:underline"
+            disabled={likePending}
+            onClick={async () => {
+              if (!currentUserId) {
+                showToastViaEvent("Log in to like reviews.");
+                return;
+              }
+              setLikePending(true);
+              try {
+                const res = await fetch("/api/user/review-likes", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ review_id: review.id }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                  showToastViaEvent(data.error || "Could not update like");
+                  return;
+                }
+                onLikeUpdated(review.id, data.liked, data.like_count);
+              } finally {
+                setLikePending(false);
+              }
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-[7px] border px-2.5 py-1.5 text-xs font-medium transition-colors",
+              "hover:border-primary/30 hover:bg-primary/5 disabled:opacity-50",
+              review.liked_by_me
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "border-border/50 text-foreground/80"
+            )}
           >
-            {textExpanded ? " Show less" : " More"}
+            <Heart
+              className={cn(
+                "h-3.5 w-3.5",
+                review.liked_by_me ? "fill-primary text-primary" : "text-muted-foreground"
+              )}
+            />
+            {review.liked_by_me ? "Liked" : "Like"}
           </button>
-        )}
-      </p>
-
-      <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-        <span>{formatReviewDate(review.created_at)}</span>
-        {review.camera && (
-          <>
-            <span className="text-border">·</span>
-            <span className="flex items-center gap-1">
-              <Camera className="h-3 w-3" />
-              {review.camera}
-            </span>
-          </>
-        )}
+          {review.like_count > 0 && (
+            <span className="text-xs tabular-nums text-muted-foreground">{review.like_count}</span>
+          )}
       </div>
     </article>
   );
 }
 
 export function ReviewsTabContent({ slug }: { slug?: string }) {
+  const { user } = useAuth();
   const [view, setView] = useState<ReviewView>("everyone");
   const [sort, setSort] = useState<string>("newest");
   const [reviews, setReviews] = useState<FilmReviewRow[]>([]);
   const [loading, setLoading] = useState(!!slug);
   const [expandedTextIds, setExpandedTextIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  useEffect(() => {
+    if (!slug) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ slug: string }>).detail;
+      if (detail.slug === slug) refetch();
+    };
+    window.addEventListener("review-submitted", handler);
+    return () => window.removeEventListener("review-submitted", handler);
+  }, [slug, refetch]);
 
   useEffect(() => {
     if (!slug) {
@@ -173,7 +281,7 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
       .finally(() => {
         setLoading(false);
       });
-  }, [slug, view]);
+  }, [slug, view, refreshKey]);
 
   const sortedReviews = useMemo(() => {
     if (sort === "newest") return [...reviews];
@@ -202,6 +310,14 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
       return next;
     });
   }
+
+  const handleLikeUpdated = useCallback((reviewId: string, liked: boolean, likeCount: number) => {
+    setReviews((prev) =>
+      prev.map((r) =>
+        r.id === reviewId ? { ...r, liked_by_me: liked, like_count: likeCount } : r
+      )
+    );
+  }, []);
 
   if (!slug) {
     return (
@@ -241,6 +357,8 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
               isYou={view === "you"}
               expandedTextIds={expandedTextIds}
               onToggleText={toggleText}
+              currentUserId={user?.id ?? null}
+              onLikeUpdated={handleLikeUpdated}
             />
           ))
         )}

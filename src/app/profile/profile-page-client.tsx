@@ -44,6 +44,7 @@ export function ProfilePageClient() {
             uploadCount: p.uploadCount,
             reviews: p.reviews,
             uploads: p.uploads,
+            likedReviews: p.likedReviews,
           });
         } else if (!cancelled) {
           setProfile({
@@ -52,6 +53,7 @@ export function ProfilePageClient() {
             favouriteSlugs: [],
             inCameraEntries: [],
             ratings: {},
+            likedReviews: [],
           });
         }
       })
@@ -71,6 +73,7 @@ export function ProfilePageClient() {
         ...Object.keys(profile.ratings),
         ...(profile.reviews?.map((r) => r.film_stock_slug) ?? []),
         ...(profile.uploads?.map((u) => u.film_stock_slug) ?? []),
+        ...(profile.likedReviews?.map((r) => r.film_stock_slug) ?? []),
       ]
     : [...shotSlugs, ...favouriteSlugs, ...inCameraSlugs, ...Object.keys(ratings)];
   const uniqueSlugs = [...new Set(allSlugs)];

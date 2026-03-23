@@ -116,9 +116,12 @@ export function PlusActionSheet() {
     <>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">
-          <SheetHeader className="pb-4">
-            <SheetTitle>{searchStep ? "Choose a film stock" : "What would you like to do?"}</SheetTitle>
-          </SheetHeader>
+          {searchStep && (
+            <SheetHeader className="pb-4">
+              <SheetTitle>Choose a film stock</SheetTitle>
+            </SheetHeader>
+          )}
+          {!searchStep && <SheetTitle className="sr-only">Actions</SheetTitle>}
 
           {searchStep ? (
             <div className="px-4">
@@ -195,15 +198,13 @@ export function PlusActionSheet() {
                 </div>
               </button>
 
-              <div className="mt-2 border-t border-border/50 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="w-full rounded-[7px] py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  Close
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="mt-1 w-full border-t border-border/50 pt-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Close
+              </button>
             </div>
           )}
         </SheetContent>
@@ -231,6 +232,7 @@ export function PlusActionSheet() {
               formData.set("rating", String(payload.rating));
               if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
               if (payload.reviewText) formData.set("review_text", payload.reviewText);
+              if (payload.shootingTip) formData.set("shooting_tip", payload.shootingTip);
               if (payload.camera) formData.set("camera", payload.camera);
               if (payload.lens) formData.set("lens", payload.lens);
               if (payload.developedAt) formData.set("developed_at", payload.developedAt);
@@ -243,6 +245,7 @@ export function PlusActionSheet() {
               if (payload.location) formData.set("location", payload.location);
               if (payload.iso) formData.set("iso", payload.iso);
               if (payload.pushPull) formData.set("push_pull", payload.pushPull);
+              if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
               const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
               if (usedPreUpload) {
                 formData.set("image_url", payload.uploadedImageUrl!);
@@ -259,6 +262,9 @@ export function PlusActionSheet() {
                 const uploadSucceeded = data.uploaded > 0;
                 if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
                   window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug: selectedStock.slug } }));
+                }
+                if (data.reviewSaved) {
+                  window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug: selectedStock.slug } }));
                 }
                 showToastViaEvent(
                   reviewModalMode === "upload"

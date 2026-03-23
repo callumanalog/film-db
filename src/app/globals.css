@@ -250,6 +250,43 @@
 
 }
 
+/* Tiptap rich text editor */
+.review-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  pointer-events: none;
+  height: 0;
+}
+.review-editor p { margin: 0 0 0.25em; }
+.review-editor p:last-child { margin-bottom: 0; }
+.review-editor blockquote {
+  border-left: 2px solid var(--border);
+  padding-left: 0.75rem;
+  margin: 0.5em 0;
+  opacity: 0.8;
+}
+.review-editor a,
+.review-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* Tiptap review display (rendered HTML in review cards) */
+.review-html p { margin: 0 0 0.25em; }
+.review-html p:last-child { margin-bottom: 0; }
+.review-html blockquote {
+  border-left: 2px solid var(--border);
+  padding-left: 0.75rem;
+  margin: 0.5em 0;
+  opacity: 0.8;
+}
+.review-html a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
 /* Shot it icon: tick draws in on hover (record.club-style) */
 @keyframes shot-tick-draw {
   from {

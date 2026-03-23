@@ -210,7 +210,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
           <div
             className={cn(
               "relative z-20 mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 lg:px-8",
-              "overflow-hidden bg-background pt-4",
+              "overflow-hidden bg-[#ffffff] pt-4",
               "md:overflow-visible md:rounded-none md:bg-transparent md:pt-8 md:shadow-none"
             )}
           >

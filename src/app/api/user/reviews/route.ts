@@ -41,12 +41,19 @@ export async function POST(request: Request) {
   const location = (formData.get("location") as string) || null;
   const iso = (formData.get("iso") as string) || null;
   const pushPull = (formData.get("push_pull") as string) || null;
+  const shootingTip = (formData.get("shooting_tip") as string) || null;
   const caption = (formData.get("caption") as string) || null;
   const shotIso = (formData.get("shot_iso") as string) || null;
   const lens = (formData.get("lens") as string) || null;
   const lab = (formData.get("lab") as string) || null;
   const filter = (formData.get("filter") as string) || null;
   const scanner = (formData.get("scanner") as string) || null;
+  const bestForRaw = (formData.get("best_for") as string) || null;
+  let bestFor: string[] = [];
+  if (bestForRaw) {
+    try { bestFor = JSON.parse(bestForRaw); } catch { /* ignore malformed */ }
+    if (!Array.isArray(bestFor)) bestFor = [];
+  }
 
   // Pre-upload flow (shot sheet): image_url already in storage, only INSERT
   const preUploadedImageUrl = (formData.get("image_url") as string) || null;
@@ -118,6 +125,8 @@ export async function POST(request: Request) {
       location: location || null,
       iso: iso || null,
       push_pull: pushPull || null,
+      shooting_tip: shootingTip || null,
+      best_for: bestFor.length > 0 ? bestFor : [],
     });
     if (reviewError) {
       console.error("[reviews] insert error:", reviewError);
