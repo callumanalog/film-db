@@ -106,17 +106,7 @@ export function BottomNav() {
       })}
       <button
         type="button"
-        onPointerDown={(e) => {
-          if (e.button !== 0) return;
-          e.preventDefault();
-          handlePlus();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handlePlus();
-          }
-        }}
+        onClick={handlePlus}
         aria-label="Add"
         className={cn(ICON_LINK_CLASS, "text-muted-foreground hover:text-foreground")}
       >

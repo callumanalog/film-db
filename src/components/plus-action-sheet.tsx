@@ -194,6 +194,16 @@ export function PlusActionSheet() {
                   <p className="text-xs text-muted-foreground">Curate a collection of film stocks</p>
                 </div>
               </button>
+
+              <div className="mt-2 border-t border-border/50 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="w-full rounded-[7px] py-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           )}
         </SheetContent>
