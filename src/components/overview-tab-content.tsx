@@ -38,6 +38,7 @@ export interface OverviewTabContentProps {
   };
   filmType?: FilmType | null;
   flickrImages?: FlickrPhoto[];
+  avgRating?: number | null;
 }
 
 export function OverviewTabContent({
