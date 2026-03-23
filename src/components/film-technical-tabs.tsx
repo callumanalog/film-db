@@ -242,14 +242,17 @@ export function FilmCharacteristicsTabContent({ characterScales, filmType }: Fil
             Characteristics
           </h3>
         </div>
-        <div className="min-w-0 w-full rounded-[7px] border border-border/50 bg-card p-4" role="list" aria-label="Film characteristics">
+        <div className="min-w-0 w-full" role="list" aria-label="Film characteristics">
           {characterSliders.map((item, i) => {
             const isLast = i === characterSliders.length - 1;
             return (
               <div
                 key={item.key}
                 role="listitem"
-                className={cn("flex flex-col gap-y-2.5", !isLast && "border-b border-border/40 pb-5 mb-5")}
+                className={cn(
+                  "flex flex-col gap-y-2.5 border-b border-border/40 pb-5",
+                  !isLast && "mb-5"
+                )}
               >
                 <p className={characteristicLabelTextClass}>{item.label}</p>
                 <CharacteristicScaleRow
@@ -294,12 +297,18 @@ export function FilmPerformanceTabContent({ shootingNotes }: FilmPerformanceTabC
             Performance
           </h3>
         </div>
-        <div className="min-w-0 w-full rounded-[7px] border border-border/50 bg-card p-4 divide-y divide-border/40">
+        <div className="min-w-0 w-full">
           {shootingNotes.map((note, i) => {
             const label = note.header?.trim() || `Note ${i + 1}`;
             const [firstSentence, rest] = splitFirstSentence(note.dek?.trim() ?? "");
             return (
-              <div key={i} className={i === 0 ? "pb-4" : i === shootingNotes.length - 1 ? "pt-4" : "py-4"}>
+              <div
+                key={i}
+                className={cn(
+                  "border-b border-border/40 pb-4",
+                  i === 0 ? "pt-0" : "pt-4"
+                )}
+              >
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   {label}
                 </p>

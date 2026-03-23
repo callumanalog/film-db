@@ -748,7 +748,7 @@ export function FilmDetailMobileToolbar({
       </div>
 
       <Sheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen}>
-        <SheetContent side="bottom" showCloseButton={false} showDragHandle={false} className="gap-0 px-0 pb-8">
+        <SheetContent side="bottom" showCloseButton={false} className="gap-0 px-0 pb-8">
           <SheetTitle className="sr-only">{stock.name} actions</SheetTitle>
 
           {/* Action icons row */}

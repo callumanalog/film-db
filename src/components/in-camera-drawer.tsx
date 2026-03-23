@@ -29,7 +29,7 @@ export function InCameraDrawer({ open, onOpenChange, stockName, stockFormats, on
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">
+      <SheetContent side="bottom" showCloseButton={false} className="gap-0 pb-8">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-muted-foreground" />

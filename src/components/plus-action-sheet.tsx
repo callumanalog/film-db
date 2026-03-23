@@ -115,7 +115,7 @@ export function PlusActionSheet() {
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" showDragHandle showCloseButton={false} className="gap-0 pb-8">
+        <SheetContent side="bottom" showCloseButton={false} className="gap-0 pb-8">
           {searchStep && (
             <SheetHeader className="pb-4">
               <SheetTitle>Choose a film stock</SheetTitle>

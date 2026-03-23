@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Camera } from "lucide-react";
 import type { FlickrPhoto } from "@/lib/flickr";
 import {
   getUploadsForFilmStock,
+  getMyUploadsForFilmStock,
+  getFollowingUploadsForFilmStock,
   type FilmUploadRow,
 } from "@/app/actions/uploads";
 import { LazyImage } from "@/components/lazy-image";
+import {
+  FilmNativeMasonryGrid,
+  type FilmNativeMasonryItem,
+} from "@/components/film-native-grid";
+import { SegmentedViewTabs, type SegmentedView } from "@/components/segmented-view-tabs";
+import { useAuth } from "@/context/auth-context";
 
 const PREVIEW_COUNT = 5;
 
@@ -15,6 +23,8 @@ interface GalleryPreviewProps {
   slug: string;
   stockName: string;
   flickrImages?: FlickrPhoto[];
+  /** `masonry` = same 2-col full-bleed grid as Discover; `carousel` = overview strip. */
+  layout?: "carousel" | "masonry";
 }
 
 type PreviewImage = {
@@ -28,20 +38,63 @@ export function GalleryPreview({
   slug,
   stockName,
   flickrImages = [],
+  layout = "carousel",
 }: GalleryPreviewProps) {
+  const { user } = useAuth();
   const [uploads, setUploads] = useState<FilmUploadRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scansView, setScansView] = useState<SegmentedView>("everyone");
 
   useEffect(() => {
     if (!slug) {
+      setUploads([]);
       setLoading(false);
       return;
     }
+    if (layout === "carousel") {
+      setLoading(true);
+      getUploadsForFilmStock(slug)
+        .then(setUploads)
+        .finally(() => setLoading(false));
+      return;
+    }
     setLoading(true);
-    getUploadsForFilmStock(slug)
+    const fetcher =
+      scansView === "you"
+        ? getMyUploadsForFilmStock(slug)
+        : scansView === "following"
+          ? getFollowingUploadsForFilmStock(slug)
+          : getUploadsForFilmStock(slug);
+    fetcher
       .then(setUploads)
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, layout, scansView]);
+
+  const galleryHref = `/films/${slug}/images`;
+
+  const masonryItems: FilmNativeMasonryItem[] = useMemo(() => {
+    const items: FilmNativeMasonryItem[] = [];
+    for (const u of uploads) {
+      if (!u.image_url?.trim()) continue;
+      items.push({
+        id: `u-${u.id}`,
+        imageUrl: u.image_url!,
+        overlayLabel: u.display_name?.trim() || "Member",
+        href: galleryHref,
+      });
+    }
+    if (scansView === "everyone") {
+      for (const f of flickrImages) {
+        items.push({
+          id: `f-${f.id}`,
+          imageUrl: f.imageUrl,
+          overlayLabel: f.ownerName?.trim() || "Flickr",
+          href: galleryHref,
+        });
+      }
+    }
+    return items;
+  }, [uploads, flickrImages, galleryHref, scansView]);
 
   const images: PreviewImage[] = [];
 
@@ -81,6 +134,28 @@ export function GalleryPreview({
   }, [images.length]);
 
   if (loading) {
+    if (layout === "masonry") {
+      return (
+        <div className="space-y-5">
+          <SegmentedViewTabs
+            value={scansView}
+            onChange={setScansView}
+            ariaLabel="Whose scans to show"
+          />
+          <div className="w-screen max-w-none relative left-1/2 -translate-x-1/2">
+            <div className="w-full columns-2 gap-0" aria-hidden>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="break-inside-avoid">
+                  <div className="box-border border border-white bg-white">
+                    <div className="aspect-[3/4] w-full animate-pulse bg-muted" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="space-y-3">
         <div className="aspect-[3/2] animate-pulse rounded-[7px] bg-muted" />
@@ -89,6 +164,53 @@ export function GalleryPreview({
             <div key={i} className="h-1.5 w-1.5 rounded-full bg-muted" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (layout === "masonry") {
+    const showFollowingEmpty =
+      !loading && scansView === "following" && masonryItems.length === 0;
+    const showYouEmpty = !loading && scansView === "you" && masonryItems.length === 0;
+    const followingEmptyMessage = !user
+      ? "Sign in to see scans from people you follow."
+      : "No scans from people you follow for this film yet.";
+
+    return (
+      <div className="space-y-5">
+        <SegmentedViewTabs
+          value={scansView}
+          onChange={setScansView}
+          ariaLabel="Whose scans to show"
+        />
+
+        {showFollowingEmpty ? (
+          <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
+            <p className="text-sm font-medium text-muted-foreground">{followingEmptyMessage}</p>
+          </div>
+        ) : null}
+
+        {showYouEmpty ? (
+          <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
+            <p className="text-sm font-medium text-muted-foreground">
+              You haven’t uploaded scans for this film yet.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Add photos from the toolbar to see them here.
+            </p>
+          </div>
+        ) : null}
+
+        {!showFollowingEmpty && !showYouEmpty && masonryItems.length > 0 ? (
+          <div className="w-screen max-w-none relative left-1/2 -translate-x-1/2">
+            <FilmNativeMasonryGrid
+              items={masonryItems}
+              ariaLabel={`${stockName} community scans`}
+            />
+          </div>
+        ) : null}
+
+        <UploadCTA stockName={stockName} />
       </div>
     );
   }
@@ -146,7 +268,7 @@ function UploadCTA({ stockName }: { stockName: string }) {
   return (
     <button
       type="button"
-      className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border/60 bg-white px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-neutral-50 hover:text-primary"
+      className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 text-sm font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-muted/50 hover:text-primary dark:border-border dark:shadow-none"
     >
       <Camera className="size-5 shrink-0" aria-hidden />
       Add your own scans

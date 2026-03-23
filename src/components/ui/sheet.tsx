@@ -48,12 +48,10 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
-  showDragHandle = false,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
-  showDragHandle?: boolean
 }) {
   const isBottom = side === "bottom"
   const dimmed = isBottom
@@ -69,11 +67,6 @@ function SheetContent({
         )}
         {...props}
       >
-        {showDragHandle && isBottom && (
-          <div className="flex shrink-0 justify-center pt-2 pb-1" aria-hidden>
-            <div className="h-1 w-10 rounded-full bg-slate-300" role="presentation" />
-          </div>
-        )}
         {children}
         {showCloseButton && (
           <SheetPrimitive.Close

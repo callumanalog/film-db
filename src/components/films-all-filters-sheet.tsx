@@ -51,7 +51,6 @@ export function FilmsAllFiltersSheet({ brands, filterOptions }: FilmsAllFiltersS
       <SheetContent
         side="bottom"
         className="max-h-[90dvh] flex flex-col overflow-hidden gap-0 p-0"
-        showDragHandle
         showCloseButton={false}
       >
         <SheetHeader className="flex shrink-0 flex-row items-center justify-between gap-2 border-b border-border px-4 py-3">

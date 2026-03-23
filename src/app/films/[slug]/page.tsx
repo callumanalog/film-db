@@ -253,7 +253,12 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
                     />
                   }
                   scans={
-                    <GalleryPreview slug={slug} stockName={stock.name} flickrImages={flickrImages} />
+                    <GalleryPreview
+                      slug={slug}
+                      stockName={stock.name}
+                      flickrImages={flickrImages}
+                      layout="masonry"
+                    />
                   }
                   reviews={
                     <CommunityReviews slug={slug} />

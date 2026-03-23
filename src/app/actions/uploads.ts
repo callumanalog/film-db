@@ -164,3 +164,51 @@ export async function getMyUploadsForFilmStock(slug: string): Promise<FilmUpload
     display_name: displayName,
   }));
 }
+
+/** Uploads for this stock from users the current user follows. */
+export async function getFollowingUploadsForFilmStock(slug: string): Promise<FilmUploadRow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: followRows, error: followError } = await supabase
+    .from("user_follows")
+    .select("following_id")
+    .eq("follower_id", user.id);
+
+  if (followError) {
+    console.error("[getFollowingUploadsForFilmStock] follows:", followError.message);
+    return [];
+  }
+
+  const followingIds = (followRows ?? []).map((r) => r.following_id as string).filter(Boolean);
+  if (followingIds.length === 0) return [];
+
+  const { data: rows, error } = await supabase
+    .from("user_uploads")
+    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
+    .eq("film_stock_slug", slug)
+    .in("user_id", followingIds)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getFollowingUploadsForFilmStock]", error.message);
+    return [];
+  }
+  if (!rows?.length) return [];
+
+  const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
+  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
+
+  const nameByUserId = new Map<string, string | null>();
+  for (const p of profiles ?? []) {
+    nameByUserId.set(p.id, p.display_name ?? null);
+  }
+
+  return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
+    ...r,
+    display_name: nameByUserId.get(r.user_id) ?? null,
+  }));
+}

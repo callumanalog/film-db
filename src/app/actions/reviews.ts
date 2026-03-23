@@ -132,3 +132,48 @@ export async function getMyReviewsForFilmStock(slug: string): Promise<FilmReview
 
   return attachReviewLikeData(supabase, rows as ReviewRowDb[], nameByUserId, user.id);
 }
+
+/** Reviews for this stock authored only by users the current user follows. */
+export async function getFollowingReviewsForFilmStock(slug: string): Promise<FilmReviewRow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: followRows, error: followError } = await supabase
+    .from("user_follows")
+    .select("following_id")
+    .eq("follower_id", user.id);
+
+  if (followError) {
+    console.error("[getFollowingReviewsForFilmStock] follows:", followError.message);
+    return [];
+  }
+
+  const followingIds = (followRows ?? []).map((r) => r.following_id as string).filter(Boolean);
+  if (followingIds.length === 0) return [];
+
+  const { data: rows, error } = await supabase
+    .from("reviews")
+    .select("id, user_id, film_stock_slug, rating, review_title, review_text, shooting_tip, camera, best_for, created_at")
+    .eq("film_stock_slug", slug)
+    .in("user_id", followingIds)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getFollowingReviewsForFilmStock]", error.message);
+    return [];
+  }
+  if (!rows?.length) return [];
+
+  const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
+  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
+
+  const nameByUserId = new Map<string, string | null>();
+  for (const p of profiles ?? []) {
+    nameByUserId.set(p.id, p.display_name ?? null);
+  }
+
+  return attachReviewLikeData(supabase, rows as ReviewRowDb[], nameByUserId, user.id);
+}

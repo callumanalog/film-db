@@ -362,7 +362,6 @@ export function AddReviewModal({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        showDragHandle={false}
         className="!h-[100dvh] !max-h-[100dvh] !rounded-none gap-0 p-0"
       >
         <SheetTitle className="sr-only">

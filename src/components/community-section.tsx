@@ -177,8 +177,14 @@ interface CommunitySectionProps {
 
 /* ─── Community Notes (standalone export for tab use) ─── */
 
-export function CommunityReviews({ slug }: { slug?: string }) {
-  return <ReviewsTabContent slug={slug} />;
+export function CommunityReviews({
+  slug,
+  showViewFilter = true,
+}: {
+  slug?: string;
+  showViewFilter?: boolean;
+}) {
+  return <ReviewsTabContent slug={slug} showViewFilter={showViewFilter} />;
 }
 
 /* ─── References (Flickr-tagged + from reviews; standalone export for tab use) ─── */

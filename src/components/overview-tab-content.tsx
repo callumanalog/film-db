@@ -111,7 +111,7 @@ export function OverviewTabContent({
                 Reviews
               </h3>
             </div>
-            <CommunityReviews slug={gallerySlug} />
+            <CommunityReviews slug={gallerySlug} showViewFilter={false} />
           </section>
         ) : null}
       </div>

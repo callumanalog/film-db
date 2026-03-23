@@ -108,7 +108,6 @@ export function FilterBar({ brands, filterOptions }: FilterBarProps) {
         <SheetContent
           side="bottom"
           className="max-h-[90dvh] overflow-hidden flex flex-col p-0 gap-0"
-          showDragHandle
         >
           <SheetHeader className="shrink-0 border-b border-border px-4 py-3">
             <SheetTitle className="text-base font-semibold">All Filters</SheetTitle>

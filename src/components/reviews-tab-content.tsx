@@ -16,18 +16,14 @@ import {
 import {
   getReviewsForFilmStock,
   getMyReviewsForFilmStock,
+  getFollowingReviewsForFilmStock,
   type FilmReviewRow,
 } from "@/app/actions/reviews";
 import { BEST_FOR_LABELS, type BestFor } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { showToastViaEvent } from "@/components/toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+import { SegmentedViewTabs, type SegmentedView } from "@/components/segmented-view-tabs";
 
 const ALLOWED_TAGS = ["p", "strong", "em", "s", "blockquote", "a", "br"];
 const ALLOWED_ATTR = ["href", "target", "rel", "class"];
@@ -36,15 +32,20 @@ function sanitizeReviewHtml(html: string): string {
   return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR });
 }
 
-type ReviewView = "everyone" | "you";
+type ReviewView = SegmentedView;
 
-const SORT_OPTIONS = [
-  { value: "popular", label: "Popular" },
-  { value: "newest", label: "Newest" },
-];
-
-const REVIEWS_PER_PAGE = 50;
+const REVIEWS_PER_PAGE = 30;
 const TEXT_PREVIEW_LENGTH = 220;
+
+/** Two-letter avatar initials from display name (same idea as community gallery). */
+function reviewAuthorInitials(displayName: string): string {
+  const name = displayName.trim() || "Member";
+  const parts = name.split(/[\s._-]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase().slice(0, 2);
+  }
+  return name.slice(0, 2).toUpperCase();
+}
 
 function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
   const full = Math.floor(rating);
@@ -73,7 +74,6 @@ function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
 export function ReviewCard({
   review,
   displayName,
-  isYou,
   expandedTextIds,
   onToggleText,
   currentUserId,
@@ -81,7 +81,6 @@ export function ReviewCard({
 }: {
   review: FilmReviewRow;
   displayName: string;
-  isYou: boolean;
   expandedTextIds: Set<string>;
   onToggleText: (id: string) => void;
   currentUserId: string | null;
@@ -106,10 +105,10 @@ export function ReviewCard({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-            {isYou ? "You" : (displayName || "Member").charAt(0).toUpperCase()}
+            {reviewAuthorInitials(displayName)}
           </div>
           <span className="text-xs font-medium text-foreground">
-            {isYou ? "You" : displayName || "Member"}
+            {displayName || "Member"}
           </span>
         </div>
         <button
@@ -244,10 +243,16 @@ export function ReviewCard({
   );
 }
 
-export function ReviewsTabContent({ slug }: { slug?: string }) {
+export function ReviewsTabContent({
+  slug,
+  showViewFilter = true,
+}: {
+  slug?: string;
+  /** When false (e.g. overview embed), only “everyone” reviews; no Everyone/Following/You tabs. */
+  showViewFilter?: boolean;
+}) {
   const { user } = useAuth();
   const [view, setView] = useState<ReviewView>("everyone");
-  const [sort, setSort] = useState<string>("newest");
   const [reviews, setReviews] = useState<FilmReviewRow[]>([]);
   const [loading, setLoading] = useState(!!slug);
   const [expandedTextIds, setExpandedTextIds] = useState<Set<string>>(new Set());
@@ -266,6 +271,12 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
     return () => window.removeEventListener("review-submitted", handler);
   }, [slug, refetch]);
 
+  const viewForData: ReviewView = showViewFilter ? view : "everyone";
+
+  useEffect(() => {
+    setPage(1);
+  }, [viewForData, slug]);
+
   useEffect(() => {
     if (!slug) {
       setReviews([]);
@@ -273,7 +284,12 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
       return;
     }
     setLoading(true);
-    const fetcher = view === "you" ? getMyReviewsForFilmStock(slug) : getReviewsForFilmStock(slug);
+    const fetcher =
+      viewForData === "you"
+        ? getMyReviewsForFilmStock(slug)
+        : viewForData === "following"
+          ? getFollowingReviewsForFilmStock(slug)
+          : getReviewsForFilmStock(slug);
     fetcher
       .then((data) => {
         setReviews(data);
@@ -281,26 +297,24 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
       .finally(() => {
         setLoading(false);
       });
-  }, [slug, view, refreshKey]);
+  }, [slug, viewForData, refreshKey]);
 
+  /** Popularity (likes) first, then newest. */
   const sortedReviews = useMemo(() => {
-    if (sort === "newest") return [...reviews];
-    return [...reviews].sort((a, b) => {
-      const ra = a.rating != null ? Number(a.rating) : 0;
-      const rb = b.rating != null ? Number(b.rating) : 0;
-      return rb - ra;
+    const copy = [...reviews];
+    return copy.sort((a, b) => {
+      const likes = (b.like_count ?? 0) - (a.like_count ?? 0);
+      if (likes !== 0) return likes;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [reviews, sort]);
+  }, [reviews]);
 
   const totalCount = sortedReviews.length;
-  const paginatedReviews =
-    view === "you"
-      ? sortedReviews
-      : sortedReviews.slice((page - 1) * REVIEWS_PER_PAGE, page * REVIEWS_PER_PAGE);
+  const usePagination = viewForData === "everyone" || viewForData === "following";
+  const paginatedReviews = usePagination
+    ? sortedReviews.slice((page - 1) * REVIEWS_PER_PAGE, page * REVIEWS_PER_PAGE)
+    : sortedReviews;
   const totalPages = Math.max(1, Math.ceil(totalCount / REVIEWS_PER_PAGE));
-  const displayTotal = totalCount;
-  const start = totalCount === 0 ? 0 : (page - 1) * REVIEWS_PER_PAGE + 1;
-  const end = Math.min(page * REVIEWS_PER_PAGE, totalCount);
 
   function toggleText(id: string) {
     setExpandedTextIds((prev) => {
@@ -327,16 +341,32 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
     );
   }
 
-  return (
-    <div className="space-y-6">
+  const showFollowingEmpty =
+    !loading && viewForData === "following" && paginatedReviews.length === 0;
+  const followingEmptyMessage = !user
+    ? "Sign in to see reviews from people you follow."
+    : "No reviews from people you follow for this film yet.";
 
-      {/* Long scroll: list of reviews */}
+  return (
+    <div className={cn(showViewFilter ? "space-y-5" : "space-y-0")}>
+      {showViewFilter ? (
+        <SegmentedViewTabs
+          value={view}
+          onChange={setView}
+          ariaLabel="Whose reviews to show"
+        />
+      ) : null}
+
       <div className="divide-y divide-border/40">
         {loading ? (
           <div className="rounded-[7px] border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
             Loading reviews…
           </div>
-        ) : view === "you" && paginatedReviews.length === 0 ? (
+        ) : showFollowingEmpty ? (
+          <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
+            <p className="text-sm font-medium text-muted-foreground">{followingEmptyMessage}</p>
+          </div>
+        ) : viewForData === "you" && paginatedReviews.length === 0 ? (
           <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-12 text-center">
             <p className="text-sm font-medium text-muted-foreground">You haven’t reviewed this film yet.</p>
             <p className="mt-1 text-xs text-muted-foreground">Add shooting notes to see them here.</p>
@@ -354,7 +384,6 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
               key={review.id}
               review={review}
               displayName={review.display_name ?? "Member"}
-              isYou={view === "you"}
               expandedTextIds={expandedTextIds}
               onToggleText={toggleText}
               currentUserId={user?.id ?? null}
@@ -364,8 +393,8 @@ export function ReviewsTabContent({ slug }: { slug?: string }) {
         )}
       </div>
 
-      {/* Pagination — only when viewing Everyone and more than one page */}
-      {!loading && totalPages > 1 && view === "everyone" && (
+      {/* Pagination — Everyone / Following when more than one page */}
+      {!loading && totalPages > 1 && usePagination && (
         <div className="flex items-center justify-center gap-2 border-t border-border/50 pt-8">
           <button
             type="button"
