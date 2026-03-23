@@ -955,7 +955,6 @@ export function FilmDetailMobileToolbar({
             if (payload.format) formData.set("format", payload.format);
             if (payload.location) formData.set("location", payload.location);
             if (payload.iso) formData.set("iso", payload.iso);
-            if (payload.pushPull) formData.set("push_pull", payload.pushPull);
             if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
             const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
             if (usedPreUpload) {
@@ -1262,7 +1261,6 @@ export function StickyLeftPane({
             if (payload.format) formData.set("format", payload.format);
             if (payload.location) formData.set("location", payload.location);
             if (payload.iso) formData.set("iso", payload.iso);
-            if (payload.pushPull) formData.set("push_pull", payload.pushPull);
             if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
             const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
             if (usedPreUpload) {
