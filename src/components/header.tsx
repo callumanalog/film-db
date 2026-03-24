@@ -5,11 +5,13 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2, Check, CircleCheck } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
+import { useUserActions } from "@/context/user-actions-context";
+import { showToastViaEvent } from "@/components/toast";
 import { buttonVariants } from "@/components/ui/button";
 import { FilmsHeaderSearch } from "@/components/films-header-search";
 
@@ -33,12 +35,17 @@ const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 const MAIN_LANDING_PATHS = ["/", "/films", "/search", "/profile"];
 
 const COLLAPSED_NAV_HEIGHT = 52;
+
+/** ~px per character for `text-base font-semibold` in the film header (mixed case); used only for a coarse max-length. */
+const FILM_HEADER_PX_PER_CHAR = 9.1;
+
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, signOut } = useAuth();
-  const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast, filmMobileActiveTab } =
-    useMobileHeaderTitle() ?? {};
+  const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast, filmSlug } = useMobileHeaderTitle() ?? {};
+  const { shotSlugs, toggleShot } = useUserActions();
+  const filmDetailIsShot = filmSlug != null && shotSlugs.includes(filmSlug);
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
@@ -56,6 +63,33 @@ export function Header() {
   const actionsRef = useRef<HTMLDivElement>(null);
   const moreRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
+
+  const filmHeroRightActionPx = (filmSlug != null ? 44 : 0) + 44;
+  const filmHeroTitlePadLeftPx = 44 + 4;
+  const filmHeroTitlePadRightPx = filmHeroRightActionPx + 4;
+  /** Same inset both sides so the title band is viewport-centred (asymmetric chrome would skew text-center). */
+  const filmHeroTitleSymmetricPadPx = Math.max(filmHeroTitlePadLeftPx, filmHeroTitlePadRightPx);
+
+  const [filmHeroTitleMaxChars, setFilmHeroTitleMaxChars] = useState(28);
+
+  useEffect(() => {
+    if (!isFilmHero) return;
+    const compute = () => {
+      const rowInnerPx = window.innerWidth;
+      const avail = Math.max(64, rowInnerPx - 2 * filmHeroTitleSymmetricPadPx);
+      setFilmHeroTitleMaxChars(Math.max(12, Math.floor(avail / FILM_HEADER_PX_PER_CHAR)));
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, [isFilmHero, filmHeroTitleSymmetricPadPx]);
+
+  const filmHeroDisplayTitle = useMemo(() => {
+    if (!mobileHeaderTitle) return "";
+    if (mobileHeaderTitle.length <= filmHeroTitleMaxChars) return mobileHeaderTitle;
+    const cut = Math.max(1, filmHeroTitleMaxChars - 1);
+    return `${mobileHeaderTitle.slice(0, cut)}…`;
+  }, [mobileHeaderTitle, filmHeroTitleMaxChars]);
 
   useEffect(() => {
     if (!actionsOpen) return;
@@ -113,36 +147,73 @@ export function Header() {
       {/* Film hero integrated header: mobile only — compact title appears when in-page title scrolls out of view */}
       {isFilmHero && (
         <div
-          className="flex w-full items-center justify-between px-4 md:hidden"
+          className={cn(
+            "relative flex w-full items-center justify-between px-0 md:hidden",
+            titleScrolledPast && "border-b border-border/50"
+          )}
           style={{ minHeight: COLLAPSED_NAV_HEIGHT }}
         >
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
+            className="relative z-10 flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
             aria-label="Go back"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <div className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
+          {/* Symmetric horizontal inset so truncated title stays visually centre-aligned in the nav. */}
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 right-0 z-0 flex min-w-0 items-center justify-center overflow-hidden"
+            style={{
+              paddingLeft: filmHeroTitleSymmetricPadPx,
+              paddingRight: filmHeroTitleSymmetricPadPx,
+            }}
+            aria-hidden={!titleScrolledPast}
+          >
             <span
               className={cn(
-                "mx-auto max-w-[70%] font-sans text-lg font-bold tracking-tight transition-opacity duration-200",
-                titleScrolledPast ? "opacity-100 text-foreground" : "pointer-events-none opacity-0"
+                "block min-w-0 w-full truncate text-center font-sans text-base font-semibold tracking-tight transition-opacity duration-200",
+                titleScrolledPast ? "opacity-100 text-foreground" : "opacity-0"
               )}
+              title={
+                mobileHeaderTitle != null && filmHeroDisplayTitle !== mobileHeaderTitle
+                  ? mobileHeaderTitle
+                  : undefined
+              }
             >
-              {mobileHeaderTitle}
+              {filmHeroDisplayTitle}
             </span>
           </div>
-          <div className="flex flex-shrink-0 items-center">
-            {filmMobileActiveTab === "reviews" && (
+          <div className="relative z-10 flex flex-shrink-0 items-center">
+            {filmSlug != null && (
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent("film-detail-open-review"))}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
-                aria-label="Add review"
+                onClick={() => {
+                  if (filmDetailIsShot) {
+                    toggleShot(filmSlug);
+                    showToastViaEvent("Removed from stocks you've shot");
+                  } else {
+                    toggleShot(filmSlug);
+                    showToastViaEvent("Marked as shot");
+                  }
+                }}
+                className="group flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
+                aria-label={filmDetailIsShot ? "Remove from stocks you've shot" : "Mark as shot"}
               >
-                <Plus className="h-5 w-5" />
+                {filmDetailIsShot ? (
+                  <span
+                    className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary"
+                    aria-hidden
+                  >
+                    <Check className="size-3 text-white" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <CircleCheck
+                    className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                )}
               </button>
             )}
             <button

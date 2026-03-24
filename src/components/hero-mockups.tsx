@@ -52,7 +52,6 @@ import {
   CircleCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Toggle } from "@/components/ui/toggle";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { QuickActions } from "@/components/community-section";
 import { AddReviewModal } from "@/components/add-review-modal";
@@ -512,7 +511,7 @@ function FilmMobileTabBar() {
   };
 
   return (
-    <nav ref={navRef} className="mt-8 w-full border-b border-border/50" aria-label="Film detail tabs">
+    <nav ref={navRef} className="mt-4 w-full border-b border-border/50" aria-label="Film detail tabs">
       <div
         className="grid w-full"
         style={{ gridTemplateColumns: `repeat(${MOBILE_TABS.length}, minmax(0, 1fr))` }}
@@ -611,23 +610,6 @@ export function FilmDetailMobileToolbar({
   const isShot = shotSlugs.includes(slug);
   const rating = ratings[slug] ?? 0;
 
-  /** Mobile Shot It pill: off → mark shot + open review; on → unmark only (no sheet). */
-  const handleShotItTogglePressed = (nextPressed: boolean) => {
-    if (!nextPressed) {
-      if (isShot) {
-        toggleShot(slug);
-        showToastViaEvent("Removed from stocks you've shot");
-      }
-      return;
-    }
-    if (!isShot) {
-      toggleShot(slug);
-      showToastViaEvent("Marked as shot");
-    }
-    setReviewModalMode("review");
-    setReviewModalOpen(true);
-  };
-
   const handleInCameraToggle = () => {
     if (isInCamera) {
       toggleInCamera(slug);
@@ -648,40 +630,17 @@ export function FilmDetailMobileToolbar({
     return () => observer.disconnect();
   }, [ctx]);
 
+  const mobileStatsDisplay = {
+    shotByCount: stats?.shotByCount ?? 0,
+    avgRating: stats?.avgRating ?? null,
+    /** Community scan uploads (`user_uploads`); same as desktop “Shots” stat. */
+    scansCount: stats?.shotsCount ?? 0,
+  };
+
   return (
     <>
       <div className="md:hidden bg-[#ffffff]">
-        <h1
-          ref={titleRef}
-          className="text-left font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
-        >
-          {stock.name}
-        </h1>
-
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-relaxed text-muted-foreground">
-          <span className="inline-flex shrink-0 items-center gap-1">
-            <Star
-              className="size-[1em] shrink-0 fill-amber-400 text-amber-400"
-              aria-hidden
-            />
-            {stats?.avgRating != null ? (
-              <button
-                type="button"
-                className="cursor-pointer border-0 bg-transparent p-0 font-semibold tabular-nums text-foreground underline decoration-muted-foreground/55 underline-offset-2 hover:text-primary hover:decoration-primary/80"
-                aria-label="View reviews"
-                onClick={() => {
-                  /* TODO: navigate to reviews section */
-                }}
-              >
-                {stats.avgRating.toFixed(1)}
-              </button>
-            ) : (
-              <span className="tabular-nums">—</span>
-            )}
-          </span>
-          <span className="shrink-0 select-none text-foreground" aria-hidden>
-            ·
-          </span>
+        <div className="mb-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[13px] leading-relaxed text-muted-foreground">
           <span className="min-w-0 shrink-0 text-foreground">{stock.typeLabel}</span>
           <span className="shrink-0 select-none text-foreground" aria-hidden>
             ·
@@ -697,90 +656,50 @@ export function FilmDetailMobileToolbar({
           </span>
         </div>
 
-        <div className="mt-5 w-full">
-          <div className="grid w-full min-w-0 grid-cols-2 gap-2">
-            <Toggle
-              pressed={isShot}
-              onPressedChange={(nextPressed) => {
-                if (nextPressed) {
-                  if (!isShot) {
-                    toggleShot(slug);
-                    showToastViaEvent("Marked as shot");
-                  }
-                  setMoreSheetOpen(true);
-                } else {
-                  toggleShot(slug);
-                  showToastViaEvent("Removed from stocks you've shot");
-                }
-              }}
-              className={cn(
-                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3",
-                isShot
-                  ? "!bg-[#ffffff] hover:!bg-neutral-50 aria-pressed:!bg-[#ffffff] data-[state=on]:!bg-[#ffffff] dark:!bg-[#ffffff] dark:hover:!bg-neutral-100 dark:aria-pressed:!bg-[#ffffff] dark:data-[state=on]:!bg-[#ffffff]"
-                  : "!bg-background hover:!bg-muted/50 aria-pressed:!bg-background data-[state=on]:!bg-background",
-                "!text-muted-foreground hover:!text-primary",
-                "shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-none",
-                isShot
-                  ? "!border-primary aria-pressed:!border-primary dark:!border-primary"
-                  : "!border-border/70 hover:!border-foreground/30 dark:!border-border"
-              )}
-            >
-              {isShot ? (
-                <span
-                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary"
-                  aria-hidden
-                >
-                  <Check className="size-3 text-white" strokeWidth={3} />
-                </span>
-              ) : (
-                <CircleCheck
-                  className="size-5 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
-                  strokeWidth={2}
-                  aria-hidden
-                />
-              )}
-              Shot It
-            </Toggle>
-            <Toggle
-              pressed={isFavourite}
-              onPressedChange={() => {
-                const { added } = toggleFavourite(slug);
-                showToastViaEvent(added ? "Added to Shootlist" : "Removed from Shootlist");
-              }}
-              className={cn(
-                "!flex !min-w-0 !w-full !items-center !justify-center !gap-2 !rounded-full !border !text-sm !font-medium !transition-colors !h-11 !px-3",
-                isFavourite
-                  ? "!bg-[#ffffff] hover:!bg-neutral-50 aria-pressed:!bg-[#ffffff] data-[state=on]:!bg-[#ffffff] dark:!bg-[#ffffff] dark:hover:!bg-neutral-100 dark:aria-pressed:!bg-[#ffffff] dark:data-[state=on]:!bg-[#ffffff]"
-                  : "!bg-background hover:!bg-muted/50 aria-pressed:!bg-background data-[state=on]:!bg-background",
-                "!text-muted-foreground hover:!text-primary",
-                "shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-none",
-                isFavourite
-                  ? "!border-primary aria-pressed:!border-primary dark:!border-primary"
-                  : "!border-border/70 hover:!border-foreground/30 dark:!border-border"
-              )}
-            >
-              {isFavourite ? (
-                <span
-                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary"
-                  aria-hidden
-                >
-                  <Clock
-                    className="size-[18px] shrink-0 text-white [&>circle]:hidden"
-                    strokeWidth={3}
-                    aria-hidden
-                  />
-                </span>
-              ) : (
-                <ClockPlus
-                  className="size-5 shrink-0 text-muted-foreground group-hover/toggle:text-primary"
-                  strokeWidth={2}
-                  aria-hidden
-                />
-              )}
-              Shootlist
-            </Toggle>
+        <h1
+          ref={titleRef}
+          className="text-center font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
+        >
+          {stock.name}
+        </h1>
+
+        <div
+          className="mt-3 flex w-full min-w-0 gap-x-2 border-t border-b border-border/50 py-3 sm:gap-x-3"
+          aria-label="Community stats"
+        >
+          <div className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 text-center">
+            <div className="flex w-full min-w-0 items-center justify-center">
+              <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
+                {mobileStatsDisplay.shotByCount}
+              </span>
+            </div>
+            <span className="text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
+              Shot it
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 text-center">
+            <div className="flex w-full min-w-0 items-center justify-center gap-0.5">
+              <Star className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
+                {mobileStatsDisplay.avgRating != null ? mobileStatsDisplay.avgRating.toFixed(1) : "—"}
+              </span>
+            </div>
+            <span className="text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
+              Avg. rating
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 text-center">
+            <div className="flex w-full min-w-0 items-center justify-center">
+              <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
+                {mobileStatsDisplay.scansCount}
+              </span>
+            </div>
+            <span className="text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
+              Scans
+            </span>
           </div>
         </div>
+
         <FilmMobileTabBar />
       </div>
 
@@ -1159,7 +1078,7 @@ export function StickyLeftPane({
           </div>
         </div>
 
-        {/* Stats row — mobile version is in MobileFilmActionRow area */}
+        {/* Stats row — mobile: FilmDetailMobileToolbar */}
         <div className="hidden md:grid grid-cols-3 gap-2 border-t border-border/50 bg-card px-3 py-3">
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center gap-1.5">
