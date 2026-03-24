@@ -9,7 +9,7 @@ export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Search",
-  description: "Search and filter every film stock. Browse A–Z by format, type, ISO, grain, saturation, and contrast.",
+  description: "Search and filter every film stock. Default sort by popularity; switch to A–Z or filter by format, type, ISO, grain, saturation, and contrast.",
 };
 
 interface SearchPageProps {
@@ -44,7 +44,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const saturationArr = parseMultiParam(params.saturation) as SaturationFilter[];
   const bestForArr = parseMultiParam(params.bestFor) as BestFor[];
   const isoArr = parseMultiParam(params.iso).map((s) => Number(s)).filter((n) => !Number.isNaN(n));
-  const sortParam = params.sort === "popular" ? "popular" : "alphabetical";
+  const sortParam = params.sort === "alphabetical" ? "alphabetical" : "popular";
 
   const [catalog, stocksBase] = await Promise.all([
     getCatalogForListings(),

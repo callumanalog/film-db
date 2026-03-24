@@ -80,14 +80,14 @@ export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeD
     });
   }, [router, searchParams, basePath]);
 
-  const sort = searchParams.get("sort") === "popular" ? "popular" : "alphabetical";
+  const sort = searchParams.get("sort") === "alphabetical" ? "alphabetical" : "popular";
   const setSort = useCallback(
     (value: "alphabetical" | "popular") => {
       const params = new URLSearchParams(searchParams.toString());
       if (value === "alphabetical") {
-        params.delete("sort");
+        params.set("sort", "alphabetical");
       } else {
-        params.set("sort", "popular");
+        params.delete("sort");
       }
       startTransition(() => {
         router.push(`${basePath}?${params.toString()}`);

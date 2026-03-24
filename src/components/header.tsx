@@ -53,7 +53,26 @@ export function Header() {
   const isSearchPage = pathname === "/search";
   const isProfilePage = pathname === "/profile" || pathname?.startsWith("/profile/");
   const searchParams = useSearchParams();
-  const filmsViewTab = searchParams.get("tab") === "index" ? "index" : "for-you";
+  const tabParam = searchParams.get("tab");
+  const isDiscoverFilmsTab =
+    tabParam === "shots" || tabParam === "notes" || tabParam === "brands" || tabParam === "users";
+  const activeFilmsMobileFeed: "everyone" | "following" | "you" | null = isDiscoverFilmsTab
+    ? null
+    : tabParam === "index"
+      ? "everyone"
+      : tabParam === "following"
+        ? "following"
+        : "you";
+
+  const pushFilmsMobileFeedTab = (next: "everyone" | "following" | "you") => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (next === "everyone") p.set("tab", "index");
+    else if (next === "following") p.set("tab", "following");
+    else p.delete("tab");
+    const q = p.toString();
+    router.push(q ? `/films?${q}` : "/films");
+  };
+
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -369,15 +388,54 @@ export function Header() {
           )}
         </div>
 
-        {/* Center column: logo (exposure club / mobile stock name). Search page mobile uses single-column block above. */}
-        <div className="flex min-w-0 flex-1 items-center justify-center">
+        {/* Center column: logo (desktop) / Film Stocks mobile feed tabs / film title or logo elsewhere */}
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center md:justify-center",
+            isFilmsPage && !mobileHeaderTitle ? "justify-start" : "justify-center"
+          )}
+        >
           <Link
             href="/"
             className="hidden whitespace-nowrap text-2xl font-extrabold tracking-tight transition-opacity hover:opacity-80 md:inline-block font-cabinet"
           >
             exposure club
           </Link>
-          {!isSearchPage && (
+          {isFilmsPage && !mobileHeaderTitle && (
+            <nav
+              className="md:hidden w-full min-w-0 border-b border-border/50"
+              aria-label="Film feed"
+            >
+              <div className="grid w-full grid-cols-3">
+                {(
+                  [
+                    { id: "everyone" as const, label: "Everyone" },
+                    { id: "following" as const, label: "Following" },
+                    { id: "you" as const, label: "You" },
+                  ] as const
+                ).map((t) => {
+                  const active = activeFilmsMobileFeed === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => pushFilmsMobileFeedTab(t.id)}
+                      className={cn(
+                        "relative py-3 text-center text-sm font-semibold transition-colors",
+                        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {t.label}
+                      {active && (
+                        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          )}
+          {!isSearchPage && !(isFilmsPage && !mobileHeaderTitle) && (
             <Link
               href={mobileHeaderTitle && pathname ? pathname : "/"}
               className={`whitespace-nowrap font-extrabold tracking-tight transition-opacity hover:opacity-80 md:hidden ${mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-cabinet"}`}

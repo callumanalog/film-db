@@ -194,6 +194,25 @@ export const BEST_FOR_LABELS: Record<BestFor, string> = {
   experimental: "Experimental",
 };
 
+/** Full use-case filter list (fixed order). Not derived from DB so every option stays visible in filters. */
+export const BEST_FOR_FILTER_ORDER: BestFor[] = [
+  "general_purpose",
+  "portrait",
+  "street",
+  "landscapes",
+  "architecture",
+  "documentary",
+  "sports",
+  "travel",
+  "weddings",
+  "studio",
+  "bright_sun",
+  "golden_hour",
+  "low_light",
+  "artificial_light",
+  "experimental",
+];
+
 export interface FilmBrand {
   id: string;
   name: string;

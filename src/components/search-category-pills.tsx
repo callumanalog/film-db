@@ -96,7 +96,7 @@ interface SearchCategoryPillsProps {
 export function SearchCategoryPills({ brands = [], filterOptions }: SearchCategoryPillsProps) {
   const searchParams = useSearchParams();
 
-  const sortValue = searchParams.get("sort") === "popular" ? "popular" : "alphabetical";
+  const sortValue = searchParams.get("sort") === "alphabetical" ? "alphabetical" : "popular";
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">

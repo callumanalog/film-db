@@ -79,7 +79,7 @@ export function FilmsPageClient({ fallbackData }: FilmsPageClientProps) {
 
   const useCaseFilter =
     (params.bestFor?.split(",").filter(Boolean).length ?? 0) > 0 || !!params.vibe;
-  const mobileCarouselsOnly = "for-you" as const;
+  const mobileCarouselsOnly = filmsViewTab === "for-you" ? ("for-you" as const) : undefined;
   const currentSort = params.sort === "alphabetical" ? "alphabetical" : "highest-rated";
 
   const filterPaneOpen = params.filters === "1";

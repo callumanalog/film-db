@@ -40,12 +40,22 @@ function legacyLatitudeToScale(v: unknown): number | null {
   return null;
 }
 
+/** Parse saturation scale 1–5 from JSON/seed (number or numeric string). */
+function parseSaturationScale(v: unknown): number | null {
+  if (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v.trim());
+    if (Number.isInteger(n) && n >= 1 && n <= 5) return n;
+  }
+  return null;
+}
+
 /** Normalize a row (from file or seed) to FilmStock (new schema: grain/contrast/latitude/saturation 1–5, shooting_notes). */
 export function normalizeFilmStockFromFile(row: Record<string, unknown>): FilmStock {
   const grain = typeof row.grain === "number" ? row.grain : legacyGrainToScale(row.grain_level ?? row.grain);
   const contrast = typeof row.contrast === "number" ? row.contrast : legacyContrastToScale(row.contrast_level ?? row.contrast);
   const latitude = typeof row.latitude === "number" ? row.latitude : legacyLatitudeToScale(row.latitude_level ?? row.latitude);
-  const saturation = typeof row.saturation === "number" && row.saturation >= 1 && row.saturation <= 5 ? row.saturation : null;
+  const saturation = parseSaturationScale(row.saturation);
   let shooting_notes: ShootingNote[] = [];
   if (Array.isArray(row.shooting_notes) && row.shooting_notes.every((n) => n && typeof n === "object")) {
     shooting_notes = (row.shooting_notes as { header?: string; dek?: string }[]).map((n) => ({
@@ -60,7 +70,7 @@ export function normalizeFilmStockFromFile(row: Record<string, unknown>): FilmSt
     grain: grain ?? null,
     contrast: contrast ?? null,
     latitude: latitude ?? null,
-    saturation: saturation ?? row.saturation ?? null,
+    saturation,
     shooting_notes,
     grain_level: scaleToGrainFilter(grain) ?? "medium",
     contrast_level: scaleToContrastFilter(contrast) ?? "balanced",

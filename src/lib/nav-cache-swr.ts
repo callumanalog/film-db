@@ -9,7 +9,7 @@ import { getSearchPageData, getFilmsPageData } from "@/app/actions/nav-cache";
 export function searchPageDataKey(params: SearchPageParams): string {
   const p = {
     search: params.search ?? "",
-    sort: params.sort ?? "alphabetical",
+    sort: params.sort === "alphabetical" ? "alphabetical" : "popular",
     brand: params.brand ?? "",
     type: params.type ?? "",
     format: params.format ?? "",

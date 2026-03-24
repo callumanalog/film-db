@@ -14,6 +14,7 @@ import type {
   ColorBalanceType,
   DiscoveryVibe,
 } from "@/lib/types";
+import { BEST_FOR_FILTER_ORDER, scaleToSaturationFilter } from "@/lib/types";
 import { seedBrands, seedFilmStocks, seedPurchaseLinks } from "@/lib/seed-data";
 import { getFilmStocksFromFile, normalizeFilmStockFromFile } from "@/lib/editable-film-stocks";
 import { getBrandsFromFile } from "@/lib/editable-brands";
@@ -189,7 +190,12 @@ export async function getFilmStocks(
     if (filters.saturation !== undefined) {
       const saturations = Array.isArray(filters.saturation) ? filters.saturation : [filters.saturation];
       if (saturations.length > 0) {
-        stocks = stocks.filter((s) => s.saturation_filter != null && saturations.includes(s.saturation_filter));
+        stocks = stocks.filter((s) => {
+          /** Same buckets as scaleToSaturationFilter: 1–2 muted, 3 natural, 4–5 vivid. */
+          const bucket =
+            s.saturation_filter ?? scaleToSaturationFilter(s.saturation ?? undefined);
+          return bucket != null && saturations.includes(bucket);
+        });
       }
     }
     if (filters.bestFor !== undefined) {
@@ -299,11 +305,8 @@ export function getFilmFilterOptionsFromStocks(stocks: (FilmStock & { brand: Fil
     [...new Set(stocks.map((s) => s.latitude_level).filter((l): l is LatitudeFilter => l != null))],
     LATITUDE_ORDER
   );
-  const saturations = sortByOrder(
-    [...new Set(stocks.map((s) => s.saturation_filter).filter((s): s is SaturationFilter => s != null))],
-    SATURATION_ORDER
-  );
-  const bestFor = [...new Set(stocks.flatMap((s) => s.best_for))].sort();
+  const saturations = [...SATURATION_ORDER];
+  const bestFor = [...BEST_FOR_FILTER_ORDER];
   return { types, isos, formats, grains, contrasts, latitudes, saturations, bestFor };
 }
 

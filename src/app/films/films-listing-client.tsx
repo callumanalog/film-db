@@ -18,8 +18,8 @@ interface FilmsListingClientProps {
   filterPaneOpen?: boolean;
   /** When true (use-case / discovery pill filter), show results in a 2-column grid. */
   useCaseFilter?: boolean;
-  /** Mobile tab: "for-you" = curated sections only, "index" = All stocks only. Undefined = show all (e.g. desktop). */
-  filmsViewTab?: "for-you" | "index";
+  /** Mobile tab: "for-you" = curated sections only, "index" = All stocks only, "following" = network activity (same grid as index). Undefined = show all (e.g. desktop). */
+  filmsViewTab?: "for-you" | "index" | "following";
   /** When "for-you", on mobile force carousels-only view (no index). */
   mobileCarouselsOnly?: "for-you";
 }
@@ -36,7 +36,11 @@ export function FilmsListingClient({ stocks, statsBySlug, loggedSlugs, filterPan
   const effectiveTab =
     mobileCarouselsOnly === "for-you" && isMobile ? "for-you" : filmsViewTab;
   const viewMode: FilmCarouselsViewMode =
-    effectiveTab === "index" ? "index" : effectiveTab === "for-you" ? "for-you" : "all";
+    effectiveTab === "index" || effectiveTab === "following"
+      ? "index"
+      : effectiveTab === "for-you"
+        ? "for-you"
+        : "all";
   if (useCaseFilter) {
     if (stocks.length === 0) {
       return (

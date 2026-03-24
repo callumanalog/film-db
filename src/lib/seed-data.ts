@@ -241,6 +241,7 @@ export const seedFilmStocks = [
     grain_level: "fine",
     contrast_level: "low",
     latitude_level: "very_wide",
+    saturation: 3,
     color_balance_type: "daylight",
     color_balance_kelvin: 5500,
     dx_coding: true,

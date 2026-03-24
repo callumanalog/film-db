@@ -459,7 +459,7 @@ export function FilmDetailMobileStickyBanner({
             Discontinued
           </span>
         )}
-        <div className="flex h-[220px] w-full shrink-0 items-center justify-center px-4 py-8">
+        <div className="flex w-full shrink-0 items-center justify-center px-4">
           <div className={isWide ? "h-40 w-48 shrink-0" : "h-48 w-40 shrink-0"}>
             <FilmImage
               stock={stock}
@@ -639,8 +639,8 @@ export function FilmDetailMobileToolbar({
 
   return (
     <>
-      <div className="md:hidden bg-[#ffffff]">
-        <div className="mb-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[13px] leading-relaxed text-muted-foreground">
+      <div className="w-full min-w-0 md:hidden bg-[#ffffff]">
+        <div className="mb-1 flex w-full min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[13px] leading-relaxed text-muted-foreground">
           <span className="min-w-0 shrink-0 text-foreground">{stock.typeLabel}</span>
           <span className="shrink-0 select-none text-foreground" aria-hidden>
             ·
@@ -658,17 +658,17 @@ export function FilmDetailMobileToolbar({
 
         <h1
           ref={titleRef}
-          className="text-center font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
+          className="w-full min-w-0 text-center font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
         >
           {stock.name}
         </h1>
 
         <div
-          className="mt-3 flex w-full min-w-0 gap-x-2 border-t border-b border-border/50 py-3 sm:gap-x-3"
+          className="mt-3 flex w-full min-w-0 justify-center gap-6 py-3"
           aria-label="Community stats"
         >
-          <div className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 text-center">
-            <div className="flex w-full min-w-0 items-center justify-center">
+          <div className="flex min-w-0 shrink-0 flex-col items-center gap-0.5 text-center">
+            <div className="flex items-center justify-center">
               <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
                 {mobileStatsDisplay.shotByCount}
               </span>
@@ -677,8 +677,8 @@ export function FilmDetailMobileToolbar({
               Shot it
             </span>
           </div>
-          <div className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 text-center">
-            <div className="flex w-full min-w-0 items-center justify-center gap-0.5">
+          <div className="flex min-w-0 shrink-0 flex-col items-center gap-0.5 text-center">
+            <div className="flex items-center justify-center gap-1">
               <Star className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
               <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
                 {mobileStatsDisplay.avgRating != null ? mobileStatsDisplay.avgRating.toFixed(1) : "—"}
@@ -688,8 +688,8 @@ export function FilmDetailMobileToolbar({
               Avg. rating
             </span>
           </div>
-          <div className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 text-center">
-            <div className="flex w-full min-w-0 items-center justify-center">
+          <div className="flex min-w-0 shrink-0 flex-col items-center gap-0.5 text-center">
+            <div className="flex items-center justify-center">
               <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
                 {mobileStatsDisplay.scansCount}
               </span>

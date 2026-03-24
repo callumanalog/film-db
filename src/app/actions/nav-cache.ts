@@ -1,6 +1,8 @@
 "use server";
 
+import { unstable_noStore as noStore } from "next/cache";
 import { getFilmStocks, getCatalogForListings } from "@/lib/supabase/queries";
+import { getFollowingActivityFilmSlugs } from "@/app/actions/following-films";
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getLatestShots, getLatestNotes, getLatestUsers } from "@/app/actions/search";
 import type { FilmType, FilmFormat, GrainFilter, ContrastFilter, LatitudeFilter, SaturationFilter, BestFor, DiscoveryVibe } from "@/lib/types";
@@ -56,7 +58,7 @@ export async function getSearchPageData(params: SearchPageParams): Promise<Searc
   const isoArr = parseMultiParam(params.iso)
     .map((s) => Number(s))
     .filter((n) => !Number.isNaN(n));
-  const sortParam = params.sort === "popular" ? "popular" : "alphabetical";
+  const sortParam = params.sort === "alphabetical" ? "alphabetical" : "popular";
 
   const [catalog, stocksBase] = await Promise.all([
     getCatalogForListings(),
@@ -131,7 +133,7 @@ export interface FilmsPageData {
   statsBySlug: Record<string, FilmStockStats>;
   loggedSlugs: string[];
   discoverTab: "shots" | "notes" | "brands" | "users" | null;
-  filmsViewTab: "for-you" | "index";
+  filmsViewTab: "for-you" | "index" | "following";
   latestShots: SearchShotsResult[] | null;
   latestNotes: SearchNotesResult[] | null;
   latestUsers: SearchUsersResult[] | null;
@@ -187,8 +189,23 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
     stocksUnsorted.length > 0 ? await getFilmStockStatsForSlugs(stocksUnsorted.map((s) => s.slug)) : {};
   const loggedSlugs: string[] = [];
 
+  const discoverTab =
+    params.tab === "shots" || params.tab === "notes" || params.tab === "brands" || params.tab === "users"
+      ? params.tab
+      : null;
+  const filmsViewTab: "for-you" | "index" | "following" =
+    params.tab === "index"
+      ? "index"
+      : params.tab === "following"
+        ? "following"
+        : "for-you";
+
+  if (params.tab === "following") {
+    noStore();
+  }
+
   // Popularity = highest avg rating first; nulls (no ratings) last; then alphabetical tie-break
-  const stocks =
+  let stocks =
     sortParam === "highest-rated"
       ? [...stocksUnsorted].sort((a, b) => {
           const ra = statsBySlug[a.slug]?.avgRating ?? null;
@@ -202,6 +219,17 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
           return keyA.localeCompare(keyB);
         })
       : stocksUnsorted;
+
+  if (filmsViewTab === "following") {
+    const followingSlugs = await getFollowingActivityFilmSlugs();
+    if (followingSlugs.length === 0) {
+      stocks = [];
+    } else {
+      const order = new Map(followingSlugs.map((slug, i) => [slug, i]));
+      stocks = stocks.filter((s) => order.has(s.slug));
+      stocks.sort((a, b) => (order.get(a.slug) ?? 9999) - (order.get(b.slug) ?? 9999));
+    }
+  }
 
   const activeFilterCount = [
     params.search,
@@ -217,11 +245,6 @@ export async function getFilmsPageData(params: FilmsPageParams): Promise<FilmsPa
     ...isoArr,
   ].filter(Boolean).length;
 
-  const discoverTab =
-    params.tab === "shots" || params.tab === "notes" || params.tab === "brands" || params.tab === "users"
-      ? params.tab
-      : null;
-  const filmsViewTab = params.tab === "index" ? "index" : "for-you";
   const [latestShots, latestNotes, latestUsers] = discoverTab
     ? await Promise.all([getLatestShots(), getLatestNotes(), getLatestUsers()])
     : [null, null, null];
