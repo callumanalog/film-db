@@ -1,51 +1,55 @@
-# FilmDB
+# Exposure Club
 
-A comprehensive film photography database and community resource. Browse every film stock, learn the history, get shooting tips, find where to buy, and view sample images.
+Film photography database and community: browse film stocks and cameras, read reviews, upload community references, and track what you’ve shot — built with **Next.js** and **Supabase**.
 
-## Getting Started
+## Getting started
 
 ```bash
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open the URL shown in the terminal (e.g. [http://localhost:3000](http://localhost:3000)).
 
-## Tech Stack
+The dev script uses **Webpack** so `NEXT_PUBLIC_*` environment variables are picked up reliably (see [docs/SETUP-NEW-DEVICE.md](docs/SETUP-NEW-DEVICE.md)).
+
+## Tech stack
 
 - **Next.js 16** (App Router, React Server Components, TypeScript)
-- **Tailwind CSS v4** + **shadcn/ui** components
-- **Supabase** (PostgreSQL, Auth, Storage) — ready to connect
-- Seed data included for 20 film stocks (works without Supabase)
+- **Tailwind CSS v4** and shared UI components
+- **Supabase** (PostgreSQL, Auth, Storage) for accounts, profiles, reviews, uploads, and optional hosted catalog
+- **Vercel Speed Insights** (optional telemetry when deployed on Vercel)
 
-## Current Features
+## Current features
 
-- Dark theme with warm amber accents
-- 20 film stocks with detailed descriptions, history, shooting tips, and purchase links
-- Film stock browser with filtering by brand, type, format, and search
-- Individual film stock detail pages with specs, history, tips, buy links, and related stocks
-- Brand pages with descriptions and film stock listings
-- Responsive design (mobile-first)
-- Loading skeleton states
+- Film stock catalog with filters, search, brand pages, and rich detail pages (specs, tips, buy links, community gallery, reviews)
+- **Discover** and **Community** views for browsing uploads
+- **Accounts:** sign-up, sign-in, password reset, profiles (shot / favourite / rate / track, reviews, uploads)
+- **Cameras** directory (seed data)
+- **Admin** UI for catalog maintenance (Supabase `profiles.role = admin`)
+- **Legal:** Terms of use and Privacy Policy (`/terms`, `/privacy`)
+- **SEO:** `sitemap.xml` and `robots.txt` via App Router conventions
 
-## Future Phases
+Without Supabase env vars, the app still runs on local/seed catalog data; auth and community persistence require a project — see [docs/SETUP.md](docs/SETUP.md).
 
-- User accounts and community image uploads
-- Roll tracking (log your rolls, link to scans)
-- Lab finder with map integration
-- Reviews, ratings, and social features
+## Environment variables
+
+Copy [.env.local.example](.env.local.example) to `.env.local` and fill in values. Never commit real secrets.
 
 ## Database
 
-The app currently runs on local seed data. To connect to Supabase:
+Migrations live in `src/supabase/migrations/` (core schema and community tables) and `supabase/migrations/` (catalog evolutions and follow-on features). Apply **both** tracks in numeric order on a new project — full instructions in [docs/SETUP.md](docs/SETUP.md).
 
-1. Create a Supabase project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run the migration in `src/supabase/migrations/001_initial_schema.sql`.
-3. Copy `.env.local.example` to `.env.local` and set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (from Project Settings → API).
-4. Update `src/lib/supabase/queries.ts` to use the Supabase client instead of seed data.
+## Scripts
 
-### GitHub and secrets
+| Script | Purpose |
+|--------|---------|
+| `npm run dev` | Development server (Webpack) |
+| `npm run build` / `npm start` | Production build and serve |
+| `npm run lint` | ESLint |
+| `npm run seed:supabase` | Seed Supabase from local data (requires service role where applicable) |
+| `npm run upload:film-images` | Upload film stock images to Storage |
 
-- **Never commit real keys.** `.env*` is in `.gitignore`; only commit `.env.local.example` (no real values).
-- **CI (e.g. GitHub Actions):** Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as repository secrets, and inject them as env vars in your workflow.
-- **Deployments (Vercel, etc.):** Configure the same env vars in the host’s dashboard (or link Supabase via their integration). Use the anon key for the frontend; it’s safe for client-side use with Row Level Security.
+## CI
+
+Pull requests run lint and production build via [`.github/workflows/ci.yml`](.github/workflows/ci.yml) with placeholder public Supabase env vars so the bundle can compile.

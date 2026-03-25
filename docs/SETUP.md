@@ -1,6 +1,6 @@
-# FilmDB — Supabase setup
+# Exposure Club — Supabase setup
 
-This app uses **Supabase** for auth, user profiles, reviews, uploads, and optionally the film catalog. Follow these steps to run it properly with user accounts and image uploads.
+This app uses **Supabase** for auth, user profiles, reviews, uploads, and optionally the film catalog. Follow these steps to run **Exposure Club** with user accounts and image uploads.
 
 ## 1. Create a Supabase project
 
@@ -49,16 +49,27 @@ RESEND_API_KEY=re_your_api_key
 
 Get the key from [resend.com/api-keys](https://resend.com/api-keys). For production, use a [verified domain](https://resend.com/domains) in the `from` address.
 
+**Support email (optional):** Set `NEXT_PUBLIC_SUPPORT_EMAIL` so Terms, Privacy, and Settings can show a contact address. See `.env.local.example`.
+
+**Flickr (optional):** Set `FLICKR_API_KEY` for reference photos on film pages (see `src/lib/flickr.ts`).
+
 ## 3. Run database migrations
 
-In the Supabase Dashboard go to **SQL Editor** and run the migrations in order:
+Apply SQL in **numeric filename order** on a fresh project (or use migrations you have not yet applied).
 
-1. **First:** `src/supabase/migrations/001_initial_schema.sql` (if you use Supabase for the catalog).
-2. **Second:** `src/supabase/migrations/002_storage_buckets.sql` (for user uploads and film images).
-3. **Required for actions and stats:** `src/supabase/migrations/003_user_actions_and_stats.sql`  
-   - Creates `profiles`, `user_shot`, `user_favourites`, `user_tracked`, `user_ratings`, `user_shootlist`, `reviews`, `user_uploads`, and the `get_film_stock_stats` RPC. Without this, Shot it / Favourite / Rate won’t persist and film page stats will stay at zero.
+**Track A — core schema, auth-adjacent tables, reviews, uploads, stats**  
+Run every file under `src/supabase/migrations/` **in order**: `001` → `012` (e.g. `001_initial_schema.sql` through `012_simplify_remove_roll_tracking.sql`). Highlights:
 
-If you use the Supabase CLI instead:
+- `001` — initial catalog tables (if you host the catalog in Supabase).
+- `003` — `profiles`, user actions (`user_shot`, `user_favourites`, etc.), `reviews`, `user_uploads`, `get_film_stock_stats`.
+- `004` — review columns + **public read** policy on `reviews` (community tabs).
+- `005` — **public read** on `user_uploads` (community gallery).
+- `006`–`008` — storage buckets and related pieces.
+
+**Track B — catalog data migrations and follow-on features**  
+After Track A, run every file under `supabase/migrations/` **in order**: `009` → `036` (film stock columns, profile email verification, admin `role`, review likes, follows, **`user_uploads.review_id`**, and **`036` = Storage bucket `user-uploads`** with RLS — required for review image uploads).
+
+If you use the Supabase CLI, point it at the migration folder you are tracking or paste SQL in the Dashboard **SQL Editor** in the same order.
 
 ```bash
 npx supabase link --project-ref your-project-ref
@@ -89,7 +100,7 @@ Supabase’s built-in email service has a **fixed rate limit** (e.g. 2 emails/ho
 4. **In Supabase:** **Project Settings** (gear) → **Auth** → scroll to **SMTP Settings**.
 5. Enable **Custom SMTP** and fill in:
    - **Sender email:** Your verified address (e.g. `noreply@yourdomain.com`) or `onboarding@resend.dev` for testing.
-   - **Sender name:** e.g. `FilmDB`
+   - **Sender name:** e.g. `Exposure Club`
    - **Host:** `smtp.resend.com`
    - **Port:** `465` or `587`
    - **Username:** `resend`
@@ -140,12 +151,35 @@ Until `brands` and `film_stocks` are populated in Supabase, the app keeps using 
 
 ## 8. Deploy (e.g. Vercel)
 
-Add the same env vars in your hosting provider:
+In your hosting dashboard, set at least:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+| Variable | Required | Notes |
+|----------|----------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Same as local. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon key only in the client bundle. |
+| `NEXT_PUBLIC_APP_URL` | **Yes (production)** | Canonical `https://your-domain.com` — auth email links and SEO metadata. |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Recommended** | Server-only. Used for sign-up edge cases (`sign-up-status`). Without it, duplicate-email flows are less graceful. |
+| `RESEND_API_KEY` | Optional | For `/api/send` and/or custom Auth SMTP. |
+| `FLICKR_API_KEY` | Optional | Reference photos on film pages. |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | Optional | Shown in Terms, Privacy, and Settings. |
 
-Then deploy. Auth, profile, reviews, and user uploads will work against your Supabase project.
+Then deploy. Auth, profile, reviews, and user uploads use your Supabase project.
+
+### Production checklist
+
+1. All migrations applied (Track A then Track B, §3).
+2. **Auth → URL configuration:** Site URL and redirect URLs include your production domain.
+3. **Custom SMTP** (recommended) so sign-up/password reset are not rate-limited on the Supabase default mailer.
+4. Storage buckets **public** where the app expects public URLs for community images (see bucket migrations).
+5. Run `npm run build` locally with production-like env to catch missing variables.
+
+### Community content & RLS (trust)
+
+After migrations:
+
+- **`reviews`:** Policies allow **authenticated insert** for own rows and **public `SELECT`** (see `004_reviews_columns_and_policies.sql`) so film pages can show community reviews.
+- **`user_uploads`:** **Public read** on rows (see `005_user_uploads_public_read.sql`) so discovery and film galleries work; inserts remain scoped to the owning user.
+- **Moderation:** Removing abusive content is done via Supabase (Table Editor / SQL), future admin tools, or support per your in-app **Terms of use** and **Privacy Policy** pages. There is no automated moderation pipeline in the app repo.
 
 ---
 

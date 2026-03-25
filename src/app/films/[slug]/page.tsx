@@ -36,9 +36,25 @@ export async function generateMetadata({
   const stock = await getFilmStockBySlug(slug);
   if (!stock) return { title: "Film Stock Not Found" };
 
+  const description = stock.description || `Learn about ${stock.name} film stock.`;
+  const ogImage =
+    stock.image_url?.startsWith("http") ? [{ url: stock.image_url, alt: stock.name }] : undefined;
+
   return {
     title: stock.name,
-    description: stock.description || `Learn about ${stock.name} film stock.`,
+    description,
+    openGraph: {
+      title: stock.name,
+      description,
+      type: "website",
+      images: ogImage,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: stock.name,
+      description,
+      images: ogImage?.map((i) => i.url),
+    },
   };
 }
 
@@ -60,6 +76,14 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     getFlickrSampleImagesForStock(slug).catch(() => []),
     getUploadsForFilmStock(slug),
   ]);
+
+  const reviewFilmStock = {
+    slug: stock.slug,
+    name: stock.name,
+    format: stock.format ?? [],
+    image_url: stock.image_url ?? null,
+    brand: { name: stock.brand.name, slug: stock.brand.slug },
+  };
 
   const typeColor = FILM_TYPE_COLORS[stock.type];
 
@@ -250,7 +274,6 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
                       }}
                       filmType={stock.type}
                       flickrImages={flickrImages}
-                      avgRating={stats.avgRating}
                     />
                   }
                   scans={
@@ -262,7 +285,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
                     />
                   }
                   reviews={
-                    <CommunityReviews slug={slug} />
+                    <CommunityReviews slug={slug} filmStock={reviewFilmStock} />
                   }
                   lists={
                     <div className="py-12 text-center">

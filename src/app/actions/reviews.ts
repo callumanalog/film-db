@@ -16,6 +16,8 @@ export interface FilmReviewRow {
   display_name?: string | null;
   like_count: number;
   liked_by_me: boolean;
+  /** Image URLs from user_uploads linked via review_id (same submission as the review). */
+  scan_urls: string[];
 }
 
 type ReviewRowDb = {
@@ -48,13 +50,14 @@ async function attachReviewLikeData(
 
   if (likesError) {
     console.error("[reviews] review_likes read:", likesError.message);
-    return rows.map((r) => ({
+    const base = rows.map((r) => ({
       ...r,
       best_for: r.best_for ?? [],
       display_name: displayNameByUserId.get(r.user_id) ?? null,
       like_count: 0,
       liked_by_me: false,
     }));
+    return attachScanUrls(supabase, base);
   }
 
   const countByReview = new Map<string, number>();
@@ -67,13 +70,46 @@ async function attachReviewLikeData(
     }
   }
 
-  return rows.map((r) => ({
+  const withLikes = rows.map((r) => ({
     ...r,
     best_for: r.best_for ?? [],
     display_name: displayNameByUserId.get(r.user_id) ?? null,
     like_count: countByReview.get(r.id) ?? 0,
     liked_by_me: myLiked.has(r.id),
   }));
+  return attachScanUrls(supabase, withLikes);
+}
+
+/** Load user_uploads rows tied to these reviews (ordered oldest-first per review). */
+async function attachScanUrls(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  rows: Omit<FilmReviewRow, "scan_urls">[]
+): Promise<FilmReviewRow[]> {
+  if (rows.length === 0) return [];
+  const reviewIds = rows.map((r) => r.id);
+  const { data: uploads, error } = await supabase
+    .from("user_uploads")
+    .select("review_id, image_url, created_at")
+    .in("review_id", reviewIds)
+    .not("image_url", "is", null)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[reviews] user_uploads by review_id:", error.message);
+    return rows.map((r) => ({ ...r, scan_urls: [] }));
+  }
+
+  const byReview = new Map<string, string[]>();
+  for (const u of uploads ?? []) {
+    const rid = u.review_id as string | null;
+    const url = typeof u.image_url === "string" ? u.image_url.trim() : "";
+    if (!rid || !url) continue;
+    const list = byReview.get(rid) ?? [];
+    list.push(url);
+    byReview.set(rid, list);
+  }
+
+  return rows.map((r) => ({ ...r, scan_urls: byReview.get(r.id) ?? [] }));
 }
 
 /** All reviews for a film stock (for "Everyone" tab). Uses public read policy. */

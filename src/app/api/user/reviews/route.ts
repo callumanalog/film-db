@@ -17,10 +17,13 @@ export async function POST(request: Request) {
     formData = await request.formData();
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    const isSizeError = /limit|size|length|exceeded/i.test(message);
+    const isSizeError = /limit|size|length|exceeded|413|body.*large|max.*body/i.test(message);
     console.error("[reviews] formData error:", message, e);
     return NextResponse.json(
-      { error: isSizeError ? "Upload too large. Try fewer or smaller images." : "Invalid form data" },
+      {
+        error: isSizeError ? "Upload too large. Try fewer or smaller images." : "Invalid form data",
+        ...(process.env.NODE_ENV === "development" ? { detail: message.slice(0, 500) } : {}),
+      },
       { status: 400 }
     );
   }
@@ -76,6 +79,7 @@ export async function POST(request: Request) {
     }
 
     const prefix = `${user.id}/${slug}`;
+    let firstStorageErrorMessage = "";
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (!file.type.startsWith("image/")) continue;
@@ -98,7 +102,8 @@ export async function POST(request: Request) {
         .from(BUCKET)
         .upload(path, bytes, { upsert: true, contentType: file.type });
       if (uploadError) {
-        console.error("[reviews] storage upload error:", uploadError);
+        if (!firstStorageErrorMessage) firstStorageErrorMessage = uploadError.message;
+        console.error("[reviews] storage upload error:", uploadError.message, uploadError);
         continue;
       }
       const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(uploadData.path);
@@ -106,32 +111,78 @@ export async function POST(request: Request) {
     }
 
     if (files.length > 0 && uploadedRows.length === 0) {
+      const errLower = firstStorageErrorMessage.toLowerCase();
+      const isBucketMissing =
+        errLower.includes("bucket not found") ||
+        (errLower.includes("not found") && errLower.includes("bucket"));
+      const isSize =
+        /size|limit|large|too big|413|exceeds|maximum/i.test(firstStorageErrorMessage);
+      const isMime = /mime|type|not allowed|invalid.*type/i.test(firstStorageErrorMessage);
+      const isRls = /policy|row-level|rls|permission|denied|unauthorized/i.test(errLower);
+
+      let detail =
+        "Run SQL migration 036_user_uploads_storage_bucket.sql (creates the bucket, 50MB limit, and Storage policies), or create bucket `user-uploads` in Dashboard → Storage.";
+      if (isSize) {
+        detail =
+          "File is larger than the Storage bucket limit. Run migration 036 (50MB) or raise the limit in Dashboard → Storage → user-uploads.";
+      } else if (isMime) {
+        detail =
+          "This image type is blocked by the bucket. Use JPEG, PNG, or WebP, or add the MIME type to the bucket in Dashboard → Storage.";
+      } else if (isRls) {
+        detail =
+          "Storage rejected the upload (RLS). Run migration 036 so authenticated users can upload under their user id folder.";
+      } else if (!isBucketMissing && firstStorageErrorMessage) {
+        detail = firstStorageErrorMessage;
+      }
+
       return NextResponse.json(
-        { error: "Image upload failed. Check that the 'user-uploads' storage bucket exists and allows uploads." },
+        {
+          error: "Image upload failed.",
+          detail,
+        },
         { status: 500 }
       );
     }
   }
 
-  if (mode === "review" && (rating > 0 || reviewTitle || reviewText)) {
-    const { error: reviewError } = await supabase.from("reviews").insert({
-      user_id: user.id,
-      film_stock_slug: slug,
-      rating: Math.min(5, Math.max(0, rating)),
-      review_title: reviewTitle || null,
-      review_text: reviewText || null,
-      camera: camera || null,
-      format: format || null,
-      location: location || null,
-      iso: iso || null,
-      push_pull: pushPull || null,
-      shooting_tip: shootingTip || null,
-      best_for: bestFor.length > 0 ? bestFor : [],
-    });
-    if (reviewError) {
+  const reviewTitleTrim = reviewTitle?.trim() ?? "";
+  const reviewTextTrim = reviewText?.trim() ?? "";
+  const shootingTipTrim = shootingTip?.trim() ?? "";
+
+  const shouldSaveReview =
+    mode === "review" &&
+    (rating > 0 ||
+      reviewTitleTrim.length > 0 ||
+      reviewTextTrim.length > 0 ||
+      shootingTipTrim.length > 0 ||
+      bestFor.length > 0 ||
+      uploadedRows.length > 0);
+
+  let newReviewId: string | null = null;
+  if (shouldSaveReview) {
+    const { data: inserted, error: reviewError } = await supabase
+      .from("reviews")
+      .insert({
+        user_id: user.id,
+        film_stock_slug: slug,
+        rating: Math.min(5, Math.max(0, rating)),
+        review_title: reviewTitleTrim || null,
+        review_text: reviewTextTrim || null,
+        camera: camera || null,
+        format: format || null,
+        location: location || null,
+        iso: iso || null,
+        push_pull: pushPull || null,
+        shooting_tip: shootingTipTrim || null,
+        best_for: bestFor.length > 0 ? bestFor : [],
+      })
+      .select("id")
+      .single();
+    if (reviewError || !inserted?.id) {
       console.error("[reviews] insert error:", reviewError);
       return NextResponse.json({ error: "Failed to save review" }, { status: 500 });
     }
+    newReviewId = inserted.id as string;
   }
 
   if (rating > 0) {
@@ -160,6 +211,7 @@ export async function POST(request: Request) {
       caption: captionToUse,
       image_width: row.image_width,
       image_height: row.image_height,
+      review_id: newReviewId,
       ...metadata,
     });
     if (insertError) {
@@ -178,6 +230,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     uploaded: uploadedRows.length,
-    reviewSaved: mode === "review" && (rating > 0 || reviewTitle || reviewText),
+    reviewSaved: shouldSaveReview,
   });
 }

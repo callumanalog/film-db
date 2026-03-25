@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Color Audit — Mobile",
-  description: "Visual reference for every color used on mobile views in FilmDB.",
+  description: "Visual reference for every color used on mobile views in Exposure Club.",
 };
 
 const SEMANTIC_TOKENS = [

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { EmailTemplate } from "@/components/email-template";
+import { SITE_NAME } from "@/lib/site";
 
 /**
  * POST /api/send — send a test email using the React email template.
@@ -32,9 +33,9 @@ export async function POST(request: Request) {
 
   const resend = new Resend(apiKey);
   const { data, error } = await resend.emails.send({
-    from: "FilmDB <onboarding@resend.dev>",
+    from: `${SITE_NAME} <onboarding@resend.dev>`,
     to,
-    subject: "Hello from FilmDB",
+    subject: `Hello from ${SITE_NAME}`,
     react: EmailTemplate({ firstName }),
   });
 

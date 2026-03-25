@@ -15,6 +15,7 @@ import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import type { InCameraEntry } from "@/app/actions/user-actions";
+import { SITE_NAME } from "@/lib/site";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
@@ -105,7 +106,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold tracking-tight font-sans">{profile.displayName}</h1>
-          <p className="text-sm text-muted-foreground">FilmDB member</p>
+          <p className="text-sm text-muted-foreground">{SITE_NAME} member</p>
         </div>
       </div>
 

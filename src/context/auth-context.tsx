@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
 interface AuthContextValue {
@@ -23,17 +23,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      setUser(u);
+
+    const applySession = (session: Session | null) => {
+      if (cancelled) return;
+      setUser(session?.user ?? null);
       setLoading(false);
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      applySession(session);
     });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      applySession(session);
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

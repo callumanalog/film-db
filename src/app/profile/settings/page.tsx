@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_NAME } from "@/lib/site";
+import { ProfileSettingsClient } from "./profile-settings-client";
 
 export const metadata: Metadata = {
   title: "Settings",
-  description: "Manage your FilmDB account settings.",
+  description: `Manage your ${SITE_NAME} account — password reset, session, and legal links.`,
 };
 
 export default function ProfileSettingsPage() {
@@ -16,7 +18,10 @@ export default function ProfileSettingsPage() {
         ← Back to profile
       </Link>
       <h1 className="text-2xl font-bold tracking-tight font-sans">Settings</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Account settings will appear here.</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Password, sign out, and policies for your {SITE_NAME} account.
+      </p>
+      <ProfileSettingsClient />
     </div>
   );
 }

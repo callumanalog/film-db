@@ -929,7 +929,8 @@ export function FilmDetailMobileToolbar({
               });
               const data = await res.json().catch(() => ({}));
               if (!res.ok) {
-                showToastViaEvent(data.error || "Failed to submit");
+                const msg = [data.error, data.detail].filter(Boolean).join(" ");
+                showToastViaEvent(msg || "Failed to submit");
                 return;
               }
               const uploadSucceeded = data.uploaded > 0;
@@ -1239,7 +1240,8 @@ export function StickyLeftPane({
               });
               const data = await res.json().catch(() => ({}));
               if (!res.ok) {
-                showToastViaEvent(data.error || "Failed to submit");
+                const msg = [data.error, data.detail].filter(Boolean).join(" ");
+                showToastViaEvent(msg || "Failed to submit");
                 return;
               }
               const uploadSucceeded = data.uploaded > 0;

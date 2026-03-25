@@ -16,6 +16,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -85,13 +86,18 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
   }, [user, refetchProfile]);
 
   useEffect(() => {
+    let cancelled = false;
     if (!user) {
       setProfile(EMPTY_PROFILE);
       return;
     }
     getProfileFromSupabase().then((p) => {
-      if (p) setProfile(toUserProfile(p));
+      if (cancelled || !p) return;
+      setProfile(toUserProfile(p));
     });
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
   const toggleShot = useCallback((slug: string) => {

@@ -12,6 +12,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   getReviewsForFilmStock,
@@ -24,6 +26,18 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { showToastViaEvent } from "@/components/toast";
 import { SegmentedViewTabs, type SegmentedView } from "@/components/segmented-view-tabs";
+import { LazyImage } from "@/components/lazy-image";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  AddReviewModal,
+  type AddReviewModalPayload,
+  type EditReviewSeed,
+} from "@/components/add-review-modal";
 
 const ALLOWED_TAGS = ["p", "strong", "em", "s", "blockquote", "a", "br"];
 const ALLOWED_ATTR = ["href", "target", "rel", "class"];
@@ -36,6 +50,19 @@ type ReviewView = SegmentedView;
 
 const REVIEWS_PER_PAGE = 30;
 const TEXT_PREVIEW_LENGTH = 220;
+
+/** Film context for opening the add/edit review modal from a review card. */
+export type ReviewFlowFilmStock = {
+  slug: string;
+  name: string;
+  format: string[];
+  image_url: string | null;
+  brand: { name: string; slug: string };
+};
+
+function slugToDisplayName(slug: string): string {
+  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
 
 /** Two-letter avatar initials from display name (same idea as community gallery). */
 function reviewAuthorInitials(displayName: string): string {
@@ -78,6 +105,7 @@ export function ReviewCard({
   onToggleText,
   currentUserId,
   onLikeUpdated,
+  onOpenOwnReviewActions,
 }: {
   review: FilmReviewRow;
   displayName: string;
@@ -85,6 +113,7 @@ export function ReviewCard({
   onToggleText: (id: string) => void;
   currentUserId: string | null;
   onLikeUpdated: (reviewId: string, liked: boolean, likeCount: number) => void;
+  onOpenOwnReviewActions?: () => void;
 }) {
   const [likePending, setLikePending] = useState(false);
   const textExpanded = expandedTextIds.has(review.id);
@@ -99,6 +128,7 @@ export function ReviewCard({
   const bestForTags = review.best_for ?? [];
   const visibleBestFor = bestForTags.slice(0, 3);
   const hasMoreBestFor = bestForTags.length > 3;
+  const isOwnReview = Boolean(currentUserId && review.user_id === currentUserId);
 
   return (
     <article className="py-5 first:pt-0">
@@ -111,13 +141,16 @@ export function ReviewCard({
             {displayName || "Member"}
           </span>
         </div>
-        <button
-          type="button"
-          className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-          aria-label="More options"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
+        {isOwnReview && onOpenOwnReviewActions ? (
+          <button
+            type="button"
+            onClick={onOpenOwnReviewActions}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+            aria-label="More options"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+        ) : null}
       </div>
 
       {rating > 0 && (
@@ -159,6 +192,38 @@ export function ReviewCard({
             </button>
           )}
         </p>
+      )}
+
+      {review.scan_urls.length > 0 && (
+        <div className="mt-3" aria-label="Scans submitted with this review">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Scans
+          </p>
+          <div
+            className={cn(
+              "flex gap-2 overflow-x-auto pb-1",
+              "snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            )}
+          >
+            {review.scan_urls.map((url, i) => (
+              <a
+                key={`${review.id}-scan-${i}`}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="snap-start shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted ring-offset-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Open scan ${i + 1} of ${review.scan_urls.length} in new tab`}
+              >
+                <LazyImage
+                  src={url}
+                  alt=""
+                  wrapperClassName="block h-[4.5rem] w-[4.5rem] sm:h-[5rem] sm:w-[5rem]"
+                  className="h-full w-full object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
       )}
 
       {review.shooting_tip && (
@@ -246,10 +311,13 @@ export function ReviewCard({
 export function ReviewsTabContent({
   slug,
   showViewFilter = true,
+  filmStock = null,
 }: {
   slug?: string;
   /** When false (e.g. overview embed), only “everyone” reviews; no Everyone/Following/You tabs. */
   showViewFilter?: boolean;
+  /** Stock shown on the page; used for edit-review modal header/thumbnail. */
+  filmStock?: ReviewFlowFilmStock | null;
 }) {
   const { user } = useAuth();
   const [view, setView] = useState<ReviewView>("everyone");
@@ -258,8 +326,126 @@ export function ReviewsTabContent({
   const [expandedTextIds, setExpandedTextIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [actionsReview, setActionsReview] = useState<FilmReviewRow | null>(null);
+  const [deleteConfirmReview, setDeleteConfirmReview] = useState<FilmReviewRow | null>(null);
+  const [editingReview, setEditingReview] = useState<FilmReviewRow | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
 
   const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
+
+  const editSeed: EditReviewSeed | null = useMemo(() => {
+    if (!editingReview) return null;
+    return {
+      id: editingReview.id,
+      rating: editingReview.rating != null && editingReview.rating > 0 ? Number(editingReview.rating) : 0,
+      review_text: editingReview.review_text,
+      shooting_tip: editingReview.shooting_tip,
+      best_for: editingReview.best_for ?? [],
+      existingScanUrls: editingReview.scan_urls ?? [],
+    };
+  }, [editingReview]);
+
+  const modalStock = useMemo(() => {
+    const stockSlug = editingReview?.film_stock_slug ?? slug ?? "";
+    if (filmStock && filmStock.slug === stockSlug) {
+      return {
+        slug: filmStock.slug,
+        name: filmStock.name,
+        brand: filmStock.brand,
+        format: filmStock.format ?? [],
+        image_url: filmStock.image_url,
+      };
+    }
+    return {
+      slug: stockSlug,
+      name: slugToDisplayName(stockSlug),
+      brand: { name: "", slug: "" },
+      format: [] as string[],
+      image_url: null as string | null,
+    };
+  }, [editingReview?.film_stock_slug, slug, filmStock]);
+
+  const reviewActionsTitle = useMemo(() => {
+    if (!actionsReview) return "";
+    if (filmStock?.slug === actionsReview.film_stock_slug) return filmStock.name;
+    return slugToDisplayName(actionsReview.film_stock_slug);
+  }, [actionsReview, filmStock]);
+
+  const handleEditSubmit = useCallback(
+    async (payload: AddReviewModalPayload) => {
+      if (!user || !editingReview) return;
+      const formData = new FormData();
+      formData.set("film_stock_slug", modalStock.slug);
+      formData.set("mode", "review");
+      formData.set("rating", String(payload.rating));
+      if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
+      if (payload.reviewText) formData.set("review_text", payload.reviewText);
+      if (payload.shootingTip) formData.set("shooting_tip", payload.shootingTip);
+      if (payload.camera) formData.set("camera", payload.camera);
+      if (payload.lens) formData.set("lens", payload.lens);
+      if (payload.developedAt) formData.set("developed_at", payload.developedAt);
+      if (payload.caption) formData.set("caption", payload.caption);
+      if (payload.shotIso) formData.set("shot_iso", payload.shotIso);
+      if (payload.lab) formData.set("lab", payload.lab);
+      if (payload.filter) formData.set("filter", payload.filter);
+      if (payload.scanner) formData.set("scanner", payload.scanner);
+      if (payload.format) formData.set("format", payload.format);
+      if (payload.location) formData.set("location", payload.location);
+      if (payload.iso) formData.set("iso", payload.iso);
+      if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
+      if (payload.uploadedImageUrl) formData.set("image_url", payload.uploadedImageUrl);
+      payload.files.forEach((file, i) => formData.append(`file_${i}`, file));
+
+      try {
+        const res = await fetch(`/api/user/reviews/${editingReview.id}`, {
+          method: "PATCH",
+          body: formData,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = [data.error, data.detail].filter(Boolean).join(" ");
+          showToastViaEvent(msg || "Could not save changes");
+          return;
+        }
+        showToastViaEvent("Review updated.");
+        window.dispatchEvent(
+          new CustomEvent("review-submitted", { detail: { slug: modalStock.slug } })
+        );
+        setEditModalOpen(false);
+        setEditingReview(null);
+        refetch();
+      } catch {
+        showToastViaEvent("Could not save changes");
+      }
+    },
+    [user, editingReview, modalStock.slug, refetch]
+  );
+
+  const confirmDeleteReview = useCallback(async () => {
+    if (!deleteConfirmReview || !user) return;
+    setDeletePending(true);
+    try {
+      const res = await fetch(`/api/user/reviews/${deleteConfirmReview.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToastViaEvent(data.error || "Could not delete review");
+        return;
+      }
+      showToastViaEvent("Review deleted.");
+      window.dispatchEvent(
+        new CustomEvent("review-submitted", {
+          detail: { slug: deleteConfirmReview.film_stock_slug },
+        })
+      );
+      setDeleteConfirmReview(null);
+      refetch();
+    } catch {
+      showToastViaEvent("Could not delete review");
+    } finally {
+      setDeletePending(false);
+    }
+  }, [deleteConfirmReview, user, refetch]);
 
   useEffect(() => {
     if (!slug) return;
@@ -388,6 +574,7 @@ export function ReviewsTabContent({
               onToggleText={toggleText}
               currentUserId={user?.id ?? null}
               onLikeUpdated={handleLikeUpdated}
+              onOpenOwnReviewActions={() => setActionsReview(review)}
             />
           ))
         )}
@@ -418,6 +605,99 @@ export function ReviewsTabContent({
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+      )}
+
+      <Sheet open={!!actionsReview} onOpenChange={(o) => !o && setActionsReview(null)}>
+        <SheetContent side="bottom" showCloseButton={false} className="gap-0 pb-8">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="text-left text-base font-semibold">
+              {reviewActionsTitle || modalStock.name} — your review
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-2 px-4">
+            <button
+              type="button"
+              onClick={() => {
+                const r = actionsReview;
+                setActionsReview(null);
+                if (r) {
+                  setEditingReview(r);
+                  setTimeout(() => setEditModalOpen(true), 200);
+                }
+              }}
+              className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-4 text-left transition-colors hover:border-primary/30 hover:bg-accent/30"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Pencil className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Edit review</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const r = actionsReview;
+                setActionsReview(null);
+                if (r) setDeleteConfirmReview(r);
+              }}
+              className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-4 text-left transition-colors hover:border-destructive/30 hover:bg-destructive/5"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 className="h-5 w-5 text-destructive" />
+              </div>
+              <p className="text-sm font-semibold text-destructive">Delete review</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActionsReview(null)}
+              className="mt-1 w-full border-t border-border/50 pt-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Close
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={!!deleteConfirmReview} onOpenChange={(o) => !o && !deletePending && setDeleteConfirmReview(null)}>
+        <SheetContent side="bottom" showCloseButton={false} className="gap-0 pb-8">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="text-left text-base font-semibold">Delete your review?</SheetTitle>
+          </SheetHeader>
+          <p className="px-4 pb-4 text-sm text-muted-foreground">
+            This removes your review and any scans you attached to it.
+          </p>
+          <div className="flex flex-col gap-2 px-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmReview(null)}
+              disabled={deletePending}
+              className="order-2 rounded-[7px] border border-border/50 bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent/50 disabled:opacity-50 sm:order-1"
+            >
+              Go back
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteReview}
+              disabled={deletePending}
+              className="order-1 rounded-[7px] bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50 sm:order-2"
+            >
+              {deletePending ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {editingReview && (
+        <AddReviewModal
+          open={editModalOpen}
+          onOpenChange={(o) => {
+            setEditModalOpen(o);
+            if (!o) setEditingReview(null);
+          }}
+          mode="review"
+          stock={modalStock}
+          edit={editSeed}
+          onSubmit={handleEditSubmit}
+        />
       )}
     </div>
   );

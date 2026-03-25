@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Style guide",
-  description: "Visual reference for FilmDB design tokens. Use these tokens when changing styles.",
+  description: "Visual reference for Exposure Club design tokens. Use these tokens when changing styles.",
 };
 
 const BG_COLOR_TOKENS = [
@@ -261,7 +261,11 @@ export default function StyleGuidePage() {
         <section className="mb-14">
           <h2 className="font-sans text-xl font-bold text-foreground mb-1">Buttons (CTA)</h2>
           <p className="font-sans text-sm text-muted-foreground mb-2">
-            Use <code className="font-mono bg-muted rounded-card px-1">Button</code> from <code className="font-mono bg-muted rounded-card px-1">@/components/ui/button</code>. Primary and Secondary use <code className="font-mono bg-muted rounded-card px-1">size="cta"</code> (52px mobile / 44px desktop). Tertiary and pill controls use default or smaller sizes. Radius: <code className="font-mono bg-muted rounded-card px-1">rounded-card</code> (7px).
+            Use <code className="font-mono bg-muted rounded-card px-1">Button</code> from{" "}
+            <code className="font-mono bg-muted rounded-card px-1">@/components/ui/button</code>. Primary and
+            Secondary use <code className="font-mono bg-muted rounded-card px-1">{`size="cta"`}</code> (52px
+            mobile / 44px desktop). Tertiary and pill controls use default or smaller sizes. Radius:{" "}
+            <code className="font-mono bg-muted rounded-card px-1">rounded-card</code> (7px).
           </p>
           <div className="space-y-8">
             <div>

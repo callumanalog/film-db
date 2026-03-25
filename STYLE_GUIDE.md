@@ -1,4 +1,4 @@
-# FilmDB style guide
+# Exposure Club style guide
 
 Reference: **Film stocks landing page** (`/films`). New pages and components should follow these tokens and patterns so the site stays declarative and consistent.
 

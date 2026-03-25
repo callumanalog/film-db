@@ -185,12 +185,18 @@ interface CommunitySectionProps {
 export function CommunityReviews({
   slug,
   showViewFilter = true,
+  filmStock = null,
 }: {
   slug?: string;
   showViewFilter?: boolean;
+  filmStock?: import("@/components/reviews-tab-content").ReviewFlowFilmStock | null;
 }) {
-  return <ReviewsTabContent slug={slug} showViewFilter={showViewFilter} />;
+  return (
+    <ReviewsTabContent slug={slug} showViewFilter={showViewFilter} filmStock={filmStock} />
+  );
 }
+
+export type { ReviewFlowFilmStock } from "@/components/reviews-tab-content";
 
 /* ─── References (Flickr-tagged + from reviews; standalone export for tab use) ─── */
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2, Check, CircleCheck } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -52,26 +52,6 @@ export function Header() {
   const isFilmsPage = pathname === "/films";
   const isSearchPage = pathname === "/search";
   const isProfilePage = pathname === "/profile" || pathname?.startsWith("/profile/");
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  const isDiscoverFilmsTab =
-    tabParam === "shots" || tabParam === "notes" || tabParam === "brands" || tabParam === "users";
-  const activeFilmsMobileFeed: "everyone" | "following" | "you" | null = isDiscoverFilmsTab
-    ? null
-    : tabParam === "index"
-      ? "everyone"
-      : tabParam === "following"
-        ? "following"
-        : "you";
-
-  const pushFilmsMobileFeedTab = (next: "everyone" | "following" | "you") => {
-    const p = new URLSearchParams(searchParams.toString());
-    if (next === "everyone") p.set("tab", "index");
-    else if (next === "following") p.set("tab", "following");
-    else p.delete("tab");
-    const q = p.toString();
-    router.push(q ? `/films?${q}` : "/films");
-  };
 
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
@@ -149,7 +129,7 @@ export function Header() {
       className={cn(
         "sticky top-0 z-50 font-sans transition-[background-color,border-color,backdrop-filter] duration-200",
         isFilmsPage
-          ? "bg-background"
+          ? "border-b border-border/50 bg-background/80 backdrop-blur-xl"
           : isFilmHero
             ? cn(
                 "bg-white",
@@ -388,54 +368,15 @@ export function Header() {
           )}
         </div>
 
-        {/* Center column: logo (desktop) / Film Stocks mobile feed tabs / film title or logo elsewhere */}
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 items-center md:justify-center",
-            isFilmsPage && !mobileHeaderTitle ? "justify-start" : "justify-center"
-          )}
-        >
+        {/* Center column: logo (desktop + mobile) / film title on film detail when scrolled */}
+        <div className="flex min-w-0 flex-1 items-center justify-center">
           <Link
             href="/"
             className="hidden whitespace-nowrap text-2xl font-extrabold tracking-tight transition-opacity hover:opacity-80 md:inline-block font-cabinet"
           >
             exposure club
           </Link>
-          {isFilmsPage && !mobileHeaderTitle && (
-            <nav
-              className="md:hidden w-full min-w-0 border-b border-border/50"
-              aria-label="Film feed"
-            >
-              <div className="grid w-full grid-cols-3">
-                {(
-                  [
-                    { id: "everyone" as const, label: "Everyone" },
-                    { id: "following" as const, label: "Following" },
-                    { id: "you" as const, label: "You" },
-                  ] as const
-                ).map((t) => {
-                  const active = activeFilmsMobileFeed === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => pushFilmsMobileFeedTab(t.id)}
-                      className={cn(
-                        "relative py-3 text-center text-sm font-semibold transition-colors",
-                        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {t.label}
-                      {active && (
-                        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </nav>
-          )}
-          {!isSearchPage && !(isFilmsPage && !mobileHeaderTitle) && (
+          {!isSearchPage && (
             <Link
               href={mobileHeaderTitle && pathname ? pathname : "/"}
               className={`whitespace-nowrap font-extrabold tracking-tight transition-opacity hover:opacity-80 md:hidden ${mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-cabinet"}`}

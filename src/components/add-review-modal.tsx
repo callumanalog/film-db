@@ -55,6 +55,16 @@ export interface AddReviewModalPayload {
   uploadedStoragePath?: string;
 }
 
+/** Pre-fill when editing an existing review (step 1 + existing scan URLs on step 2). */
+export interface EditReviewSeed {
+  id: string;
+  rating: number;
+  review_text: string | null;
+  shooting_tip: string | null;
+  best_for: string[];
+  existingScanUrls: string[];
+}
+
 interface AddReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,6 +73,8 @@ interface AddReviewModalProps {
   initialRating?: number;
   mode?: "review" | "upload";
   slotsUsed?: number;
+  /** When set, modal opens in edit mode (same flow as create, pre-filled). */
+  edit?: EditReviewSeed | null;
 }
 
 function StockThumbnail({ stock }: { stock: TrackFilmModalStock }) {
@@ -152,8 +164,10 @@ export function AddReviewModal({
   stock,
   initialRating = 0,
   mode = "review",
+  edit = null,
 }: AddReviewModalProps) {
-  const enteredViaUpload = mode === "upload";
+  const isEdit = !!edit;
+  const enteredViaUpload = mode === "upload" && !isEdit;
   const [step, setStep] = useState<1 | 2>(enteredViaUpload ? 2 : 1);
 
   // Step 1 fields
@@ -188,6 +202,7 @@ export function AddReviewModal({
   });
 
   // Step 2 fields
+  const [existingScanUrls, setExistingScanUrls] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
@@ -219,6 +234,7 @@ export function AddReviewModal({
     setShootingTip("");
     setCamera("");
     setBestFor([]);
+    setExistingScanUrls([]);
     setFiles([]);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
@@ -240,8 +256,45 @@ export function AddReviewModal({
   }, [enteredViaUpload, initialRating, editor, stock.format]);
 
   useEffect(() => {
-    if (open) resetAll();
-  }, [open, resetAll]);
+    if (!open || edit) return;
+    resetAll();
+  }, [open, edit?.id, resetAll, edit]);
+
+  useEffect(() => {
+    if (!open || !edit) return;
+    setStep(1);
+    setRating(edit.rating > 0 ? Number(edit.rating) : 0);
+    setShootingTip(edit.shooting_tip ?? "");
+    setBestFor((edit.best_for as BestFor[]) ?? []);
+    setCamera("");
+    setExistingScanUrls(edit.existingScanUrls ?? []);
+    setFiles([]);
+    setPreviewUrls((urls) => {
+      urls.forEach((u) => URL.revokeObjectURL(u));
+      return [];
+    });
+    setCaption("");
+    setSelectedFormat(stock.format.length === 1 ? stock.format[0] : "");
+    setLens("");
+    setShotIso("");
+    setLocation("");
+    setLab("");
+    setFilter("");
+    setScanner("");
+    setShootingOpen(false);
+    setProcessingOpen(false);
+    setCurrentSlide(0);
+    setIsUploading(false);
+    setUploadError(null);
+    setSubmitting(false);
+  }, [open, edit?.id, edit, stock.format]);
+
+  useEffect(() => {
+    if (!open || !edit || !editor) return;
+    const html = edit.review_text?.trim() ? edit.review_text : "";
+    editor.commands.setContent(html, { emitUpdate: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `edit` fields covered by edit?.id / review_text
+  }, [open, edit?.id, edit?.review_text, editor]);
 
   const handleClose = useCallback(() => {
     setPreviewUrls((urls) => {
@@ -355,7 +408,10 @@ export function AddReviewModal({
     }
   }, [editor]);
 
-  const hasReviewContent = rating > 0 || !editorIsEmpty || shootingTip.trim() || bestFor.length > 0;
+  const hasReviewContent =
+    rating > 0 || !editorIsEmpty || shootingTip.trim() || bestFor.length > 0;
+  /** Edit flow always allows save from step 2 (including clearing fields). */
+  const canSubmitStep2 = isEdit || hasReviewContent || files.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
@@ -365,7 +421,11 @@ export function AddReviewModal({
         className="!h-[100dvh] !max-h-[100dvh] !rounded-none gap-0 p-0"
       >
         <SheetTitle className="sr-only">
-          {step === 1 ? `Review ${stock.name}` : `Add scans — ${stock.name}`}
+          {step === 1
+            ? isEdit
+              ? `Edit review — ${stock.name}`
+              : `Review ${stock.name}`
+            : `Add scans — ${stock.name}`}
         </SheetTitle>
 
         {step === 1 ? (
@@ -373,7 +433,9 @@ export function AddReviewModal({
           <div className="flex h-full flex-col">
             {/* Top bar */}
             <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
-              <span className="text-sm font-semibold text-foreground">Review film stock</span>
+              <span className="text-sm font-semibold text-foreground">
+                {isEdit ? "Edit review" : "Review film stock"}
+              </span>
               <button
                 type="button"
                 onClick={handleClose}
@@ -565,6 +627,37 @@ export function AddReviewModal({
 
                 {/* Upload zone */}
                 <div>
+                  {existingScanUrls.length > 0 && (
+                    <div className="mb-4">
+                      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Your scans
+                      </p>
+                      <div
+                        className={cn(
+                          "flex gap-2 overflow-x-auto pb-1",
+                          "snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        )}
+                      >
+                        {existingScanUrls.map((url, i) => (
+                          <div
+                            key={`${url}-${i}`}
+                            className="snap-start shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted ring-offset-background"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt=""
+                              className="block h-[7rem] w-[7rem] object-cover sm:h-[7.5rem] sm:w-[7.5rem]"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Add more scans below. Existing images stay on your review.
+                      </p>
+                    </div>
+                  )}
+
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -575,20 +668,34 @@ export function AddReviewModal({
                   />
 
                   {files.length === 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className={cn(
-                        "flex w-full flex-col items-center justify-center gap-3 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 py-12 transition-colors",
-                        "hover:border-primary/40 hover:bg-primary/5"
-                      )}
-                    >
-                      <Plus className="h-10 w-10 text-muted-foreground" />
-                      <span className="text-sm font-medium text-muted-foreground">Add scans</span>
-                      <span className="px-6 text-center text-xs text-muted-foreground/60">
-                        Upload your scans of {stock.name} to share with the community
-                      </span>
-                    </button>
+                    existingScanUrls.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className={cn(
+                          "flex w-full flex-col items-center justify-center gap-2 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 py-8 transition-colors",
+                          "hover:border-primary/40 hover:bg-primary/5"
+                        )}
+                      >
+                        <Plus className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm font-medium text-muted-foreground">Add more scans</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className={cn(
+                          "flex w-full flex-col items-center justify-center gap-3 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 py-12 transition-colors",
+                          "hover:border-primary/40 hover:bg-primary/5"
+                        )}
+                      >
+                        <Plus className="h-10 w-10 text-muted-foreground" />
+                        <span className="text-sm font-medium text-muted-foreground">Add scans</span>
+                        <span className="px-6 text-center text-xs text-muted-foreground/60">
+                          Upload your scans of {stock.name} to share with the community
+                        </span>
+                      </button>
+                    )
                   ) : (
                     <div>
                       <div
@@ -790,10 +897,10 @@ export function AddReviewModal({
               <button
                 type="button"
                 onClick={handlePostScans}
-                disabled={submitting || (!hasReviewContent && files.length === 0)}
+                disabled={submitting || !canSubmitStep2}
                 className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
               >
-                {submitting ? "Saving..." : "Submit review"}
+                {submitting ? "Saving..." : isEdit ? "Save changes" : "Submit review"}
               </button>
             </div>
           </div>

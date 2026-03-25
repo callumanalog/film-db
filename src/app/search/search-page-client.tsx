@@ -102,6 +102,15 @@ export function SearchPageClient({ fallbackData }: SearchPageClientProps) {
     window.scrollTo({ top: 0 });
   }, []);
 
+  const { brands = [], filterOptions = { types: [], isos: [], formats: [], grains: [], contrasts: [], latitudes: [], saturations: [], bestFor: [] }, stocks = [] } = data ?? {};
+
+  const filteredStocks = useMemo(
+    () => filterStocksBySearchTerm(stocks, searchTerm),
+    [stocks, searchTerm]
+  );
+
+  const noResultsFromSearch = searchTerm.length > 0 && filteredStocks.length === 0;
+
   if (!data && isLoading) {
     return (
       <div className="min-h-screen bg-white">
@@ -116,15 +125,6 @@ export function SearchPageClient({ fallbackData }: SearchPageClientProps) {
       </div>
     );
   }
-
-  const { brands = [], filterOptions = { types: [], isos: [], formats: [], grains: [], contrasts: [], latitudes: [], saturations: [], bestFor: [] }, stocks = [] } = data ?? {};
-
-  const filteredStocks = useMemo(
-    () => filterStocksBySearchTerm(stocks, searchTerm),
-    [stocks, searchTerm]
-  );
-
-  const noResultsFromSearch = searchTerm.length > 0 && filteredStocks.length === 0;
 
   return (
     <>

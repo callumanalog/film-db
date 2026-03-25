@@ -14,6 +14,7 @@ import { UrlToastHandler } from "@/components/url-toast-handler";
 import { MobileHeaderTitleProvider } from "@/context/mobile-header-title-context";
 import { FilmsSearchProvider } from "@/context/films-search-context";
 import { NavSWRProvider } from "@/components/nav-swr-provider";
+import { SITE_NAME, getSiteUrl } from "@/lib/site";
 import "./globals.css";
 
 const advercase = localFont({
@@ -57,13 +58,27 @@ const cabinetGrotesk = localFont({
   ],
 });
 
+const defaultDescription =
+  "Discover film stocks, community references, reviews, and where to buy — built for analog photographers.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "FilmDB — Your Film Photography Database",
-    template: "%s | FilmDB",
+    default: `${SITE_NAME} — Film photography, together`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "The ultimate resource for analog film photography. Explore every film stock, learn shooting tips, discover where to buy, and view references.",
+  description: defaultDescription,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: defaultDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: defaultDescription,
+  },
 };
 
 export default function RootLayout({

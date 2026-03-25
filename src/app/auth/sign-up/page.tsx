@@ -12,6 +12,7 @@ import { TextField } from "@/components/ui/text-field";
 import { checkUsernameAvailable } from "@/app/actions/check-username";
 import { getSignUpStatus } from "@/app/actions/sign-up-status";
 import { cn } from "@/lib/utils";
+import { SITE_NAME } from "@/lib/site";
 
 type UsernameStatus = "idle" | "checking" | "available" | "taken";
 
@@ -170,7 +171,7 @@ function SignUpForm() {
         return;
       }
     }
-    const welcomeToast = "Welcome to FilmDB!\nPlease check your email to verify your account when you have a moment.";
+    const welcomeToast = `Welcome to ${SITE_NAME}!\nPlease check your email to verify your account when you have a moment.`;
     const sep = redirectTo.includes("?") ? "&" : "?";
     router.push(`${redirectTo}${sep}toast=${encodeURIComponent(welcomeToast)}`);
     router.refresh();
@@ -267,15 +268,15 @@ function SignUpForm() {
               />
             </span>
             <span className="text-xs text-muted-foreground">
-              I agree to FilmDB&apos;s{" "}
-              <Link href="#" className="underline text-muted-foreground hover:text-muted-foreground">
+              I agree to {SITE_NAME}&apos;s{" "}
+              <Link href="/terms" className="underline text-muted-foreground hover:text-foreground">
                 Terms of use
               </Link>{" "}
               and{" "}
-              <Link href="#" className="underline text-muted-foreground hover:text-muted-foreground">
+              <Link href="/privacy" className="underline text-muted-foreground hover:text-foreground">
                 Privacy Policy
               </Link>
-              , and to receive emails from FilmDB.
+              , and to receive emails from {SITE_NAME}.
             </span>
           </label>
 
