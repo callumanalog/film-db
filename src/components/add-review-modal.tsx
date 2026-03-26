@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Star, StarHalf, Camera, XIcon, ImagePlus, ChevronLeft, ChevronRight, Plus, Loader2, Bold, Italic, Quote, Strikethrough, Link2 } from "lucide-react";
+import { Star, StarHalf, Camera, XIcon, ImagePlus, ChevronLeft, ChevronRight, Plus, Loader2, Bold, Italic, Quote, Strikethrough } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TextField } from "@/components/ui/text-field";
 import {
@@ -16,7 +16,6 @@ import { BEST_FOR_LABELS } from "@/lib/types";
 import { BEST_FOR_ICONS } from "@/components/best-for-section";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import TiptapPlaceholder from "@tiptap/extension-placeholder";
 
 interface TrackFilmModalStock {
@@ -39,7 +38,6 @@ export interface AddReviewModalPayload {
   files: File[];
   camera?: string;
   reviewTitle?: string;
-  shootingTip?: string;
   bestFor?: BestFor[];
   format?: string;
   location?: string;
@@ -60,7 +58,6 @@ export interface EditReviewSeed {
   id: string;
   rating: number;
   review_text: string | null;
-  shooting_tip: string | null;
   best_for: string[];
   existingScanUrls: string[];
 }
@@ -172,7 +169,6 @@ export function AddReviewModal({
 
   // Step 1 fields
   const [rating, setRating] = useState(initialRating);
-  const [shootingTip, setShootingTip] = useState("");
   const [bestFor, setBestFor] = useState<BestFor[]>([]);
   const [camera, setCamera] = useState("");
 
@@ -190,8 +186,10 @@ export function AddReviewModal({
         bulletList: false,
         orderedList: false,
       }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: "review-link" } }),
-      TiptapPlaceholder.configure({ placeholder: "What do you think?" }),
+      TiptapPlaceholder.configure({
+        placeholder:
+          "What was your experience with this stock? Include any shooting tips you may have for this stock.",
+      }),
     ],
     editorProps: {
       attributes: {
@@ -231,7 +229,6 @@ export function AddReviewModal({
     setStep(enteredViaUpload ? 2 : 1);
     setRating(initialRating);
     editor?.commands.clearContent();
-    setShootingTip("");
     setCamera("");
     setBestFor([]);
     setExistingScanUrls([]);
@@ -264,7 +261,6 @@ export function AddReviewModal({
     if (!open || !edit) return;
     setStep(1);
     setRating(edit.rating > 0 ? Number(edit.rating) : 0);
-    setShootingTip(edit.shooting_tip ?? "");
     setBestFor((edit.best_for as BestFor[]) ?? []);
     setCamera("");
     setExistingScanUrls(edit.existingScanUrls ?? []);
@@ -314,7 +310,6 @@ export function AddReviewModal({
     files,
     camera: camera || undefined,
     reviewTitle: undefined,
-    shootingTip: shootingTip || undefined,
     bestFor: bestFor.length > 0 ? bestFor : undefined,
     format: selectedFormat || undefined,
     location: location || undefined,
@@ -400,16 +395,8 @@ export function AddReviewModal({
     setCurrentSlide(index);
   }, []);
 
-  const handleInsertLink = useCallback(() => {
-    if (!editor) return;
-    const url = window.prompt("URL");
-    if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
-  }, [editor]);
-
   const hasReviewContent =
-    rating > 0 || !editorIsEmpty || shootingTip.trim() || bestFor.length > 0;
+    rating > 0 || !editorIsEmpty || bestFor.length > 0;
   /** Edit flow always allows save from step 2 (including clearing fields). */
   const canSubmitStep2 = isEdit || hasReviewContent || files.length > 0;
 
@@ -439,7 +426,7 @@ export function AddReviewModal({
               <button
                 type="button"
                 onClick={handleClose}
-                className="absolute right-4 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                className="absolute right-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                 aria-label="Close"
               >
                 <XIcon className="h-5 w-5" />
@@ -472,7 +459,6 @@ export function AddReviewModal({
                       { icon: Italic, label: "Italic", active: editor?.isActive("italic"), action: () => editor?.chain().focus().toggleItalic().run() },
                       { icon: Quote, label: "Quote", active: editor?.isActive("blockquote"), action: () => editor?.chain().focus().toggleBlockquote().run() },
                       { icon: Strikethrough, label: "Strikethrough", active: editor?.isActive("strike"), action: () => editor?.chain().focus().toggleStrike().run() },
-                      { icon: Link2, label: "Link", active: editor?.isActive("link"), action: handleInsertLink },
                     ] as const).map(({ icon: Icon, label, active, action }) => (
                       <button
                         key={label}
@@ -496,22 +482,9 @@ export function AddReviewModal({
                   <EditorContent editor={editor} />
                 </div>
 
-                {/* Shooting tips */}
-                <div>
-                  <label htmlFor="review-shooting-tip" className="mb-1 block text-xs font-medium text-muted-foreground">Shooting notes</label>
-                  <textarea
-                    id="review-shooting-tip"
-                    value={shootingTip}
-                    onChange={(e) => setShootingTip(e.target.value)}
-                    placeholder="Any tips for shooting this stock?"
-                    rows={2}
-                    className="w-full resize-none rounded-[7px] border border-border/50 bg-transparent px-3 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-colors"
-                  />
-                </div>
-
                 {/* Best for tag picker */}
                 <div>
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">Best for</p>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">What is this stock best for?</p>
                   <div className="flex flex-wrap gap-2">
                     {BEST_FOR_OPTIONS.map((tag) => {
                       const Icon = BEST_FOR_ICONS[tag];
@@ -558,7 +531,7 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="absolute left-4 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                  className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                   aria-label="Back"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -568,7 +541,7 @@ export function AddReviewModal({
               <button
                 type="button"
                 onClick={handleClose}
-                className="absolute right-4 rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                className="absolute right-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
                 aria-label="Close"
               >
                 <XIcon className="h-5 w-5" />
@@ -602,12 +575,6 @@ export function AddReviewModal({
                     {editor?.getText().trim() && (
                       <p className="mt-1.5 line-clamp-2 text-xs text-foreground/80">
                         {editor.getText()}
-                      </p>
-                    )}
-                    {shootingTip.trim() && (
-                      <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground/60">Shooting notes:</span>{" "}
-                        {shootingTip}
                       </p>
                     )}
                     {bestFor.length > 0 && (

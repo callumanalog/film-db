@@ -232,7 +232,6 @@ export function PlusActionSheet() {
               formData.set("rating", String(payload.rating));
               if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
               if (payload.reviewText) formData.set("review_text", payload.reviewText);
-              if (payload.shootingTip) formData.set("shooting_tip", payload.shootingTip);
               if (payload.camera) formData.set("camera", payload.camera);
               if (payload.lens) formData.set("lens", payload.lens);
               if (payload.developedAt) formData.set("developed_at", payload.developedAt);

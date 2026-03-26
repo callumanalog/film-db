@@ -7,12 +7,10 @@ import {
   StarHalf,
   Camera,
   Heart,
-  Lightbulb,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
   Plus,
-  Pencil,
   Trash2,
 } from "lucide-react";
 import {
@@ -126,8 +124,6 @@ export function ReviewCard({
   const showMoreText = plainText.length > TEXT_PREVIEW_LENGTH;
   const rating = review.rating != null && review.rating > 0 ? Number(review.rating) : 0;
   const bestForTags = review.best_for ?? [];
-  const visibleBestFor = bestForTags.slice(0, 3);
-  const hasMoreBestFor = bestForTags.length > 3;
   const isOwnReview = Boolean(currentUserId && review.user_id === currentUserId);
 
   return (
@@ -159,46 +155,89 @@ export function ReviewCard({
         </div>
       )}
 
-      {isHtml ? (
-        <div className="mt-2 text-sm leading-relaxed text-foreground/80">
-          {(!showMoreText || textExpanded) ? (
-            <div
-              className="review-html"
-              dangerouslySetInnerHTML={{ __html: sanitizeReviewHtml(rawText) }}
-            />
+      <div className="mt-2 flex items-end justify-between gap-2">
+        <div className="min-w-0 flex-1 text-sm leading-relaxed text-foreground/80">
+          {isHtml ? (
+            <>
+              {(!showMoreText || textExpanded) ? (
+                <div
+                  className="review-html"
+                  dangerouslySetInnerHTML={{ __html: sanitizeReviewHtml(rawText) }}
+                />
+              ) : (
+                <p>{plainText.slice(0, TEXT_PREVIEW_LENGTH).trim()}…</p>
+              )}
+              {showMoreText && (
+                <button
+                  type="button"
+                  onClick={() => onToggleText(review.id)}
+                  className="mt-0.5 font-medium text-primary hover:underline"
+                >
+                  {textExpanded ? "Show less" : "More"}
+                </button>
+              )}
+            </>
           ) : (
-            <p>{plainText.slice(0, TEXT_PREVIEW_LENGTH).trim()}…</p>
-          )}
-          {showMoreText && (
-            <button
-              type="button"
-              onClick={() => onToggleText(review.id)}
-              className="mt-0.5 font-medium text-primary hover:underline"
-            >
-              {textExpanded ? "Show less" : "More"}
-            </button>
+            <p className="whitespace-pre-wrap">
+              {textExpanded || !showMoreText ? rawText : plainText.slice(0, TEXT_PREVIEW_LENGTH).trim() + "…"}
+              {showMoreText && (
+                <button
+                  type="button"
+                  onClick={() => onToggleText(review.id)}
+                  className="ml-1 font-medium text-primary hover:underline"
+                >
+                  {textExpanded ? " Show less" : " More"}
+                </button>
+              )}
+            </p>
           )}
         </div>
-      ) : (
-        <p className="mt-2 text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap">
-          {textExpanded || !showMoreText ? rawText : plainText.slice(0, TEXT_PREVIEW_LENGTH).trim() + "…"}
-          {showMoreText && (
-            <button
-              type="button"
-              onClick={() => onToggleText(review.id)}
-              className="ml-1 font-medium text-primary hover:underline"
-            >
-              {textExpanded ? " Show less" : " More"}
-            </button>
+
+        <button
+          type="button"
+          disabled={likePending}
+          onClick={async () => {
+            if (!currentUserId) {
+              showToastViaEvent("Log in to like reviews.");
+              return;
+            }
+            setLikePending(true);
+            try {
+              const res = await fetch("/api/user/review-likes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ review_id: review.id }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                showToastViaEvent(data.error || "Could not update like");
+                return;
+              }
+              onLikeUpdated(review.id, data.liked, data.like_count);
+            } finally {
+              setLikePending(false);
+            }
+          }}
+          aria-label={review.liked_by_me ? "Unlike review" : "Like review"}
+          className={cn(
+            "inline-flex shrink-0 items-center justify-center gap-1 rounded-full py-0.5 text-sm font-medium leading-relaxed transition-colors disabled:opacity-50",
+            review.liked_by_me ? "text-primary" : "text-muted-foreground hover:text-foreground"
           )}
-        </p>
-      )}
+        >
+          <Heart
+            className={cn(
+              "h-4 w-4",
+              review.liked_by_me ? "fill-primary text-primary" : "text-muted-foreground"
+            )}
+          />
+          {review.liked_by_me && review.like_count > 0 ? (
+            <span className="tabular-nums">{review.like_count}</span>
+          ) : null}
+        </button>
+      </div>
 
       {review.scan_urls.length > 0 && (
         <div className="mt-3" aria-label="Scans submitted with this review">
-          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Scans
-          </p>
           <div
             className={cn(
               "flex gap-2 overflow-x-auto pb-1",
@@ -226,13 +265,6 @@ export function ReviewCard({
         </div>
       )}
 
-      {review.shooting_tip && (
-        <div className="mt-3 flex gap-2">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          <p className="text-sm leading-relaxed text-foreground/70">{review.shooting_tip}</p>
-        </div>
-      )}
-
       {review.camera && (
         <div className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
           <Camera className="h-3 w-3 shrink-0" />
@@ -242,7 +274,7 @@ export function ReviewCard({
 
       {bestForTags.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {visibleBestFor.map((tag) => (
+          {bestForTags.map((tag) => (
             <span
               key={tag}
               className="inline-flex rounded-[7px] border border-border/50 bg-secondary/30 px-2 py-0.5 text-[11px] font-medium text-foreground/80"
@@ -250,60 +282,9 @@ export function ReviewCard({
               {BEST_FOR_LABELS[tag as BestFor] ?? tag.replace(/_/g, " ")}
             </span>
           ))}
-          {hasMoreBestFor && (
-            <span className="text-xs font-medium text-muted-foreground" aria-hidden>
-              …
-            </span>
-          )}
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2">
-          <button
-            type="button"
-            disabled={likePending}
-            onClick={async () => {
-              if (!currentUserId) {
-                showToastViaEvent("Log in to like reviews.");
-                return;
-              }
-              setLikePending(true);
-              try {
-                const res = await fetch("/api/user/review-likes", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ review_id: review.id }),
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                  showToastViaEvent(data.error || "Could not update like");
-                  return;
-                }
-                onLikeUpdated(review.id, data.liked, data.like_count);
-              } finally {
-                setLikePending(false);
-              }
-            }}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-[7px] border px-2.5 py-1.5 text-xs font-medium transition-colors",
-              "hover:border-primary/30 hover:bg-primary/5 disabled:opacity-50",
-              review.liked_by_me
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-border/50 text-foreground/80"
-            )}
-          >
-            <Heart
-              className={cn(
-                "h-3.5 w-3.5",
-                review.liked_by_me ? "fill-primary text-primary" : "text-muted-foreground"
-              )}
-            />
-            {review.liked_by_me ? "Liked" : "Like"}
-          </button>
-          {review.like_count > 0 && (
-            <span className="text-xs tabular-nums text-muted-foreground">{review.like_count}</span>
-          )}
-      </div>
     </article>
   );
 }
@@ -340,7 +321,6 @@ export function ReviewsTabContent({
       id: editingReview.id,
       rating: editingReview.rating != null && editingReview.rating > 0 ? Number(editingReview.rating) : 0,
       review_text: editingReview.review_text,
-      shooting_tip: editingReview.shooting_tip,
       best_for: editingReview.best_for ?? [],
       existingScanUrls: editingReview.scan_urls ?? [],
     };
@@ -366,12 +346,6 @@ export function ReviewsTabContent({
     };
   }, [editingReview?.film_stock_slug, slug, filmStock]);
 
-  const reviewActionsTitle = useMemo(() => {
-    if (!actionsReview) return "";
-    if (filmStock?.slug === actionsReview.film_stock_slug) return filmStock.name;
-    return slugToDisplayName(actionsReview.film_stock_slug);
-  }, [actionsReview, filmStock]);
-
   const handleEditSubmit = useCallback(
     async (payload: AddReviewModalPayload) => {
       if (!user || !editingReview) return;
@@ -381,7 +355,6 @@ export function ReviewsTabContent({
       formData.set("rating", String(payload.rating));
       if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
       if (payload.reviewText) formData.set("review_text", payload.reviewText);
-      if (payload.shootingTip) formData.set("shooting_tip", payload.shootingTip);
       if (payload.camera) formData.set("camera", payload.camera);
       if (payload.lens) formData.set("lens", payload.lens);
       if (payload.developedAt) formData.set("developed_at", payload.developedAt);
@@ -543,7 +516,7 @@ export function ReviewsTabContent({
         />
       ) : null}
 
-      <div className="divide-y divide-border/40">
+      <div className="divide-y divide-border/40 border-b border-border/40">
         {loading ? (
           <div className="rounded-[7px] border border-border/50 bg-card p-8 text-center text-sm text-muted-foreground">
             Loading reviews…
@@ -609,12 +582,8 @@ export function ReviewsTabContent({
 
       <Sheet open={!!actionsReview} onOpenChange={(o) => !o && setActionsReview(null)}>
         <SheetContent side="bottom" showCloseButton={false} className="gap-0 pb-8">
-          <SheetHeader className="pb-4">
-            <SheetTitle className="text-left text-base font-semibold">
-              {reviewActionsTitle || modalStock.name} — your review
-            </SheetTitle>
-          </SheetHeader>
-          <div className="flex flex-col gap-2 px-4">
+          <SheetTitle className="sr-only">Review actions</SheetTitle>
+          <div className="flex flex-col px-4">
             <button
               type="button"
               onClick={() => {
@@ -625,12 +594,9 @@ export function ReviewsTabContent({
                   setTimeout(() => setEditModalOpen(true), 200);
                 }
               }}
-              className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-4 text-left transition-colors hover:border-primary/30 hover:bg-accent/30"
+              className="w-full py-4 text-left text-sm font-medium text-foreground transition-colors hover:text-primary"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Pencil className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">Edit review</p>
+              Edit review
             </button>
             <button
               type="button"
@@ -639,17 +605,14 @@ export function ReviewsTabContent({
                 setActionsReview(null);
                 if (r) setDeleteConfirmReview(r);
               }}
-              className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-4 text-left transition-colors hover:border-destructive/30 hover:bg-destructive/5"
+              className="w-full border-t border-border/50 py-4 text-left text-sm font-medium text-destructive transition-colors hover:text-destructive/90"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-                <Trash2 className="h-5 w-5 text-destructive" />
-              </div>
-              <p className="text-sm font-semibold text-destructive">Delete review</p>
+              Delete review
             </button>
             <button
               type="button"
               onClick={() => setActionsReview(null)}
-              className="mt-1 w-full border-t border-border/50 pt-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="w-full border-t border-border/50 pt-4 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Close
             </button>
