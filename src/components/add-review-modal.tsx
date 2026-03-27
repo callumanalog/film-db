@@ -165,7 +165,7 @@ export function AddReviewModal({
 }: AddReviewModalProps) {
   const isEdit = !!edit;
   const enteredViaUpload = mode === "upload" && !isEdit;
-  const [step, setStep] = useState<1 | 2>(enteredViaUpload ? 2 : 1);
+  const [step, setStep] = useState<1 | 2 | 3>(enteredViaUpload ? 2 : 1);
 
   // Step 1 fields
   const [rating, setRating] = useState(initialRating);
@@ -352,16 +352,29 @@ export function AddReviewModal({
     e.target.value = "";
     if (selected.length === 0) return;
 
+    const maxFiles = 10;
     const valid = selected.filter(
       (f) => ALLOWED_IMAGE_TYPES.includes(f.type) && f.size <= MAX_SHOT_SIZE_BYTES
     );
-    if (valid.length === 0) {
-      setUploadError("Invalid files. Use PNG, JPG, or WebP under 50MB.");
+    const invalidCount = selected.length - valid.length;
+    const availableSlots = Math.max(0, maxFiles - files.length);
+    const kept = valid.slice(0, availableSlots);
+    const droppedForLimit = Math.max(0, valid.length - kept.length);
+
+    if (kept.length === 0) {
+      setUploadError("No files were added. Use PNG, JPG, or WebP under 50MB.");
       return;
     }
-    setUploadError(null);
-    const maxFiles = 10;
-    const next = [...files, ...valid].slice(0, maxFiles);
+
+    const next = [...files, ...kept];
+    if (invalidCount > 0 || droppedForLimit > 0) {
+      const parts: string[] = [];
+      if (invalidCount > 0) parts.push(`${invalidCount} invalid file${invalidCount > 1 ? "s were" : " was"} skipped`);
+      if (droppedForLimit > 0) parts.push(`${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 max)`);
+      setUploadError(parts.join(". ") + ".");
+    } else {
+      setUploadError(null);
+    }
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return next.map((f) => URL.createObjectURL(f));
@@ -398,7 +411,8 @@ export function AddReviewModal({
   const hasReviewContent =
     rating > 0 || !editorIsEmpty || bestFor.length > 0;
   /** Edit flow always allows save from step 2 (including clearing fields). */
-  const canSubmitStep2 = isEdit || hasReviewContent || files.length > 0;
+  const canSubmitScansStep = isEdit || hasReviewContent || files.length > 0;
+  const canAdvanceUploadFlow = files.length > 0;
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
@@ -412,7 +426,9 @@ export function AddReviewModal({
             ? isEdit
               ? `Edit review — ${stock.name}`
               : `Review ${stock.name}`
-            : `Add scans — ${stock.name}`}
+            : step === 2
+              ? `Add scans — ${stock.name}`
+              : `Post scans — ${stock.name}`}
         </SheetTitle>
 
         {step === 1 ? (
@@ -522,7 +538,7 @@ export function AddReviewModal({
               </button>
             </div>
           </div>
-        ) : (
+        ) : step === 2 ? (
           /* ──────────── STEP 2: ADD SCANS ──────────── */
           <div className="flex h-full flex-col">
             {/* Top bar */}
@@ -537,7 +553,9 @@ export function AddReviewModal({
                   <ChevronLeft className="h-5 w-5" />
                 </button>
               )}
-              <span className="text-sm font-semibold text-foreground">Add scans</span>
+              <span className="text-sm font-semibold text-foreground">
+                {enteredViaUpload ? "Review uploads" : "Add scans"}
+              </span>
               <button
                 type="button"
                 onClick={handleClose}
@@ -560,6 +578,15 @@ export function AddReviewModal({
                     <p className="text-sm font-semibold text-foreground">{stock.name}</p>
                   </div>
                 </div>
+
+                {enteredViaUpload && (
+                  <div className="rounded-[7px] border border-border/50 bg-muted/20 px-3 py-2.5">
+                    <p className="text-sm font-medium text-foreground">Add scans</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Upload your scans of {stock.name}. Review them here before adding details.
+                    </p>
+                  </div>
+                )}
 
                 {/* Review summary */}
                 {!enteredViaUpload && (
@@ -680,8 +707,7 @@ export function AddReviewModal({
                               <img
                                 src={previewUrls[i]}
                                 alt=""
-                                className="h-full w-full object-cover"
-                                style={{ aspectRatio: "1 / 1" }}
+                                className="h-auto w-full object-contain"
                               />
                             </div>
                             <button
@@ -738,8 +764,8 @@ export function AddReviewModal({
                   )}
                 </div>
 
-                {/* Metadata fields — only shown after scans are added */}
-                {files.length > 0 && (
+                {/* Metadata fields for regular review flow */}
+                {!enteredViaUpload && files.length > 0 && (
                   <div className="space-y-4">
                     {/* Collapsible: Shooting details */}
                     <div className="overflow-hidden rounded-[7px] border border-border/50">
@@ -863,11 +889,190 @@ export function AddReviewModal({
             <div className="shrink-0 border-t border-border/40 px-4 py-4">
               <button
                 type="button"
-                onClick={handlePostScans}
-                disabled={submitting || !canSubmitStep2}
+                onClick={enteredViaUpload ? () => setStep(3) : handlePostScans}
+                disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
                 className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
               >
-                {submitting ? "Saving..." : isEdit ? "Save changes" : "Submit review"}
+                {submitting ? "Saving..." : enteredViaUpload ? "Next" : isEdit ? "Save changes" : "Submit review"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* ──────────── STEP 3: FINAL DETAILS (UPLOAD FLOW) ──────────── */
+          <div className="flex h-full flex-col">
+            <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <span className="text-sm font-semibold text-foreground">New post</span>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute right-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                aria-label="Close"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="space-y-5 px-4 py-5">
+                {files.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {files.map((file, i) => (
+                      <div
+                        key={`${file.name}-${i}`}
+                        className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted/10"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={previewUrls[i]}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <TextField
+                  id="scan-caption"
+                  label="Caption"
+                  type="text"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Add a caption..."
+                />
+
+                <div className="space-y-4">
+                  <div className="overflow-hidden rounded-[7px] border border-border/50">
+                    <button
+                      type="button"
+                      onClick={() => setShootingOpen((v) => !v)}
+                      className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
+                    >
+                      Add shooting details
+                      <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", shootingOpen && "rotate-90")} />
+                    </button>
+                    {shootingOpen && (
+                      <div className="space-y-3 border-t border-border/40 px-3 py-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <TextField
+                            id="scan-camera-final"
+                            label="Camera"
+                            type="text"
+                            value={camera}
+                            onChange={(e) => setCamera(e.target.value)}
+                            placeholder="e.g. Canon AE-1"
+                          />
+                          <TextField
+                            id="scan-lens-final"
+                            label="Lens"
+                            type="text"
+                            value={lens}
+                            onChange={(e) => setLens(e.target.value)}
+                            placeholder="e.g. 50mm f/1.4"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <TextField
+                            id="scan-iso-final"
+                            label="Shot at ISO"
+                            type="text"
+                            value={shotIso}
+                            onChange={(e) => setShotIso(e.target.value)}
+                            placeholder="e.g. 400"
+                          />
+                          <TextField
+                            id="scan-filter-final"
+                            label="Filter"
+                            type="text"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            placeholder="e.g. None, 81A"
+                          />
+                        </div>
+                        <TextField
+                          id="scan-location-final"
+                          label="Location"
+                          type="text"
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                          placeholder="e.g. London, UK"
+                        />
+                        <div>
+                          <p className="mb-1 block text-xs font-medium text-muted-foreground">Format</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {stock.format.map((fmt) => (
+                              <button
+                                key={fmt}
+                                type="button"
+                                onClick={() => setSelectedFormat(selectedFormat === fmt ? "" : fmt)}
+                                className={cn(
+                                  "rounded-[7px] border px-3 py-1.5 text-xs font-medium transition-colors",
+                                  selectedFormat === fmt
+                                    ? "border-primary/40 bg-primary/10 text-primary"
+                                    : "border-border/50 bg-background text-foreground/70 hover:border-primary/30 hover:bg-primary/5"
+                                )}
+                              >
+                                {fmt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="overflow-hidden rounded-[7px] border border-border/50">
+                    <button
+                      type="button"
+                      onClick={() => setProcessingOpen((v) => !v)}
+                      className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
+                    >
+                      Add processing details
+                      <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", processingOpen && "rotate-90")} />
+                    </button>
+                    {processingOpen && (
+                      <div className="space-y-3 border-t border-border/40 px-3 py-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <TextField
+                            id="scan-lab-final"
+                            label="Lab / Processing"
+                            type="text"
+                            value={lab}
+                            onChange={(e) => setLab(e.target.value)}
+                            placeholder="e.g. Home dev"
+                          />
+                          <TextField
+                            id="scan-scanner-final"
+                            label="Scanner"
+                            type="text"
+                            value={scanner}
+                            onChange={(e) => setScanner(e.target.value)}
+                            placeholder="e.g. Epson V600"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="shrink-0 border-t border-border/40 px-4 py-4">
+              <button
+                type="button"
+                onClick={handlePostScans}
+                disabled={submitting || !files.length}
+                className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+              >
+                {submitting ? "Sharing..." : "Share"}
               </button>
             </div>
           </div>

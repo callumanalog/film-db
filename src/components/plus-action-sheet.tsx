@@ -156,28 +156,24 @@ export function PlusActionSheet() {
               <button
                 type="button"
                 onClick={() => handleAction("review")}
-                className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-4 text-left transition-colors hover:border-primary/30 hover:bg-accent/30"
+                className="flex items-center gap-3 px-1 py-2 text-left transition-colors hover:text-foreground"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                  <NotebookPen className="h-5 w-5 text-primary" />
-                </div>
+                <NotebookPen className="h-5 w-5 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Add a review</p>
-                  <p className="text-xs text-muted-foreground">Write about a stock you've shot</p>
+                  <p className="text-sm font-semibold text-foreground">Review a stock</p>
+                  <p className="text-xs text-muted-foreground">Search for a stock to review</p>
                 </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleAction("upload")}
-                className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-4 text-left transition-colors hover:border-primary/30 hover:bg-accent/30"
+                className="flex items-center gap-3 px-1 py-2 text-left transition-colors hover:text-foreground"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
-                  <ImagePlus className="h-5 w-5 text-blue-500" />
-                </div>
+                <ImagePlus className="h-5 w-5 shrink-0 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Add shots</p>
-                  <p className="text-xs text-muted-foreground">Upload images to the gallery</p>
+                  <p className="text-sm font-semibold text-foreground">Add scans</p>
+                  <p className="text-xs text-muted-foreground">Search for a stock and upload scans</p>
                 </div>
               </button>
 
@@ -187,14 +183,12 @@ export function PlusActionSheet() {
                   setOpen(false);
                   showToastViaEvent("Lists are coming soon!");
                 }}
-                className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-4 text-left transition-colors hover:border-primary/30 hover:bg-accent/30"
+                className="flex items-center gap-3 px-1 py-2 text-left transition-colors hover:text-foreground"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
-                  <ListPlus className="h-5 w-5 text-amber-500" />
-                </div>
+                <ListPlus className="h-5 w-5 shrink-0 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">Create a list</p>
-                  <p className="text-xs text-muted-foreground">Curate a collection of film stocks</p>
+                  <p className="text-xs text-muted-foreground">A public or private list of stocks</p>
                 </div>
               </button>
 
