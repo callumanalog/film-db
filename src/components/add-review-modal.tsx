@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import Image from "next/image";
 import { Star, StarHalf, Camera, XIcon, ImagePlus, ChevronLeft, ChevronRight, Plus, Loader2, Bold, Italic, Quote, Strikethrough } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -215,6 +215,9 @@ export function AddReviewModal({
   const [processingOpen, setProcessingOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  /** Heights of each slide's image frame (bordered box) — controls track uses active slide only. */
+  const scanSlideFrameRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [activeScanFrameHeight, setActiveScanFrameHeight] = useState<number | null>(null);
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -396,17 +399,43 @@ export function AddReviewModal({
 
   const scrollToSlide = useCallback((index: number) => {
     const el = carouselRef.current;
-    if (!el) return;
-    const slideWidth = el.offsetWidth;
-    el.scrollTo({ left: slideWidth * index, behavior: "smooth" });
-  }, []);
+    if (!el || files.length === 0) return;
+    const w = el.clientWidth;
+    if (w <= 0) return;
+    el.scrollTo({ left: w * index, behavior: "smooth" });
+  }, [files.length]);
 
   const handleCarouselScroll = useCallback(() => {
     const el = carouselRef.current;
-    if (!el) return;
-    const index = Math.round(el.scrollLeft / el.offsetWidth);
+    if (!el || files.length === 0) return;
+    const w = el.clientWidth;
+    if (w <= 0) return;
+    const index = Math.min(
+      files.length - 1,
+      Math.max(0, Math.round(el.scrollLeft / w))
+    );
     setCurrentSlide(index);
-  }, []);
+  }, [files.length]);
+
+  useLayoutEffect(() => {
+    if (files.length === 0) {
+      setActiveScanFrameHeight(null);
+      return;
+    }
+    const frame = scanSlideFrameRefs.current[currentSlide];
+    if (!frame) {
+      setActiveScanFrameHeight(null);
+      return;
+    }
+    const measure = () => {
+      const h = Math.round(frame.getBoundingClientRect().height);
+      setActiveScanFrameHeight(h > 0 ? h : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(frame);
+    return () => ro.disconnect();
+  }, [currentSlide, files.length, previewUrls]);
 
   const hasReviewContent =
     rating > 0 || !editorIsEmpty || bestFor.length > 0;
@@ -553,9 +582,7 @@ export function AddReviewModal({
                   <ChevronLeft className="h-5 w-5" />
                 </button>
               )}
-              <span className="text-sm font-semibold text-foreground">
-                {enteredViaUpload ? "Review uploads" : "Add scans"}
-              </span>
+              <span className="text-sm font-semibold text-foreground">Add scans</span>
               <button
                 type="button"
                 onClick={handleClose}
@@ -570,21 +597,28 @@ export function AddReviewModal({
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="px-4 py-5 space-y-5">
                 {/* Stock context */}
-                <div className="flex items-center gap-3">
-                  <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[7px] border border-border/50">
-                    <StockThumbnail stock={stock} />
+                {enteredViaUpload ? (
+                  <div className="flex items-center gap-3">
+                    <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[7px] border border-border/50">
+                      <StockThumbnail stock={stock} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{stock.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {files.length === 0 && existingScanUrls.length === 0
+                          ? "Upload your scans. Review them here before adding details."
+                          : "Review your scans here before adding details."}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{stock.name}</p>
-                  </div>
-                </div>
-
-                {enteredViaUpload && (
-                  <div className="rounded-[7px] border border-border/50 bg-muted/20 px-3 py-2.5">
-                    <p className="text-sm font-medium text-foreground">Add scans</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Upload your scans of {stock.name}. Review them here before adding details.
-                    </p>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[7px] border border-border/50">
+                      <StockThumbnail stock={stock} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{stock.name}</p>
+                    </div>
                   </div>
                 )}
 
@@ -693,37 +727,51 @@ export function AddReviewModal({
                   ) : (
                     <div>
                       <div
-                        ref={carouselRef}
-                        onScroll={handleCarouselScroll}
-                        className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
+                        className="overflow-hidden"
+                        style={
+                          activeScanFrameHeight != null
+                            ? { height: activeScanFrameHeight }
+                            : { minHeight: "8rem" }
+                        }
                       >
-                        {files.map((file, i) => (
-                          <div
-                            key={`${file.name}-${i}`}
-                            className="relative w-full shrink-0 snap-center"
-                          >
-                            <div className="overflow-hidden rounded-[7px] border border-border/50">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={previewUrls[i]}
-                                alt=""
-                                className="h-auto w-full object-contain"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeFile(i)}
-                              className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                              aria-label="Remove"
+                        <div
+                          ref={carouselRef}
+                          onScroll={handleCarouselScroll}
+                          className="flex h-full max-h-full snap-x snap-mandatory items-start overflow-x-auto overflow-y-hidden scrollbar-hide"
+                        >
+                          {files.map((file, i) => (
+                            <div
+                              key={`${file.name}-${i}`}
+                              className="relative w-full min-w-full shrink-0 snap-center flex-none self-start"
                             >
-                              <XIcon className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                              <div
+                                ref={(node) => {
+                                  scanSlideFrameRefs.current[i] = node;
+                                }}
+                                className="overflow-hidden rounded-[7px] border border-border/50"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={previewUrls[i]}
+                                  alt=""
+                                  className="h-auto w-full object-contain"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(i)}
+                                className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                                aria-label="Remove"
+                              >
+                                <XIcon className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
-                      {/* Carousel indicators + add more */}
-                      <div className="mt-3 flex items-center justify-between">
+                      {/* Carousel indicators (row-centred) + count (right) */}
+                      <div className="relative mt-3 flex min-h-[1.375rem] items-center justify-center">
                         <div className="flex items-center gap-1.5">
                           {files.map((_, i) => (
                             <button
@@ -740,22 +788,21 @@ export function AddReviewModal({
                             />
                           ))}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {files.length} of 10
-                          </span>
-                          {files.length < 10 && (
-                            <button
-                              type="button"
-                              onClick={() => fileInputRef.current?.click()}
-                              className="flex items-center gap-1 rounded-[7px] border border-border/50 px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                              Add
-                            </button>
-                          )}
-                        </div>
+                        <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground tabular-nums">
+                          {files.length} of 10
+                        </span>
                       </div>
+
+                      {files.length < 10 && (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-[7px] border border-border/50 bg-background py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary/30"
+                        >
+                          <Plus className="h-4 w-4 text-muted-foreground" />
+                          Add more scans
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -885,17 +932,19 @@ export function AddReviewModal({
               </div>
             </div>
 
-            {/* Bottom: Submit */}
-            <div className="shrink-0 border-t border-border/40 px-4 py-4">
-              <button
-                type="button"
-                onClick={enteredViaUpload ? () => setStep(3) : handlePostScans}
-                disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
-                className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
-              >
-                {submitting ? "Saving..." : enteredViaUpload ? "Next" : isEdit ? "Save changes" : "Submit review"}
-              </button>
-            </div>
+            {/* Bottom: Submit — upload flow: no bar until at least one scan is added */}
+            {(!enteredViaUpload || canAdvanceUploadFlow) && (
+              <div className="shrink-0 border-t border-border/40 px-4 py-4">
+                <button
+                  type="button"
+                  onClick={enteredViaUpload ? () => setStep(3) : handlePostScans}
+                  disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
+                  className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+                >
+                  {submitting ? "Saving..." : enteredViaUpload ? "Next" : isEdit ? "Save changes" : "Submit review"}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           /* ──────────── STEP 3: FINAL DETAILS (UPLOAD FLOW) ──────────── */
