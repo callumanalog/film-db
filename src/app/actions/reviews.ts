@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-batch";
 
 export interface FilmReviewRow {
   id: string;
@@ -132,12 +133,7 @@ export async function getReviewsForFilmStock(slug: string): Promise<FilmReviewRo
   if (!rows?.length) return [];
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
-
-  const nameByUserId = new Map<string, string | null>();
-  for (const p of profiles ?? []) {
-    nameByUserId.set(p.id, p.display_name ?? null);
-  }
+  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
 
   return attachReviewLikeData(supabase, rows as ReviewRowDb[], nameByUserId, user?.id ?? null);
 }
@@ -204,12 +200,7 @@ export async function getFollowingReviewsForFilmStock(slug: string): Promise<Fil
   if (!rows?.length) return [];
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
-
-  const nameByUserId = new Map<string, string | null>();
-  for (const p of profiles ?? []) {
-    nameByUserId.set(p.id, p.display_name ?? null);
-  }
+  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
 
   return attachReviewLikeData(supabase, rows as ReviewRowDb[], nameByUserId, user.id);
 }

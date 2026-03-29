@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getFilmStocks } from "@/lib/supabase/queries";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { GalleryGrid, type StockOption } from "@/components/gallery-grid";
-import { FilmNativeGrid } from "@/components/film-native-grid";
+import { DiscoverMobileSection } from "@/components/discover-mobile-section";
 import type { GalleryImage } from "@/lib/sample-images";
 
 export const revalidate = 60;
@@ -48,10 +48,8 @@ export default async function DiscoverPage() {
         </div>
       ) : (
         <>
-          {/* Mobile: full-bleed 3-column 3:2 Film Native grid */}
-          <div className="md:hidden w-screen max-w-none relative left-1/2 -translate-x-1/2">
-            <FilmNativeGrid images={images} />
-          </div>
+          {/* Mobile: feed + filters driven by header URL params + sheet */}
+          <DiscoverMobileSection images={images} brands={brands} />
           {/* Desktop: filters + grid */}
           <div className="hidden md:block">
             <GalleryGrid

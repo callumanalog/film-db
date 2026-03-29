@@ -9,10 +9,7 @@ import {
   getMyUploadsForFilmStock,
   type FilmUploadRow,
 } from "@/app/actions/uploads";
-import {
-  plainTextFromPossibleHtml,
-  sanitizeReviewLikeHtml,
-} from "@/lib/sanitize-review-like-html";
+import { plainTextFromPossibleHtml } from "@/lib/sanitize-review-like-html";
 import {
   Camera,
   Film,
@@ -25,15 +22,15 @@ import {
   CheckCircle2,
   Clock,
   ClockPlus,
-  X,
   Heart,
   MessageCircle,
   Send,
   Bookmark,
-  ChevronRight,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { LazyImage } from "@/components/lazy-image";
+import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
+import { collectLightboxSlidesFromFilmUploads } from "@/lib/lightbox-group";
 
 interface CommunityReview {
   id: string;
@@ -226,164 +223,6 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-/** Lightbox: image left, details panel right. Shows real metadata when from user upload. */
-function GalleryLightbox({
-  imageUrl,
-  alt = "",
-  caption,
-  username = "filumbycallum",
-  metadata,
-  onClose,
-}: {
-  imageUrl: string;
-  alt?: string;
-  caption?: string | null;
-  username?: string;
-  metadata?: {
-    camera?: string | null;
-    shot_iso?: string | null;
-    lens?: string | null;
-    lab?: string | null;
-    filter?: string | null;
-    scanner?: string | null;
-    push_pull?: string | null;
-  };
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-stretch bg-black/90"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Image detail"
-    >
-      {/* Left: image */}
-      <div
-        className="relative flex min-w-0 flex-1 items-center justify-center bg-black p-4"
-        role="presentation"
-        onClick={onClose}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
-          aria-label="Close"
-        >
-          <X className="h-6 w-6" />
-        </button>
-        <div
-          className="relative flex max-h-full max-w-full items-center justify-center"
-          role="presentation"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={alt}
-            className="max-h-[85vh] w-auto max-w-full object-contain"
-          />
-        </div>
-        {/* Pagination dots (mock) */}
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-1.5">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <span
-              key={i}
-              className={`h-1.5 w-1.5 rounded-full ${i === 1 ? "bg-white" : "bg-white/40"}`}
-              aria-hidden
-            />
-          ))}
-        </div>
-        <span className="absolute bottom-6 right-6 text-white/60" aria-hidden>
-          <ChevronRight className="h-8 w-8" />
-        </span>
-      </div>
-
-      {/* Right: details panel (mock) */}
-      <div className="flex w-full max-w-[420px] flex-col border-l border-border/20 bg-background">
-        {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
-            {username.slice(0, 2).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{username}</p>
-          </div>
-        </div>
-
-        {/* Caption & metadata */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          {caption ? (
-            <p className="text-sm">
-              <span className="rounded bg-primary/10 px-1 font-semibold text-primary">{username}</span>{" "}
-              <span
-                className="[&_a]:text-primary [&_a]:underline [&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-primary/30 [&_blockquote]:pl-2 [&_p]:m-0 [&_p]:mb-1 [&_p:last-child]:mb-0"
-                dangerouslySetInnerHTML={{ __html: sanitizeReviewLikeHtml(caption) }}
-              />
-            </p>
-          ) : null}
-          {metadata && (metadata.camera || metadata.shot_iso || metadata.lens || metadata.lab || metadata.filter || metadata.scanner || metadata.push_pull) ? (
-            <dl className="mt-3 space-y-2 border-t border-border/40 pt-3">
-              {metadata.camera ? (
-                <div>
-                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Camera</dt>
-                  <dd className="text-sm">{metadata.camera}</dd>
-                </div>
-              ) : null}
-              {metadata.shot_iso ? (
-                <div>
-                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Shot at ISO</dt>
-                  <dd className="text-sm">{metadata.shot_iso}</dd>
-                </div>
-              ) : null}
-              {metadata.lens ? (
-                <div>
-                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Lens</dt>
-                  <dd className="text-sm">{metadata.lens}</dd>
-                </div>
-              ) : null}
-              {metadata.lab ? (
-                <div>
-                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Lab / Processing</dt>
-                  <dd className="text-sm">{metadata.lab}</dd>
-                </div>
-              ) : null}
-              {metadata.push_pull ? (
-                <div>
-                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Push/Pull</dt>
-                  <dd className="text-sm">{metadata.push_pull}</dd>
-                </div>
-              ) : null}
-              {metadata.filter ? (
-                <div>
-                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Filter</dt>
-                  <dd className="text-sm">{metadata.filter}</dd>
-                </div>
-              ) : null}
-              {metadata.scanner ? (
-                <div>
-                  <dt className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Scanner</dt>
-                  <dd className="text-sm">{metadata.scanner}</dd>
-                </div>
-              ) : null}
-            </dl>
-          ) : caption ? null : (
-            <p className="text-sm text-muted-foreground">No details for this shot.</p>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
 const GALLERY_SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
   { value: "popular", label: "Popular" },
@@ -410,20 +249,9 @@ export function CommunityGallery({
   useEffect(() => {
     if (!useFlickr && view === "flickr") setView("community");
   }, [useFlickr, view]);
-  const [lightboxImage, setLightboxImage] = useState<{
-    imageUrl: string;
-    alt?: string;
-    caption?: string | null;
-    username?: string;
-    metadata?: {
-      camera?: string | null;
-      shot_iso?: string | null;
-      lens?: string | null;
-      lab?: string | null;
-      filter?: string | null;
-      scanner?: string | null;
-      push_pull?: string | null;
-    };
+  const [lightboxSession, setLightboxSession] = useState<{
+    slides: ImageLightboxData[];
+    initialIndex: number;
   } | null>(null);
 
   useEffect(() => {
@@ -534,24 +362,12 @@ export function CommunityGallery({
             role="button"
             tabIndex={0}
             key={u.id}
-            onClick={() =>
-              u.image_url &&
-              setLightboxImage({
-                imageUrl: u.image_url!,
-                alt: plainTextFromPossibleHtml(u.caption ?? ""),
-                caption: u.caption,
-                username: u.display_name ?? undefined,
-                metadata: {
-                  camera: u.camera,
-                  shot_iso: u.shot_iso,
-                  lens: u.lens,
-                  lab: u.lab,
-                  filter: u.filter,
-                  scanner: u.scanner,
-                  push_pull: u.push_pull,
-                },
-              })
-            }
+            onClick={() => {
+              if (!u.image_url || !slug) return;
+              setLightboxSession(
+                collectLightboxSlidesFromFilmUploads(communityUploadsToShow, u, stockName, slug)
+              );
+            }}
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
@@ -592,24 +408,19 @@ export function CommunityGallery({
             role="button"
             tabIndex={0}
             key={u.id}
-            onClick={() =>
-              u.image_url &&
-              setLightboxImage({
-                imageUrl: u.image_url!,
-                alt: plainTextFromPossibleHtml(u.caption ?? ""),
-                caption: u.caption,
-                username: "You",
-                metadata: {
-                  camera: u.camera,
-                  shot_iso: u.shot_iso,
-                  lens: u.lens,
-                  lab: u.lab,
-                  filter: u.filter,
-                  scanner: u.scanner,
-                  push_pull: u.push_pull,
-                },
-              })
-            }
+            onClick={() => {
+              if (!u.image_url || !slug) return;
+              const { slides, initialIndex } = collectLightboxSlidesFromFilmUploads(
+                myUploadsToShow,
+                u,
+                stockName,
+                slug
+              );
+              setLightboxSession({
+                slides: slides.map((s) => ({ ...s, username: "You" })),
+                initialIndex,
+              });
+            }}
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
@@ -651,7 +462,12 @@ export function CommunityGallery({
             key={cardId}
             role="button"
             tabIndex={0}
-            onClick={() => setLightboxImage({ imageUrl: item.src, username: item.username })}
+            onClick={() =>
+              setLightboxSession({
+                slides: [{ imageUrl: item.src, username: item.username, alt: "" }],
+                initialIndex: 0,
+              })
+            }
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             <LazyImage src={item.src} alt="" className="block w-full h-auto" aria-hidden />
@@ -679,7 +495,22 @@ export function CommunityGallery({
               key={img.id}
               role="button"
               tabIndex={0}
-              onClick={() => setLightboxImage({ imageUrl: img.imageUrl, alt: img.title || "", username: img.ownerName })}
+              onClick={() =>
+                setLightboxSession({
+                  slides: [
+                    {
+                      imageUrl: img.imageUrl,
+                      alt: img.title || "",
+                      caption: img.title?.trim() || null,
+                      username: img.ownerName,
+                      context: slug
+                        ? { label: stockName, href: `/films/${slug}` }
+                        : undefined,
+                    },
+                  ],
+                  initialIndex: 0,
+                })
+              }
               className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
             >
               <LazyImage
@@ -711,7 +542,22 @@ export function CommunityGallery({
                 key={img.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => img.imageUrl && setLightboxImage({ imageUrl: img.imageUrl!, username: img.username })}
+                onClick={() =>
+                  img.imageUrl &&
+                  setLightboxSession({
+                    slides: [
+                      {
+                        imageUrl: img.imageUrl!,
+                        username: img.username,
+                        alt: "",
+                        context: slug
+                          ? { label: stockName, href: `/films/${slug}` }
+                          : undefined,
+                      },
+                    ],
+                    initialIndex: 0,
+                  })
+                }
                 className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
               >
                 {img.imageUrl ? (
@@ -755,16 +601,13 @@ export function CommunityGallery({
         </p>
       )}
 
-      {lightboxImage && (
-        <GalleryLightbox
-          imageUrl={lightboxImage.imageUrl}
-          alt={lightboxImage.alt ?? ""}
-          caption={lightboxImage.caption}
-          username={lightboxImage.username}
-          metadata={lightboxImage.metadata}
-          onClose={() => setLightboxImage(null)}
+      {lightboxSession ? (
+        <ImageLightbox
+          slides={lightboxSession.slides}
+          initialIndex={lightboxSession.initialIndex}
+          onClose={() => setLightboxSession(null)}
         />
-      )}
+      ) : null}
     </div>
   );
 }

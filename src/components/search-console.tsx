@@ -76,7 +76,7 @@ export function SearchConsole({
     <header
       aria-label="Search and filters"
       className={cn(
-        "sticky top-0 z-50 border-b border-slate-100 bg-background pt-4 pb-2 transition-shadow",
+        "sticky top-0 z-50 border-b border-slate-100 bg-white pt-4 pb-2 transition-shadow",
         scrolled && "shadow-sm"
       )}
     >

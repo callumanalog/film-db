@@ -1,9 +1,10 @@
 "use server";
 
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-batch";
 
 const USER_UPLOAD_ROW_SELECT =
-  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id, image_width, image_height";
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id, image_width, image_height, review_id";
 
 export interface FilmUploadRow {
   id: string;
@@ -27,6 +28,7 @@ export interface FilmUploadRow {
   /** Set on upload when available; used for film hero landscape carousel. */
   image_width?: number | null;
   image_height?: number | null;
+  review_id?: string | null;
 }
 
 /** Shape for Community page gallery: one row per upload with stock/brand labels. */
@@ -42,6 +44,15 @@ export interface CommunityGalleryUpload {
   likes: number;
   source: "community";
   imageUrl: string | null;
+  caption?: string | null;
+  shot_iso?: string | null;
+  lens?: string | null;
+  lab?: string | null;
+  filter?: string | null;
+  scanner?: string | null;
+  push_pull?: string | null;
+  reviewId?: string | null;
+  uploadBatchId?: string | null;
 }
 
 /** All community uploads for the global Community page gallery. Optional search by caption/metadata and/or by film stock slugs (e.g. match by stock name). */
@@ -83,14 +94,7 @@ export async function getAllCommunityUploadsForGallery(
   const stockBySlug = new Map(slugs.map((slug) => [slug, stocks.find((s) => s.slug === slug)]));
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .in("id", userIds);
-  const nameByUserId = new Map<string, string>();
-  for (const p of profiles ?? []) {
-    nameByUserId.set(p.id, p.display_name ?? "Member");
-  }
+  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
 
   const out: CommunityGalleryUpload[] = [];
   for (const r of rows as FilmUploadRow[]) {
@@ -106,18 +110,29 @@ export async function getAllCommunityUploadsForGallery(
       r.filter,
       r.scanner,
     ].filter(Boolean);
+    const display = nameByUserId.get(r.user_id);
+    const username = display?.trim() || "Member";
     out.push({
       id: r.id,
       galleryId: `upload-${r.id}`,
       stockSlug: r.film_stock_slug,
       stockName: stock.name,
       brandName: stock.brand.name,
-      username: nameByUserId.get(r.user_id) ?? "Member",
+      username,
       camera: r.camera ?? "",
       settings: settingsParts.join(" · "),
       likes: 0,
       source: "community",
       imageUrl: r.image_url,
+      caption: r.caption,
+      shot_iso: r.shot_iso,
+      lens: r.lens,
+      lab: r.lab,
+      filter: r.filter,
+      scanner: r.scanner,
+      push_pull: r.push_pull,
+      reviewId: r.review_id ?? null,
+      uploadBatchId: r.upload_batch_id ?? null,
     });
   }
   return out;
@@ -137,15 +152,7 @@ export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRo
   if (!rows?.length) return [];
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, display_name")
-    .in("id", userIds);
-
-  const nameByUserId = new Map<string, string | null>();
-  for (const p of profiles ?? []) {
-    nameByUserId.set(p.id, p.display_name ?? null);
-  }
+  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
 
   return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
     ...r,
@@ -216,12 +223,7 @@ export async function getFollowingUploadsForFilmStock(slug: string): Promise<Fil
   if (!rows?.length) return [];
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
-
-  const nameByUserId = new Map<string, string | null>();
-  for (const p of profiles ?? []) {
-    nameByUserId.set(p.id, p.display_name ?? null);
-  }
+  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
 
   return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
     ...r,
@@ -249,12 +251,7 @@ export async function getUploadsByUploadBatchId(uploadBatchId: string): Promise<
   if (!rows?.length) return [];
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
-
-  const nameByUserId = new Map<string, string | null>();
-  for (const p of profiles ?? []) {
-    nameByUserId.set(p.id, p.display_name ?? null);
-  }
+  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
 
   return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
     ...r,

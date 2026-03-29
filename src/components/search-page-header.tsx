@@ -18,7 +18,7 @@ export function SearchPageHeaderForm({ value, onChange, onClear, onFocus }: Sear
   return (
     <div
       role="search"
-      className="flex h-[52px] min-h-[52px] w-full min-w-0 shrink-0 items-center gap-2 rounded-card border border-border bg-white pl-3 pr-2"
+      className="flex h-[52px] min-h-[52px] w-full min-w-0 shrink-0 items-center gap-2 rounded-card border border-border bg-background pl-3 pr-2"
     >
       <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <input

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { GalleryImage } from "@/lib/sample-images";
+export { galleryImageToLightbox } from "@/lib/lightbox-group";
 
 /** One cell in the Discover / film scans native masonry grid. */
 export type FilmNativeMasonryItem = {
@@ -9,6 +10,8 @@ export type FilmNativeMasonryItem = {
   imageUrl: string | null;
   overlayLabel: string;
   href: string;
+  /** Opens lightbox / custom action; when set, row is a button instead of a link. */
+  onActivate?: () => void;
 };
 
 /**
@@ -25,8 +28,8 @@ export function FilmNativeMasonryGrid({
 }) {
   return (
     <div className="w-full columns-2 gap-0" aria-label={ariaLabel}>
-      {items.map((img) => (
-        <Link key={img.id} href={img.href} className="block break-inside-avoid">
+      {items.map((img) => {
+        const inner = (
           <div className="relative box-border overflow-hidden rounded-none border border-white bg-white">
             {img.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -48,22 +51,43 @@ export function FilmNativeMasonryGrid({
               <span className="text-tiny">{img.overlayLabel}</span>
             </div>
           </div>
-        </Link>
-      ))}
+        );
+
+        if (img.onActivate) {
+          return (
+            <button
+              key={img.id}
+              type="button"
+              className="block w-full cursor-pointer break-inside-avoid border-0 bg-transparent p-0 text-left"
+              onClick={img.onActivate}
+            >
+              {inner}
+            </button>
+          );
+        }
+
+        return (
+          <Link key={img.id} href={img.href} className="block break-inside-avoid">
+            {inner}
+          </Link>
+        );
+      })}
     </div>
   );
 }
 
 interface FilmNativeGridProps {
   images: GalleryImage[];
+  onOpenGalleryImage?: (img: GalleryImage) => void;
 }
 
-export function FilmNativeGrid({ images }: FilmNativeGridProps) {
+export function FilmNativeGrid({ images, onOpenGalleryImage }: FilmNativeGridProps) {
   const items: FilmNativeMasonryItem[] = images.map((img) => ({
     id: img.galleryId,
     imageUrl: img.imageUrl ?? null,
     overlayLabel: img.stockName,
     href: `/films/${img.stockSlug}/images`,
+    onActivate: onOpenGalleryImage ? () => onOpenGalleryImage(img) : undefined,
   }));
   return <FilmNativeMasonryGrid items={items} />;
 }

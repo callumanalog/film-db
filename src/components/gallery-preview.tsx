@@ -15,6 +15,8 @@ import {
   FilmNativeMasonryGrid,
   type FilmNativeMasonryItem,
 } from "@/components/film-native-grid";
+import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
+import { collectLightboxSlidesFromFilmUploads } from "@/lib/lightbox-group";
 import { SegmentedViewTabs, type SegmentedView } from "@/components/segmented-view-tabs";
 import { useAuth } from "@/context/auth-context";
 
@@ -33,6 +35,7 @@ type PreviewImage = {
   imageUrl: string;
   alt: string;
   username?: string;
+  lightbox: ImageLightboxData;
 };
 
 export function GalleryPreview({
@@ -45,6 +48,10 @@ export function GalleryPreview({
   const [uploads, setUploads] = useState<FilmUploadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [scansView, setScansView] = useState<SegmentedView>("everyone");
+  const [lightboxSession, setLightboxSession] = useState<{
+    slides: ImageLightboxData[];
+    initialIndex: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!slug) {
@@ -82,6 +89,8 @@ export function GalleryPreview({
         imageUrl: u.image_url!,
         overlayLabel: u.display_name?.trim() || "Member",
         href: galleryHref,
+        onActivate: () =>
+          setLightboxSession(collectLightboxSlidesFromFilmUploads(uploads, u, stockName, slug)),
       });
     }
     if (scansView === "everyone") {
@@ -91,11 +100,24 @@ export function GalleryPreview({
           imageUrl: f.imageUrl,
           overlayLabel: f.ownerName?.trim() || "Flickr",
           href: galleryHref,
+          onActivate: () =>
+            setLightboxSession({
+              slides: [
+                {
+                  imageUrl: f.imageUrl,
+                  alt: f.title || `${stockName} on Flickr`,
+                  caption: f.title?.trim() || null,
+                  username: f.ownerName,
+                  context: { label: stockName, href: `/films/${slug}` },
+                },
+              ],
+              initialIndex: 0,
+            }),
         });
       }
     }
     return items;
-  }, [uploads, flickrImages, galleryHref, scansView]);
+  }, [uploads, flickrImages, galleryHref, scansView, slug, stockName]);
 
   const images: PreviewImage[] = [];
 
@@ -107,6 +129,24 @@ export function GalleryPreview({
       imageUrl: u.image_url!,
       alt: plainTextFromPossibleHtml(u.caption ?? ""),
       username: u.display_name ?? undefined,
+      lightbox: {
+        imageUrl: u.image_url!,
+        alt:
+          plainTextFromPossibleHtml(u.caption ?? "").slice(0, 240) ||
+          `${stockName} · ${u.display_name ?? "Member"}`,
+        caption: u.caption,
+        username: u.display_name?.trim() || "Member",
+        context: { label: stockName, href: `/films/${slug}` },
+        metadata: {
+          camera: u.camera,
+          shot_iso: u.shot_iso,
+          lens: u.lens,
+          lab: u.lab,
+          filter: u.filter,
+          scanner: u.scanner,
+          push_pull: u.push_pull,
+        },
+      },
     });
   }
 
@@ -117,6 +157,13 @@ export function GalleryPreview({
       imageUrl: f.imageUrl,
       alt: f.title || "",
       username: f.ownerName,
+      lightbox: {
+        imageUrl: f.imageUrl,
+        alt: f.title || `${stockName} on Flickr`,
+        caption: f.title?.trim() || null,
+        username: f.ownerName,
+        context: { label: stockName, href: `/films/${slug}` },
+      },
     });
   }
 
@@ -204,11 +251,16 @@ export function GalleryPreview({
 
         {!showFollowingEmpty && !showYouEmpty && masonryItems.length > 0 ? (
           <div className="w-screen max-w-none relative left-1/2 -translate-x-1/2">
-            <FilmNativeMasonryGrid
-              items={masonryItems}
-              ariaLabel={`${stockName} community scans`}
-            />
+            <FilmNativeMasonryGrid items={masonryItems} ariaLabel={`${stockName} community scans`} />
           </div>
+        ) : null}
+
+        {lightboxSession ? (
+          <ImageLightbox
+            slides={lightboxSession.slides}
+            initialIndex={lightboxSession.initialIndex}
+            onClose={() => setLightboxSession(null)}
+          />
         ) : null}
 
         <UploadCTA stockName={stockName} />
@@ -233,7 +285,14 @@ export function GalleryPreview({
               key={img.id}
               className="w-full shrink-0 snap-start"
             >
-              <div className="aspect-[3/2] overflow-hidden rounded-[7px]">
+              <button
+                type="button"
+                className="aspect-[3/2] w-full cursor-zoom-in overflow-hidden rounded-[7px] border-0 p-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                onClick={() =>
+                  setLightboxSession({ slides: [img.lightbox], initialIndex: 0 })
+                }
+                aria-label={`View scan: ${img.alt || stockName}`}
+              >
                 <LazyImage
                   src={img.imageUrl}
                   alt={img.alt}
@@ -241,7 +300,7 @@ export function GalleryPreview({
                   className="!h-full !w-full !max-h-none object-cover"
                   sizes="100vw"
                 />
-              </div>
+              </button>
             </div>
           ))}
         </div>
@@ -259,6 +318,14 @@ export function GalleryPreview({
           </div>
         )}
       </div>
+
+      {lightboxSession ? (
+        <ImageLightbox
+          slides={lightboxSession.slides}
+          initialIndex={lightboxSession.initialIndex}
+          onClose={() => setLightboxSession(null)}
+        />
+      ) : null}
 
       <UploadCTA stockName={stockName} />
     </div>

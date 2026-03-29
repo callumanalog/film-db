@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { NotebookPen, ImagePlus, ListPlus } from "lucide-react";
+import { Image as ImageIcon, ListPlus, Pencil } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -115,7 +115,7 @@ export function PlusActionSheet() {
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" showCloseButton={false} className="gap-0 pb-8">
+        <SheetContent side="bottom" showCloseButton={false} className="gap-0 px-0 pb-8">
           {searchStep && (
             <SheetHeader className="pb-4">
               <SheetTitle>Choose a film stock</SheetTitle>
@@ -152,54 +152,59 @@ export function PlusActionSheet() {
               </ul>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 px-4">
-              <button
-                type="button"
-                onClick={() => handleAction("review")}
-                className="flex items-center gap-3 px-1 py-2 text-left transition-colors hover:text-foreground"
-              >
-                <NotebookPen className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Review a stock</p>
-                  <p className="text-xs text-muted-foreground">Search for a stock to review</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAction("upload")}
-                className="flex items-center gap-3 px-1 py-2 text-left transition-colors hover:text-foreground"
-              >
-                <ImagePlus className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Add scans</p>
-                  <p className="text-xs text-muted-foreground">Search for a stock and upload scans</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  showToastViaEvent("Lists are coming soon!");
-                }}
-                className="flex items-center gap-3 px-1 py-2 text-left transition-colors hover:text-foreground"
-              >
-                <ListPlus className="h-5 w-5 shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Create a list</p>
-                  <p className="text-xs text-muted-foreground">A public or private list of stocks</p>
-                </div>
-              </button>
-
+            <>
+              <div className="border-t border-border/40">
+                <button
+                  type="button"
+                  onClick={() => handleAction("review")}
+                  className="flex w-full items-start gap-3 px-6 py-3.5 text-left transition-colors hover:bg-accent"
+                >
+                  <Pencil className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">Review a stock</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                      Search for a stock to review
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAction("upload")}
+                  className="flex w-full items-start gap-3 px-6 py-3.5 text-left transition-colors hover:bg-accent"
+                >
+                  <ImageIcon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">Add scans</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                      Search for a stock and upload scans
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    showToastViaEvent("Lists are coming soon!");
+                  }}
+                  className="flex w-full items-start gap-3 px-6 py-3.5 text-left transition-colors hover:bg-accent"
+                >
+                  <ListPlus className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">Create a list</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                      A public or private list of stocks
+                    </span>
+                  </span>
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="mt-1 w-full border-t border-border/50 pt-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                className="mx-4 mt-2 w-[calc(100%-2rem)] border-t border-border/40 pt-3 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
                 Close
               </button>
-            </div>
+            </>
           )}
         </SheetContent>
       </Sheet>

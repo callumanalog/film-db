@@ -67,6 +67,16 @@ export interface GalleryImage extends SampleImage {
   brandName: string;
   /** Unique across all stocks (e.g. stockSlug-id). */
   galleryId: string;
+  /** From community uploads; used in discover lightbox. */
+  caption?: string | null;
+  shot_iso?: string | null;
+  lens?: string | null;
+  lab?: string | null;
+  filter?: string | null;
+  scanner?: string | null;
+  push_pull?: string | null;
+  reviewId?: string | null;
+  uploadBatchId?: string | null;
 }
 
 export type StockForGallery = { slug: string; name: string; brand: { name: string } };

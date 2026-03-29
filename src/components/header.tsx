@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2, Check, CircleCheck } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -42,6 +42,7 @@ const FILM_HEADER_PX_PER_CHAR = 9.1;
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, signOut } = useAuth();
   const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast, filmSlug } = useMobileHeaderTitle() ?? {};
   const { shotSlugs, toggleShot } = useUserActions();
@@ -52,6 +53,16 @@ export function Header() {
   const isFilmsPage = pathname === "/films";
   const isSearchPage = pathname === "/search";
   const isProfilePage = pathname === "/profile" || pathname?.startsWith("/profile/");
+  const isDiscoverHome = pathname === "/";
+  const discoverFeed = searchParams.get("feed") === "latest" ? "latest" : "popular";
+
+  const setDiscoverFeed = (f: "latest" | "popular") => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (f === "popular") p.delete("feed");
+    else p.set("feed", "latest");
+    const q = p.toString();
+    router.replace(q ? `/?${q}` : "/", { scroll: false });
+  };
 
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
@@ -232,12 +243,26 @@ export function Header() {
       {/* Top nav: 3-column (logo center, nav left, profile right). Hidden on search mobile (single-column layout used). */}
       <div
         className={cn(
-          "mx-auto grid max-w-7xl grid-cols-3 items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
-          isFilmHero ? "hidden md:grid h-16" : "grid h-16",
+          "mx-auto grid items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
+          isDiscoverHome ? "max-w-6xl md:max-w-7xl" : "max-w-7xl",
+          isDiscoverHome
+            ? "max-md:grid-cols-2 max-md:gap-0 md:grid-cols-3"
+            : "grid-cols-3",
+          isFilmHero
+            ? "hidden md:grid h-16"
+            : isDiscoverHome
+              ? "grid max-md:min-h-14 max-md:items-stretch max-md:py-0 md:h-16"
+              : "grid h-16",
           isSearchPage && "hidden md:grid"
         )}
       >
-        <div className="flex min-w-0 items-center justify-start overflow-hidden gap-1">
+        <div
+          className={cn(
+            "flex min-w-0 items-center justify-start overflow-hidden gap-1",
+            isDiscoverHome &&
+              "max-md:col-span-2 max-md:min-h-14 max-md:w-full max-md:flex-col max-md:justify-end max-md:overflow-visible"
+          )}
+        >
           {showBack ? (
             <button
               type="button"
@@ -249,8 +274,54 @@ export function Header() {
             </button>
           ) : (
             <>
+              {isDiscoverHome && (
+                <div
+                  className="flex w-full min-w-0 border-b border-border/50 p-0 md:hidden"
+                  aria-label="Discover feed sort"
+                >
+                  <nav className="flex w-full min-w-0 gap-8" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={discoverFeed === "latest"}
+                      onClick={() => setDiscoverFeed("latest")}
+                      className={cn(
+                        "relative flex w-full min-w-0 justify-center px-1 pb-3 pt-1 text-center text-sm font-semibold whitespace-nowrap transition-colors",
+                        discoverFeed === "latest"
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Latest
+                      {discoverFeed === "latest" ? (
+                        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={discoverFeed === "popular"}
+                      onClick={() => setDiscoverFeed("popular")}
+                      className={cn(
+                        "relative flex w-full min-w-0 justify-center px-1 pb-3 pt-1 text-center text-sm font-semibold whitespace-nowrap transition-colors",
+                        discoverFeed === "popular"
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Popular
+                      {discoverFeed === "popular" ? (
+                        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
+                      ) : null}
+                    </button>
+                  </nav>
+                </div>
+              )}
               <button
-                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground hidden md:flex lg:hidden"
+                className={cn(
+                  "rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground hidden md:flex lg:hidden",
+                  isDiscoverHome && "max-md:hidden"
+                )}
                 onClick={() => setMobileOpen(!mobileOpen)}
                 aria-label="Toggle menu"
                 aria-expanded={mobileOpen}
@@ -369,17 +440,25 @@ export function Header() {
         </div>
 
         {/* Center column: logo (desktop + mobile) / film title on film detail when scrolled */}
-        <div className="flex min-w-0 flex-1 items-center justify-center">
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center justify-center",
+            isDiscoverHome && "max-md:hidden"
+          )}
+        >
           <Link
             href="/"
             className="hidden whitespace-nowrap text-2xl font-extrabold tracking-tight transition-opacity hover:opacity-80 md:inline-block font-cabinet"
           >
             exposure club
           </Link>
-          {!isSearchPage && (
+          {!isSearchPage && !isDiscoverHome && (
             <Link
               href={mobileHeaderTitle && pathname ? pathname : "/"}
-              className={`whitespace-nowrap font-extrabold tracking-tight transition-opacity hover:opacity-80 md:hidden ${mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-cabinet"}`}
+              className={cn(
+                "whitespace-nowrap font-extrabold tracking-tight transition-opacity hover:opacity-80 md:hidden",
+                mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-cabinet"
+              )}
             >
               {mobileHeaderTitle ?? "exposure club"}
             </Link>
@@ -387,7 +466,12 @@ export function Header() {
         </div>
 
         {/* Right column: Share when back; on profile, settings icon; else profile / sign-in */}
-        <div className="flex items-center justify-end gap-2">
+        <div
+          className={cn(
+            "flex items-center justify-end gap-2",
+            isDiscoverHome && "max-md:hidden"
+          )}
+        >
           {isProfilePage && (
             <div className="relative" ref={settingsMenuRef}>
               <button

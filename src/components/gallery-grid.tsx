@@ -4,6 +4,8 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Camera, Heart, Bookmark, ChevronDown, X } from "lucide-react";
 import type { GalleryImage, SampleImageSource } from "@/lib/sample-images";
+import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
+import { collectLightboxSlidesFromGalleryImages } from "@/lib/lightbox-group";
 
 /** Strip aperture (e.g. " f/2", " f/1.4") from camera string for display. */
 function cameraWithoutAperture(camera: string): string {
@@ -51,6 +53,10 @@ export function GalleryGrid({
     }
   }, [stockDropdownOpen]);
   const [sort, setSort] = useState<SortOption>("most-liked");
+  const [lightboxSession, setLightboxSession] = useState<{
+    slides: ImageLightboxData[];
+    initialIndex: number;
+  } | null>(null);
 
   const stocksForBrand = useMemo(() => {
     if (brandFilter === "all") return stocks;
@@ -261,26 +267,38 @@ export function GalleryGrid({
             <div className="relative aspect-[4/3] bg-muted">
               {img.imageUrl ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.imageUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  />
+                  <button
+                    type="button"
+                    className="absolute inset-0 block h-full w-full cursor-zoom-in text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50"
+                    onClick={() =>
+                      setLightboxSession(collectLightboxSlidesFromGalleryImages(filteredAndSorted, img))
+                    }
+                    aria-label={`View full size: ${img.stockName}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.imageUrl}
+                      alt=""
+                      className="pointer-events-none h-full w-full object-cover"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    />
+                  </button>
                   {/* Bottom gradient + username on image */}
                   <div
-                    className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
                     aria-hidden
                   />
-                  <p className="absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
+                  <p className="pointer-events-none absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
                     {img.username}
                   </p>
                   {/* Like and share on hover */}
                   <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                     <button
                       type="button"
-                      onClick={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
                       className="flex items-center gap-1 rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50"
                       aria-label={`Like (${img.likes})`}
                     >
@@ -289,7 +307,10 @@ export function GalleryGrid({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
                       className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50"
                       aria-label="Save"
                     >
@@ -323,6 +344,14 @@ export function GalleryGrid({
           No images match the current filters. Try changing brand, stock, or source.
         </p>
       )}
+
+      {lightboxSession ? (
+        <ImageLightbox
+          slides={lightboxSession.slides}
+          initialIndex={lightboxSession.initialIndex}
+          onClose={() => setLightboxSession(null)}
+        />
+      ) : null}
     </div>
   );
 }
