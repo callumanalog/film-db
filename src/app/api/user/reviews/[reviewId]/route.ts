@@ -196,6 +196,7 @@ export async function PATCH(
     location: location || null,
   };
 
+  const uploadBatchId = uploadedRows.length > 0 ? crypto.randomUUID() : null;
   let uploadInsertErrors = 0;
   for (const row of uploadedRows) {
     const { error: insertError } = await supabase.from("user_uploads").insert({
@@ -206,6 +207,7 @@ export async function PATCH(
       image_width: row.image_width,
       image_height: row.image_height,
       review_id: reviewId,
+      upload_batch_id: uploadBatchId,
       ...metadata,
     });
     if (insertError) {

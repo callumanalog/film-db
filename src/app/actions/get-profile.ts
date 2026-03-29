@@ -56,7 +56,7 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       supabase
         .from("user_uploads")
         .select(
-          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location"
+          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),

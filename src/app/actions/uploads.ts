@@ -2,6 +2,9 @@
 
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
+const USER_UPLOAD_ROW_SELECT =
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id, image_width, image_height";
+
 export interface FilmUploadRow {
   id: string;
   user_id: string;
@@ -19,6 +22,8 @@ export interface FilmUploadRow {
   push_pull?: string | null;
   format?: string | null;
   location?: string | null;
+  /** Shared id for all images from the same submit (batch of 1–10). */
+  upload_batch_id?: string | null;
   /** Set on upload when available; used for film hero landscape carousel. */
   image_width?: number | null;
   image_height?: number | null;
@@ -48,9 +53,7 @@ export async function getAllCommunityUploadsForGallery(
   const supabase = await createClient();
   let query = supabase
     .from("user_uploads")
-    .select(
-      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
-    )
+    .select(USER_UPLOAD_ROW_SELECT)
     .not("image_url", "is", null)
     .order("created_at", { ascending: false });
   const term = search?.trim();
@@ -123,9 +126,7 @@ export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRo
   const supabase = (await createServiceRoleClient()) ?? (await createClient());
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select(
-      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
-    )
+    .select(USER_UPLOAD_ROW_SELECT)
     .eq("film_stock_slug", slug)
     .order("created_at", { ascending: false });
 
@@ -160,9 +161,7 @@ export async function getMyUploadsForFilmStock(slug: string): Promise<FilmUpload
 
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select(
-      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
-    )
+    .select(USER_UPLOAD_ROW_SELECT)
     .eq("film_stock_slug", slug)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -205,9 +204,7 @@ export async function getFollowingUploadsForFilmStock(slug: string): Promise<Fil
 
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select(
-      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
-    )
+    .select(USER_UPLOAD_ROW_SELECT)
     .eq("film_stock_slug", slug)
     .in("user_id", followingIds)
     .order("created_at", { ascending: false });
@@ -231,3 +228,37 @@ export async function getFollowingUploadsForFilmStock(slug: string): Promise<Fil
     display_name: nameByUserId.get(r.user_id) ?? null,
   }));
 }
+
+
+/** All uploads from the same submission (1–10 images). Public read via RLS. */
+export async function getUploadsByUploadBatchId(uploadBatchId: string): Promise<FilmUploadRow[]> {
+  const id = uploadBatchId?.trim();
+  if (!id) return [];
+
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("user_uploads")
+    .select(USER_UPLOAD_ROW_SELECT)
+    .eq("upload_batch_id", id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[getUploadsByUploadBatchId]", error.message);
+    return [];
+  }
+  if (!rows?.length) return [];
+
+  const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
+  const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", userIds);
+
+  const nameByUserId = new Map<string, string | null>();
+  for (const p of profiles ?? []) {
+    nameByUserId.set(p.id, p.display_name ?? null);
+  }
+
+  return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
+    ...r,
+    display_name: nameByUserId.get(r.user_id) ?? null,
+  }));
+}
+

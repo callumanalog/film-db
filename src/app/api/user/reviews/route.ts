@@ -205,6 +205,7 @@ export async function POST(request: Request) {
     format: format || null,
     location: location || null,
   };
+  const uploadBatchId = uploadedRows.length > 0 ? crypto.randomUUID() : null;
   for (const row of uploadedRows) {
     const { error: insertError } = await supabase.from("user_uploads").insert({
       user_id: user.id,
@@ -214,6 +215,7 @@ export async function POST(request: Request) {
       image_width: row.image_width,
       image_height: row.image_height,
       review_id: newReviewId,
+      upload_batch_id: uploadBatchId,
       ...metadata,
     });
     if (insertError) {
