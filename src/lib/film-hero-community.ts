@@ -60,8 +60,11 @@ export async function buildLandscapeCommunityHeroSlides(
       h = dim.height;
     }
     if (!isLandscape(w, h)) continue;
-    const alt = u.caption?.trim()
-      ? `${u.caption.trim()} — ${stockName}`
+    const captionPlain = u.caption?.trim()
+      ? u.caption.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      : "";
+    const alt = captionPlain
+      ? `${captionPlain} — ${stockName}`
       : `Community photo — ${stockName}`;
     slides.push({ id: u.id, imageUrl: url, alt });
   }

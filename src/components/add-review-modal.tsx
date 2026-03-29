@@ -1,9 +1,29 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
-import { Star, StarHalf, Camera, XIcon, ImagePlus, ChevronLeft, ChevronRight, Plus, Loader2, Bold, Italic, Quote, Strikethrough } from "lucide-react";
+import {
+  Star,
+  StarHalf,
+  Camera,
+  XIcon,
+  ImagePlus,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Minus,
+  Loader2,
+  Bold,
+  Italic,
+  Quote,
+  Strikethrough,
+  MapPin,
+  Droplets,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import { TextField } from "@/components/ui/text-field";
 import {
   Sheet,
@@ -24,6 +44,104 @@ interface TrackFilmModalStock {
   brand: { name: string; slug: string };
   format: string[];
   image_url: string | null;
+  /** Box / native ISO when known — used as the default "Shot at ISO" stepper value. */
+  iso?: number | null;
+}
+
+/** Common box speeds and practical pull/push equivalents for stepping shot ISO. */
+const FILM_SHOT_ISO_PRESETS = [
+  25, 32, 40, 50, 64, 80, 100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000,
+  2500, 3200, 6400, 12800,
+] as const;
+
+function nearestPresetIso(iso: number): (typeof FILM_SHOT_ISO_PRESETS)[number] {
+  let best: (typeof FILM_SHOT_ISO_PRESETS)[number] = FILM_SHOT_ISO_PRESETS[0];
+  let bestDist = Math.abs(iso - best);
+  for (const v of FILM_SHOT_ISO_PRESETS) {
+    const d = Math.abs(iso - v);
+    if (d < bestDist) {
+      best = v;
+      bestDist = d;
+    }
+  }
+  return best;
+}
+
+function defaultShotIsoForStock(stock: TrackFilmModalStock): string {
+  if (stock.iso != null && Number.isFinite(stock.iso) && stock.iso > 0) {
+    return String(nearestPresetIso(Math.round(stock.iso)));
+  }
+  return "400";
+}
+
+function shotIsoPresetIndex(value: string): number {
+  const n = parseInt(value.trim(), 10);
+  if (!Number.isFinite(n)) {
+    return FILM_SHOT_ISO_PRESETS.indexOf(400);
+  }
+  const exact = FILM_SHOT_ISO_PRESETS.findIndex((v) => v === n);
+  if (exact >= 0) return exact;
+  const nearest = nearestPresetIso(n);
+  return FILM_SHOT_ISO_PRESETS.findIndex((v) => v === nearest);
+}
+
+function ShotIsoStepper({
+  value,
+  onChange,
+  className,
+  "aria-labelledby": ariaLabelledBy,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  className?: string;
+  "aria-labelledby"?: string;
+}) {
+  const idx = shotIsoPresetIndex(value);
+  const current = FILM_SHOT_ISO_PRESETS[idx];
+  const atMin = idx <= 0;
+  const atMax = idx >= FILM_SHOT_ISO_PRESETS.length - 1;
+
+  return (
+    <div
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      className={cn(
+        "flex h-10 w-full min-w-0 items-stretch overflow-hidden rounded-card border border-input bg-transparent dark:bg-input/30",
+        className
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          if (atMin) return;
+          onChange(String(FILM_SHOT_ISO_PRESETS[idx - 1]));
+        }}
+        disabled={atMin}
+        className="flex w-11 shrink-0 items-center justify-center border-r border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        aria-label="Lower ISO"
+      >
+        <Minus className="h-4 w-4" strokeWidth={2} aria-hidden />
+      </button>
+      <div
+        className="flex min-w-0 flex-1 items-center justify-center tabular-nums text-sm font-medium text-foreground"
+        aria-live="polite"
+      >
+        {current}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (atMax) return;
+          onChange(String(FILM_SHOT_ISO_PRESETS[idx + 1]));
+        }}
+        disabled={atMax}
+        className="flex w-11 shrink-0 items-center justify-center border-l border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        aria-label="Raise ISO"
+      >
+        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+      </button>
+    </div>
+  );
 }
 
 const BEST_FOR_OPTIONS: BestFor[] = [
@@ -154,6 +272,50 @@ function HalfStarRating({
   );
 }
 
+type Step3SubPage = "location" | "processing";
+
+const STEP3_SUBPAGE_TITLES: Record<Step3SubPage, string> = {
+  location: "Add location",
+  processing: "Processing details",
+};
+
+const STEP3_LOCATION_SUGGESTIONS = [
+  "London, United Kingdom",
+  "New York, USA",
+  "Los Angeles, USA",
+  "Berlin, Germany",
+  "Home / studio",
+];
+
+function Step3MetadataRow({
+  icon: Icon,
+  label,
+  valuePreview,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  valuePreview?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 border-b border-border/40 px-3 py-3.5 text-left transition-colors last:border-b-0 hover:bg-secondary/30"
+    >
+      <Icon className="h-5 w-5 shrink-0 text-foreground" strokeWidth={1.75} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <span className="text-[15px] font-normal text-foreground">{label}</span>
+        {valuePreview ? (
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{valuePreview}</p>
+        ) : null}
+      </div>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/50" aria-hidden />
+    </button>
+  );
+}
+
 export function AddReviewModal({
   open,
   onOpenChange,
@@ -173,6 +335,7 @@ export function AddReviewModal({
   const [camera, setCamera] = useState("");
 
   const REVIEW_MAX_LENGTH = 10_000;
+  const CAPTION_MAX_LENGTH = 500;
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -203,14 +366,14 @@ export function AddReviewModal({
   const [existingScanUrls, setExistingScanUrls] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [caption, setCaption] = useState("");
   const [selectedFormat, setSelectedFormat] = useState(stock.format.length === 1 ? stock.format[0] : "");
   const [lens, setLens] = useState("");
-  const [shotIso, setShotIso] = useState("");
+  const [shotIso, setShotIso] = useState(() => defaultShotIsoForStock(stock));
   const [location, setLocation] = useState("");
   const [lab, setLab] = useState("");
   const [filter, setFilter] = useState("");
   const [scanner, setScanner] = useState("");
+  const [caption, setCaption] = useState("");
   const [shootingOpen, setShootingOpen] = useState(false);
   const [processingOpen, setProcessingOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -218,6 +381,10 @@ export function AddReviewModal({
   /** Heights of each slide's image frame (bordered box) — controls track uses active slide only. */
   const scanSlideFrameRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeScanFrameHeight, setActiveScanFrameHeight] = useState<number | null>(null);
+  /** Step 3: full-bleed preview when tapping a scan thumbnail. */
+  const [step3ImagePreviewIndex, setStep3ImagePreviewIndex] = useState<number | null>(null);
+  /** Step 3: Instagram-style sub-screen for a single metadata field. */
+  const [step3SubPage, setStep3SubPage] = useState<Step3SubPage | null>(null);
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -250,10 +417,13 @@ export function AddReviewModal({
     setScanner("");
     setShootingOpen(false);
     setProcessingOpen(false);
+    setCurrentSlide(0);
+    setStep3ImagePreviewIndex(null);
+    setStep3SubPage(null);
     setIsUploading(false);
     setUploadError(null);
     setSubmitting(false);
-  }, [enteredViaUpload, initialRating, editor, stock.format]);
+  }, [enteredViaUpload, initialRating, editor, stock]);
 
   useEffect(() => {
     if (!open || edit) return;
@@ -283,10 +453,12 @@ export function AddReviewModal({
     setShootingOpen(false);
     setProcessingOpen(false);
     setCurrentSlide(0);
+    setStep3ImagePreviewIndex(null);
+    setStep3SubPage(null);
     setIsUploading(false);
     setUploadError(null);
     setSubmitting(false);
-  }, [open, edit?.id, edit, stock.format]);
+  }, [open, edit?.id, edit, stock]);
 
   useEffect(() => {
     if (!open || !edit || !editor) return;
@@ -296,6 +468,7 @@ export function AddReviewModal({
   }, [open, edit?.id, edit?.review_text, editor]);
 
   const handleClose = useCallback(() => {
+    setStep3ImagePreviewIndex(null);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -317,7 +490,7 @@ export function AddReviewModal({
     format: selectedFormat || undefined,
     location: location || undefined,
     lens: lens || undefined,
-    caption: caption || undefined,
+    caption: caption.trim() ? caption.trim() : undefined,
     shotIso: shotIso || undefined,
     lab: lab || undefined,
     filter: filter || undefined,
@@ -437,6 +610,27 @@ export function AddReviewModal({
     return () => ro.disconnect();
   }, [currentSlide, files.length, previewUrls]);
 
+  useEffect(() => {
+    if (step !== 3) {
+      setStep3ImagePreviewIndex(null);
+      setStep3SubPage(null);
+    }
+  }, [step]);
+
+  useEffect(() => {
+    if (step3ImagePreviewIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setStep3ImagePreviewIndex(null);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [step3ImagePreviewIndex]);
+
   const hasReviewContent =
     rating > 0 || !editorIsEmpty || bestFor.length > 0;
   /** Edit flow always allows save from step 2 (including clearing fields). */
@@ -444,6 +638,7 @@ export function AddReviewModal({
   const canAdvanceUploadFlow = files.length > 0;
 
   return (
+    <>
     <Sheet open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <SheetContent
         side="bottom"
@@ -845,14 +1040,12 @@ export function AddReviewModal({
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-3">
-                            <TextField
-                              id="scan-iso"
-                              label="Shot at ISO"
-                              type="text"
-                              value={shotIso}
-                              onChange={(e) => setShotIso(e.target.value)}
-                              placeholder="e.g. 400"
-                            />
+                            <div className="min-w-0">
+                              <label id="scan-iso-label" className="mb-1 block text-field-label">
+                                Shot at ISO
+                              </label>
+                              <ShotIsoStepper aria-labelledby="scan-iso-label" value={shotIso} onChange={setShotIso} />
+                            </div>
                             <TextField
                               id="scan-filter"
                               label="Filter"
@@ -952,13 +1145,15 @@ export function AddReviewModal({
             <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
               <button
                 type="button"
-                onClick={() => setStep(2)}
+                onClick={() => (step3SubPage ? setStep3SubPage(null) : setStep(2))}
                 className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label="Back"
+                aria-label={step3SubPage ? "Back to details" : "Back"}
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <span className="text-sm font-semibold text-foreground">New post</span>
+              <span className="text-sm font-semibold text-foreground">
+                {step3SubPage ? STEP3_SUBPAGE_TITLES[step3SubPage] : "Share your scans"}
+              </span>
               <button
                 type="button"
                 onClick={handleClose}
@@ -970,163 +1165,280 @@ export function AddReviewModal({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="space-y-5 px-4 py-5">
-                {files.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {files.map((file, i) => (
+              {step3SubPage ? (
+                <div className="space-y-4 px-4 py-5">
+                  {step3SubPage === "location" && (
+                    <TextField
+                      id="step3-sub-location"
+                      label="Location"
+                      type="text"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="e.g. London, UK"
+                    />
+                  )}
+                  {step3SubPage === "processing" && (
+                    <div className="space-y-3">
+                      <TextField
+                        id="step3-sub-lab"
+                        label="Lab / Processing"
+                        type="text"
+                        value={lab}
+                        onChange={(e) => setLab(e.target.value)}
+                        placeholder="e.g. Home dev"
+                      />
+                      <TextField
+                        id="step3-sub-scanner"
+                        label="Scanner"
+                        type="text"
+                        value={scanner}
+                        onChange={(e) => setScanner(e.target.value)}
+                        placeholder="e.g. Epson V600"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 px-4 py-5">
+                  {files.length > 0 && (
+                    <div className="-mr-4 w-[calc(100%+1rem)] max-w-none">
+                      <div className="scrollbar-hide flex items-start gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-4">
+                        {files.map((file, i) => (
+                          <button
+                            key={`${file.name}-${i}`}
+                            type="button"
+                            onClick={() => setStep3ImagePreviewIndex(i)}
+                            className="relative aspect-square min-w-0 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted/10 p-0 text-left ring-offset-background flex-[0_0_calc((100%-1rem)/2.5)] transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={`Preview scan ${i + 1}`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={previewUrls[i]}
+                              alt=""
+                              className="pointer-events-none h-full w-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <label htmlFor="share-scans-caption" className="sr-only">
+                      Caption
+                    </label>
+                    <textarea
+                      id="share-scans-caption"
+                      value={caption}
+                      maxLength={CAPTION_MAX_LENGTH}
+                      onChange={(e) => setCaption(e.target.value)}
+                      placeholder="Add a caption..."
+                      rows={4}
+                      className="min-h-[100px] w-full resize-y rounded-[7px] border border-input bg-transparent px-3 py-3 pb-8 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-input/30"
+                    />
+                    <span
+                      className="pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums text-muted-foreground/60"
+                      aria-live="polite"
+                    >
+                      {caption.length}/{CAPTION_MAX_LENGTH}
+                    </span>
+                  </div>
+
+                  {stock.format.length > 0 ? (
+                    <div className="pt-0.5">
+                      <p className="mb-1.5 block text-xs font-normal text-muted-foreground">
+                        Format
+                      </p>
                       <div
-                        key={`${file.name}-${i}`}
-                        className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted/10"
+                        className="flex items-stretch overflow-hidden rounded-[7px] border border-border/70 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:border-border dark:shadow-none"
+                        role="tablist"
+                        aria-label="Film format"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={previewUrls[i]}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
+                        {stock.format.map((fmt, index) => (
+                          <Fragment key={fmt}>
+                            {index > 0 ? (
+                              <div
+                                className="w-px shrink-0 self-stretch bg-border/80 dark:bg-border"
+                                aria-hidden
+                              />
+                            ) : null}
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={selectedFormat === fmt}
+                              onClick={() => setSelectedFormat(selectedFormat === fmt ? "" : fmt)}
+                              className={cn(
+                                "min-w-0 flex-1 px-2 py-2.5 text-center text-sm font-medium tracking-tight transition-[color,background-color,transform,box-shadow]",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                                "active:scale-[0.98] active:transition-none",
+                                selectedFormat === fmt
+                                  ? "text-primary"
+                                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground active:bg-muted/50"
+                              )}
+                            >
+                              {fmt}
+                            </button>
+                          </Fragment>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  ) : null}
 
-                <TextField
-                  id="scan-caption"
-                  label="Caption"
-                  type="text"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Add a caption..."
-                />
-
-                <div className="space-y-4">
-                  <div className="overflow-hidden rounded-[7px] border border-border/50">
-                    <button
-                      type="button"
-                      onClick={() => setShootingOpen((v) => !v)}
-                      className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
-                    >
-                      Add shooting details
-                      <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", shootingOpen && "rotate-90")} />
-                    </button>
-                    {shootingOpen && (
-                      <div className="space-y-3 border-t border-border/40 px-3 py-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <TextField
-                            id="scan-camera-final"
-                            label="Camera"
-                            type="text"
-                            value={camera}
-                            onChange={(e) => setCamera(e.target.value)}
-                            placeholder="e.g. Canon AE-1"
-                          />
-                          <TextField
-                            id="scan-lens-final"
-                            label="Lens"
-                            type="text"
-                            value={lens}
-                            onChange={(e) => setLens(e.target.value)}
-                            placeholder="e.g. 50mm f/1.4"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <TextField
-                            id="scan-iso-final"
-                            label="Shot at ISO"
-                            type="text"
-                            value={shotIso}
-                            onChange={(e) => setShotIso(e.target.value)}
-                            placeholder="e.g. 400"
-                          />
-                          <TextField
-                            id="scan-filter-final"
-                            label="Filter"
-                            type="text"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
-                            placeholder="e.g. None, 81A"
-                          />
-                        </div>
-                        <TextField
-                          id="scan-location-final"
-                          label="Location"
+                  <div className="flex flex-col gap-3">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="step3-inline-camera"
+                        className="block text-xs font-normal text-muted-foreground"
+                      >
+                        Camera
+                      </label>
+                      <Input
+                        id="step3-inline-camera"
+                        type="text"
+                        value={camera}
+                        onChange={(e) => setCamera(e.target.value)}
+                        placeholder="e.g. Canon AE-1"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="step3-inline-lens"
+                          className="block text-xs font-normal text-muted-foreground"
+                        >
+                          Lens
+                        </label>
+                        <Input
+                          id="step3-inline-lens"
                           type="text"
-                          value={location}
-                          onChange={(e) => setLocation(e.target.value)}
-                          placeholder="e.g. London, UK"
+                          value={lens}
+                          onChange={(e) => setLens(e.target.value)}
+                          placeholder="e.g. 50mm f/1.4"
                         />
-                        <div>
-                          <p className="mb-1 block text-xs font-medium text-muted-foreground">Format</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {stock.format.map((fmt) => (
-                              <button
-                                key={fmt}
-                                type="button"
-                                onClick={() => setSelectedFormat(selectedFormat === fmt ? "" : fmt)}
-                                className={cn(
-                                  "rounded-[7px] border px-3 py-1.5 text-xs font-medium transition-colors",
-                                  selectedFormat === fmt
-                                    ? "border-primary/40 bg-primary/10 text-primary"
-                                    : "border-border/50 bg-background text-foreground/70 hover:border-primary/30 hover:bg-primary/5"
-                                )}
-                              >
-                                {fmt}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
                       </div>
-                    )}
+                      <div className="space-y-1">
+                        <label
+                          htmlFor="step3-inline-filter"
+                          className="block text-xs font-normal text-muted-foreground"
+                        >
+                          Filter
+                        </label>
+                        <Input
+                          id="step3-inline-filter"
+                          type="text"
+                          value={filter}
+                          onChange={(e) => setFilter(e.target.value)}
+                          placeholder="e.g. None, 81A"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label id="step3-iso-label" className="block text-xs font-normal text-muted-foreground">
+                        Shot at ISO
+                      </label>
+                      <ShotIsoStepper aria-labelledby="step3-iso-label" value={shotIso} onChange={setShotIso} />
+                    </div>
                   </div>
 
-                  <div className="overflow-hidden rounded-[7px] border border-border/50">
+                  <div className="overflow-hidden rounded-[7px] border border-border/50 bg-background">
                     <button
                       type="button"
-                      onClick={() => setProcessingOpen((v) => !v)}
-                      className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
+                      onClick={() => setStep3SubPage("location")}
+                      className="flex w-full items-center gap-3 border-b border-border/40 px-3 py-3.5 text-left transition-colors hover:bg-secondary/30"
                     >
-                      Add processing details
-                      <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", processingOpen && "rotate-90")} />
-                    </button>
-                    {processingOpen && (
-                      <div className="space-y-3 border-t border-border/40 px-3 py-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <TextField
-                            id="scan-lab-final"
-                            label="Lab / Processing"
-                            type="text"
-                            value={lab}
-                            onChange={(e) => setLab(e.target.value)}
-                            placeholder="e.g. Home dev"
-                          />
-                          <TextField
-                            id="scan-scanner-final"
-                            label="Scanner"
-                            type="text"
-                            value={scanner}
-                            onChange={(e) => setScanner(e.target.value)}
-                            placeholder="e.g. Epson V600"
-                          />
-                        </div>
+                      <MapPin className="h-5 w-5 shrink-0 text-foreground" strokeWidth={1.75} aria-hidden />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[15px] font-normal text-foreground">Add location</span>
+                        {location.trim() ? (
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{location}</p>
+                        ) : null}
                       </div>
-                    )}
+                      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/50" aria-hidden />
+                    </button>
+                    <div className="px-3 pb-3 pt-2">
+                      <div className="scrollbar-hide -mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-1">
+                        {STEP3_LOCATION_SUGGESTIONS.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setLocation(s)}
+                            className="shrink-0 rounded-full border border-border/50 bg-muted/25 px-3 py-1.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted/45"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+                        People who see your post can view the location you add. You can change it anytime
+                        before sharing.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-[7px] border border-border/50 bg-background">
+                    <Step3MetadataRow
+                      icon={Droplets}
+                      label="Add processing details"
+                      valuePreview={
+                        [lab.trim(), scanner.trim()].filter(Boolean).join(" · ") || undefined
+                      }
+                      onClick={() => setStep3SubPage("processing")}
+                    />
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <div className="shrink-0 border-t border-border/40 px-4 py-4">
-              <button
-                type="button"
-                onClick={handlePostScans}
-                disabled={submitting || !files.length}
-                className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
-              >
-                {submitting ? "Sharing..." : "Share"}
-              </button>
-            </div>
+            {!step3SubPage && (
+              <div className="shrink-0 border-t border-border/40 px-4 py-4">
+                <button
+                  type="button"
+                  onClick={handlePostScans}
+                  disabled={submitting || !files.length}
+                  className="flex w-full items-center justify-center rounded-[7px] bg-[#1A1410] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1A1410]/90 disabled:opacity-40 dark:bg-[#1A1410] dark:hover:bg-[#1A1410]/90"
+                >
+                  {submitting ? "Sharing..." : "Share"}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </SheetContent>
     </Sheet>
+    {typeof document !== "undefined" &&
+      step3ImagePreviewIndex !== null &&
+      previewUrls[step3ImagePreviewIndex] &&
+      createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-zinc-950"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Preview"
+        >
+          <div className="relative flex shrink-0 items-center justify-center border-b border-neutral-200 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => setStep3ImagePreviewIndex(null)}
+              className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-neutral-900 transition-colors hover:bg-neutral-100 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+            </button>
+            <span className="text-base font-semibold text-neutral-900 dark:text-zinc-50">
+              Preview
+            </span>
+          </div>
+          <div className="flex min-h-0 flex-1 w-full items-center justify-center px-0 pb-[env(safe-area-inset-bottom)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrls[step3ImagePreviewIndex]}
+              alt=""
+              className="max-h-full w-full object-contain"
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

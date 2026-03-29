@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import DOMPurify from "dompurify";
+import { sanitizeReviewLikeHtml } from "@/lib/sanitize-review-like-html";
 import {
   Star,
   StarHalf,
@@ -37,11 +37,8 @@ import {
   type EditReviewSeed,
 } from "@/components/add-review-modal";
 
-const ALLOWED_TAGS = ["p", "strong", "em", "s", "blockquote", "a", "br"];
-const ALLOWED_ATTR = ["href", "target", "rel", "class"];
-
 function sanitizeReviewHtml(html: string): string {
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR });
+  return sanitizeReviewLikeHtml(html);
 }
 
 type ReviewView = SegmentedView;
@@ -56,6 +53,7 @@ export type ReviewFlowFilmStock = {
   format: string[];
   image_url: string | null;
   brand: { name: string; slug: string };
+  iso?: number | null;
 };
 
 function slugToDisplayName(slug: string): string {
@@ -335,6 +333,7 @@ export function ReviewsTabContent({
         brand: filmStock.brand,
         format: filmStock.format ?? [],
         image_url: filmStock.image_url,
+        iso: filmStock.iso,
       };
     }
     return {

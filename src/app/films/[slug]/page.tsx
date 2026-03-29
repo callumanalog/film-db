@@ -83,6 +83,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     format: stock.format ?? [],
     image_url: stock.image_url ?? null,
     brand: { name: stock.brand.name, slug: stock.brand.slug },
+    iso: stock.iso,
   };
 
   const typeColor = FILM_TYPE_COLORS[stock.type];

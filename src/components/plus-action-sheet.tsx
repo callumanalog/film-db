@@ -217,6 +217,7 @@ export function PlusActionSheet() {
             brand: { name: selectedStock.brandName, slug: "" },
             format: selectedStock.format ?? [],
             image_url: selectedStock.imageUrl ?? null,
+            iso: selectedStock.iso ?? undefined,
           }}
           onSubmit={async (payload: AddReviewModalPayload) => {
             if (user) {

@@ -9,6 +9,7 @@ import {
   getFollowingUploadsForFilmStock,
   type FilmUploadRow,
 } from "@/app/actions/uploads";
+import { plainTextFromPossibleHtml } from "@/lib/sanitize-review-like-html";
 import { LazyImage } from "@/components/lazy-image";
 import {
   FilmNativeMasonryGrid,
@@ -104,7 +105,7 @@ export function GalleryPreview({
     images.push({
       id: u.id,
       imageUrl: u.image_url!,
-      alt: u.caption ?? "",
+      alt: plainTextFromPossibleHtml(u.caption ?? ""),
       username: u.display_name ?? undefined,
     });
   }

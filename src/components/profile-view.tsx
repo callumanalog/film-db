@@ -16,6 +16,10 @@ import { FilmDetailTabs } from "@/components/film-page-tabs";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import type { InCameraEntry } from "@/app/actions/user-actions";
 import { SITE_NAME } from "@/lib/site";
+import {
+  plainTextFromPossibleHtml,
+  sanitizeReviewLikeHtml,
+} from "@/lib/sanitize-review-like-html";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
@@ -204,7 +208,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={u.image_url}
-                              alt={u.caption ?? ""}
+                              alt={plainTextFromPossibleHtml(u.caption ?? "")}
                               className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
                             />
                           ) : (
@@ -216,7 +220,12 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                         <div className="p-3">
                           <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
                           {u.caption && (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{u.caption}</p>
+                            <div
+                              className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground [&_a]:underline [&_blockquote]:my-0 [&_p]:m-0 [&_p]:inline"
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeReviewLikeHtml(u.caption),
+                              }}
+                            />
                           )}
                         </div>
                       </Link>

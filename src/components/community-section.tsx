@@ -10,6 +10,10 @@ import {
   type FilmUploadRow,
 } from "@/app/actions/uploads";
 import {
+  plainTextFromPossibleHtml,
+  sanitizeReviewLikeHtml,
+} from "@/lib/sanitize-review-like-html";
+import {
   Camera,
   Film,
   Plus,
@@ -319,7 +323,10 @@ function GalleryLightbox({
           {caption ? (
             <p className="text-sm">
               <span className="rounded bg-primary/10 px-1 font-semibold text-primary">{username}</span>{" "}
-              {caption}
+              <span
+                className="[&_a]:text-primary [&_a]:underline [&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-primary/30 [&_blockquote]:pl-2 [&_p]:m-0 [&_p]:mb-1 [&_p:last-child]:mb-0"
+                dangerouslySetInnerHTML={{ __html: sanitizeReviewLikeHtml(caption) }}
+              />
             </p>
           ) : null}
           {metadata && (metadata.camera || metadata.shot_iso || metadata.lens || metadata.lab || metadata.filter || metadata.scanner || metadata.push_pull) ? (
@@ -527,14 +534,31 @@ export function CommunityGallery({
             role="button"
             tabIndex={0}
             key={u.id}
-            onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: u.display_name ?? undefined, metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
+            onClick={() =>
+              u.image_url &&
+              setLightboxImage({
+                imageUrl: u.image_url!,
+                alt: plainTextFromPossibleHtml(u.caption ?? ""),
+                caption: u.caption,
+                username: u.display_name ?? undefined,
+                metadata: {
+                  camera: u.camera,
+                  shot_iso: u.shot_iso,
+                  lens: u.lens,
+                  lab: u.lab,
+                  filter: u.filter,
+                  scanner: u.scanner,
+                  push_pull: u.push_pull,
+                },
+              })
+            }
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
               <div className="relative block w-full">
                 <LazyImage
                   src={u.image_url}
-                  alt={u.caption ?? ""}
+                  alt={plainTextFromPossibleHtml(u.caption ?? "")}
                   className="block w-full h-auto"
                   sizes="(max-width: 768px) 50vw, 33vw"
                 />
@@ -568,14 +592,31 @@ export function CommunityGallery({
             role="button"
             tabIndex={0}
             key={u.id}
-            onClick={() => u.image_url && setLightboxImage({ imageUrl: u.image_url!, alt: u.caption ?? "", caption: u.caption, username: "You", metadata: { camera: u.camera, shot_iso: u.shot_iso, lens: u.lens, lab: u.lab, filter: u.filter, scanner: u.scanner, push_pull: u.push_pull } })}
+            onClick={() =>
+              u.image_url &&
+              setLightboxImage({
+                imageUrl: u.image_url!,
+                alt: plainTextFromPossibleHtml(u.caption ?? ""),
+                caption: u.caption,
+                username: "You",
+                metadata: {
+                  camera: u.camera,
+                  shot_iso: u.shot_iso,
+                  lens: u.lens,
+                  lab: u.lab,
+                  filter: u.filter,
+                  scanner: u.scanner,
+                  push_pull: u.push_pull,
+                },
+              })
+            }
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
           >
             {u.image_url ? (
               <div className="relative block w-full">
                 <LazyImage
                   src={u.image_url}
-                  alt={u.caption ?? ""}
+                  alt={plainTextFromPossibleHtml(u.caption ?? "")}
                   className="block w-full h-auto"
                   sizes="(max-width: 768px) 50vw, 33vw"
                 />

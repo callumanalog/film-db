@@ -894,6 +894,7 @@ export function FilmDetailMobileToolbar({
           brand: stock.brand,
           format: stock.format ?? [],
           image_url: stock.image_url,
+          iso: stock.iso,
         }}
         onSubmit={async (payload: AddReviewModalPayload) => {
           if (user) {
@@ -1204,6 +1205,7 @@ export function StickyLeftPane({
           brand: stock.brand,
           format: stock.format ?? [],
           image_url: stock.image_url,
+          iso: stock.iso,
         }}
         onSubmit={async (payload: AddReviewModalPayload) => {
           if (user) {
