@@ -225,7 +225,7 @@ export const seedFilmStocks = [
     name: "Portra 400",
     slug: "kodak-portra-400",
     brand_id: "brand-kodak",
-    format: ["35mm", "120"],
+    format: ["35mm", "120", "4x5", "8x10"],
     type: "color_negative",
     iso: 400,
     description:
@@ -330,7 +330,7 @@ export const seedFilmStocks = [
     name: "Gold 200",
     slug: "kodak-gold-200",
     brand_id: "brand-kodak",
-    format: ["35mm"],
+    format: ["35mm", "120"],
     type: "color_negative",
     iso: 200,
     description:

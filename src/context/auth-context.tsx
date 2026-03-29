@@ -28,8 +28,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const applySession = (session: Session | null) => {
       if (cancelled) return;
-      setUser(session?.user ?? null);
-      setLoading(false);
+      // Defer to avoid updating during the same turn as subscription/setup (React 19 + Strict Mode).
+      queueMicrotask(() => {
+        if (cancelled) return;
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {

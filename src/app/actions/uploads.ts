@@ -17,6 +17,8 @@ export interface FilmUploadRow {
   filter?: string | null;
   scanner?: string | null;
   push_pull?: string | null;
+  format?: string | null;
+  location?: string | null;
   /** Set on upload when available; used for film hero landscape carousel. */
   image_width?: number | null;
   image_height?: number | null;
@@ -46,20 +48,22 @@ export async function getAllCommunityUploadsForGallery(
   const supabase = await createClient();
   let query = supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
+    .select(
+      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
+    )
     .not("image_url", "is", null)
     .order("created_at", { ascending: false });
   const term = search?.trim();
   const slugFilter = matchingStockSlugs?.length ? matchingStockSlugs : [];
   if (term && slugFilter.length > 0) {
     const pattern = `%${term}%`;
-    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern}`;
+    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern}`;
     const slugIn = `film_stock_slug.in.(${slugFilter.map((s) => `"${s.replace(/"/g, '\\"')}"`).join(",")})`;
     query = query.or(`${textOr},${slugIn}`);
   } else if (term) {
     const pattern = `%${term}%`;
     query = query.or(
-      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern}`
+      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern}`
     );
   } else if (slugFilter.length > 0) {
     query = query.in("film_stock_slug", slugFilter);
@@ -89,7 +93,16 @@ export async function getAllCommunityUploadsForGallery(
   for (const r of rows as FilmUploadRow[]) {
     const stock = stockBySlug.get(r.film_stock_slug);
     if (!stock) continue;
-    const settingsParts = [r.shot_iso, r.lens, r.lab, r.push_pull, r.filter, r.scanner].filter(Boolean);
+    const settingsParts = [
+      r.format,
+      r.location,
+      r.shot_iso,
+      r.lens,
+      r.lab,
+      r.push_pull,
+      r.filter,
+      r.scanner,
+    ].filter(Boolean);
     out.push({
       id: r.id,
       galleryId: `upload-${r.id}`,
@@ -110,7 +123,9 @@ export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRo
   const supabase = (await createServiceRoleClient()) ?? (await createClient());
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
+    .select(
+      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
+    )
     .eq("film_stock_slug", slug)
     .order("created_at", { ascending: false });
 
@@ -145,7 +160,9 @@ export async function getMyUploadsForFilmStock(slug: string): Promise<FilmUpload
 
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
+    .select(
+      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
+    )
     .eq("film_stock_slug", slug)
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -188,7 +205,9 @@ export async function getFollowingUploadsForFilmStock(slug: string): Promise<Fil
 
   const { data: rows, error } = await supabase
     .from("user_uploads")
-    .select("id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, image_width, image_height")
+    .select(
+      "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, image_width, image_height"
+    )
     .eq("film_stock_slug", slug)
     .in("user_id", followingIds)
     .order("created_at", { ascending: false });

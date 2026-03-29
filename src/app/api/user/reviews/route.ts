@@ -202,6 +202,8 @@ export async function POST(request: Request) {
     filter: filter || null,
     scanner: scanner || null,
     push_pull: pushPull || null,
+    format: format || null,
+    location: location || null,
   };
   for (const row of uploadedRows) {
     const { error: insertError } = await supabase.from("user_uploads").insert({

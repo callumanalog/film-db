@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { Fragment, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -11,6 +11,7 @@ import {
   ImagePlus,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Plus,
   Minus,
   Loader2,
@@ -18,9 +19,6 @@ import {
   Italic,
   Quote,
   Strikethrough,
-  MapPin,
-  Droplets,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -31,6 +29,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
 import { BEST_FOR_ICONS } from "@/components/best-for-section";
@@ -46,6 +45,24 @@ interface TrackFilmModalStock {
   image_url: string | null;
   /** Box / native ISO when known — used as the default "Shot at ISO" stepper value. */
   iso?: number | null;
+}
+
+/** Dedupe while preserving order (matches film detail “Format” line). */
+function uniqueFormatsInOrder(formats: string[] | undefined): string[] {
+  if (!formats?.length) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const f of formats) {
+    const t = typeof f === "string" ? f.trim() : "";
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
+}
+
+function defaultFormatSelection(formats: string[] | undefined): string {
+  return uniqueFormatsInOrder(formats)[0] ?? "";
 }
 
 /** Common box speeds and practical pull/push equivalents for stepping shot ISO. */
@@ -128,6 +145,69 @@ function ShotIsoStepper({
       >
         {current}
       </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (atMax) return;
+          onChange(String(FILM_SHOT_ISO_PRESETS[idx + 1]));
+        }}
+        disabled={atMax}
+        className="flex w-11 shrink-0 items-center justify-center border-l border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        aria-label="Raise ISO"
+      >
+        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+/** Step 3: same preset stepping as {@link ShotIsoStepper}, with a free-text center field. */
+function ShotIsoStepperWithInput({
+  id,
+  value,
+  onChange,
+  className,
+  "aria-labelledby": ariaLabelledBy,
+}: {
+  id: string;
+  value: string;
+  onChange: (next: string) => void;
+  className?: string;
+  "aria-labelledby"?: string;
+}) {
+  const idx = shotIsoPresetIndex(value);
+  const atMin = idx <= 0;
+  const atMax = idx >= FILM_SHOT_ISO_PRESETS.length - 1;
+
+  return (
+    <div
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      className={cn(
+        "inline-flex h-10 w-max max-w-full shrink-0 items-stretch overflow-hidden rounded-card border border-input bg-transparent dark:bg-input/30",
+        className
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          if (atMin) return;
+          onChange(String(FILM_SHOT_ISO_PRESETS[idx - 1]));
+        }}
+        disabled={atMin}
+        className="flex w-11 shrink-0 items-center justify-center border-r border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        aria-label="Lower ISO"
+      >
+        <Minus className="h-4 w-4" strokeWidth={2} aria-hidden />
+      </button>
+      <Input
+        id={id}
+        type="text"
+        autoComplete="off"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 min-h-0 w-[5.75ch] min-w-[5.75ch] max-w-[10ch] shrink-0 rounded-none border-0 bg-transparent px-1 py-0 text-center text-sm font-medium tabular-nums shadow-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 dark:bg-transparent"
+      />
       <button
         type="button"
         onClick={() => {
@@ -272,50 +352,6 @@ function HalfStarRating({
   );
 }
 
-type Step3SubPage = "location" | "processing";
-
-const STEP3_SUBPAGE_TITLES: Record<Step3SubPage, string> = {
-  location: "Add location",
-  processing: "Processing details",
-};
-
-const STEP3_LOCATION_SUGGESTIONS = [
-  "London, United Kingdom",
-  "New York, USA",
-  "Los Angeles, USA",
-  "Berlin, Germany",
-  "Home / studio",
-];
-
-function Step3MetadataRow({
-  icon: Icon,
-  label,
-  valuePreview,
-  onClick,
-}: {
-  icon: LucideIcon;
-  label: string;
-  valuePreview?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-3 border-b border-border/40 px-3 py-3.5 text-left transition-colors last:border-b-0 hover:bg-secondary/30"
-    >
-      <Icon className="h-5 w-5 shrink-0 text-foreground" strokeWidth={1.75} aria-hidden />
-      <div className="min-w-0 flex-1">
-        <span className="text-[15px] font-normal text-foreground">{label}</span>
-        {valuePreview ? (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{valuePreview}</p>
-        ) : null}
-      </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/50" aria-hidden />
-    </button>
-  );
-}
-
 export function AddReviewModal({
   open,
   onOpenChange,
@@ -366,7 +402,18 @@ export function AddReviewModal({
   const [existingScanUrls, setExistingScanUrls] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [selectedFormat, setSelectedFormat] = useState(stock.format.length === 1 ? stock.format[0] : "");
+  /** Resolved via same loader as film detail page; avoids stale list/search payloads missing sheet sizes. */
+  const [fetchedFormats, setFetchedFormats] = useState<string[] | null>(null);
+  const stockFormatKey = JSON.stringify(stock.format ?? []);
+  const formatOptions = useMemo(() => {
+    const fromProps = stock.format ?? [];
+    const source =
+      fetchedFormats != null && fetchedFormats.length > 0 ? fetchedFormats : fromProps;
+    return uniqueFormatsInOrder(source);
+  }, [fetchedFormats, stockFormatKey]);
+
+  const [selectedFormat, setSelectedFormat] = useState(() => defaultFormatSelection(stock.format));
+
   const [lens, setLens] = useState("");
   const [shotIso, setShotIso] = useState(() => defaultShotIsoForStock(stock));
   const [location, setLocation] = useState("");
@@ -383,8 +430,11 @@ export function AddReviewModal({
   const [activeScanFrameHeight, setActiveScanFrameHeight] = useState<number | null>(null);
   /** Step 3: full-bleed preview when tapping a scan thumbnail. */
   const [step3ImagePreviewIndex, setStep3ImagePreviewIndex] = useState<number | null>(null);
-  /** Step 3: Instagram-style sub-screen for a single metadata field. */
-  const [step3SubPage, setStep3SubPage] = useState<Step3SubPage | null>(null);
+  /** Step 3 upload: optional metadata rows toggled from “Lens +” style buttons. */
+  const [step3LensOpen, setStep3LensOpen] = useState(false);
+  const [step3FilterOpen, setStep3FilterOpen] = useState(false);
+  const [step3LabOpen, setStep3LabOpen] = useState(false);
+  const [step3ScannerOpen, setStep3ScannerOpen] = useState(false);
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -408,9 +458,9 @@ export function AddReviewModal({
       return [];
     });
     setCaption("");
-    setSelectedFormat(stock.format.length === 1 ? stock.format[0] : "");
+    setSelectedFormat(defaultFormatSelection(stock.format));
     setLens("");
-    setShotIso("");
+    setShotIso(defaultShotIsoForStock(stock));
     setLocation("");
     setLab("");
     setFilter("");
@@ -419,11 +469,37 @@ export function AddReviewModal({
     setProcessingOpen(false);
     setCurrentSlide(0);
     setStep3ImagePreviewIndex(null);
-    setStep3SubPage(null);
+    setStep3LensOpen(false);
+    setStep3FilterOpen(false);
+    setStep3LabOpen(false);
+    setStep3ScannerOpen(false);
     setIsUploading(false);
     setUploadError(null);
     setSubmitting(false);
   }, [enteredViaUpload, initialRating, editor, stock]);
+
+  useEffect(() => {
+    if (!open || !stock.slug) {
+      setFetchedFormats(null);
+      return;
+    }
+    let cancelled = false;
+    getFilmStockFormatListForSlug(stock.slug)
+      .then((formats) => {
+        if (!cancelled) setFetchedFormats(formats);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedFormats(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, stock.slug]);
+
+  useEffect(() => {
+    if (formatOptions.length === 0) return;
+    setSelectedFormat((prev) => (prev && formatOptions.includes(prev) ? prev : formatOptions[0]));
+  }, [formatOptions]);
 
   useEffect(() => {
     if (!open || edit) return;
@@ -443,9 +519,9 @@ export function AddReviewModal({
       return [];
     });
     setCaption("");
-    setSelectedFormat(stock.format.length === 1 ? stock.format[0] : "");
+    setSelectedFormat(defaultFormatSelection(stock.format));
     setLens("");
-    setShotIso("");
+    setShotIso(defaultShotIsoForStock(stock));
     setLocation("");
     setLab("");
     setFilter("");
@@ -454,7 +530,10 @@ export function AddReviewModal({
     setProcessingOpen(false);
     setCurrentSlide(0);
     setStep3ImagePreviewIndex(null);
-    setStep3SubPage(null);
+    setStep3LensOpen(false);
+    setStep3FilterOpen(false);
+    setStep3LabOpen(false);
+    setStep3ScannerOpen(false);
     setIsUploading(false);
     setUploadError(null);
     setSubmitting(false);
@@ -613,7 +692,6 @@ export function AddReviewModal({
   useEffect(() => {
     if (step !== 3) {
       setStep3ImagePreviewIndex(null);
-      setStep3SubPage(null);
     }
   }, [step]);
 
@@ -1066,11 +1144,11 @@ export function AddReviewModal({
                           <div>
                             <p className="mb-1 block text-xs font-medium text-muted-foreground">Format</p>
                             <div className="flex flex-wrap gap-1.5">
-                              {stock.format.map((fmt) => (
+                              {formatOptions.map((fmt) => (
                                 <button
                                   key={fmt}
                                   type="button"
-                                  onClick={() => setSelectedFormat(selectedFormat === fmt ? "" : fmt)}
+                                  onClick={() => setSelectedFormat(fmt)}
                                   className={cn(
                                     "rounded-[7px] border px-3 py-1.5 text-xs font-medium transition-colors",
                                     selectedFormat === fmt
@@ -1145,14 +1223,17 @@ export function AddReviewModal({
             <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
               <button
                 type="button"
-                onClick={() => (step3SubPage ? setStep3SubPage(null) : setStep(2))}
+                onClick={() => setStep(2)}
                 className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label={step3SubPage ? "Back to details" : "Back"}
+                aria-label="Back"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <span className="text-sm font-semibold text-foreground">
-                {step3SubPage ? STEP3_SUBPAGE_TITLES[step3SubPage] : "Share your scans"}
+              <span
+                className="mx-12 block truncate text-center text-sm font-semibold text-foreground"
+                title={stock.name}
+              >
+                {stock.name}
               </span>
               <button
                 type="button"
@@ -1165,40 +1246,6 @@ export function AddReviewModal({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {step3SubPage ? (
-                <div className="space-y-4 px-4 py-5">
-                  {step3SubPage === "location" && (
-                    <TextField
-                      id="step3-sub-location"
-                      label="Location"
-                      type="text"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="e.g. London, UK"
-                    />
-                  )}
-                  {step3SubPage === "processing" && (
-                    <div className="space-y-3">
-                      <TextField
-                        id="step3-sub-lab"
-                        label="Lab / Processing"
-                        type="text"
-                        value={lab}
-                        onChange={(e) => setLab(e.target.value)}
-                        placeholder="e.g. Home dev"
-                      />
-                      <TextField
-                        id="step3-sub-scanner"
-                        label="Scanner"
-                        type="text"
-                        value={scanner}
-                        onChange={(e) => setScanner(e.target.value)}
-                        placeholder="e.g. Epson V600"
-                      />
-                    </div>
-                  )}
-                </div>
-              ) : (
                 <div className="space-y-3 px-4 py-5">
                   {files.length > 0 && (
                     <div className="-mr-4 w-[calc(100%+1rem)] max-w-none">
@@ -1244,17 +1291,17 @@ export function AddReviewModal({
                     </span>
                   </div>
 
-                  {stock.format.length > 0 ? (
+                  {formatOptions.length > 0 ? (
                     <div className="pt-0.5">
                       <p className="mb-1.5 block text-xs font-normal text-muted-foreground">
                         Format
                       </p>
                       <div
-                        className="flex items-stretch overflow-hidden rounded-[7px] border border-border/70 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:border-border dark:shadow-none"
+                        className="flex min-h-[44px] w-full items-stretch overflow-hidden rounded-[7px] border border-border/70 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:border-border dark:shadow-none"
                         role="tablist"
                         aria-label="Film format"
                       >
-                        {stock.format.map((fmt, index) => (
+                        {formatOptions.map((fmt, index) => (
                           <Fragment key={fmt}>
                             {index > 0 ? (
                               <div
@@ -1266,14 +1313,14 @@ export function AddReviewModal({
                               type="button"
                               role="tab"
                               aria-selected={selectedFormat === fmt}
-                              onClick={() => setSelectedFormat(selectedFormat === fmt ? "" : fmt)}
+                              onClick={() => setSelectedFormat(fmt)}
                               className={cn(
-                                "min-w-0 flex-1 px-2 py-2.5 text-center text-sm font-medium tracking-tight transition-[color,background-color,transform,box-shadow]",
+                                "min-w-0 flex-1 px-1.5 py-2.5 text-center text-sm font-medium tracking-tight transition-[color,background-color,transform,box-shadow]",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                                 "active:scale-[0.98] active:transition-none",
                                 selectedFormat === fmt
-                                  ? "text-primary"
-                                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground active:bg-muted/50"
+                                  ? "bg-background text-primary font-semibold"
+                                  : "bg-muted/45 text-foreground hover:bg-muted/50 active:bg-muted/55"
                               )}
                             >
                               {fmt}
@@ -1285,111 +1332,174 @@ export function AddReviewModal({
                   ) : null}
 
                   <div className="flex flex-col gap-3">
+                    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
+                      <div className="min-w-0 space-y-1">
+                        <label
+                          htmlFor="step3-inline-camera"
+                          className="block text-xs font-normal text-muted-foreground"
+                        >
+                          Camera
+                        </label>
+                        <Input
+                          id="step3-inline-camera"
+                          type="text"
+                          value={camera}
+                          onChange={(e) => setCamera(e.target.value)}
+                          className="min-w-0 w-full max-w-full"
+                        />
+                      </div>
+                      <div className="w-max min-w-0 shrink-0 space-y-1 justify-self-end">
+                        <label
+                          id="step3-iso-label"
+                          htmlFor="step3-shot-iso"
+                          className="block text-xs font-normal text-muted-foreground"
+                        >
+                          Shot at ISO
+                        </label>
+                        <ShotIsoStepperWithInput
+                          id="step3-shot-iso"
+                          aria-labelledby="step3-iso-label"
+                          value={shotIso}
+                          onChange={setShotIso}
+                        />
+                      </div>
+                    </div>
                     <div className="space-y-1">
                       <label
-                        htmlFor="step3-inline-camera"
+                        htmlFor="step3-inline-location"
                         className="block text-xs font-normal text-muted-foreground"
                       >
-                        Camera
+                        Location
                       </label>
                       <Input
-                        id="step3-inline-camera"
+                        id="step3-inline-location"
                         type="text"
-                        value={camera}
-                        onChange={(e) => setCamera(e.target.value)}
-                        placeholder="e.g. Canon AE-1"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="step3-inline-lens"
-                          className="block text-xs font-normal text-muted-foreground"
-                        >
-                          Lens
-                        </label>
-                        <Input
-                          id="step3-inline-lens"
-                          type="text"
-                          value={lens}
-                          onChange={(e) => setLens(e.target.value)}
-                          placeholder="e.g. 50mm f/1.4"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label
-                          htmlFor="step3-inline-filter"
-                          className="block text-xs font-normal text-muted-foreground"
-                        >
-                          Filter
-                        </label>
-                        <Input
-                          id="step3-inline-filter"
-                          type="text"
-                          value={filter}
-                          onChange={(e) => setFilter(e.target.value)}
-                          placeholder="e.g. None, 81A"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label id="step3-iso-label" className="block text-xs font-normal text-muted-foreground">
-                        Shot at ISO
-                      </label>
-                      <ShotIsoStepper aria-labelledby="step3-iso-label" value={shotIso} onChange={setShotIso} />
-                    </div>
-                  </div>
-
-                  <div className="overflow-hidden rounded-[7px] border border-border/50 bg-background">
-                    <button
-                      type="button"
-                      onClick={() => setStep3SubPage("location")}
-                      className="flex w-full items-center gap-3 border-b border-border/40 px-3 py-3.5 text-left transition-colors hover:bg-secondary/30"
-                    >
-                      <MapPin className="h-5 w-5 shrink-0 text-foreground" strokeWidth={1.75} aria-hidden />
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[15px] font-normal text-foreground">Add location</span>
-                        {location.trim() ? (
-                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{location}</p>
-                        ) : null}
-                      </div>
-                      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/50" aria-hidden />
-                    </button>
-                    <div className="px-3 pb-3 pt-2">
-                      <div className="scrollbar-hide -mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-1">
-                        {STEP3_LOCATION_SUGGESTIONS.map((s) => (
+                    <div className="flex w-full flex-col gap-2">
+                      <div className="min-w-0 w-full">
+                        {step3LensOpen ? (
+                          <div className="space-y-1">
+                            <label
+                              htmlFor="step3-inline-lens"
+                              className="block text-xs font-normal text-muted-foreground"
+                            >
+                              Lens
+                            </label>
+                            <Input
+                              id="step3-inline-lens"
+                              type="text"
+                              value={lens}
+                              onChange={(e) => setLens(e.target.value)}
+                              className="min-w-0 w-full"
+                            />
+                          </div>
+                        ) : (
                           <button
-                            key={s}
                             type="button"
-                            onClick={() => setLocation(s)}
-                            className="shrink-0 rounded-full border border-border/50 bg-muted/25 px-3 py-1.5 text-left text-xs font-medium text-foreground transition-colors hover:bg-muted/45"
+                            onClick={() => setStep3LensOpen(true)}
+                            aria-expanded={false}
+                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
                           >
-                            {s}
+                            <span className="min-w-0 truncate text-left">Lens</span>
+                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
                           </button>
-                        ))}
+                        )}
                       </div>
-                      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-                        People who see your post can view the location you add. You can change it anytime
-                        before sharing.
-                      </p>
+                      <div className="min-w-0 w-full">
+                        {step3FilterOpen ? (
+                          <div className="space-y-1">
+                            <label
+                              htmlFor="step3-inline-filter"
+                              className="block text-xs font-normal text-muted-foreground"
+                            >
+                              Filter
+                            </label>
+                            <Input
+                              id="step3-inline-filter"
+                              type="text"
+                              value={filter}
+                              onChange={(e) => setFilter(e.target.value)}
+                              className="min-w-0 w-full"
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setStep3FilterOpen(true)}
+                            aria-expanded={false}
+                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
+                          >
+                            <span className="min-w-0 truncate text-left">Filter</span>
+                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+                          </button>
+                        )}
+                      </div>
+                      <div className="min-w-0 w-full">
+                        {step3LabOpen ? (
+                          <div className="space-y-1">
+                            <label
+                              htmlFor="step3-inline-lab"
+                              className="block text-xs font-normal text-muted-foreground"
+                            >
+                              Lab / Processing
+                            </label>
+                            <Input
+                              id="step3-inline-lab"
+                              type="text"
+                              value={lab}
+                              onChange={(e) => setLab(e.target.value)}
+                              className="min-w-0 w-full"
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setStep3LabOpen(true)}
+                            aria-expanded={false}
+                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
+                          >
+                            <span className="min-w-0 truncate text-left">Lab</span>
+                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+                          </button>
+                        )}
+                      </div>
+                      <div className="min-w-0 w-full">
+                        {step3ScannerOpen ? (
+                          <div className="space-y-1">
+                            <label
+                              htmlFor="step3-inline-scanner"
+                              className="block text-xs font-normal text-muted-foreground"
+                            >
+                              Scanner
+                            </label>
+                            <Input
+                              id="step3-inline-scanner"
+                              type="text"
+                              value={scanner}
+                              onChange={(e) => setScanner(e.target.value)}
+                              className="min-w-0 w-full"
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setStep3ScannerOpen(true)}
+                            aria-expanded={false}
+                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
+                          >
+                            <span className="min-w-0 truncate text-left">Scanner</span>
+                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="overflow-hidden rounded-[7px] border border-border/50 bg-background">
-                    <Step3MetadataRow
-                      icon={Droplets}
-                      label="Add processing details"
-                      valuePreview={
-                        [lab.trim(), scanner.trim()].filter(Boolean).join(" · ") || undefined
-                      }
-                      onClick={() => setStep3SubPage("processing")}
-                    />
                   </div>
                 </div>
-              )}
             </div>
 
-            {!step3SubPage && (
               <div className="shrink-0 border-t border-border/40 px-4 py-4">
                 <button
                   type="button"
@@ -1400,7 +1510,6 @@ export function AddReviewModal({
                   {submitting ? "Sharing..." : "Share"}
                 </button>
               </div>
-            )}
           </div>
         )}
       </SheetContent>

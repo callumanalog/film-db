@@ -53,7 +53,13 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("user_uploads").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       supabase.from("reviews").select("id, film_stock_slug, review_title, created_at, rating").eq("user_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("user_uploads").select("id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase
+        .from("user_uploads")
+        .select(
+          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
       supabase
         .from("review_likes")
         .select("created_at, reviews ( id, film_stock_slug, review_title, rating, created_at )")

@@ -192,6 +192,8 @@ export async function PATCH(
     filter: filter || null,
     scanner: scanner || null,
     push_pull: pushPull || null,
+    format: format || null,
+    location: location || null,
   };
 
   let uploadInsertErrors = 0;

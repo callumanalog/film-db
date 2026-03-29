@@ -207,7 +207,10 @@ export function PlusActionSheet() {
       {selectedStock && (
         <AddReviewModal
           open={reviewModalOpen}
-          onOpenChange={setReviewModalOpen}
+          onOpenChange={(o) => {
+            setReviewModalOpen(o);
+            if (!o) setSelectedStock(null);
+          }}
           mode={reviewModalMode}
           slotsUsed={reviewModalMode === "upload" ? 1 : 0}
           initialRating={0}
