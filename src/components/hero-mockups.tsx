@@ -66,6 +66,8 @@ import {
 import { useUserActions } from "@/context/user-actions-context";
 import { useFilmMobileTab, type FilmMobileTab } from "@/context/film-mobile-tab-context";
 import { useAuth } from "@/context/auth-context";
+import { listMyStockListsForPicker } from "@/app/actions/stock-lists";
+import { AddToListsSheet } from "@/components/add-to-lists-sheet";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
@@ -561,6 +563,7 @@ export function FilmDetailMobileToolbar({
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
   const [inCameraDrawerOpen, setInCameraDrawerOpen] = useState(false);
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
+  const [addToListsOpen, setAddToListsOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setMoreSheetOpen(true);
@@ -841,7 +844,19 @@ export function FilmDetailMobileToolbar({
               className="flex w-full items-center gap-3 px-6 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 setMoreSheetOpen(false);
-                showToastViaEvent("Add to list coming soon");
+                void (async () => {
+                  if (!user) {
+                    const next = pathname ?? `/films/${slug}`;
+                    router.push(`/auth/sign-in?next=${encodeURIComponent(next)}`);
+                    return;
+                  }
+                  const lists = await listMyStockListsForPicker();
+                  if (lists.length === 0) {
+                    router.push(`/lists/new?addStock=${encodeURIComponent(slug)}`);
+                  } else {
+                    setAddToListsOpen(true);
+                  }
+                })();
               }}
             >
               <ListPlus className="h-5 w-5 text-muted-foreground" />
@@ -859,6 +874,13 @@ export function FilmDetailMobileToolbar({
           </button>
         </SheetContent>
       </Sheet>
+
+      <AddToListsSheet
+        open={addToListsOpen}
+        onOpenChange={setAddToListsOpen}
+        filmStockSlug={slug}
+        stockName={stock.name}
+      />
 
       <InCameraDrawer
         open={inCameraDrawerOpen}

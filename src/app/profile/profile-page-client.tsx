@@ -51,6 +51,8 @@ export function ProfilePageClient() {
             savedUploads: p.savedUploads,
             likedUploads: p.likedUploads,
             boards: p.boards ?? [],
+            createdStockLists: p.createdStockLists ?? [],
+            savedStockLists: p.savedStockLists ?? [],
           });
         } else {
           setProfile({
@@ -70,6 +72,8 @@ export function ProfilePageClient() {
             savedUploads: [],
             likedUploads: [],
             boards: [],
+            createdStockLists: [],
+            savedStockLists: [],
           });
         }
       } finally {

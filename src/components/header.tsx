@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, CircleUser, Check, CircleCheck } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { isStockListFormFullscreenPath } from "@/lib/stock-list-form-route";
 import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { useUserActions } from "@/context/user-actions-context";
@@ -134,7 +135,11 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [settingsMenuOpen]);
 
-  if (pathname === "/profile" || pathname?.startsWith("/profile/boards/")) {
+  if (
+    pathname === "/profile" ||
+    pathname?.startsWith("/profile/boards/") ||
+    isStockListFormFullscreenPath(pathname)
+  ) {
     return null;
   }
 
@@ -427,7 +432,7 @@ export function Header() {
                     Add shots
                   </Link>
                   <Link
-                    href="/films"
+                    href="/lists/new"
                     onClick={() => setActionsOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >

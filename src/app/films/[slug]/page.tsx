@@ -5,6 +5,8 @@ import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand }
 import { getFilmStockStats, getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
 import { getUploadsForFilmStock } from "@/app/actions/uploads";
+import { fetchStockListsForFilmPage } from "@/app/actions/stock-lists";
+import { FilmStockListsTab } from "@/components/film-stock-lists-tab";
 import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
 import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS, COLOR_SENSITIVITY_LABELS, isBlackAndWhiteFilm } from "@/lib/types";
 import type { DevelopmentProcess } from "@/lib/types";
@@ -74,13 +76,18 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   if (!stock) notFound();
 
-  const [stats, relatedStocks, moreFromBrandStocks, flickrImages, communityUploads] = await Promise.all([
-    getFilmStockStats(slug),
-    getRelatedStocks(stock, 6),
-    getMoreFromBrand(stock, 8),
-    getFlickrSampleImagesForStock(slug).catch(() => []),
-    getUploadsForFilmStock(slug),
-  ]);
+  const [stats, relatedStocks, moreFromBrandStocks, flickrImages, communityUploads, filmListRows] =
+    await Promise.all([
+      getFilmStockStats(slug),
+      getRelatedStocks(stock, 6),
+      getMoreFromBrand(stock, 8),
+      getFlickrSampleImagesForStock(slug).catch(() => []),
+      getUploadsForFilmStock(slug),
+      fetchStockListsForFilmPage(slug, 21),
+    ]);
+
+  const filmListPreview = filmListRows.slice(0, 20);
+  const filmListHasMore = filmListRows.length > 20;
 
   const reviewFilmStock = {
     slug: stock.slug,
@@ -293,9 +300,11 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
                     <CommunityReviews slug={slug} filmStock={reviewFilmStock} />
                   }
                   lists={
-                    <div className="py-12 text-center">
-                      <p className="text-sm font-medium text-muted-foreground">Lists coming soon</p>
-                    </div>
+                    <FilmStockListsTab
+                      filmSlug={slug}
+                      rows={filmListPreview}
+                      hasMore={filmListHasMore}
+                    />
                   }
                 />
               </div>

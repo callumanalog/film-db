@@ -64,6 +64,27 @@ export interface ProfileFromDb {
     caption: string | null;
     liked_at: string;
   }[];
+  /** Film stock lists this user created. */
+  createdStockLists: {
+    id: string;
+    title: string;
+    updatedAt: string;
+    itemCount: number;
+    /** Up to 5 image URLs in list order (nulls allowed). */
+    previewUrls: (string | null)[];
+  }[];
+  /** Lists bookmarked from other members. */
+  savedStockLists: {
+    listId: string;
+    title: string;
+    updatedAt: string;
+    savedAt: string;
+    ownerUserId: string;
+    ownerDisplayName: string;
+    ownerAvatarUrl: string | null;
+    itemCount: number;
+    previewUrls: (string | null)[];
+  }[];
 }
 
 export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
@@ -90,6 +111,8 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       savedUploadsRes,
       boardSummariesRes,
       likedUploadsRes,
+      stockListSummariesRes,
+      savedStockListsRes,
     ] = await Promise.all([
       supabase
         .from("profiles")
@@ -130,6 +153,12 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
         .select(
           "created_at, user_uploads ( id, film_stock_slug, image_url, caption )"
         )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase.rpc("stock_list_summaries_for_user"),
+      supabase
+        .from("saved_stock_lists")
+        .select("created_at, stock_lists ( id, title, updated_at, user_id )")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
     ]);
@@ -279,6 +308,13 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       }));
     }
 
+    if (stockListSummariesRes.error) {
+      console.error("[get-profile] stock_list_summaries_for_user:", stockListSummariesRes.error.message);
+    }
+    if (savedStockListsRes.error) {
+      console.error("[get-profile] saved_stock_lists:", savedStockListsRes.error.message);
+    }
+
     if (likedUploadsRes.error) {
       console.error("[get-profile] upload_likes:", likedUploadsRes.error.message);
     }
@@ -312,6 +348,131 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
         liked_at: row.created_at,
       });
     }
+
+    let createdStockLists: ProfileFromDb["createdStockLists"] = [];
+    if (!stockListSummariesRes.error && stockListSummariesRes.data) {
+      const rawLists = stockListSummariesRes.data as {
+        list_id: string;
+        list_title: string;
+        updated_at: string;
+        item_count: number | string;
+        preview_urls: (string | null)[] | null;
+      }[];
+      createdStockLists = rawLists.map((r) => {
+        const raw = (r.preview_urls ?? []).slice(0, 5).map((u) => (u?.trim() ? u.trim() : null));
+        while (raw.length < 5) raw.push(null);
+        return {
+          id: r.list_id,
+          title: r.list_title,
+          updatedAt: r.updated_at,
+          itemCount: Number(r.item_count),
+          previewUrls: raw,
+        };
+      });
+    }
+
+    type SavedListJoin = {
+      created_at: string;
+      stock_lists:
+        | { id: string; title: string; updated_at: string; user_id: string }
+        | { id: string; title: string; updated_at: string; user_id: string }[]
+        | null;
+    };
+
+    const savedStockListsRaw = savedStockListsRes.error ? [] : (savedStockListsRes.data ?? []);
+    const savedParsed: { listId: string; title: string; updatedAt: string; savedAt: string; ownerUserId: string }[] =
+      [];
+    for (const row of savedStockListsRaw as SavedListJoin[]) {
+      const sl = Array.isArray(row.stock_lists) ? row.stock_lists[0] : row.stock_lists;
+      if (!sl) continue;
+      savedParsed.push({
+        listId: sl.id,
+        title: sl.title,
+        updatedAt: sl.updated_at,
+        savedAt: row.created_at,
+        ownerUserId: sl.user_id,
+      });
+    }
+
+    const savedListIds = savedParsed.map((s) => s.listId);
+    const previewUrlsByListId = new Map<string, (string | null)[]>();
+    const countByListId = new Map<string, number>();
+
+    if (savedListIds.length > 0) {
+      const { data: itemRows } = await supabase
+        .from("stock_list_items")
+        .select("list_id, sort_order, film_stock_slug")
+        .in("list_id", savedListIds);
+
+      type ItemRow = { list_id: string; sort_order: number; film_stock_slug: string };
+      const sorted = [...(itemRows ?? [])] as ItemRow[];
+      sorted.sort((a, b) => {
+        if (a.list_id !== b.list_id) return a.list_id.localeCompare(b.list_id);
+        return a.sort_order - b.sort_order;
+      });
+
+      const slugsByList = new Map<string, string[]>();
+      const slugSet = new Set<string>();
+      for (const r of sorted) {
+        countByListId.set(r.list_id, (countByListId.get(r.list_id) ?? 0) + 1);
+        const arr = slugsByList.get(r.list_id) ?? [];
+        if (arr.length < 5) {
+          arr.push(r.film_stock_slug);
+          slugsByList.set(r.list_id, arr);
+          slugSet.add(r.film_stock_slug);
+        }
+      }
+
+      if (slugSet.size > 0) {
+        const { data: stocks } = await supabase
+          .from("film_stocks")
+          .select("slug, image_url")
+          .in("slug", [...slugSet]);
+        const imgBySlug = new Map<string, string | null>();
+        for (const st of stocks ?? []) {
+          imgBySlug.set((st as { slug: string }).slug, (st as { image_url: string | null }).image_url);
+        }
+        for (const [lid, slugs] of slugsByList) {
+          const urls = slugs.map((slug) => {
+            const u = imgBySlug.get(slug);
+            return u?.trim() ? u.trim() : null;
+          });
+          while (urls.length < 5) urls.push(null);
+          previewUrlsByListId.set(lid, urls);
+        }
+      }
+    }
+
+    const savedOwnerIds = [...new Set(savedParsed.map((s) => s.ownerUserId))];
+    const savedOwnerNames = new Map<string, string>();
+    const savedOwnerAvatars = new Map<string, string | null>();
+    if (savedOwnerIds.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", savedOwnerIds);
+      for (const p of profs ?? []) {
+        const id = (p as { id: string }).id;
+        const dn = (p as { display_name: string | null }).display_name?.trim();
+        const av = (p as { avatar_url: string | null }).avatar_url?.trim();
+        savedOwnerNames.set(id, dn || "Member");
+        savedOwnerAvatars.set(id, av || null);
+      }
+    }
+
+    const emptyPreviews = (): (string | null)[] => [null, null, null, null, null];
+
+    const savedStockLists: ProfileFromDb["savedStockLists"] = savedParsed.map((s) => ({
+      listId: s.listId,
+      title: s.title,
+      updatedAt: s.updatedAt,
+      savedAt: s.savedAt,
+      ownerUserId: s.ownerUserId,
+      ownerDisplayName: savedOwnerNames.get(s.ownerUserId) ?? "Member",
+      ownerAvatarUrl: savedOwnerAvatars.get(s.ownerUserId) ?? null,
+      itemCount: countByListId.get(s.listId) ?? 0,
+      previewUrls: previewUrlsByListId.get(s.listId) ?? emptyPreviews(),
+    }));
 
     return {
       displayName,
@@ -347,6 +508,8 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       savedUploads,
       likedUploads,
       boards,
+      createdStockLists,
+      savedStockLists,
     };
   } catch (err) {
     console.error("[get-profile] unexpected error:", err);

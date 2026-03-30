@@ -184,7 +184,11 @@ export function PlusActionSheet() {
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    showToastViaEvent("Lists are coming soon!");
+                    if (!user) {
+                      router.push(`/auth/sign-in?next=${encodeURIComponent(pathname ?? "/lists/new")}`);
+                      return;
+                    }
+                    router.push("/lists/new");
                   }}
                   className="flex w-full items-start gap-3 px-6 py-3.5 text-left transition-colors hover:bg-accent"
                 >
@@ -192,7 +196,7 @@ export function PlusActionSheet() {
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-foreground">Create a list</span>
                     <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-                      A public or private list of stocks
+                      Curate stocks you love
                     </span>
                   </span>
                 </button>

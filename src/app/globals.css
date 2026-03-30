@@ -328,6 +328,17 @@
   }
 }
 
+/* Stock list create/edit: main no longer reserves space for bottom nav */
+body.list-form-fullscreen main.flex.min-h-0.flex-1 {
+  padding-bottom: 0;
+}
+
+@media (max-width: 639px) {
+  body.list-form-fullscreen [data-sonner-toaster] {
+    bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 /* Auth: film grain overlay */
 .auth-grain {
   position: absolute;

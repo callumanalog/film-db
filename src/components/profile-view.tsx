@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { Camera, Share, Menu, Instagram } from "lucide-react";
+import { Camera, Share, Menu, Instagram, MoreHorizontal } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import { ProfileEditSheet } from "@/components/profile-edit-sheet";
@@ -79,6 +79,24 @@ export interface ProfileData {
     coverUrl2: string | null;
     coverUrl3: string | null;
   }[];
+  createdStockLists?: {
+    id: string;
+    title: string;
+    updatedAt: string;
+    itemCount: number;
+    previewUrls: (string | null)[];
+  }[];
+  savedStockLists?: {
+    listId: string;
+    title: string;
+    updatedAt: string;
+    savedAt: string;
+    ownerUserId: string;
+    ownerDisplayName: string;
+    ownerAvatarUrl: string | null;
+    itemCount: number;
+    previewUrls: (string | null)[];
+  }[];
   likedUploads?: {
     upload_id: string;
     film_stock_slug: string;
@@ -135,6 +153,206 @@ function StockGrid({ slugs, stocksBySlug }: { slugs: string[]; stocksBySlug: Map
   );
 }
 
+type CreatedListRow = NonNullable<ProfileData["createdStockLists"]>[number];
+type SavedListRow = NonNullable<ProfileData["savedStockLists"]>[number];
+
+const LIST_PREVIEW_SLOT_COUNT = 5;
+
+function listPreviewSlots(urls: (string | null | undefined)[]): (string | null)[] {
+  const out = urls.map((u) => (u?.trim() ? u.trim() : null)).slice(0, LIST_PREVIEW_SLOT_COUNT);
+  while (out.length < LIST_PREVIEW_SLOT_COUNT) out.push(null);
+  return out;
+}
+
+function ListPreviewStack({ slots }: { slots: (string | null)[] }) {
+  const five = listPreviewSlots(slots);
+  return (
+    <div
+      className="flex h-full w-full items-center justify-start overflow-hidden bg-muted/50 px-2 py-3 sm:px-3 sm:py-4"
+      aria-hidden
+    >
+      <div className="flex min-h-[100px] w-full min-w-0 items-center sm:min-h-[120px]">
+        {five.map((url, i) => (
+          <div
+            key={i}
+            className="relative aspect-[2/3] w-[38%] max-w-[120px] shrink-0 overflow-hidden rounded-[2px] bg-white shadow-md ring-1 ring-black/[0.06] dark:bg-card dark:ring-white/10"
+            style={{
+              marginLeft: i === 0 ? 0 : "-20%",
+              zIndex: LIST_PREVIEW_SLOT_COUNT - i,
+            }}
+          >
+            {url ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={url} alt="" className="h-full w-full object-contain p-px" />
+            ) : (
+              <div className="h-full w-full bg-muted/70 dark:bg-muted/40" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProfileListTile({
+  href,
+  title,
+  itemCount,
+  previewUrls,
+  avatarUrl,
+  authorLabel,
+}: {
+  href: string;
+  title: string;
+  itemCount: number;
+  previewUrls: (string | null)[];
+  avatarUrl: string | null;
+  authorLabel: string;
+}) {
+  const authorInitials = profileInitials(authorLabel);
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "block w-full min-w-0 overflow-hidden rounded-none border border-border/60 bg-card text-left shadow-sm",
+        "ring-offset-background transition-opacity hover:opacity-[0.98] active:opacity-90",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      )}
+      aria-label={`${title}, ${itemCount} ${itemCount === 1 ? "stock" : "stocks"}`}
+    >
+      <div className="aspect-[3/2] w-full overflow-hidden bg-muted/30">
+        <ListPreviewStack slots={previewUrls} />
+      </div>
+      <div className="flex items-start gap-3 border-t border-border/50 px-3 py-3">
+        <div className="relative size-10 shrink-0 overflow-hidden rounded-full bg-muted">
+          {avatarUrl ? (
+            <Image src={avatarUrl} alt="" fill className="object-cover" sizes="40px" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center font-sans text-xs font-semibold text-muted-foreground">
+              {authorInitials}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <h4 className="m-0 font-sans text-base font-bold leading-snug tracking-tight text-foreground [overflow-wrap:anywhere]">
+            {title}
+          </h4>
+          <p className="mt-1 font-sans text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {authorLabel}
+          </p>
+        </div>
+        <MoreHorizontal
+          className="mt-1 size-5 shrink-0 text-muted-foreground/45"
+          strokeWidth={2}
+          aria-hidden
+        />
+      </div>
+    </Link>
+  );
+}
+
+function ProfileListsContent({
+  created,
+  saved,
+  viewerHeadline,
+  viewerAvatarUrl,
+}: {
+  created: CreatedListRow[];
+  saved: SavedListRow[];
+  viewerHeadline: string;
+  viewerAvatarUrl: string | null | undefined;
+}) {
+  const [listsSubTab, setListsSubTab] = useState<"created" | "saved">("created");
+
+  const createdTiles = created.map((l) => (
+    <ProfileListTile
+      key={l.id}
+      href={`/lists/${l.id}`}
+      title={l.title}
+      itemCount={l.itemCount}
+      previewUrls={l.previewUrls}
+      avatarUrl={viewerAvatarUrl ?? null}
+      authorLabel={viewerHeadline}
+    />
+  ));
+
+  const savedTiles = saved.map((l) => (
+    <ProfileListTile
+      key={l.listId}
+      href={`/lists/${l.listId}`}
+      title={l.title}
+      itemCount={l.itemCount}
+      previewUrls={l.previewUrls}
+      avatarUrl={l.ownerAvatarUrl}
+      authorLabel={l.ownerDisplayName}
+    />
+  ));
+
+  return (
+    <div className="min-w-0 w-full px-4 sm:px-0">
+      <nav
+        className="mb-4 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain pt-2 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Lists view"
+      >
+        {(
+          [
+            { id: "created" as const, label: "Created" },
+            { id: "saved" as const, label: "Saved" },
+          ] as const
+        ).map((t) => {
+          const active = listsSubTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setListsSubTab(t.id)}
+              className={cn(
+                "flex h-9 shrink-0 items-center rounded-[14px] border px-2.5 py-0.5 font-sans !text-[12px] !leading-[14px] font-medium transition-colors whitespace-nowrap",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/50"
+              )}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {listsSubTab === "created" ? (
+        <div>
+          {created.length === 0 ? (
+            <p className="mb-4 rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+              You haven&apos;t created any lists yet. Lists help you group stocks — like &quot;Best winter stocks&quot;.
+            </p>
+          ) : null}
+          <div className="min-w-0 w-full max-w-full sm:-mx-6 sm:w-[calc(100%+3rem)] sm:max-w-none">
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:gap-3 md:gap-4">
+              {createdTiles}
+              <div className="px-4 sm:px-6">
+                <Link
+                  href="/lists/new"
+                  className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 text-sm font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-muted/50 hover:text-primary dark:border-border dark:shadow-none"
+                >
+                  Create a list
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : saved.length === 0 ? (
+        <p className="rounded-[7px] border border-dashed border-border/50 bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+          No saved lists yet. Open someone else&apos;s list and tap the bookmark to save it here.
+        </p>
+      ) : (
+        <div className="min-w-0 w-full max-w-full sm:-mx-6 sm:w-[calc(100%+3rem)] sm:max-w-none">
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:gap-3 md:gap-4">{savedTiles}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfileFilmSubTabs({
   favouriteSlugs,
   shotSlugs,
@@ -147,9 +365,9 @@ function ProfileFilmSubTabs({
   const [filmSubTab, setFilmSubTab] = useState<"shootlist" | "shot">("shootlist");
 
   return (
-    <div className="min-w-0 w-full">
+    <div className="min-w-0 w-full px-4 sm:px-0">
       <nav
-        className="mb-4 flex min-w-0 flex-nowrap gap-6 overflow-x-auto overscroll-x-contain border-b border-border/50 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mb-4 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain pt-2 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         aria-label="Film view"
       >
         {(
@@ -157,22 +375,24 @@ function ProfileFilmSubTabs({
             { id: "shootlist" as const, label: "Shootlist" },
             { id: "shot" as const, label: "Shot" },
           ] as const
-        ).map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setFilmSubTab(t.id)}
-            className={cn(
-              "relative shrink-0 pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap",
-              filmSubTab === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {t.label}
-            {filmSubTab === t.id ? (
-              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
-            ) : null}
-          </button>
-        ))}
+        ).map((t) => {
+          const active = filmSubTab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setFilmSubTab(t.id)}
+              className={cn(
+                "flex h-9 shrink-0 items-center rounded-[14px] border px-2.5 py-0.5 font-sans !text-[12px] !leading-[14px] font-medium transition-colors whitespace-nowrap",
+                active
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent/50"
+              )}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </nav>
       {filmSubTab === "shootlist" ? (
         <ProfileSection
@@ -635,11 +855,13 @@ export function ProfileView({
             id: "lists",
             label: "Lists",
             content: (
-              <ProfileSection
-                emptyMessage="You haven't created any lists yet. Lists are coming soon!"
-                isEmpty={true}
-              >
-                <div />
+              <ProfileSection className="px-0" emptyMessage="" isEmpty={false}>
+                <ProfileListsContent
+                  created={profile.createdStockLists ?? []}
+                  saved={profile.savedStockLists ?? []}
+                  viewerHeadline={headline}
+                  viewerAvatarUrl={profile.avatarUrl}
+                />
               </ProfileSection>
             ),
           },

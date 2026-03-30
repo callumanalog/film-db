@@ -4,7 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import localFont from "next/font/local";
 import { Work_Sans, Geist_Mono, Playfair_Display, Young_Serif } from "next/font/google";
 import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
+import { ConditionalFooter } from "@/components/conditional-footer";
 import { BottomNav } from "@/components/bottom-nav";
 import { PlusActionSheet } from "@/components/plus-action-sheet";
 import { UserActionsProvider } from "@/context/user-actions-context";
@@ -112,7 +112,7 @@ export default function RootLayout({
               <main className="flex min-h-0 flex-1 flex-col overflow-x-hidden pb-20 md:overflow-x-visible md:pb-0">
                 {children}
               </main>
-              <Footer />
+              <ConditionalFooter />
               <BottomNav />
               <PlusActionSheet />
               <SpeedInsights />
