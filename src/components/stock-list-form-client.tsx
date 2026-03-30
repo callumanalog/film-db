@@ -37,7 +37,9 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
   const { user, loading: authLoading } = useAuth();
 
   const searchWrapRef = useRef<HTMLDivElement>(null);
+  const stocksBlockRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportOverlay = useVisualViewportBox();
   const [loading, setLoading] = useState(mode === "edit");
   const [title, setTitle] = useState("");
@@ -133,6 +135,42 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
 
   const showSearchDropdown = searchFocused && search.trim().length > 0;
 
+  /** Scroll so the Stocks block sits near the top of the scroll pane (same band as Description label + field). */
+  const scrollStockSearchNearTop = useCallback(() => {
+    const sc = scrollAreaRef.current;
+    const target = stocksBlockRef.current;
+    if (!sc || !target) return;
+    const pad = 12;
+    const sTop = sc.getBoundingClientRect().top;
+    const tTop = target.getBoundingClientRect().top;
+    const delta = tTop - sTop - pad;
+    if (Math.abs(delta) < 2) return;
+    sc.scrollTop += delta;
+  }, []);
+
+  const scheduleScrollStockSearchForMobileKeyboard = useCallback(() => {
+    if (typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches) return;
+    const run = () => {
+      scrollStockSearchNearTop();
+    };
+    run();
+    requestAnimationFrame(run);
+    requestAnimationFrame(() => requestAnimationFrame(run));
+    window.setTimeout(run, 60);
+    window.setTimeout(run, 180);
+    window.setTimeout(run, 400);
+    const vv = window.visualViewport;
+    if (vv) {
+      const onVv = () => run();
+      vv.addEventListener("resize", onVv);
+      vv.addEventListener("scroll", onVv);
+      window.setTimeout(() => {
+        vv.removeEventListener("resize", onVv);
+        vv.removeEventListener("scroll", onVv);
+      }, 900);
+    }
+  }, [scrollStockSearchNearTop]);
+
   useEffect(() => {
     if (!showSearchDropdown) return;
     const onPointerDown = (e: PointerEvent) => {
@@ -181,6 +219,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
     setSearchFocused(true);
     requestAnimationFrame(() => {
       searchInputRef.current?.focus();
+      scheduleScrollStockSearchForMobileKeyboard();
     });
   }
 
@@ -314,6 +353,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
           className="flex min-h-0 flex-1 flex-col"
         >
           <div
+            ref={scrollAreaRef}
             className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:px-6"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
@@ -381,7 +421,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
               </p>
             </div>
 
-            <div>
+            <div ref={stocksBlockRef}>
               <div className="mb-2 flex items-center gap-2">
                 <span className="text-field-label">Stocks</span>
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
@@ -396,11 +436,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
                   onChange={(e) => setSearch(e.target.value)}
                   onFocus={() => {
                     setSearchFocused(true);
-                    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-                      requestAnimationFrame(() => {
-                        searchWrapRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
-                      });
-                    }
+                    scheduleScrollStockSearchForMobileKeyboard();
                   }}
                   placeholder="Search for a stock to add…"
                   className="rounded-card border-0 bg-muted/50 pl-9"
