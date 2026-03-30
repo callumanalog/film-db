@@ -23,6 +23,7 @@ import { FilmCard } from "@/components/film-card";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
+import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -43,6 +44,7 @@ export function StockListDetailClient({
 }) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const viewportOverlay = useVisualViewportBox();
   const [loading, setLoading] = useState(true);
   const [list, setList] = useState<{
     id: string;
@@ -177,6 +179,12 @@ export function StockListDetailClient({
     }
   }
 
+  const overlayShellStyle = {
+    top: viewportOverlay.top,
+    height: viewportOverlay.height,
+    transform: "translateZ(0)" as const,
+  };
+
   async function handleDelete() {
     setDeleteBusy(true);
     try {
@@ -197,8 +205,8 @@ export function StockListDetailClient({
   if (loading || !list) {
     return (
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-white px-4 dark:bg-background"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className="fixed left-0 right-0 z-[60] flex items-center justify-center bg-white px-4 dark:bg-background"
+        style={{ ...overlayShellStyle, paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "List not found."}</p>
       </div>
@@ -208,7 +216,10 @@ export function StockListDetailClient({
   const count = orderedStocks.length;
 
   return (
-    <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white dark:bg-background">
+    <div
+      className="fixed left-0 right-0 z-[60] flex min-h-0 flex-col bg-white dark:bg-background"
+      style={overlayShellStyle}
+    >
       <header
         className="shrink-0 border-b border-border/60 bg-white dark:bg-background"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}

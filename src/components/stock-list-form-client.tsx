@@ -15,6 +15,7 @@ import {
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
+import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -35,6 +36,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
 
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const viewportOverlay = useVisualViewportBox();
 
   const [loading, setLoading] = useState(mode === "edit");
   const [title, setTitle] = useState("");
@@ -251,11 +253,18 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
 
   const headerTitle = mode === "create" ? "Create a new list" : "Edit list";
 
+  const overlayShellStyle = {
+    top: viewportOverlay.top,
+    height: viewportOverlay.height,
+    /** Fixed descendants (e.g. submit bar) anchor to this shell, not the layout viewport */
+    transform: "translateZ(0)" as const,
+  };
+
   if (authLoading || !user || loading) {
     return (
       <div
-        className="fixed inset-0 z-[60] flex min-h-0 flex-col items-center justify-center bg-white dark:bg-background"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className="fixed left-0 right-0 z-[60] flex min-h-0 flex-col items-center justify-center bg-white dark:bg-background"
+        style={{ ...overlayShellStyle, paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
@@ -263,7 +272,10 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex min-h-0 flex-col bg-white dark:bg-background">
+    <div
+      className="fixed left-0 right-0 z-[60] flex min-h-0 flex-col bg-white dark:bg-background"
+      style={overlayShellStyle}
+    >
       <header
         className="shrink-0 border-b border-border/60 bg-white dark:bg-background"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
@@ -365,7 +377,14 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
                   ref={searchInputRef}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  onFocus={() => setSearchFocused(true)}
+                  onFocus={() => {
+                    setSearchFocused(true);
+                    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+                      requestAnimationFrame(() => {
+                        searchWrapRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+                      });
+                    }
+                  }}
                   placeholder="Search for a stock to add…"
                   className="rounded-card border-0 bg-muted/50 pl-9"
                   autoComplete="off"
