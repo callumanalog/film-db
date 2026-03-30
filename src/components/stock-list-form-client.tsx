@@ -26,6 +26,8 @@ const TAG_MAX = 10;
 const BLUR_DATA_URL =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgdmlld0JveD0iMCAwIDEwIDEwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTVlN2ViIi8+PC9zdmc+";
 
+const STOCK_LIST_FORM_HTML_ID = "stock-list-form-fields";
+
 type DraftStock = SearchStocksResult;
 
 export function StockListFormClient({ mode, listId }: { mode: "create" | "edit"; listId?: string }) {
@@ -278,34 +280,43 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
   }
 
   return (
-    <div
-      className={cn(overlayPositionClass, "z-[60] flex min-h-0 flex-col bg-white dark:bg-background")}
-      style={overlayShellStyle}
-    >
-      <header
-        className="shrink-0 border-b border-border/60 bg-white dark:bg-background"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    <>
+      {/*
+        Panel sized to the visual viewport (above keyboard). Footer is a sibling
+        fixed to the layout viewport bottom so the keyboard overlays it (overlays-content).
+      */}
+      <div
+        className={cn(overlayPositionClass, "z-[60] flex min-h-0 flex-col bg-white dark:bg-background")}
+        style={overlayShellStyle}
       >
-        <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-4 sm:h-16 sm:px-6">
-          <Link
-            href={mode === "edit" && listId ? `/lists/${listId}` : "/profile"}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
-            aria-label="Back"
-          >
-            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
-          </Link>
-          <h1 className="min-w-0 flex-1 text-center font-sans text-base font-semibold text-foreground sm:text-lg">
-            {headerTitle}
-          </h1>
-          <span className="h-11 w-11 shrink-0" aria-hidden />
-        </div>
-      </header>
-
-      <form onSubmit={(e) => void handleSubmit(e)} className="flex min-h-0 flex-1 flex-col">
-        <div
-          className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-4 sm:px-6"
-          style={{ WebkitOverflowScrolling: "touch" }}
+        <header
+          className="shrink-0 border-b border-border/60 bg-white dark:bg-background"
+          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
+          <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-4 sm:h-16 sm:px-6">
+            <Link
+              href={mode === "edit" && listId ? `/lists/${listId}` : "/profile"}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+            </Link>
+            <h1 className="min-w-0 flex-1 text-center font-sans text-base font-semibold text-foreground sm:text-lg">
+              {headerTitle}
+            </h1>
+            <span className="h-11 w-11 shrink-0" aria-hidden />
+          </div>
+        </header>
+
+        <form
+          id={STOCK_LIST_FORM_HTML_ID}
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div
+            className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:px-6"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
           <div className="space-y-5">
             <div>
               <label htmlFor="sl-title" className="text-field-label mb-1 block">
@@ -438,7 +449,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
                 ) : null}
               </div>
 
-              <div className="mt-4 rounded-card border border-dashed border-border/60 bg-muted/20 p-3">
+              <div className="mt-4 rounded-card border border-dashed border-border/60 bg-white p-3 dark:bg-background">
                 {items.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">Your list is empty.</p>
                 ) : (
@@ -501,18 +512,26 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
             </div>
           </div>
         </div>
+        </form>
+      </div>
 
-        <div
-          className="shrink-0 border-t border-border/60 bg-white px-4 py-3 dark:bg-background sm:px-6"
-          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
-        >
-          <div className="mx-auto max-w-2xl">
-            <Button type="submit" size="cta" variant="default" className="w-full" disabled={saving}>
-              {saving ? "Saving…" : mode === "create" ? "Publish list" : "Save changes"}
-            </Button>
-          </div>
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[70] border-t border-border/60 bg-white px-4 py-3 dark:bg-background sm:px-6"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
+      >
+        <div className="mx-auto max-w-2xl">
+          <Button
+            type="submit"
+            form={STOCK_LIST_FORM_HTML_ID}
+            size="cta"
+            variant="default"
+            className="w-full"
+            disabled={saving}
+          >
+            {saving ? "Saving…" : mode === "create" ? "Publish list" : "Save changes"}
+          </Button>
         </div>
-      </form>
-    </div>
+      </div>
+    </>
   );
 }

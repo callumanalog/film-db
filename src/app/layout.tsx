@@ -63,14 +63,15 @@ const defaultDescription =
   "Discover film stocks, community references, reviews, and where to buy — built for analog photographers.";
 
 /**
- * Resize the layout when the virtual keyboard opens so fixed/full-viewport UI
- * (forms, bottom sheets) stays in the visible area. Bottom nav already hides
- * while a text field is focused (`bottom-nav.tsx`).
+ * Let the virtual keyboard overlay the layout so `position: fixed; bottom: 0`
+ * stays at the screen bottom (covered by the keyboard). List forms pair this with
+ * a visual-viewport-sized panel for scroll content so inputs stay visible.
+ * Bottom nav hides while a text field is focused (`bottom-nav.tsx`).
  */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  interactiveWidget: "resizes-content",
+  interactiveWidget: "overlays-content",
 };
 
 export const metadata: Metadata = {
