@@ -37,7 +37,6 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
   const searchWrapRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const viewportOverlay = useVisualViewportBox();
-
   const [loading, setLoading] = useState(mode === "edit");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -253,18 +252,25 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
 
   const headerTitle = mode === "create" ? "Create a new list" : "Edit list";
 
-  const overlayShellStyle = {
-    top: viewportOverlay.top,
-    height: viewportOverlay.height,
-    /** Fixed descendants (e.g. submit bar) anchor to this shell, not the layout viewport */
-    transform: "translateZ(0)" as const,
-  };
+  const overlayShellStyle =
+    viewportOverlay != null
+      ? { top: viewportOverlay.top, height: viewportOverlay.height }
+      : undefined;
+  const overlayPositionClass =
+    viewportOverlay != null ? "fixed left-0 right-0" : "fixed inset-0";
 
   if (authLoading || !user || loading) {
     return (
       <div
-        className="fixed left-0 right-0 z-[60] flex min-h-0 flex-col items-center justify-center bg-white dark:bg-background"
-        style={{ ...overlayShellStyle, paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className={cn(
+          overlayPositionClass,
+          "z-[60] flex min-h-0 flex-col items-center justify-center bg-white dark:bg-background"
+        )}
+        style={
+          overlayShellStyle
+            ? { ...overlayShellStyle, paddingTop: "env(safe-area-inset-top, 0px)" }
+            : { paddingTop: "env(safe-area-inset-top, 0px)" }
+        }
       >
         <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
@@ -273,7 +279,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
 
   return (
     <div
-      className="fixed left-0 right-0 z-[60] flex min-h-0 flex-col bg-white dark:bg-background"
+      className={cn(overlayPositionClass, "z-[60] flex min-h-0 flex-col bg-white dark:bg-background")}
       style={overlayShellStyle}
     >
       <header
@@ -297,7 +303,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
 
       <form onSubmit={(e) => void handleSubmit(e)} className="flex min-h-0 flex-1 flex-col">
         <div
-          className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] sm:px-6"
+          className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-4 sm:px-6"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           <div className="space-y-5">
@@ -497,7 +503,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
         </div>
 
         <div
-          className="fixed bottom-0 left-0 right-0 z-[70] border-t border-border/60 bg-white px-4 py-3 dark:bg-background sm:px-6"
+          className="shrink-0 border-t border-border/60 bg-white px-4 py-3 dark:bg-background sm:px-6"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
         >
           <div className="mx-auto max-w-2xl">

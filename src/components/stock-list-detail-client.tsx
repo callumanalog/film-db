@@ -179,11 +179,10 @@ export function StockListDetailClient({
     }
   }
 
-  const overlayShellStyle = {
-    top: viewportOverlay.top,
-    height: viewportOverlay.height,
-    transform: "translateZ(0)" as const,
-  };
+  const overlayShellStyle =
+    viewportOverlay != null ? { top: viewportOverlay.top, height: viewportOverlay.height } : undefined;
+  const overlayPositionClass =
+    viewportOverlay != null ? "fixed left-0 right-0" : "fixed inset-0";
 
   async function handleDelete() {
     setDeleteBusy(true);
@@ -205,8 +204,15 @@ export function StockListDetailClient({
   if (loading || !list) {
     return (
       <div
-        className="fixed left-0 right-0 z-[60] flex items-center justify-center bg-white px-4 dark:bg-background"
-        style={{ ...overlayShellStyle, paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className={cn(
+          overlayPositionClass,
+          "z-[60] flex items-center justify-center bg-white px-4 dark:bg-background"
+        )}
+        style={
+          overlayShellStyle
+            ? { ...overlayShellStyle, paddingTop: "env(safe-area-inset-top, 0px)" }
+            : { paddingTop: "env(safe-area-inset-top, 0px)" }
+        }
       >
         <p className="text-sm text-muted-foreground">{loading ? "Loading…" : "List not found."}</p>
       </div>
@@ -217,7 +223,7 @@ export function StockListDetailClient({
 
   return (
     <div
-      className="fixed left-0 right-0 z-[60] flex min-h-0 flex-col bg-white dark:bg-background"
+      className={cn(overlayPositionClass, "z-[60] flex min-h-0 flex-col bg-white dark:bg-background")}
       style={overlayShellStyle}
     >
       <header

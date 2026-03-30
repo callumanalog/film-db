@@ -62,11 +62,15 @@ const cabinetGrotesk = localFont({
 const defaultDescription =
   "Discover film stocks, community references, reviews, and where to buy — built for analog photographers.";
 
-/** Keyboard overlays the page so `position: fixed; bottom: 0` stays at the screen bottom (covered by the keyboard) instead of sitting above it. */
+/**
+ * Resize the layout when the virtual keyboard opens so fixed/full-viewport UI
+ * (forms, bottom sheets) stays in the visible area. Bottom nav already hides
+ * while a text field is focused (`bottom-nav.tsx`).
+ */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  interactiveWidget: "overlays-content",
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {

@@ -8,10 +8,11 @@ export type VisualViewportBox = {
 };
 
 /**
- * Sizes a fixed overlay to match the visual viewport so content stays above the
- * mobile software keyboard when the page uses interactiveWidget: overlays-content.
+ * Pins a fixed fullscreen shell to the visual viewport (above the software keyboard).
+ * Returns null until mount so SSR and hydration match. Pair with flex footers, not
+ * nested `position: fixed` + `transform` (fragile on iOS).
  */
-export function useVisualViewportBox(): VisualViewportBox {
+export function useVisualViewportBox(): VisualViewportBox | null {
   const [box, setBox] = useState<VisualViewportBox | null>(null);
 
   useLayoutEffect(() => {
@@ -28,11 +29,13 @@ export function useVisualViewportBox(): VisualViewportBox {
     sync();
     vv.addEventListener("resize", sync);
     vv.addEventListener("scroll", sync);
+    window.addEventListener("resize", sync);
     return () => {
       vv.removeEventListener("resize", sync);
       vv.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
     };
   }, []);
 
-  return box ?? { top: 0, height: typeof window !== "undefined" ? window.innerHeight : 0 };
+  return box;
 }
