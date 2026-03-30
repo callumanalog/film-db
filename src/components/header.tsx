@@ -134,6 +134,9 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [settingsMenuOpen]);
 
+  if (pathname === "/profile") {
+    return null;
+  }
 
   return (
     <header

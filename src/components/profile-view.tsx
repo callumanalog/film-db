@@ -1,21 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import Link from "next/link";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
   Camera,
   Star,
   StarHalf,
   ChevronRight,
+  Share,
+  Settings,
 } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
+import { ProfileEditSheet } from "@/components/profile-edit-sheet";
+import { showToastViaEvent } from "@/components/toast";
+import { FilmNativeMasonryGrid } from "@/components/film-native-grid";
+import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import type { FilmStock, FilmBrand } from "@/lib/types";
 import type { InCameraEntry } from "@/app/actions/user-actions";
-import { SITE_NAME } from "@/lib/site";
+import type { FilmUploadRow } from "@/app/actions/uploads";
+import {
+  collectLightboxSlidesFromFilmUploads,
+  relatedFilmPageLightboxSlides,
+} from "@/lib/lightbox-group";
 import {
   plainTextFromPossibleHtml,
   sanitizeReviewLikeHtml,
@@ -59,7 +68,13 @@ function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
 }
 
 export interface ProfileData {
+  /** Unique handle (profiles.display_name). */
   displayName: string;
+  /** Optional friendly name (profiles.full_name). */
+  fullName: string | null;
+  bio: string | null;
+  followersCount: number;
+  followingCount: number;
   shotSlugs: string[];
   favouriteSlugs: string[];
   inCameraEntries?: InCameraEntry[];
@@ -67,7 +82,14 @@ export interface ProfileData {
   reviewCount?: number;
   uploadCount?: number;
   reviews?: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
-  uploads?: { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[];
+  uploads?: {
+    id: string;
+    film_stock_slug: string;
+    image_url: string | null;
+    caption: string | null;
+    created_at: string;
+    upload_batch_id?: string | null;
+  }[];
   likedReviews?: {
     review_id: string;
     film_stock_slug: string;
@@ -92,10 +114,38 @@ export interface ProfileData {
   }[];
 }
 
+function profileInitials(primary: string): string {
+  const t = primary.trim();
+  if (!t) return "?";
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
+  return t.slice(0, 2).toUpperCase();
+}
+
+async function shareProfileUrl(userId: string): Promise<void> {
+  const url = `${typeof window !== "undefined" ? window.location.origin : ""}/users/${userId}`;
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      await navigator.share({ title: "Profile", url });
+      return;
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToastViaEvent("Profile link copied.");
+  } catch {
+    showToastViaEvent("Could not copy link.");
+  }
+}
+
 interface ProfileViewProps {
   profile: ProfileData;
   stocksBySlug: Map<string, StockWithBrand>;
   statsBySlug?: Record<string, { avgRating: number | null }>;
+  userId: string;
+  onProfileUpdated: () => void | Promise<void>;
 }
 
 function StockGrid({ slugs, stocksBySlug }: { slugs: string[]; stocksBySlug: Map<string, StockWithBrand> }) {
@@ -111,28 +161,197 @@ function StockGrid({ slugs, stocksBySlug }: { slugs: string[]; stocksBySlug: Map
   );
 }
 
-export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: ProfileViewProps) {
-  const inCameraEntries = profile.inCameraEntries ?? [];
-  const inCameraSlugs = inCameraEntries.map((e) => e.film_stock_slug);
+type ProfileUpload = NonNullable<ProfileData["uploads"]>[number];
+
+function profileUploadToFilmRow(u: ProfileUpload, displayName: string): FilmUploadRow {
+  return {
+    id: u.id,
+    user_id: "",
+    film_stock_slug: u.film_stock_slug,
+    image_url: u.image_url,
+    caption: u.caption,
+    created_at: u.created_at,
+    display_name: displayName,
+    upload_batch_id: u.upload_batch_id ?? null,
+  };
+}
+
+function ProfileScansMasonry({
+  uploads,
+  displayName,
+  stocksBySlug,
+}: {
+  uploads: NonNullable<ProfileData["uploads"]>;
+  displayName: string;
+  stocksBySlug: Map<string, StockWithBrand>;
+}) {
+  const [lightboxSession, setLightboxSession] = useState<{
+    slides: ImageLightboxData[];
+    initialIndex: number;
+  } | null>(null);
+
+  const filmRows = useMemo(
+    () => uploads.filter((u) => u.image_url).map((u) => profileUploadToFilmRow(u, displayName)),
+    [uploads, displayName]
+  );
+
+  const masonryItems = useMemo(
+    () =>
+      uploads
+        .filter((u) => u.image_url)
+        .map((u) => ({
+          id: u.id,
+          imageUrl: u.image_url,
+          overlayLabel: "",
+          href: `/films/${u.film_stock_slug}`,
+          showOverlay: false as const,
+          onActivate: () => {
+            const row = profileUploadToFilmRow(u, displayName);
+            const stock = stocksBySlug.get(u.film_stock_slug);
+            const stockName = stock?.name ?? u.film_stock_slug;
+            setLightboxSession(
+              collectLightboxSlidesFromFilmUploads(filmRows, row, stockName, u.film_stock_slug)
+            );
+          },
+        })),
+    [uploads, displayName, stocksBySlug, filmRows]
+  );
+
+  const relatedStockSlides = useMemo(() => {
+    if (!lightboxSession || lightboxSession.slides.length !== 1) return [];
+    const current = lightboxSession.slides[0];
+    const href = current.context?.href;
+    if (!href?.startsWith("/films/")) return [];
+    const slug = href.slice("/films/".length).split(/[/?#]/)[0];
+    if (!slug) return [];
+    const stock = stocksBySlug.get(slug);
+    const stockName = stock?.name ?? slug;
+    const sameStockRows = filmRows.filter((r) => r.film_stock_slug === slug);
+    return relatedFilmPageLightboxSlides(current, sameStockRows, [], stockName, slug);
+  }, [lightboxSession, filmRows, stocksBySlug]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden md:min-h-0 md:flex-none md:gap-8 md:overflow-visible">
-      {/* Profile header */}
-      <div className="flex shrink-0 items-center gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-2xl font-bold text-primary">
-          {profile.displayName.charAt(0)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight font-sans">{profile.displayName}</h1>
-          <p className="text-sm text-muted-foreground">{SITE_NAME} member</p>
-        </div>
+    <>
+      <div className="min-w-0 w-full max-w-full sm:-mx-6 sm:w-[calc(100%+3rem)] sm:max-w-none">
+        <FilmNativeMasonryGrid items={masonryItems} ariaLabel="Your scans" />
       </div>
+      {lightboxSession ? (
+        <ImageLightbox
+          slides={lightboxSession.slides}
+          initialIndex={lightboxSession.initialIndex}
+          onClose={() => setLightboxSession(null)}
+          relatedStockSlides={relatedStockSlides}
+          onPickRelatedStock={(slide) => {
+            const id = slide.uploadId?.trim();
+            const u = id ? uploads.find((x) => x.id === id) : undefined;
+            if (!u?.image_url) return;
+            const row = profileUploadToFilmRow(u, displayName);
+            const stock = stocksBySlug.get(u.film_stock_slug);
+            const stockName = stock?.name ?? u.film_stock_slug;
+            setLightboxSession(
+              collectLightboxSlidesFromFilmUploads(filmRows, row, stockName, u.film_stock_slug)
+            );
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function ProfileView({
+  profile,
+  stocksBySlug,
+  statsBySlug = {},
+  userId,
+  onProfileUpdated,
+}: ProfileViewProps) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const handleLabel = profile.displayName;
+  const hasFriendlyName = Boolean(profile.fullName?.trim());
+  const headline = hasFriendlyName ? profile.fullName!.trim() : profile.displayName;
+
+  return (
+    <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-6 overflow-x-hidden overflow-y-visible md:min-h-0 md:flex-none md:gap-8 md:overflow-visible">
+      <div className="sticky top-0 z-30 flex min-w-0 items-center justify-between bg-background/90 px-0 pb-2.5 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => shareProfileUrl(userId)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+          aria-label="Share profile"
+        >
+          <Share className="h-5 w-5" strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+          aria-label="Profile settings"
+        >
+          <Settings className="h-5 w-5" strokeWidth={2} />
+        </button>
+      </div>
+
+      <div className="space-y-4 px-4 sm:px-0">
+        <div className="flex items-start gap-4">
+          <div
+            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xl font-bold text-primary"
+            aria-hidden
+          >
+            {profileInitials(headline)}
+          </div>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h1 className="font-sans text-2xl font-bold tracking-tight text-foreground">{headline}</h1>
+            {hasFriendlyName ? (
+              <p className="mt-0.5 text-sm font-medium text-muted-foreground">{handleLabel}</p>
+            ) : null}
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          <span className="tabular-nums">{profile.followersCount}</span> followers
+          <span className="mx-1.5 text-border" aria-hidden>
+            ·
+          </span>
+          <span className="tabular-nums">{profile.followingCount}</span> following
+        </p>
+        {profile.bio?.trim() ? (
+          <p className="max-w-prose text-sm leading-relaxed text-foreground">{profile.bio.trim()}</p>
+        ) : null}
+      </div>
+
+      <ProfileEditSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        handle={handleLabel}
+        fullName={profile.fullName ?? ""}
+        bio={profile.bio ?? ""}
+        onSaved={onProfileUpdated}
+      />
 
       {/* Tabs */}
       <FilmDetailTabs
-        defaultId="want"
+        defaultId="scans"
         pinTabPanelOnMobile
+        pinTabBarClassName="px-4 sm:px-0"
         tabs={[
+          {
+            id: "scans",
+            label: "Scans",
+            content: (
+              <ProfileSection
+                className="px-0"
+                emptyMessage="You haven't uploaded any images yet."
+                isEmpty={
+                  !profile.uploads?.length || !profile.uploads.some((u) => u.image_url)
+                }
+              >
+                <ProfileScansMasonry
+                  uploads={profile.uploads ?? []}
+                  displayName={profile.displayName}
+                  stocksBySlug={stocksBySlug}
+                />
+              </ProfileSection>
+            ),
+          },
           {
             id: "want",
             label: "Shootlist",
@@ -154,99 +373,6 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
                 isEmpty={profile.shotSlugs.length === 0}
               >
                 <StockGrid slugs={profile.shotSlugs} stocksBySlug={stocksBySlug} />
-              </ProfileSection>
-            ),
-          },
-          {
-            id: "in-camera",
-            label: "In Camera",
-            content: (
-              <ProfileSection
-                emptyMessage="No stocks in camera right now."
-                isEmpty={inCameraSlugs.length === 0}
-              >
-                <ul className="space-y-3">
-                  {inCameraEntries.map((entry) => {
-                    const stock = stocksBySlug.get(entry.film_stock_slug);
-                    if (!stock) return null;
-                    return (
-                      <li key={entry.film_stock_slug}>
-                        <Link
-                          href={`/films/${entry.film_stock_slug}`}
-                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
-                        >
-                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-card bg-white">
-                            {stock.image_url ? (
-                              <Image src={stock.image_url} alt="" width={56} height={56} className="h-full w-full object-contain" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center">
-                                <Camera className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-foreground">{stock.name}</p>
-                            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                              {entry.camera && <span>{entry.camera}</span>}
-                              {entry.format && <span>{entry.format}</span>}
-                            </div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </ProfileSection>
-            ),
-          },
-          {
-            id: "portfolio",
-            label: "Portfolio",
-            content: (
-              <ProfileSection
-                emptyMessage="You haven't uploaded any images yet."
-                isEmpty={!profile.uploads || profile.uploads.length === 0}
-              >
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                  {(profile.uploads ?? []).map((u) => {
-                    const stock = stocksBySlug.get(u.film_stock_slug);
-                    const stockName = stock?.name ?? u.film_stock_slug;
-                    return (
-                      <Link
-                        key={u.id}
-                        href={`/films/${u.film_stock_slug}`}
-                        className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
-                      >
-                        <div className="relative aspect-[4/3] bg-muted">
-                          {u.image_url ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={u.image_url}
-                              alt={plainTextFromPossibleHtml(u.caption ?? "")}
-                              className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <Camera className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-3">
-                          <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
-                          {u.caption && (
-                            <div
-                              className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground [&_a]:underline [&_blockquote]:my-0 [&_p]:m-0 [&_p]:inline"
-                              dangerouslySetInnerHTML={{
-                                __html: sanitizeReviewLikeHtml(u.caption),
-                              }}
-                            />
-                          )}
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
               </ProfileSection>
             ),
           },
@@ -453,16 +579,19 @@ function ProfileSection({
   emptyMessage,
   isEmpty,
   children,
+  className,
 }: {
   title?: string;
   description?: string;
   emptyMessage: string;
   isEmpty?: boolean;
   children: React.ReactNode;
+  /** Horizontal inset on small screens when the page shell is full-bleed (e.g. profile). */
+  className?: string;
 }) {
   const showHeader = title != null && title !== "" || description != null && description !== "";
   return (
-    <div>
+    <div className={cn("px-4 sm:px-0", className)}>
       {showHeader && (
         <>
           {title != null && title !== "" && (

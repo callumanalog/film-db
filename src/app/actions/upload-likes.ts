@@ -91,10 +91,12 @@ export interface UploadLikerPreview {
   displayName: string;
 }
 
-/** Recent likers (newest first) for lightbox / public UI. Uses upload_likes + profiles. */
-export async function getRecentLikersForUpload(
+const LIKERS_MAX = 500;
+
+/** Likers for an upload, newest first (for Likes sheet). */
+export async function getLikersForUpload(
   uploadId: string,
-  limit = 12
+  limit = 200
 ): Promise<UploadLikerPreview[]> {
   const id = uploadId?.trim();
   if (!id) return [];
@@ -105,10 +107,10 @@ export async function getRecentLikersForUpload(
     .select("user_id")
     .eq("upload_id", id)
     .order("created_at", { ascending: false })
-    .limit(Math.min(Math.max(1, limit), 50));
+    .limit(Math.min(Math.max(1, limit), LIKERS_MAX));
 
   if (error || !data?.length) {
-    if (error) console.error("[getRecentLikersForUpload]", error.message);
+    if (error) console.error("[getLikersForUpload]", error.message);
     return [];
   }
 

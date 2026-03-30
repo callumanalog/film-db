@@ -8,11 +8,13 @@ import { Bookmark, ChevronLeft, Heart, Info, MessageCircle, MoreVertical } from 
 import { getSavedUploadIdsAmong, toggleSaveUpload } from "@/app/actions/saved-uploads";
 import {
   getLikedUploadIdsAmong,
-  getRecentLikersForUpload,
+  getLikersForUpload,
   toggleLikeUpload,
   type UploadLikerPreview,
 } from "@/app/actions/upload-likes";
+import { getFollowingIdsAmong, toggleFollowUser } from "@/app/actions/user-follows";
 import { useAuth } from "@/context/auth-context";
+import { cn } from "@/lib/utils";
 import { sanitizeReviewLikeHtml } from "@/lib/sanitize-review-like-html";
 import {
   Sheet,
@@ -63,74 +65,6 @@ function getInitials(name: string): string {
 
 function plainCaptionFull(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function LikerAvatarStack({ likers }: { likers: UploadLikerPreview[] }) {
-  const shown = likers.slice(0, 3);
-  if (shown.length === 0) return null;
-  const ordered = [...shown].reverse();
-  return (
-    <div className="flex shrink-0 items-center pr-0.5" aria-hidden>
-      <div className="flex -space-x-2">
-        {ordered.map((liker, i) => (
-          <div
-            key={liker.userId}
-            style={{ zIndex: i + 1 }}
-            className="relative flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-neutral-200 text-[10px] font-semibold text-neutral-800 dark:border-black dark:bg-white/15 dark:text-white"
-          >
-            {getInitials(liker.displayName)}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function LikedByCaption({ likers, total }: { likers: UploadLikerPreview[]; total: number }) {
-  const shown = likers.slice(0, 3);
-  if (shown.length === 0 || total <= 0) return null;
-  const rest = total - shown.length;
-  const linkCls =
-    "font-semibold text-neutral-900 hover:underline dark:text-neutral-100";
-
-  const nameLink = (liker: UploadLikerPreview) => (
-    <Link key={liker.userId} href={`/users/${liker.userId}`} className={linkCls}>
-      {liker.displayName}
-    </Link>
-  );
-
-  let namesEl: React.ReactNode;
-  if (shown.length === 1) {
-    namesEl = nameLink(shown[0]);
-  } else if (shown.length === 2) {
-    namesEl = (
-      <>
-        {nameLink(shown[0])} and {nameLink(shown[1])}
-      </>
-    );
-  } else {
-    namesEl = (
-      <>
-        {nameLink(shown[0])}, {nameLink(shown[1])} and {nameLink(shown[2])}
-      </>
-    );
-  }
-
-  return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <LikerAvatarStack likers={shown} />
-      <p className="min-w-0 text-sm leading-snug text-neutral-600 dark:text-neutral-400">
-        <span>Liked by </span>
-        {namesEl}
-        {rest > 0 ? (
-          <span>
-            {" "}
-            and {rest.toLocaleString()} other{rest === 1 ? "" : "s"}
-          </span>
-        ) : null}
-      </p>
-    </div>
-  );
 }
 
 function formatRelativeTime(iso: string): string | null {
@@ -191,7 +125,12 @@ export function ImageLightbox({
   const [likePending, setLikePending] = useState(false);
   const likeInFlightRef = useRef(false);
   const [likeDeltaByUploadId, setLikeDeltaByUploadId] = useState<Record<string, number>>({});
-  const [likersForSlide, setLikersForSlide] = useState<UploadLikerPreview[]>([]);
+  const [likesSheetOpen, setLikesSheetOpen] = useState(false);
+  const [likesSheetUploadId, setLikesSheetUploadId] = useState<string | null>(null);
+  const [likesList, setLikesList] = useState<UploadLikerPreview[]>([]);
+  const [likesLoading, setLikesLoading] = useState(false);
+  const [followingInLikesSheet, setFollowingInLikesSheet] = useState<Set<string>>(() => new Set());
+  const [followPendingUserId, setFollowPendingUserId] = useState<string | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
 
   const slideUploadIdsKey = safeSlides.map((s) => s.uploadId?.trim() ?? "").join("|");
@@ -319,29 +258,56 @@ export function ImageLightbox({
     };
   }, [slideUploadIdsKey, user?.id, safeSlides.length]);
 
-  const likerPreviewIdx =
-    safeSlides.length === 0 ? 0 : Math.min(Math.max(0, active), safeSlides.length - 1);
-  const likerPreviewSlide = safeSlides[likerPreviewIdx];
-  const likerPreviewUploadId = likerPreviewSlide?.uploadId?.trim() ?? null;
-  const likerPreviewBase = likerPreviewSlide?.likeCount ?? 0;
-  const likerPreviewDelta = likerPreviewUploadId
-    ? (likeDeltaByUploadId[likerPreviewUploadId] ?? 0)
-    : 0;
-  const likerPreviewDisplayLikes = Math.max(0, likerPreviewBase + likerPreviewDelta);
+  const loadLikersSheetWithUser = useCallback(async (uploadId: string) => {
+    setLikesLoading(true);
+    setLikesList([]);
+    const rows = await getLikersForUpload(uploadId);
+    setLikesList(rows);
+    setLikesLoading(false);
+  }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!likerPreviewUploadId || likerPreviewDisplayLikes <= 0) {
-      setLikersForSlide([]);
-      return;
+  const openLikesSheet = useCallback(
+    (uploadId: string) => {
+      setLikesSheetUploadId(uploadId);
+      setLikesSheetOpen(true);
+      void loadLikersSheetWithUser(uploadId);
+    },
+    [loadLikersSheetWithUser]
+  );
+
+  const onLikesSheetOpenChange = useCallback((open: boolean) => {
+    setLikesSheetOpen(open);
+    if (!open) {
+      setLikesSheetUploadId(null);
+      setLikesList([]);
+      setFollowingInLikesSheet(new Set());
     }
-    getRecentLikersForUpload(likerPreviewUploadId, 12).then((rows) => {
-      if (!cancelled) setLikersForSlide(rows);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [likerPreviewUploadId, likerPreviewDisplayLikes, activeSlideIdentity]);
+  }, []);
+
+  const handleFollowInLikesSheet = useCallback(
+    async (targetUserId: string) => {
+      if (!user) {
+        router.push(`/auth/sign-in?next=${encodeURIComponent(pathname ?? "/")}`);
+        return;
+      }
+      setFollowPendingUserId(targetUserId);
+      const res = await toggleFollowUser(targetUserId);
+      setFollowPendingUserId(null);
+      if (!res.ok) {
+        if (res.error === "sign_in_required") {
+          router.push(`/auth/sign-in?next=${encodeURIComponent(pathname ?? "/")}`);
+        }
+        return;
+      }
+      setFollowingInLikesSheet((prev) => {
+        const next = new Set(prev);
+        if (res.following) next.add(targetUserId);
+        else next.delete(targetUserId);
+        return next;
+      });
+    },
+    [pathname, router, user]
+  );
 
   const handleLikeClick = useCallback(async () => {
     const idx = Math.min(Math.max(0, active), Math.max(0, safeSlides.length - 1));
@@ -374,8 +340,10 @@ export function ImageLightbox({
       const step = res.liked ? 1 : -1;
       return { ...prev, [id]: d + step };
     });
-    void getRecentLikersForUpload(id, 12).then(setLikersForSlide);
-  }, [safeSlides, active, pathname, router, user]);
+    if (likesSheetOpen && likesSheetUploadId === id) {
+      void loadLikersSheetWithUser(id);
+    }
+  }, [likesSheetOpen, likesSheetUploadId, loadLikersSheetWithUser, safeSlides, active, pathname, router, user]);
 
   const handleSaveClick = useCallback(async () => {
     const idx = Math.min(Math.max(0, active), Math.max(0, safeSlides.length - 1));
@@ -404,6 +372,42 @@ export function ImageLightbox({
       return next;
     });
   }, [safeSlides, active, pathname, router, user]);
+
+  const currentUploadIdForLikesSync =
+    safeSlides.length === 0
+      ? null
+      : (safeSlides[Math.min(Math.max(0, active), Math.max(0, safeSlides.length - 1))]?.uploadId?.trim() ??
+        null);
+
+  useEffect(() => {
+    if (!likesSheetOpen || !likesSheetUploadId || !currentUploadIdForLikesSync) return;
+    if (likesSheetUploadId !== currentUploadIdForLikesSync) {
+      onLikesSheetOpenChange(false);
+    }
+  }, [currentUploadIdForLikesSync, likesSheetOpen, likesSheetUploadId, onLikesSheetOpenChange]);
+
+  useEffect(() => {
+    if (!likesSheetOpen || likesList.length === 0) {
+      setFollowingInLikesSheet(new Set());
+      return;
+    }
+    if (!user?.id) {
+      setFollowingInLikesSheet(new Set());
+      return;
+    }
+    const others = likesList.map((r) => r.userId).filter((id) => id !== user.id);
+    if (others.length === 0) {
+      setFollowingInLikesSheet(new Set());
+      return;
+    }
+    let cancelled = false;
+    getFollowingIdsAmong(others).then((ids) => {
+      if (!cancelled) setFollowingInLikesSheet(new Set(ids));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [likesList, likesSheetOpen, user?.id]);
 
   if (safeSlides.length === 0) {
     return null;
@@ -517,61 +521,61 @@ export function ImageLightbox({
                   type="button"
                   disabled={!currentUploadId || likePending}
                   onClick={() => void handleLikeClick()}
-                  className="rounded-full p-1.5 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
+                  className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
                   aria-label={isLiked ? "Unlike" : "Like"}
                   aria-pressed={isLiked}
                 >
                   <Heart
-                    className={`h-5 w-5 stroke-[1.5] ${isLiked ? "fill-primary text-primary" : ""}`}
+                    className={`h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5] ${isLiked ? "fill-primary text-primary" : ""}`}
                   />
                 </button>
                 {currentUploadId && displayLikes > 0 ? (
-                  <span className="-ml-0.5 pr-0.5 text-xs font-semibold tabular-nums text-neutral-800 dark:text-neutral-100">
+                  <button
+                    type="button"
+                    onClick={() => openLikesSheet(currentUploadId)}
+                    className="-ml-0.5 pr-0.5 text-left text-sm font-semibold tabular-nums text-neutral-800 sm:text-xs dark:text-neutral-100"
+                    aria-label={`${displayLikes.toLocaleString()} likes, view list`}
+                  >
                     {displayLikes.toLocaleString()}
-                  </span>
+                  </button>
                 ) : null}
               </span>
               <span className="flex items-center">
                 <button
                   type="button"
-                  className="rounded-full p-1.5 text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+                  className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10"
                   aria-label="Comment"
                 >
-                  <MessageCircle className="h-5 w-5 stroke-[1.5]" />
+                  <MessageCircle className="h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5]" />
                 </button>
                 {comments != null ? (
-                  <span className="-ml-0.5 pr-0.5 text-xs font-normal tabular-nums">{comments}</span>
+                  <span className="-ml-0.5 pr-0.5 text-sm font-normal tabular-nums sm:text-xs">{comments}</span>
                 ) : null}
               </span>
               <button
                 type="button"
                 onClick={() => setInfoOpen(true)}
-                className="rounded-full p-1.5 text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+                className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10"
                 aria-label="Photo details"
               >
-                <Info className="h-5 w-5 stroke-[1.5]" />
+                <Info className="h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5]" />
               </button>
             </div>
             <button
               type="button"
               disabled={!canSave || savePending}
               onClick={() => void handleSaveClick()}
-              className="rounded-full p-1.5 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
+              className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
               aria-label={isSaved ? "Remove from saved" : "Save"}
               aria-pressed={isSaved}
             >
               <Bookmark
-                className={`h-5 w-5 stroke-[1.5] ${isSaved ? "fill-current" : ""}`}
+                className={`h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5] ${isSaved ? "fill-current" : ""}`}
               />
             </button>
           </div>
 
           <div className="space-y-3 px-3 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+12px))]">
-            {/* Likes + decorative stack */}
-            {displayLikes > 0 && likersForSlide.length > 0 ? (
-              <LikedByCaption likers={likersForSlide} total={displayLikes} />
-            ) : null}
-
             {/* Caption (username in header only; collapsed = 2 lines + trailing "more") */}
             {current.caption?.trim() ? (
               <div className="relative text-sm leading-relaxed">
@@ -766,6 +770,90 @@ export function ImageLightbox({
             {!current.context && !current.location?.trim() && !relativeTime && !hasMeta ? (
               <p className="text-sm text-muted-foreground">No extra details for this photo.</p>
             ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={likesSheetOpen} onOpenChange={onLikesSheetOpenChange}>
+        <SheetContent
+          side="bottom"
+          overlayClassName="z-[115]"
+          className="z-[120] gap-0 border-t-0 p-0"
+          showCloseButton
+        >
+          <div
+            className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-600"
+            aria-hidden
+          />
+          <SheetHeader className="border-b border-neutral-200 px-4 pb-3 pt-1 text-center dark:border-white/10">
+            <SheetTitle className="font-sans text-base font-bold text-neutral-900 dark:text-neutral-100">
+              Likes
+            </SheetTitle>
+          </SheetHeader>
+          <div className="max-h-[min(72dvh,560px)] overflow-y-auto overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {likesLoading ? (
+              <p className="py-10 text-center text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>
+            ) : likesList.length === 0 ? (
+              <p className="py-10 text-center text-sm text-neutral-500 dark:text-neutral-400">No likes yet.</p>
+            ) : (
+              <ul className="divide-y divide-neutral-200 dark:divide-white/10">
+                {likesList.map((liker) => {
+                  const isSelf = user?.id === liker.userId;
+                  const isFollowing = followingInLikesSheet.has(liker.userId);
+                  return (
+                    <li key={liker.userId} className="flex items-center gap-3 py-3">
+                      <Link
+                        href={`/users/${liker.userId}`}
+                        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg py-0.5 pr-1 text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <div
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-semibold text-neutral-800 dark:bg-white/15 dark:text-white"
+                          aria-hidden
+                        >
+                          {getInitials(liker.displayName)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-sans text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                            {liker.displayName}
+                          </p>
+                        </div>
+                      </Link>
+                      {isSelf ? (
+                        <span className="inline-flex w-[92px] shrink-0 justify-end" aria-hidden />
+                      ) : !user ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(`/auth/sign-in?next=${encodeURIComponent(pathname ?? "/")}`)
+                          }
+                          className="min-w-[92px] shrink-0 rounded-md bg-primary px-3 py-1.5 text-center text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                        >
+                          Follow
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={followPendingUserId === liker.userId}
+                          onClick={() => void handleFollowInLikesSheet(liker.userId)}
+                          className={cn(
+                            "min-w-[92px] shrink-0 rounded-md px-3 py-1.5 text-center text-sm font-semibold transition-colors disabled:opacity-50",
+                            isFollowing
+                              ? "border border-neutral-300 bg-neutral-100 text-neutral-900 dark:border-white/20 dark:bg-white/10 dark:text-white"
+                              : "bg-primary text-primary-foreground hover:bg-primary/90"
+                          )}
+                        >
+                          {followPendingUserId === liker.userId
+                            ? "…"
+                            : isFollowing
+                              ? "Following"
+                              : "Follow"}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </SheetContent>
       </Sheet>

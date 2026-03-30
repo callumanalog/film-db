@@ -4,7 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import type { InCameraEntry } from "@/app/actions/user-actions";
 
 export interface ProfileFromDb {
+  /** Unique handle (`profiles.display_name`). */
   displayName: string;
+  /** Optional friendly name (`profiles.full_name`); UI falls back to displayName when null. */
+  fullName: string | null;
+  bio: string | null;
+  followersCount: number;
+  followingCount: number;
   shotSlugs: string[];
   favouriteSlugs: string[];
   inCameraEntries: InCameraEntry[];
@@ -12,7 +18,14 @@ export interface ProfileFromDb {
   reviewCount: number;
   uploadCount: number;
   reviews: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
-  uploads: { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; created_at: string }[];
+  uploads: {
+    id: string;
+    film_stock_slug: string;
+    image_url: string | null;
+    caption: string | null;
+    created_at: string;
+    upload_batch_id?: string | null;
+  }[];
   likedReviews: {
     review_id: string;
     film_stock_slug: string;
@@ -63,7 +76,11 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       savedUploadsRes,
       likedUploadsRes,
     ] = await Promise.all([
-      supabase.from("profiles").select("display_name").eq("id", user.id).single(),
+      supabase
+        .from("profiles")
+        .select("display_name, full_name, bio, followers_count, following_count")
+        .eq("id", user.id)
+        .single(),
       supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
       supabase.from("user_favourites").select("film_stock_slug").eq("user_id", user.id),
       supabase.from("user_in_camera").select("film_stock_slug, camera, format, created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
@@ -99,12 +116,32 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
         .order("created_at", { ascending: false }),
     ]);
 
+    if (profileRes.error) {
+      console.error("[get-profile] profiles:", profileRes.error.message);
+    }
+
+    const profileRow = profileRes.error
+      ? null
+      : (profileRes.data as {
+          display_name?: string | null;
+          full_name?: string | null;
+          bio?: string | null;
+          followers_count?: number | null;
+          following_count?: number | null;
+        } | null);
+
     const displayName =
-      (profileRes.data?.display_name as string) ||
+      profileRow?.display_name?.trim() ||
+      (user.user_metadata?.display_name as string)?.trim() ||
       user.user_metadata?.full_name ||
       user.user_metadata?.name ||
       user.email?.split("@")[0] ||
       "Member";
+
+    const fullName = profileRow?.full_name?.trim() ? profileRow.full_name.trim() : null;
+    const bio = profileRow?.bio?.trim() ? profileRow.bio.trim() : null;
+    const followersCount = Math.max(0, Number(profileRow?.followers_count ?? 0));
+    const followingCount = Math.max(0, Number(profileRow?.following_count ?? 0));
 
     const shotSlugs = (shotRes.data ?? []).map((r) => r.film_stock_slug);
     const favouriteSlugs = (favRes.data ?? []).map((r) => r.film_stock_slug);
@@ -226,6 +263,10 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
 
     return {
       displayName,
+      fullName,
+      bio,
+      followersCount,
+      followingCount,
       shotSlugs,
       favouriteSlugs,
       inCameraEntries,
@@ -245,6 +286,7 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
         image_url: u.image_url,
         caption: u.caption,
         created_at: u.created_at,
+        upload_batch_id: u.upload_batch_id ?? null,
       })),
       likedReviews,
       savedUploads,

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface Section {
   id: string;
@@ -109,6 +110,8 @@ export function FilmDetailTabs({
   onTabChange,
   /** Below md: tab row scrolls horizontally; only the tab panel scrolls vertically (fixed chrome). */
   pinTabPanelOnMobile = false,
+  /** Merged onto the tab bar wrapper when `pinTabPanelOnMobile` (e.g. horizontal inset). */
+  pinTabBarClassName,
 }: {
   tabs: { id: string; label: string; content: ReactNode }[];
   defaultId?: string;
@@ -120,6 +123,7 @@ export function FilmDetailTabs({
   activeId?: string;
   onTabChange?: (id: string) => void;
   pinTabPanelOnMobile?: boolean;
+  pinTabBarClassName?: string;
 }) {
   const [internalActiveId, setInternalActiveId] = useState(defaultId ?? tabs[0]?.id ?? "");
   const activeId = controlledActiveId ?? internalActiveId;
@@ -177,7 +181,7 @@ export function FilmDetailTabs({
       <div
         className={
           pinTabPanelOnMobile
-            ? "mt-4 flex min-h-0 flex-1 flex-col overflow-hidden md:block md:flex-none md:overflow-visible"
+            ? "mt-4 flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden md:block md:flex-none md:overflow-visible"
             : "mt-4"
         }
       >
@@ -186,16 +190,26 @@ export function FilmDetailTabs({
             {tabNav}
           </div>
         ) : (
-          <div className={pinTabPanelOnMobile ? "shrink-0" : undefined}>{tabNav}</div>
+          <div className={cn(pinTabPanelOnMobile && "min-w-0 w-full shrink-0", pinTabBarClassName)}>
+            {tabNav}
+          </div>
         )}
         <div
           className={
             pinTabPanelOnMobile
-              ? `flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain pt-6 md:min-h-0 md:flex-none md:overflow-visible ${showRightPane ? "md:flex md:gap-8" : ""}`
+              ? `flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain pt-6 md:min-h-0 md:flex-none md:overflow-visible ${showRightPane ? "md:flex md:gap-8" : ""}`
               : `pt-6 ${showRightPane ? "flex gap-8" : ""}`
           }
         >
-          <div className={showRightPane ? "min-w-0 flex-1" : ""}>
+          <div
+            className={
+              showRightPane
+                ? "min-w-0 w-full max-w-full flex-1"
+                : pinTabPanelOnMobile
+                  ? "min-w-0 w-full max-w-full"
+                  : ""
+            }
+          >
             {activeTab?.content}
           </div>
           {showRightPane && <div className="shrink-0">{rightPane}</div>}

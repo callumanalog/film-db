@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStocksBySlugs, getStatsForSlugs } from "@/app/actions/get-film-stocks";
 import { getProfileFromSupabase } from "@/app/actions/get-profile";
@@ -23,19 +23,19 @@ export function ProfilePageClient() {
   const [statsBySlug, setStatsBySlug] = useState<Record<string, { avgRating: number | null }>>({});
   const [profileLoading, setProfileLoading] = useState(true);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.replace("/auth/sign-in?next=/profile");
-      return;
-    }
-    let cancelled = false;
-    setProfileLoading(true);
-    getProfileFromSupabase()
-      .then((p) => {
-        if (!cancelled && p) {
+  const loadProfile = useCallback(
+    async (opts?: { soft?: boolean }) => {
+      if (!user) return;
+      if (!opts?.soft) setProfileLoading(true);
+      try {
+        const p = await getProfileFromSupabase();
+        if (p) {
           setProfile({
             displayName: p.displayName,
+            fullName: p.fullName,
+            bio: p.bio,
+            followersCount: p.followersCount,
+            followingCount: p.followingCount,
             shotSlugs: p.shotSlugs,
             favouriteSlugs: p.favouriteSlugs,
             inCameraEntries: p.inCameraEntries,
@@ -48,9 +48,13 @@ export function ProfilePageClient() {
             savedUploads: p.savedUploads,
             likedUploads: p.likedUploads,
           });
-        } else if (!cancelled) {
+        } else {
           setProfile({
             displayName: user.user_metadata?.full_name || user.email?.split("@")[0] || "Member",
+            fullName: null,
+            bio: null,
+            followersCount: 0,
+            followingCount: 0,
             shotSlugs: [],
             favouriteSlugs: [],
             inCameraEntries: [],
@@ -60,14 +64,21 @@ export function ProfilePageClient() {
             likedUploads: [],
           });
         }
-      })
-      .finally(() => {
-        if (!cancelled) setProfileLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, user, router]);
+      } finally {
+        if (!opts?.soft) setProfileLoading(false);
+      }
+    },
+    [user]
+  );
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/auth/sign-in?next=/profile");
+      return;
+    }
+    loadProfile();
+  }, [authLoading, user, router, loadProfile]);
 
   const allSlugs = profile
     ? [
@@ -128,8 +139,8 @@ export function ProfilePageClient() {
 
   if (authLoading || !user || profileLoading || !profile) {
     return (
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 pt-4 pb-8 sm:px-6 md:flex-none">
-        <div className="animate-pulse space-y-6">
+      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-6xl flex-1 flex-col px-0 pt-0 pb-8 sm:px-6 md:flex-none">
+        <div className="animate-pulse space-y-6 px-4 sm:px-0">
           <div className="h-16 w-64 rounded-card bg-muted" />
           <div className="h-32 rounded-card bg-muted" />
         </div>
@@ -138,9 +149,9 @@ export function ProfilePageClient() {
   }
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-4 pt-4 pb-8 sm:px-6 md:flex-none md:overflow-visible md:pb-8">
+    <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-6xl flex-1 flex-col overflow-x-hidden overflow-y-visible px-0 pt-0 pb-8 sm:px-6 md:flex-none md:overflow-visible md:pb-8">
       {isUnverified && (
-        <div className="mb-6 shrink-0 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+        <div className="mx-4 mb-6 shrink-0 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 sm:mx-0 dark:border-amber-800 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">
             Verify your email to unlock all account features
           </p>
@@ -154,8 +165,17 @@ export function ProfilePageClient() {
           </button>
         </div>
       )}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:block md:flex-none">
-        <ProfileView profile={profile} stocksBySlug={stocksBySlug} statsBySlug={statsBySlug} />
+      <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col md:block md:flex-none">
+        <ProfileView
+          profile={profile}
+          stocksBySlug={stocksBySlug}
+          statsBySlug={statsBySlug}
+          userId={user.id}
+          onProfileUpdated={async () => {
+            await loadProfile({ soft: true });
+            router.refresh();
+          }}
+        />
       </div>
     </div>
   );
