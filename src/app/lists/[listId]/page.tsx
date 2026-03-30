@@ -29,10 +29,17 @@ export default async function StockListPage({ params }: Props) {
 
   const { data: prof } = await supabase
     .from("profiles")
-    .select("display_name")
+    .select("display_name, avatar_url")
     .eq("id", list.user_id as string)
     .maybeSingle();
   const ownerName = prof?.display_name?.trim() || "Member";
+  const ownerAvatarUrl = prof?.avatar_url?.trim() || null;
 
-  return <StockListDetailClient listId={listId} initialOwnerDisplayName={ownerName} />;
+  return (
+    <StockListDetailClient
+      listId={listId}
+      initialOwnerDisplayName={ownerName}
+      initialOwnerAvatarUrl={ownerAvatarUrl}
+    />
+  );
 }

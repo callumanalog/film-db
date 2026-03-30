@@ -15,6 +15,10 @@ import {
 } from "@/app/actions/upload-likes";
 import { getFollowingIdsAmong, toggleFollowUser } from "@/app/actions/user-follows";
 import { useAuth } from "@/context/auth-context";
+import {
+  topLeftNavChevronIconClassName,
+  topLeftNavLabeledRowClassName,
+} from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import { sanitizeReviewLikeHtml } from "@/lib/sanitize-review-like-html";
 import {
@@ -40,6 +44,8 @@ export type ImageLightboxData = {
   imageUrl: string;
   /** `user_uploads.id` when this slide is a real upload; omit for Flickr/samples. */
   uploadId?: string | null;
+  /** When set, header avatar/name link to `/users/{userId}`. */
+  userId?: string | null;
   alt?: string;
   caption?: string | null;
   username?: string;
@@ -204,28 +210,44 @@ export function ImageLightbox({
   }, [active]);
 
   useLayoutEffect(() => {
+    let overflowTimeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleCaptionOverflow = (value: boolean) => {
+      if (overflowTimeout != null) clearTimeout(overflowTimeout);
+      overflowTimeout = setTimeout(() => {
+        overflowTimeout = null;
+        setCaptionOverflowsTwoLines(value);
+      }, 0);
+    };
+
     if (captionExpanded) {
-      setCaptionOverflowsTwoLines(false);
-      return;
+      scheduleCaptionOverflow(false);
+      return () => {
+        if (overflowTimeout != null) clearTimeout(overflowTimeout);
+      };
     }
     const slide = safeSlides[active] ?? safeSlides[0];
     const plain = slide?.caption?.trim() ? plainCaptionFull(slide.caption) : "";
     if (!plain) {
-      setCaptionOverflowsTwoLines(false);
-      return;
+      scheduleCaptionOverflow(false);
+      return () => {
+        if (overflowTimeout != null) clearTimeout(overflowTimeout);
+      };
     }
     const el = captionClampedRef.current;
     if (!el) {
-      setCaptionOverflowsTwoLines(false);
-      return;
+      scheduleCaptionOverflow(false);
+      return () => {
+        if (overflowTimeout != null) clearTimeout(overflowTimeout);
+      };
     }
     const measure = () => {
-      setCaptionOverflowsTwoLines(el.scrollHeight > el.clientHeight + 2);
+      scheduleCaptionOverflow(el.scrollHeight > el.clientHeight + 2);
     };
     const id = requestAnimationFrame(measure);
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => {
+      if (overflowTimeout != null) clearTimeout(overflowTimeout);
       cancelAnimationFrame(id);
       ro.disconnect();
     };
@@ -237,6 +259,8 @@ export function ImageLightbox({
 
   useEffect(() => {
     let cancelled = false;
+    let savedDefer: ReturnType<typeof setTimeout> | null = null;
+    let likedDefer: ReturnType<typeof setTimeout> | null = null;
     const ids = safeSlides.map((s) => s.uploadId?.trim()).filter((x): x is string => !!x);
     if (ids.length === 0) {
       setSavedUploadIds(new Set());
@@ -249,13 +273,23 @@ export function ImageLightbox({
       return;
     }
     getSavedUploadIdsAmong(ids).then((saved) => {
-      if (!cancelled) setSavedUploadIds(new Set(saved));
+      if (cancelled) return;
+      savedDefer = setTimeout(() => {
+        savedDefer = null;
+        if (!cancelled) setSavedUploadIds(new Set(saved));
+      }, 0);
     });
     getLikedUploadIdsAmong(ids).then((liked) => {
-      if (!cancelled) setLikedUploadIds(new Set(liked));
+      if (cancelled) return;
+      likedDefer = setTimeout(() => {
+        likedDefer = null;
+        if (!cancelled) setLikedUploadIds(new Set(liked));
+      }, 0);
     });
     return () => {
       cancelled = true;
+      if (savedDefer != null) clearTimeout(savedDefer);
+      if (likedDefer != null) clearTimeout(likedDefer);
     };
   }, [slideUploadIdsKey, user?.id, safeSlides.length]);
 
@@ -405,11 +439,17 @@ export function ImageLightbox({
       return;
     }
     let cancelled = false;
+    let followDefer: ReturnType<typeof setTimeout> | null = null;
     getFollowingIdsAmong(others).then((ids) => {
-      if (!cancelled) setFollowingInLikesSheet(new Set(ids));
+      if (cancelled) return;
+      followDefer = setTimeout(() => {
+        followDefer = null;
+        if (!cancelled) setFollowingInLikesSheet(new Set(ids));
+      }, 0);
     });
     return () => {
       cancelled = true;
+      if (followDefer != null) clearTimeout(followDefer);
     };
   }, [likesList, likesSheetOpen, user?.id]);
 
@@ -433,6 +473,8 @@ export function ImageLightbox({
       current.metadata.push_pull);
 
   const name = current.username?.trim() || "Member";
+  const profileUserId = current.userId?.trim() ?? "";
+  const profileHref = profileUserId ? `/users/${profileUserId}` : null;
   const subtitle =
     current.location?.trim() ||
     current.context?.label ||
@@ -463,35 +505,69 @@ export function ImageLightbox({
           <button
             type="button"
             onClick={onClose}
-            className="flex items-center gap-0.5 rounded-lg py-2 pl-1 pr-2 -ml-1 text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+            className={cn(
+              topLeftNavLabeledRowClassName,
+              "text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+            )}
             aria-label="Back to Explore"
           >
-            <ChevronLeft className="h-7 w-7 shrink-0 stroke-[1.75]" />
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
             <span className="text-base font-semibold tracking-tight">Explore</span>
           </button>
         </div>
 
         {/* User row */}
         <header className="flex shrink-0 items-center gap-3 border-b border-neutral-200 px-3 pb-3 dark:border-white/10">
-          <div
-            className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-neutral-200 ring-1 ring-neutral-300 dark:bg-white/15 dark:ring-white/10"
-            aria-hidden
-          >
-            {current.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={current.avatarUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-[11px] font-semibold text-neutral-700 dark:text-white">
-                {getInitials(name)}
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              onClick={onClose}
+              aria-label={`View ${name}'s profile`}
+              className="flex min-w-0 flex-1 items-center gap-3 text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <div
+                className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-neutral-200 ring-1 ring-neutral-300 dark:bg-white/15 dark:ring-white/10"
+                aria-hidden
+              >
+                {current.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={current.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[11px] font-semibold text-neutral-700 dark:text-white">
+                    {getInitials(name)}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold leading-tight">{name}</p>
-            {subtitle ? (
-              <p className="truncate text-xs font-normal text-neutral-400">{subtitle}</p>
-            ) : null}
-          </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-tight">{name}</p>
+                {subtitle ? (
+                  <p className="truncate text-xs font-normal text-neutral-400">{subtitle}</p>
+                ) : null}
+              </div>
+            </Link>
+          ) : (
+            <>
+              <div
+                className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-neutral-200 ring-1 ring-neutral-300 dark:bg-white/15 dark:ring-white/10"
+                aria-hidden
+              >
+                {current.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={current.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[11px] font-semibold text-neutral-700 dark:text-white">
+                    {getInitials(name)}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold leading-tight">{name}</p>
+                {subtitle ? (
+                  <p className="truncate text-xs font-normal text-neutral-400">{subtitle}</p>
+                ) : null}
+              </div>
+            </>
+          )}
           <button
             type="button"
             className="shrink-0 rounded-full p-2 text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"

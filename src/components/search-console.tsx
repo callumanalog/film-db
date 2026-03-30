@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { SearchPageHeaderFiltersButton } from "@/components/search-page-header";
@@ -89,13 +90,12 @@ export function SearchConsole({
             onClick={handleBack}
             aria-label="Close search"
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-full p-1 text-foreground transition-all md:hidden",
-              searchActive
-                ? "w-8 opacity-100"
-                : "hidden"
+              topLeftNavIconButtonClassName,
+              "shrink-0 transition-opacity md:hidden",
+              searchActive ? "opacity-100" : "hidden"
             )}
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </button>
 
           <div className="min-w-0 flex-1">

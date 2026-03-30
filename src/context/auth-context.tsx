@@ -24,16 +24,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    let applyTimer: ReturnType<typeof setTimeout> | null = null;
     const supabase = createClient();
 
     const applySession = (session: Session | null) => {
       if (cancelled) return;
-      // Defer to avoid updating during the same turn as subscription/setup (React 19 + Strict Mode).
-      queueMicrotask(() => {
+      if (applyTimer != null) clearTimeout(applyTimer);
+      // Macrotask deferral: queueMicrotask still runs before some fibers finish mounting (React 19 dev),
+      // which triggers "Can't perform a React state update on a component that hasn't mounted yet".
+      applyTimer = setTimeout(() => {
+        applyTimer = null;
         if (cancelled) return;
         setUser(session?.user ?? null);
         setLoading(false);
-      });
+      }, 0);
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -48,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      if (applyTimer != null) clearTimeout(applyTimer);
       subscription.unsubscribe();
     };
   }, []);

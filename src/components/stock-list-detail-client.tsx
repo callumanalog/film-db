@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -22,6 +23,8 @@ import { createClient } from "@/lib/supabase/client";
 import { FilmCard } from "@/components/film-card";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
+import { formatStockListActivityPhrase } from "@/lib/stock-list-relative-activity";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
 import { Button } from "@/components/ui/button";
@@ -35,12 +38,22 @@ import type { FilmStock, FilmBrand } from "@/lib/types";
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
+function profileInitials(primary: string): string {
+  const t = primary.trim();
+  if (!t) return "?";
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
+  return t.slice(0, 2).toUpperCase();
+}
+
 export function StockListDetailClient({
   listId,
   initialOwnerDisplayName,
+  initialOwnerAvatarUrl,
 }: {
   listId: string;
   initialOwnerDisplayName: string;
+  initialOwnerAvatarUrl: string | null;
 }) {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -51,12 +64,14 @@ export function StockListDetailClient({
     title: string;
     description: string | null;
     tags: string[];
+    createdAt: string;
     updatedAt: string;
     ownerUserId: string;
   } | null>(null);
   const [orderedSlugs, setOrderedSlugs] = useState<string[]>([]);
   const [stocksBySlug, setStocksBySlug] = useState<Map<string, StockWithBrand>>(new Map());
   const [ownerName, setOwnerName] = useState(initialOwnerDisplayName);
+  const [ownerAvatarUrl, setOwnerAvatarUrl] = useState<string | null>(initialOwnerAvatarUrl);
   const [saved, setSaved] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -87,11 +102,12 @@ export function StockListDetailClient({
       const supabase = createClient();
       const { data: prof } = await supabase
         .from("profiles")
-        .select("display_name")
+        .select("display_name, avatar_url")
         .eq("id", payload.list.ownerUserId)
         .maybeSingle();
       const dn = prof?.display_name?.trim();
       if (dn) setOwnerName(dn);
+      setOwnerAvatarUrl(prof?.avatar_url?.trim() || null);
 
       const {
         data: { user: u },
@@ -116,17 +132,17 @@ export function StockListDetailClient({
     void load();
   }, [load]);
 
-  useEffect(() => {
-    document.body.classList.add("list-form-fullscreen");
-    return () => document.body.classList.remove("list-form-fullscreen");
-  }, []);
-
   const isOwner = user && list && user.id === list.ownerUserId;
   const canBookmark = user && list && user.id !== list.ownerUserId;
 
   const orderedStocks = useMemo(() => {
     return orderedSlugs.map((slug) => stocksBySlug.get(slug)).filter(Boolean) as StockWithBrand[];
   }, [orderedSlugs, stocksBySlug]);
+
+  const activityLabel = useMemo(() => {
+    if (!list) return "";
+    return formatStockListActivityPhrase(list.createdAt, list.updatedAt);
+  }, [list]);
 
   async function shareList() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -206,7 +222,7 @@ export function StockListDetailClient({
       <div
         className={cn(
           overlayPositionClass,
-          "z-[60] flex items-center justify-center bg-white px-4 dark:bg-background"
+          "z-40 flex items-center justify-center bg-white px-4 dark:bg-background"
         )}
         style={
           overlayShellStyle
@@ -223,102 +239,118 @@ export function StockListDetailClient({
 
   return (
     <div
-      className={cn(overlayPositionClass, "z-[60] flex min-h-0 flex-col bg-white dark:bg-background")}
+      className={cn(overlayPositionClass, "z-40 flex min-h-0 flex-col bg-white dark:bg-background")}
       style={overlayShellStyle}
     >
-      <header
-        className="shrink-0 border-b border-border/60 bg-white dark:bg-background"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      <div
+        className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain"
+        style={{ WebkitOverflowScrolling: "touch" }}
       >
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pb-2 pt-2 sm:px-6">
-          <Link
-            href="/profile"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
-            aria-label="Back"
-          >
-            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
-          </Link>
-          <div className="flex shrink-0 items-center gap-0.5">
-            {!user ? (
-              <Link
-                href={`/auth/sign-in?next=${encodeURIComponent(`/lists/${listId}`)}`}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
-                aria-label="Sign in to save this list"
-              >
-                <Bookmark className="h-5 w-5" strokeWidth={2} />
-              </Link>
-            ) : canBookmark ? (
-              <button
-                type="button"
-                disabled={bookmarkBusy || authLoading}
-                onClick={() => void toggleBookmark()}
-                className={cn(
-                  "flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-muted/80",
-                  saved ? "text-primary" : "text-foreground"
-                )}
-                aria-label={saved ? "Remove from saved lists" : "Save list"}
-              >
-                <Bookmark className={cn("h-5 w-5", saved && "fill-current")} strokeWidth={2} />
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void shareList()}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
-              aria-label="Share"
+        <header
+          className="sticky top-0 z-10 bg-white dark:bg-background"
+          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        >
+          <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pb-2 pt-2 sm:px-6">
+            <Link
+              href="/profile"
+              className={topLeftNavIconButtonClassName}
+              aria-label="Back"
             >
-              <Share2 className="h-5 w-5" strokeWidth={2} />
-            </button>
-            {isOwner ? (
+              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
+            </Link>
+            <div className="flex shrink-0 items-center gap-0.5">
+              {!user ? (
+                <Link
+                  href={`/auth/sign-in?next=${encodeURIComponent(`/lists/${listId}`)}`}
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+                  aria-label="Sign in to save this list"
+                >
+                  <Bookmark className="h-5 w-5" strokeWidth={2} />
+                </Link>
+              ) : canBookmark ? (
+                <button
+                  type="button"
+                  disabled={bookmarkBusy || authLoading}
+                  onClick={() => void toggleBookmark()}
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-muted/80",
+                    saved ? "text-primary" : "text-foreground"
+                  )}
+                  aria-label={saved ? "Remove from saved lists" : "Save list"}
+                >
+                  <Bookmark className={cn("h-5 w-5", saved && "fill-current")} strokeWidth={2} />
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => setMenuOpen(true)}
+                onClick={() => void shareList()}
                 className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
-                aria-label="More options"
+                aria-label="Share"
               >
-                <MoreHorizontal className="h-6 w-6" strokeWidth={2} />
+                <Share2 className="h-5 w-5" strokeWidth={2} />
               </button>
-            ) : null}
+              {isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(true)}
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+                  aria-label="More options"
+                >
+                  <MoreHorizontal className="h-6 w-6" strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
           </div>
-        </div>
-        <div className="mx-auto max-w-2xl px-4 pb-4 pt-0 sm:px-6">
+        </header>
+
+        <div className="px-4 pb-[max(1.5rem,calc(4.5rem+env(safe-area-inset-bottom,0px)))] pt-2 sm:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          <Link
+            href={`/users/${list.ownerUserId}`}
+            className="-mx-1 mb-3 flex min-w-0 max-w-full items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`View profile: ${ownerName}`}
+          >
+            <div className="relative size-9 shrink-0 overflow-hidden rounded-full bg-muted sm:size-10">
+              {ownerAvatarUrl ? (
+                <Image src={ownerAvatarUrl} alt="" fill className="object-cover" sizes="40px" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center font-sans text-xs font-semibold text-muted-foreground">
+                  {profileInitials(ownerName)}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate font-sans text-sm font-semibold text-foreground">{ownerName}</span>
+              <span className="mt-0.5 block font-sans text-xs leading-snug text-muted-foreground">{activityLabel}</span>
+            </div>
+          </Link>
           <h1 className="font-sans text-2xl font-bold leading-tight tracking-tight text-foreground md:text-[1.75rem]">
             {list.title}
           </h1>
-          <span className="mt-1 block font-sans text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
-            {count} {count === 1 ? "stock" : "stocks"} · by {ownerName}
-          </span>
           {list.description?.trim() ? (
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{list.description.trim()}</p>
           ) : null}
-          {list.tags.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {list.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-muted/80 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
-                >
-                  {tag}
-                </span>
+          {count === 0 ? (
+            <p
+              className={cn(
+                "py-12 text-center text-sm text-muted-foreground",
+                list.description?.trim() ? "mt-3" : "mt-2"
+              )}
+            >
+              This list has no stocks.
+            </p>
+          ) : (
+            <div
+              className={cn(
+                "grid grid-cols-3 gap-2 sm:gap-3 md:gap-4",
+                list.description?.trim() ? "mt-3" : "mt-2"
+              )}
+            >
+              {orderedStocks.map((stock) => (
+                <FilmCard key={stock.slug} stock={stock} compact />
               ))}
             </div>
-          ) : null}
+          )}
         </div>
-      </header>
-
-      <div
-        className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-6"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        {count === 0 ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">This list has no stocks.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
-            {orderedStocks.map((stock) => (
-              <FilmCard key={stock.slug} stock={stock} compact />
-            ))}
-          </div>
-        )}
       </div>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>

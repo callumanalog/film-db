@@ -7,6 +7,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, CircleUser, Check, CircleCheck } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
+import {
+  topLeftNavChevronIconClassName,
+  topLeftNavIconButtonClassName,
+  topLeftNavIconTouchClassName,
+} from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import { isStockListFormFullscreenPath } from "@/lib/stock-list-form-route";
 import { useAuth } from "@/context/auth-context";
@@ -34,6 +39,16 @@ const priorityNavLinks = navLinks.slice(0, PRIORITY_NAV_COUNT);
 const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 
 const MAIN_LANDING_PATHS = ["/", "/films", "/search", "/profile"];
+
+/** Public member profile (`/users/{uuid}`) — ProfileView provides its own sticky chrome. */
+const PUBLIC_MEMBER_PROFILE_PATH =
+  /^\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isPublicMemberProfilePath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const pathOnly = pathname.split("?")[0] ?? pathname;
+  return PUBLIC_MEMBER_PROFILE_PATH.test(pathOnly);
+}
 
 const COLLAPSED_NAV_HEIGHT = 52;
 
@@ -138,7 +153,8 @@ export function Header() {
   if (
     pathname === "/profile" ||
     pathname?.startsWith("/profile/boards/") ||
-    isStockListFormFullscreenPath(pathname)
+    isStockListFormFullscreenPath(pathname) ||
+    isPublicMemberProfilePath(pathname)
   ) {
     return null;
   }
@@ -174,10 +190,10 @@ export function Header() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="relative z-10 flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
+            className={cn("relative z-10", topLeftNavIconTouchClassName)}
             aria-label="Go back"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </button>
           {/* Symmetric horizontal inset so truncated title stays visually centre-aligned in the nav. */}
           <div
@@ -275,10 +291,10 @@ export function Header() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className={topLeftNavIconButtonClassName}
               aria-label="Go back"
             >
-              <ChevronLeft className="h-6 w-6" />
+              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
             </button>
           ) : (
             <>

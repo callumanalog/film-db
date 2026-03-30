@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { preload } from "swr";
 import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isStockListFormFullscreenPath } from "@/lib/stock-list-form-route";
+import { isStockListFormEditorPath } from "@/lib/stock-list-form-route";
 import { openPlusActionSheet } from "@/components/plus-action-sheet";
 import { searchPageDataKey, filmsPageDataKey } from "@/lib/nav-cache-swr";
 import { getSearchPageData, getFilmsPageData } from "@/app/actions/nav-cache";
@@ -129,7 +129,7 @@ export function BottomNav() {
     router.push(href);
   };
 
-  if (isStockListFormFullscreenPath(pathname)) {
+  if (isStockListFormEditorPath(pathname)) {
     return null;
   }
 

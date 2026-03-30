@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Search, X, ChevronLeft } from "lucide-react";
 import { useFilmsSearch } from "@/context/films-search-context";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import { cn } from "@/lib/utils";
 
 const DEBOUNCE_MS = 300;
 
@@ -109,9 +111,9 @@ export function FilmsHeaderSearch({ variant = "default", onAfterSubmit }: FilmsH
           type="button"
           onClick={handleExitSearch}
           aria-label="Exit search"
-          className="flex shrink-0 items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-slate-100 hover:text-foreground -ml-2"
+          className={cn(topLeftNavIconButtonClassName, "text-muted-foreground hover:text-foreground")}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
         </button>
       ) : (
         <span className="flex shrink-0 items-center justify-center" aria-hidden>

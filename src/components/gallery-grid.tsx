@@ -297,9 +297,19 @@ export function GalleryGrid({
                     className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent"
                     aria-hidden
                   />
-                  <p className="pointer-events-none absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
-                    {img.username}
-                  </p>
+                  {img.userId?.trim() ? (
+                    <Link
+                      href={`/users/${img.userId.trim()}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute bottom-2 left-2 right-20 z-10 truncate text-xs font-medium text-white drop-shadow-sm hover:underline"
+                    >
+                      {img.username}
+                    </Link>
+                  ) : (
+                    <p className="pointer-events-none absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
+                      {img.username}
+                    </p>
+                  )}
                   {/* Like and share on hover */}
                   <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                     <button

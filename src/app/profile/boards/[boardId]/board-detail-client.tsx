@@ -17,6 +17,7 @@ import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightb
 import { BoardFormSheet } from "@/components/board-form-sheet";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import {
   collectLightboxSlidesFromGalleryImages,
@@ -335,10 +336,10 @@ export function BoardDetailClient({ boardId }: { boardId: string }) {
         <div className="flex items-center justify-between px-4 pb-2 pt-2 sm:px-6">
           <Link
             href="/profile"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+            className={topLeftNavIconButtonClassName}
             aria-label="Back to profile"
           >
-            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </Link>
           <div className="flex shrink-0 items-center gap-0.5">
             <button

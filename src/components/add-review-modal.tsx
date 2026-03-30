@@ -20,6 +20,7 @@ import {
   Quote,
   Strikethrough,
 } from "lucide-react";
+import { topLeftNavChevronIconClassName, topLeftNavIconTouchClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { TextField } from "@/components/ui/text-field";
@@ -849,10 +850,14 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                  className={cn(
+                    "absolute left-0 top-1/2 -translate-y-1/2",
+                    topLeftNavIconTouchClassName,
+                    "text-muted-foreground hover:text-foreground"
+                  )}
                   aria-label="Back"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
                 </button>
               )}
               <span className="text-sm font-semibold text-foreground">Add scans</span>
@@ -1224,10 +1229,14 @@ export function AddReviewModal({
               <button
                 type="button"
                 onClick={() => setStep(2)}
-                className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                className={cn(
+                  "absolute left-0 top-1/2 -translate-y-1/2",
+                  topLeftNavIconTouchClassName,
+                  "text-muted-foreground hover:text-foreground"
+                )}
                 aria-label="Back"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
               </button>
               <span
                 className="mx-12 block truncate text-center text-sm font-semibold text-foreground"
@@ -1528,10 +1537,14 @@ export function AddReviewModal({
             <button
               type="button"
               onClick={() => setStep3ImagePreviewIndex(null)}
-              className="absolute left-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-neutral-900 transition-colors hover:bg-neutral-100 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              className={cn(
+                "absolute left-0 top-1/2 -translate-y-1/2",
+                topLeftNavIconTouchClassName,
+                "text-neutral-900 hover:bg-neutral-100 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              )}
               aria-label="Back"
             >
-              <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
             </button>
             <span className="text-base font-semibold text-neutral-900 dark:text-zinc-50">
               Preview

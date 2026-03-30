@@ -10,6 +10,7 @@ import { FilmNativeGrid } from "@/components/film-native-grid";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import {
   collectLightboxSlidesFromGalleryImages,
@@ -28,24 +29,26 @@ type SavedRow = {
   image_url: string | null;
   caption: string | null;
   saved_at: string;
+  uploaderUserId: string;
+  uploaderDisplayName: string | null;
 };
 
 function savedToGalleryImages(
   saved: SavedRow[],
-  stocksBySlug: Map<string, StockWithBrand>,
-  viewerDisplayName: string
+  stocksBySlug: Map<string, StockWithBrand>
 ): GalleryImage[] {
   return saved
     .filter((u) => u.image_url)
     .map((u) => {
       const stock = stocksBySlug.get(u.film_stock_slug);
+      const label = u.uploaderDisplayName?.trim() || "Member";
       return {
         id: u.upload_id,
         galleryId: `saved-${u.film_stock_slug}-${u.upload_id}`,
         stockSlug: u.film_stock_slug,
         stockName: stock?.name ?? u.film_stock_slug,
         brandName: stock?.brand.name ?? "",
-        username: viewerDisplayName,
+        username: label,
         camera: "",
         settings: "",
         likes: 0,
@@ -53,6 +56,7 @@ function savedToGalleryImages(
         imageUrl: u.image_url!,
         caption: u.caption,
         uploadId: u.upload_id,
+        userId: u.uploaderUserId,
       };
     });
 }
@@ -61,7 +65,6 @@ export function AllSavedImagesPageClient() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [displayName, setDisplayName] = useState("Member");
   const [saved, setSaved] = useState<SavedRow[]>([]);
   const [stocksBySlug, setStocksBySlug] = useState<Map<string, StockWithBrand>>(new Map());
   const [lightboxSession, setLightboxSession] = useState<{
@@ -75,8 +78,6 @@ export function AllSavedImagesPageClient() {
     try {
       const p = await getProfileFromSupabase();
       const rows = p?.savedUploads ?? [];
-      const name = p?.displayName?.trim() || user.email?.split("@")[0] || "Member";
-      setDisplayName(name);
       setSaved(rows);
       const slugs = [...new Set(rows.map((r) => r.film_stock_slug))];
       if (slugs.length === 0) {
@@ -102,8 +103,8 @@ export function AllSavedImagesPageClient() {
   }, [authLoading, user, router, load]);
 
   const galleryImages = useMemo(
-    () => savedToGalleryImages(saved, stocksBySlug, displayName),
-    [saved, stocksBySlug, displayName]
+    () => savedToGalleryImages(saved, stocksBySlug),
+    [saved, stocksBySlug]
   );
 
   const relatedStockSlides = useMemo(() => {
@@ -149,10 +150,10 @@ export function AllSavedImagesPageClient() {
         <div className="flex items-center justify-between px-4 pb-2 pt-2 sm:px-6">
           <Link
             href="/profile"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+            className={topLeftNavIconButtonClassName}
             aria-label="Back to profile"
           >
-            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </Link>
           <div className="flex shrink-0 items-center gap-0.5">
             <button

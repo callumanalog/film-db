@@ -40,6 +40,8 @@ export interface CommunityGalleryUpload {
   stockSlug: string;
   stockName: string;
   brandName: string;
+  /** `profiles.id` / auth user id of the uploader. */
+  userId: string;
   username: string;
   camera: string;
   settings: string;
@@ -122,6 +124,7 @@ export async function getAllCommunityUploadsForGallery(
       stockSlug: r.film_stock_slug,
       stockName: stock.name,
       brandName: stock.brand.name,
+      userId: r.user_id,
       username,
       camera: r.camera ?? "",
       settings: settingsParts.join(" · "),

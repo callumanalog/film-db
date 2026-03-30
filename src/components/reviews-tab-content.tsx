@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { sanitizeReviewLikeHtml } from "@/lib/sanitize-review-like-html";
 import {
   Star,
@@ -127,14 +128,17 @@ export function ReviewCard({
   return (
     <article className="py-5 first:pt-0">
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
+        <Link
+          href={`/users/${review.user_id}`}
+          className="flex min-w-0 items-center gap-2.5 rounded-md outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
+        >
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
             {reviewAuthorInitials(displayName)}
           </div>
-          <span className="text-xs font-medium text-foreground">
+          <span className="min-w-0 truncate text-xs font-medium text-foreground hover:underline">
             {displayName || "Member"}
           </span>
-        </div>
+        </Link>
         {isOwnReview && onOpenOwnReviewActions ? (
           <button
             type="button"

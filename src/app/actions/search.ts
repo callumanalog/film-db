@@ -42,6 +42,7 @@ export interface SearchShotsResult {
   brandName: string;
   imageUrl: string | null;
   username: string;
+  userId: string;
 }
 
 export interface SearchNotesResult {
@@ -126,6 +127,7 @@ export async function searchFilmsByTab(
           brandName: u.brandName,
           imageUrl: u.imageUrl,
           username: u.username,
+          userId: u.userId,
         })),
       };
     }
@@ -205,6 +207,7 @@ export async function getLatestShots(): Promise<SearchShotsResult[]> {
     brandName: u.brandName,
     imageUrl: u.imageUrl,
     username: u.username,
+    userId: u.userId,
   }));
 }
 

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { InCameraEntry } from "@/app/actions/user-actions";
+import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-batch";
 
 export interface ProfileFromDb {
   /** Unique handle (`profiles.display_name`). */
@@ -45,6 +46,8 @@ export interface ProfileFromDb {
     image_url: string | null;
     caption: string | null;
     saved_at: string;
+    uploaderUserId: string;
+    uploaderDisplayName: string | null;
   }[];
   boards: {
     id: string;
@@ -143,7 +146,7 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       supabase
         .from("saved_uploads")
         .select(
-          "id, created_at, user_uploads ( id, film_stock_slug, image_url, caption )"
+          "id, created_at, user_uploads ( id, film_stock_slug, image_url, caption, user_id )"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
@@ -250,37 +253,44 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       console.error("[get-profile] saved_uploads:", savedUploadsRes.error.message);
     }
     const savedUploadsRaw = savedUploadsRes.error ? [] : (savedUploadsRes.data ?? []);
-    const savedUploads: ProfileFromDb["savedUploads"] = [];
+    type SavedUp = {
+      id: string;
+      film_stock_slug: string;
+      image_url: string | null;
+      caption: string | null;
+      user_id: string;
+    };
+    const savedPending: {
+      savedUploadId: string;
+      saved_at: string;
+      upload: SavedUp;
+    }[] = [];
     for (const row of savedUploadsRaw as {
       id: string;
       created_at: string;
-      user_uploads:
-        | {
-            id: string;
-            film_stock_slug: string;
-            image_url: string | null;
-            caption: string | null;
-          }
-        | {
-            id: string;
-            film_stock_slug: string;
-            image_url: string | null;
-            caption: string | null;
-          }[]
-        | null;
+      user_uploads: SavedUp | SavedUp[] | null;
     }[]) {
       const raw = row.user_uploads;
       const up = Array.isArray(raw) ? raw[0] : raw;
       if (!up) continue;
-      savedUploads.push({
+      savedPending.push({
         savedUploadId: row.id as string,
-        upload_id: up.id,
-        film_stock_slug: up.film_stock_slug,
-        image_url: up.image_url,
-        caption: up.caption,
         saved_at: row.created_at,
+        upload: up,
       });
     }
+    const uploaderIds = [...new Set(savedPending.map((p) => p.upload.user_id).filter(Boolean))];
+    const uploaderNames = await fetchDisplayNamesByUserIds(uploaderIds);
+    const savedUploads: ProfileFromDb["savedUploads"] = savedPending.map((p) => ({
+      savedUploadId: p.savedUploadId,
+      upload_id: p.upload.id,
+      film_stock_slug: p.upload.film_stock_slug,
+      image_url: p.upload.image_url,
+      caption: p.upload.caption,
+      saved_at: p.saved_at,
+      uploaderUserId: p.upload.user_id,
+      uploaderDisplayName: uploaderNames.get(p.upload.user_id) ?? null,
+    }));
 
     let boards: ProfileFromDb["boards"] = [];
     if (boardSummariesRes.error) {
@@ -513,6 +523,189 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
     };
   } catch (err) {
     console.error("[get-profile] unexpected error:", err);
+    return null;
+  }
+}
+
+const MEMBER_PROFILE_USER_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Public profile payload for `/users/[userId]`: profile row, community scans, and stock lists they created.
+ * Boards, saved lists, shot/shootlist, and other private graph data are omitted (empty arrays).
+ */
+export async function getMemberProfileByUserId(targetUserId: string): Promise<ProfileFromDb | null> {
+  const id = targetUserId?.trim();
+  if (!id || !MEMBER_PROFILE_USER_ID_RE.test(id)) return null;
+
+  try {
+    const supabase = await createClient();
+
+    const [profileRes, uploadsRes, listsRes] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select(
+          "display_name, full_name, bio, avatar_url, instagram_url, website_url, followers_count, following_count"
+        )
+        .eq("id", id)
+        .maybeSingle(),
+      supabase
+        .from("user_uploads")
+        .select(
+          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id"
+        )
+        .eq("user_id", id)
+        .order("created_at", { ascending: false }),
+      supabase.from("stock_lists").select("id, title, updated_at").eq("user_id", id).order("updated_at", { ascending: false }),
+    ]);
+
+    if (profileRes.error || !profileRes.data) {
+      if (profileRes.error) console.error("[get-member-profile] profiles:", profileRes.error.message);
+      return null;
+    }
+
+    const profileRow = profileRes.data as {
+      display_name?: string | null;
+      full_name?: string | null;
+      bio?: string | null;
+      avatar_url?: string | null;
+      instagram_url?: string | null;
+      website_url?: string | null;
+      followers_count?: number | null;
+      following_count?: number | null;
+    };
+
+    const displayName = profileRow.display_name?.trim() || "Member";
+    const fullName = profileRow.full_name?.trim() ? profileRow.full_name.trim() : null;
+    const bio = profileRow.bio?.trim() ? profileRow.bio.trim() : null;
+    const avatarUrl = profileRow.avatar_url?.trim() ? profileRow.avatar_url.trim() : null;
+    const instagramUrl = profileRow.instagram_url?.trim() ? profileRow.instagram_url.trim() : null;
+    const websiteUrl = profileRow.website_url?.trim() ? profileRow.website_url.trim() : null;
+    const followersCount = Math.max(0, Number(profileRow.followers_count ?? 0));
+    const followingCount = Math.max(0, Number(profileRow.following_count ?? 0));
+
+    if (uploadsRes.error) {
+      console.error("[get-member-profile] user_uploads:", uploadsRes.error.message);
+    }
+
+    const uploads = (uploadsRes.data ?? []).map((u) => ({
+      id: u.id as string,
+      film_stock_slug: u.film_stock_slug as string,
+      image_url: u.image_url as string | null,
+      caption: u.caption as string | null,
+      created_at: u.created_at as string,
+      upload_batch_id: (u as { upload_batch_id?: string | null }).upload_batch_id ?? null,
+    }));
+
+    let createdStockLists: ProfileFromDb["createdStockLists"] = [];
+    const listRows = listsRes.error ? [] : (listsRes.data ?? []);
+    if (listsRes.error) {
+      console.error("[get-member-profile] stock_lists:", listsRes.error.message);
+    }
+
+    const listIds = listRows.map((r) => (r as { id: string }).id);
+    if (listIds.length > 0) {
+      const { data: itemRows, error: itemsErr } = await supabase
+        .from("stock_list_items")
+        .select("list_id, sort_order, film_stock_slug")
+        .in("list_id", listIds);
+
+      if (itemsErr) {
+        console.error("[get-member-profile] stock_list_items:", itemsErr.message);
+        const emptyPreviewsFallback = (): (string | null)[] => [null, null, null, null, null];
+        createdStockLists = listRows.map((raw) => {
+          const r = raw as { id: string; title: string; updated_at: string };
+          return {
+            id: r.id,
+            title: r.title,
+            updatedAt: r.updated_at,
+            itemCount: 0,
+            previewUrls: emptyPreviewsFallback(),
+          };
+        });
+      } else {
+        type ItemRow = { list_id: string; sort_order: number; film_stock_slug: string };
+        const sorted = [...(itemRows ?? [])] as ItemRow[];
+        sorted.sort((a, b) => {
+          if (a.list_id !== b.list_id) return a.list_id.localeCompare(b.list_id);
+          return a.sort_order - b.sort_order;
+        });
+
+        const countByListId = new Map<string, number>();
+        const slugsByList = new Map<string, string[]>();
+        const slugSet = new Set<string>();
+        for (const r of sorted) {
+          countByListId.set(r.list_id, (countByListId.get(r.list_id) ?? 0) + 1);
+          const arr = slugsByList.get(r.list_id) ?? [];
+          if (arr.length < 5) {
+            arr.push(r.film_stock_slug);
+            slugsByList.set(r.list_id, arr);
+            slugSet.add(r.film_stock_slug);
+          }
+        }
+
+        const previewUrlsByListId = new Map<string, (string | null)[]>();
+        const emptyPreviews = (): (string | null)[] => [null, null, null, null, null];
+
+        if (slugSet.size > 0) {
+          const { data: stocks } = await supabase
+            .from("film_stocks")
+            .select("slug, image_url")
+            .in("slug", [...slugSet]);
+          const imgBySlug = new Map<string, string | null>();
+          for (const st of stocks ?? []) {
+            imgBySlug.set((st as { slug: string }).slug, (st as { image_url: string | null }).image_url);
+          }
+          for (const lid of listIds) {
+            const slugs = slugsByList.get(lid) ?? [];
+            const urls = slugs.map((slug) => {
+              const u = imgBySlug.get(slug);
+              return u?.trim() ? u.trim() : null;
+            });
+            while (urls.length < 5) urls.push(null);
+            previewUrlsByListId.set(lid, urls);
+          }
+        }
+
+        createdStockLists = listRows.map((raw) => {
+          const r = raw as { id: string; title: string; updated_at: string };
+          return {
+            id: r.id,
+            title: r.title,
+            updatedAt: r.updated_at,
+            itemCount: countByListId.get(r.id) ?? 0,
+            previewUrls: previewUrlsByListId.get(r.id) ?? emptyPreviews(),
+          };
+        });
+      }
+    }
+
+    return {
+      displayName,
+      fullName,
+      bio,
+      avatarUrl,
+      instagramUrl,
+      websiteUrl,
+      followersCount,
+      followingCount,
+      shotSlugs: [],
+      favouriteSlugs: [],
+      inCameraEntries: [],
+      ratings: {},
+      reviewCount: 0,
+      uploadCount: uploads.length,
+      reviews: [],
+      uploads,
+      likedReviews: [],
+      savedUploads: [],
+      likedUploads: [],
+      boards: [],
+      createdStockLists,
+      savedStockLists: [],
+    };
+  } catch (err) {
+    console.error("[get-member-profile] unexpected error:", err);
     return null;
   }
 }

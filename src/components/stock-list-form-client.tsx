@@ -14,6 +14,7 @@ import {
 } from "@/app/actions/stock-lists";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
 import { Button } from "@/components/ui/button";
@@ -263,7 +264,13 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
       if (mode === "create") {
         const res = await createStockList(t, description.trim() || null, finalTags, slugs);
         if (!res.ok) {
-          showToastViaEvent(res.error === "validation" ? "Check the form and try again." : "Could not create list.");
+          const createMsg =
+            res.error === "validation"
+              ? "Check the form and try again."
+              : res.error === "unknown_film_slug"
+                ? "One or more films aren’t in our catalog. Refresh the page and try again."
+                : "Could not create list.";
+          showToastViaEvent(createMsg);
           return;
         }
         showToastViaEvent("List published.");
@@ -279,7 +286,11 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
         }
         const rep = await replaceStockListItems(id, slugs);
         if (!rep.ok) {
-          showToastViaEvent("Could not update stocks in list.");
+          showToastViaEvent(
+            rep.error === "unknown_film_slug"
+              ? "One or more films aren’t in our catalog. Refresh the page and try again."
+              : "Could not update stocks in list."
+          );
           return;
         }
         showToastViaEvent("List updated.");
@@ -335,10 +346,10 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
           <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-4 sm:h-16 sm:px-6">
             <Link
               href={mode === "edit" && listId ? `/lists/${listId}` : "/profile"}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+              className={topLeftNavIconButtonClassName}
               aria-label="Back"
             >
-              <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
             </Link>
             <h1 className="min-w-0 flex-1 text-center font-sans text-base font-semibold text-foreground sm:text-lg">
               {headerTitle}

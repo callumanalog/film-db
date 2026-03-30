@@ -25,6 +25,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
 import { SITE_NAME } from "@/lib/site";
+import { topLeftNavChevronIconClassName, topLeftNavIconTouchClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -247,10 +248,10 @@ export function ProfileEditSheet({
           <button
             type="button"
             onClick={headerBack}
-            className="absolute left-1 flex h-10 w-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+            className={cn("absolute left-0 top-1/2 -translate-y-1/2", topLeftNavIconTouchClassName)}
             aria-label={screen === "menu" ? "Close account" : "Back"}
           >
-            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </button>
           <h2 className="font-sans text-base font-semibold tracking-tight text-foreground">{headerTitle}</h2>
         </header>

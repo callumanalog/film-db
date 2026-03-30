@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import type { StockListFilmRow } from "@/app/actions/stock-lists";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
 
 export function FilmStockListsAllClient({
@@ -23,10 +24,10 @@ export function FilmStockListsAllClient({
         <div className="flex items-center px-4 pb-2 pt-2 sm:px-6">
           <Link
             href={`/films/${filmSlug}`}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+            className={topLeftNavIconButtonClassName}
             aria-label="Back to film"
           >
-            <ChevronLeft className="h-6 w-6" strokeWidth={2} />
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </Link>
         </div>
         <div className="px-4 pb-4 pt-0 sm:px-6">

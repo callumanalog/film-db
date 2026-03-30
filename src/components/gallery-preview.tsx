@@ -175,6 +175,7 @@ export function GalleryPreview({
       lightbox: {
         imageUrl: u.image_url!,
         uploadId: u.id,
+        userId: u.user_id,
         alt:
           plainTextFromPossibleHtml(u.caption ?? "").slice(0, 240) ||
           `${stockName} · ${u.display_name ?? "Member"}`,

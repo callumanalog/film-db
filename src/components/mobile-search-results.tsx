@@ -179,7 +179,7 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                 {(result.users as SearchUsersResult[]).map((u) => (
                   <SearchListCard
                     key={u.id}
-                    href={`/profile/${u.id}`}
+                    href={`/users/${u.id}`}
                     thumb={
                       <div className="flex h-full w-full items-center justify-center rounded-md bg-slate-200 text-sm font-semibold text-slate-600">
                         {(u.display_name ?? "?").slice(0, 2).toUpperCase()}
@@ -193,28 +193,38 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
             {activeTab === "shots" && result?.shots && (
               <div className="grid grid-cols-2 gap-3 pt-2">
                 {(result.shots as SearchShotsResult[]).map((s) => (
-                  <Link
+                  <div
                     key={s.id}
-                    href={`/films/${s.stockSlug}?shot=${s.id}`}
-                    className="block overflow-hidden rounded-md border border-border/50 bg-card"
+                    className="overflow-hidden rounded-md border border-border/50 bg-card"
                   >
-                    <div className="relative aspect-[3/4] w-full bg-slate-100">
-                      {s.imageUrl ? (
-                        <Image
-                          src={s.imageUrl}
-                          alt={s.stockName ?? "Shot"}
-                          fill
-                          className="object-cover"
-                          sizes="50vw"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-slate-100" />
-                      )}
+                    <Link
+                      href={`/films/${s.stockSlug}?shot=${s.id}`}
+                      className="block"
+                    >
+                      <div className="relative aspect-[3/4] w-full bg-slate-100">
+                        {s.imageUrl ? (
+                          <Image
+                            src={s.imageUrl}
+                            alt={s.stockName ?? "Shot"}
+                            fill
+                            className="object-cover"
+                            sizes="50vw"
+                          />
+                        ) : (
+                          <div className="h-full w-full bg-slate-100" />
+                        )}
+                      </div>
+                    </Link>
+                    <div className="space-y-0.5 px-2 py-1.5">
+                      <Link
+                        href={`/users/${s.userId}`}
+                        className="block truncate text-xs font-medium text-primary hover:underline"
+                      >
+                        {s.username}
+                      </Link>
+                      <p className="truncate text-[11px] text-muted-foreground">{s.stockName}</p>
                     </div>
-                    <p className="truncate px-2 py-1.5 text-xs font-medium text-foreground">
-                      {s.stockName}
-                    </p>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}

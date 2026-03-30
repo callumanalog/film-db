@@ -7,6 +7,7 @@ import { ChevronDown, ChevronLeft, Search, SlidersHorizontal, X, Sun, Heart, Cam
 import type { FilmBrand } from "@/lib/types";
 import type { FilmFilterOptions } from "@/lib/supabase/queries";
 import { DISCOVERY_PILLS } from "@/lib/discovery-vibes";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { FilterSidebar } from "@/components/filter-sidebar";
 import { ClearFiltersLink } from "@/components/clear-filters-link";
 import { FilmsSortBar } from "@/components/films-sort-bar";
@@ -528,9 +529,9 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
                 type="button"
                 onClick={closeMobileSearchDrawer}
                 aria-label="Close search"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card text-muted-foreground hover:bg-secondary hover:text-foreground"
+                className={topLeftNavIconButtonClassName}
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
               </button>
               <form role="search" onSubmit={handleMobileSearchSubmit} className="min-w-0 flex-1" id="mobile-search-form">
                 <div className="flex h-[52px] items-center gap-2 rounded-card border border-border bg-background px-4">

@@ -79,6 +79,8 @@ export interface GalleryImage extends SampleImage {
   uploadBatchId?: string | null;
   /** Set for real `user_uploads` rows (Discover/Community); omit for seeded sample images. */
   uploadId?: string | null;
+  /** Uploader `profiles.id` when this row is a real community upload. */
+  userId?: string | null;
   /** From user_uploads.save_count for real community rows. */
   saves?: number;
 }

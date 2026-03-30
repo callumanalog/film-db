@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { SAMPLE_GALLERY } from "@/lib/sample-images";
 import type { FlickrPhoto } from "@/lib/flickr";
 import { ReviewsTabContent } from "@/components/reviews-tab-content";
@@ -30,6 +31,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { LazyImage } from "@/components/lazy-image";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
+import { useAuth } from "@/context/auth-context";
 import {
   collectLightboxSlidesFromFilmUploads,
   relatedFilmPageLightboxSlides,
@@ -244,6 +246,7 @@ export function CommunityGallery({
   variant?: "tab";
 }) {
   const useFlickr = flickrImages.length > 0;
+  const { user: authUser } = useAuth();
   const [view, setView] = useState<GalleryView>(useFlickr ? "flickr" : "community");
   const [sort, setSort] = useState<string>("newest");
   const [communityUploads, setCommunityUploads] = useState<FilmUploadRow[]>([]);
@@ -423,9 +426,13 @@ export function CommunityGallery({
                   className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"
                   aria-hidden
                 />
-                <p className="absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
+                <Link
+                  href={`/users/${u.user_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-2 left-2 right-20 z-10 truncate text-xs font-medium text-white drop-shadow-sm hover:underline"
+                >
                   {displayName}
-                </p>
+                </Link>
                 <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Like">
                     <Heart className="h-3.5 w-3.5" />
@@ -458,7 +465,11 @@ export function CommunityGallery({
                 slug
               );
               setLightboxSession({
-                slides: slides.map((s) => ({ ...s, username: "You" })),
+                slides: slides.map((s) => ({
+                  ...s,
+                  username: "You",
+                  userId: authUser?.id ?? null,
+                })),
                 initialIndex,
               });
             }}
@@ -476,9 +487,19 @@ export function CommunityGallery({
                   className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/50 via-black/10 to-transparent pointer-events-none"
                   aria-hidden
                 />
-                <p className="absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
-                  You
-                </p>
+                {authUser?.id ? (
+                  <Link
+                    href={`/users/${authUser.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-2 left-2 right-20 z-10 truncate text-xs font-medium text-white drop-shadow-sm hover:underline"
+                  >
+                    You
+                  </Link>
+                ) : (
+                  <p className="absolute bottom-2 left-2 right-20 text-xs font-medium text-white drop-shadow-sm truncate">
+                    You
+                  </p>
+                )}
                 <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   <button type="button" onClick={(e) => e.stopPropagation()} className="rounded-full bg-black/40 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/50" aria-label="Like">
                     <Heart className="h-3.5 w-3.5" />

@@ -56,6 +56,36 @@ function normalizeTags(raw: string[]): string[] {
   return out;
 }
 
+type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
+
+/** Every slug must exist on `film_stocks` or list items insert fails with an opaque FK error. */
+async function assertAllFilmSlugsExist(supabase: ServerSupabase, slugs: string[]): Promise<boolean> {
+  if (slugs.length === 0) return true;
+  const IN_CHUNK = 80;
+  const missing = new Set(slugs);
+  for (let i = 0; i < slugs.length; i += IN_CHUNK) {
+    const chunk = slugs.slice(i, i + IN_CHUNK);
+    const { data, error } = await supabase.from("film_stocks").select("slug").in("slug", chunk);
+    if (error) {
+      console.error("[assertAllFilmSlugsExist]", error.message);
+      return false;
+    }
+    for (const row of data ?? []) {
+      missing.delete((row as { slug: string }).slug);
+    }
+  }
+  if (missing.size > 0) {
+    console.error("[assertAllFilmSlugsExist] unknown slugs:", [...missing]);
+    return false;
+  }
+  return true;
+}
+
+function isFkViolationMessage(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return m.includes("foreign key") || m.includes("23503") || m.includes("_fkey");
+}
+
 export async function listMyStockListsForPicker(): Promise<StockListPickerRow[]> {
   const supabase = await createClient();
   const {
@@ -82,7 +112,10 @@ export async function listMyStockListsForPicker(): Promise<StockListPickerRow[]>
 
 export type CreateStockListResult =
   | { ok: true; listId: string }
-  | { ok: false; error: "sign_in_required" | "validation" | string };
+  | {
+      ok: false;
+      error: "sign_in_required" | "validation" | "unknown_film_slug" | string;
+    };
 
 export async function createStockList(
   title: string,
@@ -103,6 +136,9 @@ export async function createStockList(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "sign_in_required" };
 
+  const slugsOk = await assertAllFilmSlugsExist(supabase, slugs);
+  if (!slugsOk) return { ok: false, error: "unknown_film_slug" };
+
   const { data: listRow, error: insErr } = await supabase
     .from("stock_lists")
     .insert({
@@ -120,17 +156,22 @@ export async function createStockList(
   }
 
   const listId = listRow.id as string;
-  const items = slugs.map((slug, i) => ({
-    list_id: listId,
-    film_stock_slug: slug,
-    sort_order: i,
-  }));
 
-  const { error: itemsErr } = await supabase.from("stock_list_items").insert(items);
-  if (itemsErr) {
-    console.error("[createStockList] items", itemsErr.message);
-    await supabase.from("stock_lists").delete().eq("id", listId);
-    return { ok: false, error: itemsErr.message };
+  for (let i = 0; i < slugs.length; i++) {
+    const slug = slugs[i]!;
+    const { error: rowErr } = await supabase.from("stock_list_items").insert({
+      list_id: listId,
+      film_stock_slug: slug,
+      sort_order: i,
+    });
+    if (rowErr) {
+      console.error("[createStockList] item row", i, slug, rowErr.message);
+      await supabase.from("stock_lists").delete().eq("id", listId);
+      return {
+        ok: false,
+        error: isFkViolationMessage(rowErr.message) ? "unknown_film_slug" : rowErr.message,
+      };
+    }
   }
 
   revalidateListPaths(listId, slugs);
@@ -193,6 +234,9 @@ export async function replaceStockListItems(listId: string, orderedSlugs: string
   const { data: own } = await supabase.from("stock_lists").select("id").eq("id", id).eq("user_id", user.id).maybeSingle();
   if (!own) return { ok: false, error: "not_found" };
 
+  const slugsOk = await assertAllFilmSlugsExist(supabase, slugs);
+  if (!slugsOk) return { ok: false, error: "unknown_film_slug" };
+
   const { error: delErr } = await supabase.from("stock_list_items").delete().eq("list_id", id);
   if (delErr) {
     console.error("[replaceStockListItems] delete", delErr.message);
@@ -207,7 +251,10 @@ export async function replaceStockListItems(listId: string, orderedSlugs: string
   const { error: insErr } = await supabase.from("stock_list_items").insert(items);
   if (insErr) {
     console.error("[replaceStockListItems] insert", insErr.message);
-    return { ok: false, error: insErr.message };
+    return {
+      ok: false,
+      error: isFkViolationMessage(insErr.message) ? "unknown_film_slug" : insErr.message,
+    };
   }
 
   revalidateListPaths(id, slugs);
@@ -341,6 +388,7 @@ export type StockListDetailPayload =
         title: string;
         description: string | null;
         tags: string[];
+        createdAt: string;
         updatedAt: string;
         ownerUserId: string;
       };
@@ -355,7 +403,7 @@ export async function getStockListDetailForViewer(listId: string): Promise<Stock
   const supabase = await createClient();
   const { data: list, error: lErr } = await supabase
     .from("stock_lists")
-    .select("id, title, description, tags, updated_at, user_id")
+    .select("id, title, description, tags, created_at, updated_at, user_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -381,6 +429,7 @@ export async function getStockListDetailForViewer(listId: string): Promise<Stock
       title: list.title as string,
       description: (list.description as string | null) ?? null,
       tags: Array.isArray(list.tags) ? (list.tags as string[]) : [],
+      createdAt: list.created_at as string,
       updatedAt: list.updated_at as string,
       ownerUserId: list.user_id as string,
     },

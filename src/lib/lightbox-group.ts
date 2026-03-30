@@ -78,6 +78,7 @@ export function galleryImageToLightbox(img: GalleryImage): ImageLightboxData | u
   return {
     imageUrl: img.imageUrl,
     uploadId: img.uploadId?.trim() || null,
+    userId: img.userId?.trim() || null,
     alt: altFromCaption || `${img.stockName} · ${img.username}`,
     caption: img.caption,
     username: img.username,
@@ -120,6 +121,7 @@ export function filmUploadToLightboxData(
   return {
     imageUrl: u.image_url,
     uploadId: u.id,
+    userId: u.user_id?.trim() || null,
     alt: altFromCaption || `${stockName} · ${u.display_name ?? "Member"}`,
     caption: u.caption,
     username: u.display_name?.trim() || "Member",
