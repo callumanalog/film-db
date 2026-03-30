@@ -3,19 +3,14 @@
 import { useMemo, useState } from "react";
 
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
-import {
-  Camera,
-  Star,
-  StarHalf,
-  ChevronRight,
-  Share,
-  Settings,
-} from "lucide-react";
+import { Camera, Share, Menu, Instagram } from "lucide-react";
 import { FilmCard } from "@/components/film-card";
 import { FilmDetailTabs } from "@/components/film-page-tabs";
 import { ProfileEditSheet } from "@/components/profile-edit-sheet";
 import { showToastViaEvent } from "@/components/toast";
+import { BoardFormSheet } from "@/components/board-form-sheet";
 import { FilmNativeMasonryGrid } from "@/components/film-native-grid";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import type { FilmStock, FilmBrand } from "@/lib/types";
@@ -32,47 +27,15 @@ import {
 
 type StockWithBrand = FilmStock & { brand: FilmBrand };
 
-function formatReviewDate(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const days = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  if (days < 1) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} week(s) ago`;
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
-
-function MiniStars({ rating, size = 14 }: { rating: number; size?: number }) {
-  const full = Math.floor(rating);
-  const hasHalf = rating - full >= 0.25 && rating - full < 0.75;
-  const adjusted = rating - full >= 0.75 ? full + 1 : full;
-  const empty = 5 - adjusted - (hasHalf ? 1 : 0);
-  return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: adjusted }).map((_, i) => (
-        <Star key={`f-${i}`} className="text-amber-400 fill-amber-400" style={{ width: size, height: size }} />
-      ))}
-      {hasHalf && (
-        <div className="relative" style={{ width: size, height: size }}>
-          <Star className="absolute text-amber-400/30" style={{ width: size, height: size }} />
-          <StarHalf className="absolute text-amber-400 fill-amber-400" style={{ width: size, height: size }} />
-        </div>
-      )}
-      {Array.from({ length: empty }).map((_, i) => (
-        <Star key={`e-${i}`} className="text-amber-400/30" style={{ width: size, height: size }} />
-      ))}
-    </div>
-  );
-}
-
 export interface ProfileData {
   /** Unique handle (profiles.display_name). */
   displayName: string;
   /** Optional friendly name (profiles.full_name). */
   fullName: string | null;
   bio: string | null;
+  avatarUrl?: string | null;
+  instagramUrl?: string | null;
+  websiteUrl?: string | null;
   followersCount: number;
   followingCount: number;
   shotSlugs: string[];
@@ -99,11 +62,22 @@ export interface ProfileData {
     liked_at: string;
   }[];
   savedUploads?: {
+    savedUploadId: string;
     upload_id: string;
     film_stock_slug: string;
     image_url: string | null;
     caption: string | null;
     saved_at: string;
+  }[];
+  boards?: {
+    id: string;
+    name: string;
+    description: string | null;
+    updatedAt: string;
+    itemCount: number;
+    coverUrl: string | null;
+    coverUrl2: string | null;
+    coverUrl3: string | null;
   }[];
   likedUploads?: {
     upload_id: string;
@@ -157,6 +131,254 @@ function StockGrid({ slugs, stocksBySlug }: { slugs: string[]; stocksBySlug: Map
         if (!stock) return null;
         return <FilmCard key={slug} stock={stock} />;
       })}
+    </div>
+  );
+}
+
+function ProfileFilmSubTabs({
+  favouriteSlugs,
+  shotSlugs,
+  stocksBySlug,
+}: {
+  favouriteSlugs: string[];
+  shotSlugs: string[];
+  stocksBySlug: Map<string, StockWithBrand>;
+}) {
+  const [filmSubTab, setFilmSubTab] = useState<"shootlist" | "shot">("shootlist");
+
+  return (
+    <div className="min-w-0 w-full">
+      <nav
+        className="mb-4 flex min-w-0 flex-nowrap gap-6 overflow-x-auto overscroll-x-contain border-b border-border/50 pb-px [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Film view"
+      >
+        {(
+          [
+            { id: "shootlist" as const, label: "Shootlist" },
+            { id: "shot" as const, label: "Shot" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setFilmSubTab(t.id)}
+            className={cn(
+              "relative shrink-0 pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap",
+              filmSubTab === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {t.label}
+            {filmSubTab === t.id ? (
+              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
+            ) : null}
+          </button>
+        ))}
+      </nav>
+      {filmSubTab === "shootlist" ? (
+        <ProfileSection
+          emptyMessage="Nothing on your Shootlist yet. Tap the bookmark on any film page."
+          isEmpty={favouriteSlugs.length === 0}
+        >
+          <StockGrid slugs={favouriteSlugs} stocksBySlug={stocksBySlug} />
+        </ProfileSection>
+      ) : (
+        <ProfileSection emptyMessage="No stocks marked as shot yet." isEmpty={shotSlugs.length === 0}>
+          <StockGrid slugs={shotSlugs} stocksBySlug={stocksBySlug} />
+        </ProfileSection>
+      )}
+    </div>
+  );
+}
+
+type SavedUploadRow = NonNullable<ProfileData["savedUploads"]>[number];
+
+type BoardSummary = NonNullable<ProfileData["boards"]>[number];
+
+/** Profile board tile: ~2/3 + ~1/3×2 collage when ≥3 items (white gutters like masonry). */
+function BoardPreviewCollage({
+  itemCount,
+  coverUrl,
+  coverUrl2,
+  coverUrl3,
+}: {
+  itemCount: number;
+  coverUrl: string | null;
+  coverUrl2: string | null;
+  coverUrl3: string | null;
+}) {
+  if (!coverUrl) {
+    return <div className="absolute inset-0 bg-muted" aria-hidden />;
+  }
+
+  if (itemCount < 3) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={coverUrl}
+        alt=""
+        className="absolute inset-0 m-auto h-full w-full max-h-full max-w-full object-contain"
+      />
+    );
+  }
+
+  const left = coverUrl;
+  const topRight = coverUrl2 ?? coverUrl;
+  const bottomRight = coverUrl3 ?? coverUrl2 ?? coverUrl;
+
+  return (
+    <div className="absolute inset-0 flex gap-px bg-white" aria-hidden>
+      <div className="relative min-h-0 min-w-0 flex-[2] overflow-hidden bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={left} alt="" className="h-full w-full object-cover" sizes="66vw" />
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-px bg-white">
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={topRight} alt="" className="h-full w-full object-cover" sizes="33vw" />
+        </div>
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={bottomRight} alt="" className="h-full w-full object-cover" sizes="33vw" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileBoardsContent({
+  savedUploads,
+  boards,
+  onBoardsChanged,
+}: {
+  savedUploads: SavedUploadRow[];
+  boards: BoardSummary[];
+  onBoardsChanged?: () => void | Promise<void>;
+}) {
+  const [createBoardOpen, setCreateBoardOpen] = useState(false);
+  const count = savedUploads.length;
+  const coverUrl = savedUploads.find((u) => u.image_url)?.image_url ?? null;
+
+  const overlayCopy = (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-3 pt-8">
+      <div className="flex min-w-0 items-end justify-between gap-3">
+        <h4 className="m-0 min-w-0 font-sans text-sm font-semibold tracking-tight text-white [overflow-wrap:anywhere]">
+          All saved scans
+        </h4>
+        <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-black/50 px-2 text-xs font-semibold tabular-nums text-white backdrop-blur-[2px]">
+          {count}
+        </span>
+      </div>
+    </div>
+  );
+
+  const allSavedTile =
+    count > 0 ? (
+      <Link
+        href="/profile/boards/all"
+        className={cn(
+          "relative block aspect-[3/2] min-h-0 min-w-0 w-full overflow-hidden rounded-none bg-muted text-left",
+          "ring-offset-background transition-opacity hover:opacity-[0.98] active:opacity-90",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        )}
+        aria-label={`All saved scans, ${count} ${count === 1 ? "item" : "items"}`}
+      >
+        {coverUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={coverUrl}
+            alt=""
+            className="absolute inset-0 m-auto h-full w-full max-h-full max-w-full object-contain"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-muted" aria-hidden />
+        )}
+        {overlayCopy}
+      </Link>
+    ) : (
+      <div
+        className="relative aspect-[3/2] min-h-0 min-w-0 w-full overflow-hidden rounded-none bg-muted"
+        aria-label="All saved scans, empty"
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" aria-hidden />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-3 pb-3 pt-8">
+          <div className="flex min-w-0 items-end justify-between gap-3">
+            <h4 className="m-0 min-w-0 font-sans text-sm font-semibold tracking-tight text-white/90 [overflow-wrap:anywhere]">
+              All saved scans
+            </h4>
+            <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-black/40 px-2 text-xs font-semibold tabular-nums text-white">
+              0
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+
+  const boardTiles = boards.map((b) => {
+    const overlay = (
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-3 pt-8">
+        <div className="flex min-w-0 items-end justify-between gap-3">
+          <h4 className="m-0 min-w-0 font-sans text-sm font-semibold tracking-tight text-white [overflow-wrap:anywhere]">
+            {b.name}
+          </h4>
+          <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full bg-black/50 px-2 text-xs font-semibold tabular-nums text-white backdrop-blur-[2px]">
+            {b.itemCount}
+          </span>
+        </div>
+      </div>
+    );
+    return (
+      <Link
+        key={b.id}
+        href={`/profile/boards/${b.id}`}
+        className={cn(
+          "relative block aspect-[3/2] min-h-0 min-w-0 w-full overflow-hidden rounded-none bg-muted text-left",
+          "ring-offset-background transition-opacity hover:opacity-[0.98] active:opacity-90",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        )}
+        aria-label={`${b.name}, ${b.itemCount} ${b.itemCount === 1 ? "scan" : "scans"}`}
+      >
+        <BoardPreviewCollage
+          itemCount={b.itemCount}
+          coverUrl={b.coverUrl}
+          coverUrl2={b.coverUrl2 ?? null}
+          coverUrl3={b.coverUrl3 ?? null}
+        />
+        {overlay}
+      </Link>
+    );
+  });
+
+  return (
+    <div>
+      <BoardFormSheet
+        open={createBoardOpen}
+        onOpenChange={setCreateBoardOpen}
+        mode="create"
+        onSuccess={() => void onBoardsChanged?.()}
+      />
+      {/* Same full-bleed pattern as ProfileScansMasonry / Discover masonry (no mobile negative margins — avoids overflow-x clip). */}
+      <div className="min-w-0 w-full max-w-full sm:-mx-6 sm:w-[calc(100%+3rem)] sm:max-w-none">
+        <div className="flex w-full min-w-0 flex-col gap-2 sm:gap-3 md:gap-4">
+          <div className="min-h-0 min-w-0 w-full">{allSavedTile}</div>
+          {boardTiles}
+          <div className="px-4 sm:px-6">
+            <button
+              type="button"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 text-sm font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-muted/50 hover:text-primary dark:border-border dark:shadow-none"
+              onClick={() => setCreateBoardOpen(true)}
+            >
+              Create board
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {count === 0 ? (
+        <p className="mt-6 px-4 text-center text-sm text-muted-foreground sm:px-0">
+          You haven&apos;t saved any community images to your boards yet. Open Discover or Community, open an image,
+          and tap Save.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -271,38 +493,53 @@ export function ProfileView({
   const headline = hasFriendlyName ? profile.fullName!.trim() : profile.displayName;
 
   return (
-    <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-6 overflow-x-hidden overflow-y-visible md:min-h-0 md:flex-none md:gap-8 md:overflow-visible">
-      <div className="sticky top-0 z-30 flex min-w-0 items-center justify-between bg-background/90 px-0 pb-2.5 pt-[env(safe-area-inset-top,0px)] backdrop-blur-md">
-        <button
-          type="button"
-          onClick={() => shareProfileUrl(userId)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
-          aria-label="Share profile"
-        >
-          <Share className="h-5 w-5" strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          onClick={() => setSettingsOpen(true)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
-          aria-label="Profile settings"
-        >
-          <Settings className="h-5 w-5" strokeWidth={2} />
-        </button>
+    <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col gap-6 overflow-x-hidden overflow-y-visible bg-white dark:bg-background md:min-h-0 md:flex-none md:gap-8 md:overflow-visible">
+      <div
+        className="sticky top-0 z-30 w-full min-w-0 bg-white/90 backdrop-blur-md dark:bg-background/90"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <div className="mx-auto flex min-h-0 min-w-0 max-w-full items-center justify-between px-4 py-0 sm:px-0">
+          <button
+            type="button"
+            onClick={() => shareProfileUrl(userId)}
+            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Share profile"
+          >
+            <Share className="h-6 w-6" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Account menu"
+          >
+            <Menu className="h-6 w-6" strokeWidth={2} />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4 px-4 sm:px-0">
         <div className="flex items-start gap-4">
-          <div
-            className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xl font-bold text-primary"
-            aria-hidden
-          >
-            {profileInitials(headline)}
-          </div>
+          {profile.avatarUrl ? (
+            <Image
+              src={profile.avatarUrl}
+              alt=""
+              width={60}
+              height={60}
+              className="size-[60px] shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="flex size-[60px] shrink-0 items-center justify-center rounded-full bg-primary/15 text-base font-bold text-primary"
+              aria-hidden
+            >
+              {profileInitials(headline)}
+            </div>
+          )}
           <div className="min-w-0 flex-1 pt-0.5">
-            <h1 className="font-sans text-2xl font-bold tracking-tight text-foreground">{headline}</h1>
+            <h2 className="font-sans text-xl font-bold leading-tight tracking-tight text-foreground">{headline}</h2>
             {hasFriendlyName ? (
-              <p className="mt-0.5 text-sm font-medium text-muted-foreground">{handleLabel}</p>
+              <p className="mt-0 text-sm font-medium leading-tight text-muted-foreground">{handleLabel}</p>
             ) : null}
           </div>
         </div>
@@ -316,6 +553,31 @@ export function ProfileView({
         {profile.bio?.trim() ? (
           <p className="max-w-prose text-sm leading-relaxed text-foreground">{profile.bio.trim()}</p>
         ) : null}
+        {(profile.instagramUrl || profile.websiteUrl) && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {profile.instagramUrl ? (
+              <a
+                href={profile.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-2 hover:underline"
+              >
+                <Instagram className="h-4 w-4 shrink-0" aria-hidden />
+                Instagram
+              </a>
+            ) : null}
+            {profile.websiteUrl ? (
+              <a
+                href={profile.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Website
+              </a>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <ProfileEditSheet
@@ -324,12 +586,16 @@ export function ProfileView({
         handle={handleLabel}
         fullName={profile.fullName ?? ""}
         bio={profile.bio ?? ""}
+        avatarUrl={profile.avatarUrl ?? null}
+        instagramUrl={profile.instagramUrl ?? null}
+        websiteUrl={profile.websiteUrl ?? null}
         onSaved={onProfileUpdated}
       />
 
       {/* Tabs */}
       <FilmDetailTabs
         defaultId="scans"
+        fullWidthTabBar
         pinTabPanelOnMobile
         pinTabBarClassName="px-4 sm:px-0"
         tabs={[
@@ -353,26 +619,15 @@ export function ProfileView({
             ),
           },
           {
-            id: "want",
-            label: "Shootlist",
+            id: "boards",
+            label: "Boards",
             content: (
-              <ProfileSection
-                emptyMessage="Nothing on your Shootlist yet. Tap the bookmark on any film page."
-                isEmpty={profile.favouriteSlugs.length === 0}
-              >
-                <StockGrid slugs={profile.favouriteSlugs} stocksBySlug={stocksBySlug} />
-              </ProfileSection>
-            ),
-          },
-          {
-            id: "shot",
-            label: "Shot",
-            content: (
-              <ProfileSection
-                emptyMessage="No stocks marked as shot yet."
-                isEmpty={profile.shotSlugs.length === 0}
-              >
-                <StockGrid slugs={profile.shotSlugs} stocksBySlug={stocksBySlug} />
+              <ProfileSection className="px-0" emptyMessage="" isEmpty={false}>
+                <ProfileBoardsContent
+                  savedUploads={profile.savedUploads ?? []}
+                  boards={profile.boards ?? []}
+                  onBoardsChanged={onProfileUpdated}
+                />
               </ProfileSection>
             ),
           },
@@ -389,183 +644,15 @@ export function ProfileView({
             ),
           },
           {
-            id: "saved",
-            label: "Saved",
+            id: "film",
+            label: "Film",
             content: (
-              <ProfileSection
-                emptyMessage="You haven't saved any community images yet. Open Discover or Community, open an image, and tap Save."
-                isEmpty={!profile.savedUploads || profile.savedUploads.length === 0}
-              >
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                  {(profile.savedUploads ?? []).map((u) => {
-                    const stock = stocksBySlug.get(u.film_stock_slug);
-                    const stockName = stock?.name ?? u.film_stock_slug;
-                    return (
-                      <Link
-                        key={u.upload_id}
-                        href={`/films/${u.film_stock_slug}`}
-                        className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
-                      >
-                        <div className="relative aspect-[4/3] bg-muted">
-                          {u.image_url ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={u.image_url}
-                              alt={plainTextFromPossibleHtml(u.caption ?? "")}
-                              className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center">
-                              <Camera className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-3">
-                          <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
-                          {u.caption && (
-                            <div
-                              className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground [&_a]:underline [&_blockquote]:my-0 [&_p]:m-0 [&_p]:inline"
-                              dangerouslySetInnerHTML={{
-                                __html: sanitizeReviewLikeHtml(u.caption),
-                              }}
-                            />
-                          )}
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </ProfileSection>
+              <ProfileFilmSubTabs
+                favouriteSlugs={profile.favouriteSlugs}
+                shotSlugs={profile.shotSlugs}
+                stocksBySlug={stocksBySlug}
+              />
             ),
-          },
-          {
-            id: "reviews",
-            label: "Reviews",
-            content: (
-              <ProfileSection
-                emptyMessage="You haven't written any reviews yet."
-                isEmpty={!profile.reviews || profile.reviews.length === 0}
-              >
-                <ul className="space-y-3">
-                  {(profile.reviews ?? []).map((r) => {
-                    const stock = stocksBySlug.get(r.film_stock_slug);
-                    const stockName = stock?.name ?? r.film_stock_slug;
-                    const dateLabel = formatReviewDate(r.created_at);
-                    return (
-                      <li key={r.id}>
-                        <Link
-                          href={`/films/${r.film_stock_slug}`}
-                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <span className="font-semibold text-foreground">{stockName}</span>
-                            {r.review_title && (
-                              <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
-                            )}
-                            <p className="mt-1 text-xs text-muted-foreground">{dateLabel}</p>
-                          </div>
-                          {r.rating != null && r.rating > 0 && (
-                            <MiniStars rating={r.rating} size={18} />
-                          )}
-                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </ProfileSection>
-            ),
-          },
-          {
-            id: "likes",
-            label: "Likes",
-            content: (() => {
-              const reviewLikes = profile.likedReviews ?? [];
-              const imageLikes = profile.likedUploads ?? [];
-              const noLikes = reviewLikes.length === 0 && imageLikes.length === 0;
-              return (
-                <ProfileSection
-                  emptyMessage="You haven't liked any reviews or community images yet. Open a film’s Reviews tab or like a shot in Discover."
-                  isEmpty={noLikes}
-                >
-                  <div className="space-y-10">
-                    {reviewLikes.length > 0 ? (
-                      <div>
-                        <h3 className="mb-3 text-sm font-semibold tracking-tight text-muted-foreground">Reviews</h3>
-                        <ul className="space-y-3">
-                          {reviewLikes.map((r) => {
-                            const stock = stocksBySlug.get(r.film_stock_slug);
-                            const stockName = stock?.name ?? r.film_stock_slug;
-                            const dateLabel = formatReviewDate(r.liked_at);
-                            return (
-                              <li key={r.review_id}>
-                                <Link
-                                  href={`/films/${r.film_stock_slug}`}
-                                  className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <span className="font-semibold text-foreground">{stockName}</span>
-                                    {r.review_title && (
-                                      <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
-                                    )}
-                                    <p className="mt-1 text-xs text-muted-foreground">Liked {dateLabel}</p>
-                                  </div>
-                                  {r.rating != null && r.rating > 0 && (
-                                    <MiniStars rating={r.rating} size={18} />
-                                  )}
-                                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                </Link>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    ) : null}
-                    {imageLikes.length > 0 ? (
-                      <div>
-                        <h3 className="mb-3 text-sm font-semibold tracking-tight text-muted-foreground">
-                          Community images
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                          {imageLikes.map((u) => {
-                            const stock = stocksBySlug.get(u.film_stock_slug);
-                            const stockName = stock?.name ?? u.film_stock_slug;
-                            return (
-                              <Link
-                                key={u.upload_id}
-                                href={`/films/${u.film_stock_slug}`}
-                                className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
-                              >
-                                <div className="relative aspect-[4/3] bg-muted">
-                                  {u.image_url ? (
-                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                    <img
-                                      src={u.image_url}
-                                      alt={plainTextFromPossibleHtml(u.caption ?? "")}
-                                      className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                                    />
-                                  ) : (
-                                    <div className="flex h-full w-full items-center justify-center">
-                                      <Camera className="h-8 w-8 text-muted-foreground" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="p-3">
-                                  <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
-                                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                    Liked {formatReviewDate(u.liked_at)}
-                                  </p>
-                                </div>
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </ProfileSection>
-              );
-            })(),
           },
         ]}
       />

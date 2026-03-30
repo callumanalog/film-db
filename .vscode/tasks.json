@@ -27,8 +27,21 @@
       "dependsOn": "Start dev server"
     },
     {
+      "label": "Open mobile preview (412×892, Playwright)",
+      "type": "shell",
+      "command": "npm run open:mobile",
+      "options": { "cwd": "${workspaceFolder}", "env": {} },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
       "label": "Dev + Cursor Browser",
       "dependsOn": ["Start dev server", "Open in Cursor Browser"],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "Dev + mobile preview (412×892)",
+      "dependsOn": ["Start dev server", "Open mobile preview (412×892, Playwright)"],
       "dependsOrder": "sequence"
     }
   ],

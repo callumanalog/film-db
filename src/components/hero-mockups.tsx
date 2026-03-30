@@ -426,48 +426,38 @@ function UserStarRating({
         })}
       </div>
     </div>
-  </div>
+    </div>
   );
 }
 
-/* ─── Mobile film detail hero ─── */
-
 /**
- * Mobile film hero: sits below the header (no overlap). Unified carousel: slide 1 = stock can,
- * then community landscape shots. With no stock URL and no community, shows placeholder can only.
+ * Mobile film canister only: in-flow inside the main sheet (no sticky, no extra bg/border),
+ * so it doesn’t read as a separate grey banner above the toolbar.
  */
-export function FilmDetailMobileStickyBanner({
+export function FilmDetailMobileStockImage({
   stock,
 }: Pick<HeroMockupProps, "stock">) {
   const { slug } = stock;
   const isWide = slug === "cinestill-800t";
 
   return (
-    <div
-      className={cn(
-        "md:hidden sticky z-0 w-full max-w-none shrink-0 self-start",
-        "border-b border-border/40 bg-white dark:bg-white"
+    <div className="relative md:hidden">
+      {stock.discontinued && (
+        <span
+          className="absolute left-0 top-2 z-10 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+          aria-hidden
+        >
+          Discontinued
+        </span>
       )}
-      style={{ top: "calc(52px + env(safe-area-inset-top, 0px))" }}
-    >
-      <div className="relative w-full overflow-hidden">
-        {stock.discontinued && (
-          <span
-            className="absolute left-3 top-3 z-20 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-            aria-hidden
-          >
-            Discontinued
-          </span>
-        )}
-        <div className="flex w-full shrink-0 items-center justify-center px-4">
-          <div className={isWide ? "h-40 w-48 shrink-0" : "h-48 w-40 shrink-0"}>
-            <FilmImage
-              stock={stock}
-              size={192}
-              priority
-              {...(isWide ? { width: 192, height: 160 } : {})}
-            />
-          </div>
+      <div className="flex w-full shrink-0 items-center justify-center px-0 pt-2 pb-1">
+        <div className={isWide ? "h-40 w-48 shrink-0" : "h-48 w-40 shrink-0"}>
+          <FilmImage
+            stock={stock}
+            size={192}
+            priority
+            {...(isWide ? { width: 192, height: 160 } : {})}
+          />
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import type * as React from "react";
 import Link from "next/link";
 import type { GalleryImage } from "@/lib/sample-images";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,10 @@ export type FilmNativeMasonryItem = {
   onActivate?: () => void;
   /** When false, no bottom overlay (e.g. lightbox “more from this roll”). Default: show if overlayLabel is non-empty. */
   showOverlay?: boolean;
+  /** e.g. add-to-board control; absolutely positioned top-right, pointer-events auto. */
+  topRightSlot?: React.ReactNode;
+  /** Merged onto the image frame (per tile). */
+  frameClassName?: string;
 };
 
 /**
@@ -41,7 +46,8 @@ export function FilmNativeMasonryGrid({
           <div
             className={cn(
               "relative box-border overflow-hidden rounded-none border border-white bg-white",
-              frameClassName
+              frameClassName,
+              img.frameClassName
             )}
           >
             {img.imageUrl ? (
@@ -56,6 +62,9 @@ export function FilmNativeMasonryGrid({
             ) : (
               <div className="aspect-[3/2] w-full bg-gray-100" aria-hidden />
             )}
+            {img.topRightSlot ? (
+              <div className="absolute right-1.5 top-1.5 z-20 [&_button]:pointer-events-auto">{img.topRightSlot}</div>
+            ) : null}
             {showBottomOverlay ? (
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end px-2 py-2 font-sans text-label text-white"

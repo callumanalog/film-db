@@ -9,6 +9,9 @@ export interface ProfileFromDb {
   /** Optional friendly name (`profiles.full_name`); UI falls back to displayName when null. */
   fullName: string | null;
   bio: string | null;
+  avatarUrl: string | null;
+  instagramUrl: string | null;
+  websiteUrl: string | null;
   followersCount: number;
   followingCount: number;
   shotSlugs: string[];
@@ -36,11 +39,22 @@ export interface ProfileFromDb {
   }[];
   /** Community scans the user saved (saved_uploads). */
   savedUploads: {
+    savedUploadId: string;
     upload_id: string;
     film_stock_slug: string;
     image_url: string | null;
     caption: string | null;
     saved_at: string;
+  }[];
+  boards: {
+    id: string;
+    name: string;
+    description: string | null;
+    updatedAt: string;
+    itemCount: number;
+    coverUrl: string | null;
+    coverUrl2: string | null;
+    coverUrl3: string | null;
   }[];
   /** Community scans the user liked (upload_likes). */
   likedUploads: {
@@ -74,11 +88,14 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       uploadsListRes,
       likedReviewsRes,
       savedUploadsRes,
+      boardSummariesRes,
       likedUploadsRes,
     ] = await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, full_name, bio, followers_count, following_count")
+        .select(
+          "display_name, full_name, bio, avatar_url, instagram_url, website_url, followers_count, following_count"
+        )
         .eq("id", user.id)
         .single(),
       supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
@@ -103,10 +120,11 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       supabase
         .from("saved_uploads")
         .select(
-          "created_at, user_uploads ( id, film_stock_slug, image_url, caption )"
+          "id, created_at, user_uploads ( id, film_stock_slug, image_url, caption )"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
+      supabase.rpc("board_summaries_for_user"),
       supabase
         .from("upload_likes")
         .select(
@@ -126,6 +144,9 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
           display_name?: string | null;
           full_name?: string | null;
           bio?: string | null;
+          avatar_url?: string | null;
+          instagram_url?: string | null;
+          website_url?: string | null;
           followers_count?: number | null;
           following_count?: number | null;
         } | null);
@@ -140,6 +161,9 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
 
     const fullName = profileRow?.full_name?.trim() ? profileRow.full_name.trim() : null;
     const bio = profileRow?.bio?.trim() ? profileRow.bio.trim() : null;
+    const avatarUrl = profileRow?.avatar_url?.trim() ? profileRow.avatar_url.trim() : null;
+    const instagramUrl = profileRow?.instagram_url?.trim() ? profileRow.instagram_url.trim() : null;
+    const websiteUrl = profileRow?.website_url?.trim() ? profileRow.website_url.trim() : null;
     const followersCount = Math.max(0, Number(profileRow?.followers_count ?? 0));
     const followingCount = Math.max(0, Number(profileRow?.following_count ?? 0));
 
@@ -199,6 +223,7 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
     const savedUploadsRaw = savedUploadsRes.error ? [] : (savedUploadsRes.data ?? []);
     const savedUploads: ProfileFromDb["savedUploads"] = [];
     for (const row of savedUploadsRaw as {
+      id: string;
       created_at: string;
       user_uploads:
         | {
@@ -219,12 +244,39 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       const up = Array.isArray(raw) ? raw[0] : raw;
       if (!up) continue;
       savedUploads.push({
+        savedUploadId: row.id as string,
         upload_id: up.id,
         film_stock_slug: up.film_stock_slug,
         image_url: up.image_url,
         caption: up.caption,
         saved_at: row.created_at,
       });
+    }
+
+    let boards: ProfileFromDb["boards"] = [];
+    if (boardSummariesRes.error) {
+      console.error("[get-profile] board_summaries_for_user:", boardSummariesRes.error.message);
+    } else {
+      const rawBoards = (boardSummariesRes.data ?? []) as {
+        board_id: string;
+        board_name: string;
+        board_description: string | null;
+        updated_at: string;
+        item_count: number | string;
+        cover_url: string | null;
+        cover_url_2: string | null;
+        cover_url_3: string | null;
+      }[];
+      boards = rawBoards.map((r) => ({
+        id: r.board_id,
+        name: r.board_name,
+        description: r.board_description,
+        updatedAt: r.updated_at,
+        itemCount: Number(r.item_count),
+        coverUrl: r.cover_url,
+        coverUrl2: r.cover_url_2,
+        coverUrl3: r.cover_url_3,
+      }));
     }
 
     if (likedUploadsRes.error) {
@@ -265,6 +317,9 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       displayName,
       fullName,
       bio,
+      avatarUrl,
+      instagramUrl,
+      websiteUrl,
       followersCount,
       followingCount,
       shotSlugs,
@@ -291,6 +346,7 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       likedReviews,
       savedUploads,
       likedUploads,
+      boards,
     };
   } catch (err) {
     console.error("[get-profile] unexpected error:", err);

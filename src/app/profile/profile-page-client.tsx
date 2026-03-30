@@ -34,6 +34,9 @@ export function ProfilePageClient() {
             displayName: p.displayName,
             fullName: p.fullName,
             bio: p.bio,
+            avatarUrl: p.avatarUrl,
+            instagramUrl: p.instagramUrl,
+            websiteUrl: p.websiteUrl,
             followersCount: p.followersCount,
             followingCount: p.followingCount,
             shotSlugs: p.shotSlugs,
@@ -47,12 +50,16 @@ export function ProfilePageClient() {
             likedReviews: p.likedReviews,
             savedUploads: p.savedUploads,
             likedUploads: p.likedUploads,
+            boards: p.boards ?? [],
           });
         } else {
           setProfile({
             displayName: user.user_metadata?.full_name || user.email?.split("@")[0] || "Member",
             fullName: null,
             bio: null,
+            avatarUrl: null,
+            instagramUrl: null,
+            websiteUrl: null,
             followersCount: 0,
             followingCount: 0,
             shotSlugs: [],
@@ -62,6 +69,7 @@ export function ProfilePageClient() {
             likedReviews: [],
             savedUploads: [],
             likedUploads: [],
+            boards: [],
           });
         }
       } finally {
@@ -139,7 +147,7 @@ export function ProfilePageClient() {
 
   if (authLoading || !user || profileLoading || !profile) {
     return (
-      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-6xl flex-1 flex-col px-0 pt-0 pb-8 sm:px-6 md:flex-none">
+      <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-6xl flex-1 flex-col px-0 pt-0 pb-8 sm:px-6 lg:px-8 md:flex-none">
         <div className="animate-pulse space-y-6 px-4 sm:px-0">
           <div className="h-16 w-64 rounded-card bg-muted" />
           <div className="h-32 rounded-card bg-muted" />
@@ -149,7 +157,7 @@ export function ProfilePageClient() {
   }
 
   return (
-    <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-6xl flex-1 flex-col overflow-x-hidden overflow-y-visible px-0 pt-0 pb-8 sm:px-6 md:flex-none md:overflow-visible md:pb-8">
+    <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-6xl flex-1 flex-col overflow-x-hidden overflow-y-visible px-0 pt-0 pb-8 sm:px-6 lg:px-8 md:flex-none md:overflow-visible md:pb-8">
       {isUnverified && (
         <div className="mx-4 mb-6 shrink-0 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 sm:mx-0 dark:border-amber-800 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">

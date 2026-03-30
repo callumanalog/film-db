@@ -186,7 +186,7 @@ export function FilmDetailTabs({
         }
       >
         {fullWidthTabBar ? (
-          <div className="w-full border-b border-border/50">
+          <div className={cn("w-full border-b border-border/50", pinTabBarClassName)}>
             {tabNav}
           </div>
         ) : (
@@ -197,7 +197,7 @@ export function FilmDetailTabs({
         <div
           className={
             pinTabPanelOnMobile
-              ? `flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain pt-6 md:min-h-0 md:flex-none md:overflow-visible ${showRightPane ? "md:flex md:gap-8" : ""}`
+              ? `flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain pt-0 md:min-h-0 md:flex-none md:overflow-visible ${showRightPane ? "md:flex md:gap-8" : ""}`
               : `pt-6 ${showRightPane ? "flex gap-8" : ""}`
           }
         >

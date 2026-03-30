@@ -9,7 +9,12 @@ import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
 import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS, COLOR_SENSITIVITY_LABELS, isBlackAndWhiteFilm } from "@/lib/types";
 import type { DevelopmentProcess } from "@/lib/types";
 import { ChevronRight } from "lucide-react";
-import { StickyLeftPane, PageTitleHeader, FilmDetailMobileStickyBanner, FilmDetailMobileToolbar } from "@/components/hero-mockups";
+import {
+  StickyLeftPane,
+  PageTitleHeader,
+  FilmDetailMobileStockImage,
+  FilmDetailMobileToolbar,
+} from "@/components/hero-mockups";
 import { cn } from "@/lib/utils";
 import { OverviewTabContent } from "@/components/overview-tab-content";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
@@ -227,18 +232,17 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         format={stock.format ?? []}
       />
       <ScrollToTopOnRouteChange />
-      {/* Mobile: sticky image + one sheet div (toolbar + nav + grid). Desktop: same max-w wrapper, sheet chrome disabled at md+. */}
-      {/* items-start + w-full children: fixes sticky hero (flex stretch breaks position:sticky in some engines). */}
+      {/* Mobile: stock image + toolbar in one sheet (no sticky banner strip). Desktop: sheet chrome disabled at md+. */}
       <FilmMobileTabProvider>
         <div className="flex flex-col items-start md:contents">
-          <FilmDetailMobileStickyBanner stock={stockProps.stock} />
           <div
             className={cn(
               "relative z-20 mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 lg:px-8",
-              "overflow-hidden bg-[#ffffff] pt-4",
+              "overflow-hidden bg-[#ffffff] pt-0",
               "md:overflow-visible md:rounded-none md:bg-transparent md:pt-8 md:shadow-none"
             )}
           >
+            <FilmDetailMobileStockImage stock={stockProps.stock} />
             <FilmDetailMobileToolbar stock={stockProps.stock} stats={stockProps.stats} />
             <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
               <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>

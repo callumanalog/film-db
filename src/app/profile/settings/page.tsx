@@ -4,7 +4,7 @@ import { SITE_NAME } from "@/lib/site";
 import { ProfileSettingsClient } from "./profile-settings-client";
 
 export const metadata: Metadata = {
-  title: "Settings",
+  title: "Account",
   description: `Manage your ${SITE_NAME} account — password reset, session, and legal links.`,
 };
 
@@ -17,7 +17,7 @@ export default function ProfileSettingsPage() {
       >
         ← Back to profile
       </Link>
-      <h1 className="text-2xl font-bold tracking-tight font-sans">Settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight font-sans">Account</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Password, sign out, and policies for your {SITE_NAME} account.
       </p>

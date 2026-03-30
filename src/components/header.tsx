@@ -5,7 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, Settings2, Check, CircleCheck } from "lucide-react";
+import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, CircleUser, Check, CircleCheck } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
@@ -134,7 +134,7 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [settingsMenuOpen]);
 
-  if (pathname === "/profile") {
+  if (pathname === "/profile" || pathname?.startsWith("/profile/boards/")) {
     return null;
   }
 
@@ -172,7 +172,7 @@ export function Header() {
             className="relative z-10 flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
             aria-label="Go back"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-6 w-6" />
           </button>
           {/* Symmetric horizontal inset so truncated title stays visually centre-aligned in the nav. */}
           <div
@@ -235,7 +235,7 @@ export function Header() {
               className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
               aria-label="More actions"
             >
-              <MoreHorizontal className="h-5 w-5" />
+              <MoreHorizontal className="h-6 w-6" />
             </button>
           </div>
         </div>
@@ -273,7 +273,7 @@ export function Header() {
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label="Go back"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-6 w-6" />
             </button>
           ) : (
             <>
@@ -329,7 +329,7 @@ export function Header() {
                 aria-label="Toggle menu"
                 aria-expanded={mobileOpen}
               >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
               {/* Desktop nav: lg–xl = 2 priority links + More; xl+ = all links */}
               <nav className="hidden items-center gap-1 overflow-hidden text-sm font-medium lg:flex">
@@ -374,7 +374,7 @@ export function Header() {
               aria-haspopup="true"
               aria-label="More navigation"
             >
-              <MoreHorizontal className="h-5 w-5" />
+              <MoreHorizontal className="h-6 w-6" />
             </button>
             {moreMenuOpen && (
               <div className="absolute left-0 top-full z-50 mt-1 min-w-[140px] overflow-hidden rounded-card border border-border bg-card py-1 shadow-md">
@@ -406,7 +406,7 @@ export function Header() {
                 aria-haspopup="true"
                 aria-label="Add — track, review, or upload"
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-6 w-6" />
               </button>
               {actionsOpen && (
                 <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
@@ -415,7 +415,7 @@ export function Header() {
                     onClick={() => setActionsOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
-                    <NotebookPen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <NotebookPen className="h-6 w-6 shrink-0 text-muted-foreground" />
                     Add a review
                   </Link>
                   <Link
@@ -423,7 +423,7 @@ export function Header() {
                     onClick={() => setActionsOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
-                    <ImagePlus className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <ImagePlus className="h-6 w-6 shrink-0 text-muted-foreground" />
                     Add shots
                   </Link>
                   <Link
@@ -431,7 +431,7 @@ export function Header() {
                     onClick={() => setActionsOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
-                    <ListPlus className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <ListPlus className="h-6 w-6 shrink-0 text-muted-foreground" />
                     Create a list
                   </Link>
                 </div>
@@ -481,11 +481,11 @@ export function Header() {
                 type="button"
                 onClick={() => setSettingsMenuOpen((o) => !o)}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                aria-label="Settings"
+                aria-label="Account menu"
                 aria-expanded={settingsMenuOpen}
                 aria-haspopup="true"
               >
-                <Settings2 className="h-5 w-5" />
+                <Menu className="h-6 w-6" />
               </button>
               {settingsMenuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
@@ -494,8 +494,8 @@ export function Header() {
                     onClick={() => setSettingsMenuOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
-                    <Settings2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    Settings
+                    <CircleUser className="h-6 w-6 shrink-0 text-muted-foreground" />
+                    Account
                   </Link>
                   <button
                     type="button"
@@ -505,7 +505,7 @@ export function Header() {
                     }}
                     className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
-                    <LogOut className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <LogOut className="h-6 w-6 shrink-0 text-muted-foreground" />
                     Log out
                   </button>
                 </div>
@@ -518,7 +518,7 @@ export function Header() {
               className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               aria-label="Share"
             >
-              <Share2 className="h-5 w-5" />
+              <Share2 className="h-6 w-6" />
             </button>
           )}
           {!showBack && !loading && !user && !isAuthPage && (
@@ -624,7 +624,7 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
-                  <NotebookPen className="h-4 w-4 shrink-0" />
+                  <NotebookPen className="h-6 w-6 shrink-0" />
                   Add a review
                 </Link>
                 <Link
@@ -632,7 +632,7 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
-                  <ImagePlus className="h-4 w-4 shrink-0" />
+                  <ImagePlus className="h-6 w-6 shrink-0" />
                   Add shots
                 </Link>
                 <Link
@@ -640,7 +640,7 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
-                  <ListPlus className="h-4 w-4 shrink-0" />
+                  <ListPlus className="h-6 w-6 shrink-0" />
                   Create a list
                 </Link>
                 <button
@@ -651,7 +651,7 @@ export function Header() {
                   }}
                   className="flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
-                  <LogOut className="h-4 w-4 shrink-0" />
+                  <LogOut className="h-6 w-6 shrink-0" />
                   Log out
                 </button>
               </>

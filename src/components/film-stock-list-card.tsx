@@ -70,7 +70,7 @@ function FilmStockListCardInner({
           </p>
         </div>
         <div className="shrink-0 pl-1 pr-2">
-          <ActionIcon className="h-4 w-4 text-muted-foreground" aria-hidden />
+          <ActionIcon className="h-6 w-6 text-muted-foreground" aria-hidden />
         </div>
       </div>
       <div className="ml-[4.75rem] border-b border-border" aria-hidden />

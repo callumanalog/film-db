@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import localFont from "next/font/local";
@@ -10,6 +10,7 @@ import { PlusActionSheet } from "@/components/plus-action-sheet";
 import { UserActionsProvider } from "@/context/user-actions-context";
 import { AuthProvider } from "@/context/auth-context";
 import { Toaster } from "@/components/ui/sonner";
+import { BoardFlowHost } from "@/components/board-flow-host";
 import { UrlToastHandler } from "@/components/url-toast-handler";
 import { MobileHeaderTitleProvider } from "@/context/mobile-header-title-context";
 import { FilmsSearchProvider } from "@/context/films-search-context";
@@ -61,6 +62,13 @@ const cabinetGrotesk = localFont({
 const defaultDescription =
   "Discover film stocks, community references, reviews, and where to buy — built for analog photographers.";
 
+/** Keyboard overlays the page so `position: fixed; bottom: 0` stays at the screen bottom (covered by the keyboard) instead of sitting above it. */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "overlays-content",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
@@ -109,6 +117,7 @@ export default function RootLayout({
               <PlusActionSheet />
               <SpeedInsights />
               <Toaster />
+              <BoardFlowHost />
             </NavSWRProvider>
             </FilmsSearchProvider>
             </MobileHeaderTitleProvider>

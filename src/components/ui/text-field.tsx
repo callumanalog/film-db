@@ -59,9 +59,9 @@ const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
               tabIndex={0}
             >
               {revealPassword ? (
-                <EyeOff className="h-4 w-4" aria-hidden />
+                <EyeOff className="h-6 w-6" aria-hidden />
               ) : (
-                <Eye className="h-4 w-4" aria-hidden />
+                <Eye className="h-6 w-6" aria-hidden />
               )}
             </button>
           )}

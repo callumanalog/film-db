@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bookmark, ChevronLeft, Heart, Info, MessageCircle, MoreVertical } from "lucide-react";
 import { getSavedUploadIdsAmong, toggleSaveUpload } from "@/app/actions/saved-uploads";
+import { showSavedScanBoardToast } from "@/components/saved-scan-board-toast";
 import {
   getLikedUploadIdsAmong,
   getLikersForUpload,
@@ -371,6 +372,9 @@ export function ImageLightbox({
       else next.delete(id);
       return next;
     });
+    if (res.saved) {
+      void showSavedScanBoardToast(id);
+    }
   }, [safeSlides, active, pathname, router, user]);
 
   const currentUploadIdForLikesSync =

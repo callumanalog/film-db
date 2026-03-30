@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { TextField } from "@/components/ui/text-field";
 import { showToastViaEvent } from "@/components/toast";
 
+const SIGN_IN_INPUT_CLASS = "h-[52px] min-h-[52px]";
+
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -74,6 +76,7 @@ function SignInForm() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
+            inputClassName={SIGN_IN_INPUT_CLASS}
           />
           <div>
             <TextField
@@ -84,6 +87,7 @@ function SignInForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
+              inputClassName={SIGN_IN_INPUT_CLASS}
               labelSuffix={
                 <Link
                   href={`/auth/forgot-password?next=${encodeURIComponent(redirectTo)}`}

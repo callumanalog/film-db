@@ -12,7 +12,8 @@
     "seed:supabase": "tsx scripts/seed-supabase.ts",
     "upload:film-images": "tsx scripts/upload-film-stock-images.ts",
     "fix:film-image-urls": "tsx scripts/fix-film-stock-image-urls.ts",
-    "replace:film-images": "tsx scripts/replace-film-stock-images.ts"
+    "replace:film-images": "tsx scripts/replace-film-stock-images.ts",
+    "open:mobile": "node scripts/open-mobile-preview.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",
@@ -50,6 +51,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "playwright": "^1.58.2",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
     "typescript": "^5"

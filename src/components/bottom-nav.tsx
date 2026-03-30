@@ -48,11 +48,36 @@ function getActiveHref(pathname: string | null): string | null {
 const ICON_LINK_CLASS =
   "flex items-center justify-center rounded-lg p-3 transition-transform duration-150 ease-out active:scale-95 touch-manipulation";
 
+/** Input types that typically open a text/numeric keyboard — hide bottom nav while focused (iOS / browsers that still lift fixed bars). */
+const INPUT_TYPES_IGNORE_FOCUS = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "file",
+  "hidden",
+  "image",
+  "radio",
+  "range",
+  "reset",
+  "submit",
+]);
+
+function isKeyboardFocusTarget(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  if (tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (el.isContentEditable) return true;
+  if (tag !== "INPUT") return false;
+  const type = (el as HTMLInputElement).type?.toLowerCase() ?? "text";
+  return !INPUT_TYPES_IGNORE_FOCUS.has(type);
+}
+
 export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
   const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [hideForKeyboard, setHideForKeyboard] = useState(false);
   const resolvedActive = getActiveHref(pathname);
   const activeHref = pendingPath ?? resolvedActive;
 
@@ -61,6 +86,31 @@ export function BottomNav() {
       setPendingPath(null);
     }
   }, [pendingPath, resolvedActive]);
+
+  useEffect(() => {
+    let blurTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const syncHidden = () => {
+      setHideForKeyboard(isKeyboardFocusTarget(document.activeElement));
+    };
+
+    const onFocusIn = (e: FocusEvent) => {
+      if (isKeyboardFocusTarget(e.target)) setHideForKeyboard(true);
+    };
+
+    const onFocusOut = () => {
+      clearTimeout(blurTimer);
+      blurTimer = setTimeout(syncHidden, 0);
+    };
+
+    document.addEventListener("focusin", onFocusIn, true);
+    document.addEventListener("focusout", onFocusOut, true);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn, true);
+      document.removeEventListener("focusout", onFocusOut, true);
+      clearTimeout(blurTimer);
+    };
+  }, []);
 
   const handlePlus = () => {
     const filmSlug = getFilmSlug(pathname);
@@ -80,8 +130,12 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] transition-opacity duration-150 md:hidden",
+        hideForKeyboard && "pointer-events-none invisible opacity-0"
+      )}
       aria-label="Bottom navigation"
+      aria-hidden={hideForKeyboard}
       style={{ minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
     >
       {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
