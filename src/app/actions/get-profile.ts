@@ -21,6 +21,22 @@ export interface ProfileFromDb {
     review_created_at: string;
     liked_at: string;
   }[];
+  /** Community scans the user saved (saved_uploads). */
+  savedUploads: {
+    upload_id: string;
+    film_stock_slug: string;
+    image_url: string | null;
+    caption: string | null;
+    saved_at: string;
+  }[];
+  /** Community scans the user liked (upload_likes). */
+  likedUploads: {
+    upload_id: string;
+    film_stock_slug: string;
+    image_url: string | null;
+    caption: string | null;
+    liked_at: string;
+  }[];
 }
 
 export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
@@ -44,6 +60,8 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       reviewsListRes,
       uploadsListRes,
       likedReviewsRes,
+      savedUploadsRes,
+      likedUploadsRes,
     ] = await Promise.all([
       supabase.from("profiles").select("display_name").eq("id", user.id).single(),
       supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
@@ -63,6 +81,20 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       supabase
         .from("review_likes")
         .select("created_at, reviews ( id, film_stock_slug, review_title, rating, created_at )")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("saved_uploads")
+        .select(
+          "created_at, user_uploads ( id, film_stock_slug, image_url, caption )"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("upload_likes")
+        .select(
+          "created_at, user_uploads ( id, film_stock_slug, image_url, caption )"
+        )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
     ]);
@@ -124,6 +156,74 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       });
     }
 
+    if (savedUploadsRes.error) {
+      console.error("[get-profile] saved_uploads:", savedUploadsRes.error.message);
+    }
+    const savedUploadsRaw = savedUploadsRes.error ? [] : (savedUploadsRes.data ?? []);
+    const savedUploads: ProfileFromDb["savedUploads"] = [];
+    for (const row of savedUploadsRaw as {
+      created_at: string;
+      user_uploads:
+        | {
+            id: string;
+            film_stock_slug: string;
+            image_url: string | null;
+            caption: string | null;
+          }
+        | {
+            id: string;
+            film_stock_slug: string;
+            image_url: string | null;
+            caption: string | null;
+          }[]
+        | null;
+    }[]) {
+      const raw = row.user_uploads;
+      const up = Array.isArray(raw) ? raw[0] : raw;
+      if (!up) continue;
+      savedUploads.push({
+        upload_id: up.id,
+        film_stock_slug: up.film_stock_slug,
+        image_url: up.image_url,
+        caption: up.caption,
+        saved_at: row.created_at,
+      });
+    }
+
+    if (likedUploadsRes.error) {
+      console.error("[get-profile] upload_likes:", likedUploadsRes.error.message);
+    }
+    const likedUploadsRaw = likedUploadsRes.error ? [] : (likedUploadsRes.data ?? []);
+    const likedUploads: ProfileFromDb["likedUploads"] = [];
+    for (const row of likedUploadsRaw as {
+      created_at: string;
+      user_uploads:
+        | {
+            id: string;
+            film_stock_slug: string;
+            image_url: string | null;
+            caption: string | null;
+          }
+        | {
+            id: string;
+            film_stock_slug: string;
+            image_url: string | null;
+            caption: string | null;
+          }[]
+        | null;
+    }[]) {
+      const raw = row.user_uploads;
+      const up = Array.isArray(raw) ? raw[0] : raw;
+      if (!up) continue;
+      likedUploads.push({
+        upload_id: up.id,
+        film_stock_slug: up.film_stock_slug,
+        image_url: up.image_url,
+        caption: up.caption,
+        liked_at: row.created_at,
+      });
+    }
+
     return {
       displayName,
       shotSlugs,
@@ -147,6 +247,8 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
         created_at: u.created_at,
       })),
       likedReviews,
+      savedUploads,
+      likedUploads,
     };
   } catch (err) {
     console.error("[get-profile] unexpected error:", err);

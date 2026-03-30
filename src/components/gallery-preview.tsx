@@ -16,7 +16,10 @@ import {
   type FilmNativeMasonryItem,
 } from "@/components/film-native-grid";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
-import { collectLightboxSlidesFromFilmUploads } from "@/lib/lightbox-group";
+import {
+  collectLightboxSlidesFromFilmUploads,
+  relatedFilmPageLightboxSlides,
+} from "@/lib/lightbox-group";
 import { SegmentedViewTabs, type SegmentedView } from "@/components/segmented-view-tabs";
 import { useAuth } from "@/context/auth-context";
 
@@ -80,6 +83,46 @@ export function GalleryPreview({
 
   const galleryHref = `/films/${slug}/images`;
 
+  const flickrForRelatedPool =
+    layout === "carousel" ? flickrImages : scansView === "everyone" ? flickrImages : [];
+
+  const relatedStockSlides = useMemo(() => {
+    if (!lightboxSession || lightboxSession.slides.length !== 1) return [];
+    return relatedFilmPageLightboxSlides(
+      lightboxSession.slides[0],
+      uploads,
+      flickrForRelatedPool,
+      stockName,
+      slug
+    );
+  }, [lightboxSession, uploads, flickrForRelatedPool, stockName, slug]);
+
+  const handlePickRelatedStock = useCallback(
+    (slide: ImageLightboxData) => {
+      const u = uploads.find((x) => x.id === slide.uploadId);
+      if (u) {
+        setLightboxSession(collectLightboxSlidesFromFilmUploads(uploads, u, stockName, slug));
+        return;
+      }
+      const f = flickrImages.find((x) => x.imageUrl === slide.imageUrl);
+      if (f) {
+        setLightboxSession({
+          slides: [
+            {
+              imageUrl: f.imageUrl,
+              alt: f.title || `${stockName} on Flickr`,
+              caption: f.title?.trim() || null,
+              username: f.ownerName,
+              context: { label: stockName, href: `/films/${slug}` },
+            },
+          ],
+          initialIndex: 0,
+        });
+      }
+    },
+    [uploads, flickrImages, stockName, slug]
+  );
+
   const masonryItems: FilmNativeMasonryItem[] = useMemo(() => {
     const items: FilmNativeMasonryItem[] = [];
     for (const u of uploads) {
@@ -131,11 +174,14 @@ export function GalleryPreview({
       username: u.display_name ?? undefined,
       lightbox: {
         imageUrl: u.image_url!,
+        uploadId: u.id,
         alt:
           plainTextFromPossibleHtml(u.caption ?? "").slice(0, 240) ||
           `${stockName} · ${u.display_name ?? "Member"}`,
         caption: u.caption,
         username: u.display_name?.trim() || "Member",
+        location: u.location?.trim() || null,
+        createdAt: u.created_at ?? null,
         context: { label: stockName, href: `/films/${slug}` },
         metadata: {
           camera: u.camera,
@@ -190,7 +236,7 @@ export function GalleryPreview({
             onChange={setScansView}
             ariaLabel="Whose scans to show"
           />
-          <div className="w-screen max-w-none relative left-1/2 -translate-x-1/2">
+          <div className="min-w-0 w-full">
             <div className="w-full columns-2 gap-0" aria-hidden>
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="break-inside-avoid">
@@ -250,7 +296,7 @@ export function GalleryPreview({
         ) : null}
 
         {!showFollowingEmpty && !showYouEmpty && masonryItems.length > 0 ? (
-          <div className="w-screen max-w-none relative left-1/2 -translate-x-1/2">
+          <div className="min-w-0 w-full">
             <FilmNativeMasonryGrid items={masonryItems} ariaLabel={`${stockName} community scans`} />
           </div>
         ) : null}
@@ -260,6 +306,8 @@ export function GalleryPreview({
             slides={lightboxSession.slides}
             initialIndex={lightboxSession.initialIndex}
             onClose={() => setLightboxSession(null)}
+            relatedStockSlides={relatedStockSlides}
+            onPickRelatedStock={handlePickRelatedStock}
           />
         ) : null}
 
@@ -324,6 +372,8 @@ export function GalleryPreview({
           slides={lightboxSession.slides}
           initialIndex={lightboxSession.initialIndex}
           onClose={() => setLightboxSession(null)}
+          relatedStockSlides={relatedStockSlides}
+          onPickRelatedStock={handlePickRelatedStock}
         />
       ) : null}
 

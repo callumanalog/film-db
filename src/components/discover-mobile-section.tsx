@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FilmNativeGrid } from "@/components/film-native-grid";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
-import { collectLightboxSlidesFromGalleryImages } from "@/lib/lightbox-group";
+import {
+  collectLightboxSlidesFromGalleryImages,
+  findGalleryImageForLightboxSlide,
+  relatedGalleryLightboxSlidesForStock,
+} from "@/lib/lightbox-group";
 import type { GalleryImage } from "@/lib/sample-images";
 import {
   Sheet,
@@ -50,6 +54,11 @@ export function DiscoverMobileSection({ images, brands }: DiscoverMobileSectionP
     () => applyDiscoverFilters(images, feed, validBrand),
     [images, feed, validBrand]
   );
+
+  const relatedStockSlides = useMemo(() => {
+    if (!lightboxSession || lightboxSession.slides.length !== 1) return [];
+    return relatedGalleryLightboxSlidesForStock(lightboxSession.slides[0], processedImages);
+  }, [lightboxSession, processedImages]);
 
   useEffect(() => {
     const onOpen = () => {
@@ -124,7 +133,8 @@ export function DiscoverMobileSection({ images, brands }: DiscoverMobileSectionP
         </SheetContent>
       </Sheet>
 
-      <div className="md:hidden w-screen max-w-none relative left-1/2 -translate-x-1/2">
+      {/* Full-bleed masonry: cancel parent px-4 / sm:px-6 without 100vw (avoids horizontal page scroll). */}
+      <div className="md:hidden min-w-0 -mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]">
         {processedImages.length === 0 ? (
           <div className="px-4 py-12 text-center text-sm text-muted-foreground">
             No images match this brand. Try another filter.
@@ -144,6 +154,13 @@ export function DiscoverMobileSection({ images, brands }: DiscoverMobileSectionP
           slides={lightboxSession.slides}
           initialIndex={lightboxSession.initialIndex}
           onClose={() => setLightboxSession(null)}
+          relatedStockSlides={relatedStockSlides}
+          onPickRelatedStock={(slide) => {
+            const img = findGalleryImageForLightboxSlide(slide, processedImages);
+            if (img) {
+              setLightboxSession(collectLightboxSlidesFromGalleryImages(processedImages, img));
+            }
+          }}
         />
       ) : null}
     </>

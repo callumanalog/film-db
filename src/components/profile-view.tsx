@@ -76,6 +76,20 @@ export interface ProfileData {
     review_created_at: string;
     liked_at: string;
   }[];
+  savedUploads?: {
+    upload_id: string;
+    film_stock_slug: string;
+    image_url: string | null;
+    caption: string | null;
+    saved_at: string;
+  }[];
+  likedUploads?: {
+    upload_id: string;
+    film_stock_slug: string;
+    image_url: string | null;
+    caption: string | null;
+    liked_at: string;
+  }[];
 }
 
 interface ProfileViewProps {
@@ -102,9 +116,9 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
   const inCameraSlugs = inCameraEntries.map((e) => e.film_stock_slug);
 
   return (
-    <div className="space-y-8">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden md:min-h-0 md:flex-none md:gap-8 md:overflow-visible">
       {/* Profile header */}
-      <div className="flex flex-1 items-center gap-4">
+      <div className="flex shrink-0 items-center gap-4">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/15 text-2xl font-bold text-primary">
           {profile.displayName.charAt(0)}
         </div>
@@ -117,6 +131,7 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
       {/* Tabs */}
       <FilmDetailTabs
         defaultId="want"
+        pinTabPanelOnMobile
         tabs={[
           {
             id: "want",
@@ -252,10 +267,48 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
             label: "Saved",
             content: (
               <ProfileSection
-                emptyMessage="You haven't saved any community images yet. This feature is coming soon!"
-                isEmpty={true}
+                emptyMessage="You haven't saved any community images yet. Open Discover or Community, open an image, and tap Save."
+                isEmpty={!profile.savedUploads || profile.savedUploads.length === 0}
               >
-                <div />
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                  {(profile.savedUploads ?? []).map((u) => {
+                    const stock = stocksBySlug.get(u.film_stock_slug);
+                    const stockName = stock?.name ?? u.film_stock_slug;
+                    return (
+                      <Link
+                        key={u.upload_id}
+                        href={`/films/${u.film_stock_slug}`}
+                        className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
+                      >
+                        <div className="relative aspect-[4/3] bg-muted">
+                          {u.image_url ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={u.image_url}
+                              alt={plainTextFromPossibleHtml(u.caption ?? "")}
+                              className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Camera className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
+                          {u.caption && (
+                            <div
+                              className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground [&_a]:underline [&_blockquote]:my-0 [&_p]:m-0 [&_p]:inline"
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeReviewLikeHtml(u.caption),
+                              }}
+                            />
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </ProfileSection>
             ),
           },
@@ -300,40 +353,93 @@ export function ProfileView({ profile, stocksBySlug, statsBySlug = {} }: Profile
           {
             id: "likes",
             label: "Likes",
-            content: (
-              <ProfileSection
-                emptyMessage="You haven't liked any reviews yet. Open a film’s Reviews tab and tap Like on a review."
-                isEmpty={!profile.likedReviews || profile.likedReviews.length === 0}
-              >
-                <ul className="space-y-3">
-                  {(profile.likedReviews ?? []).map((r) => {
-                    const stock = stocksBySlug.get(r.film_stock_slug);
-                    const stockName = stock?.name ?? r.film_stock_slug;
-                    const dateLabel = formatReviewDate(r.liked_at);
-                    return (
-                      <li key={r.review_id}>
-                        <Link
-                          href={`/films/${r.film_stock_slug}`}
-                          className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <span className="font-semibold text-foreground">{stockName}</span>
-                            {r.review_title && (
-                              <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
-                            )}
-                            <p className="mt-1 text-xs text-muted-foreground">Liked {dateLabel}</p>
-                          </div>
-                          {r.rating != null && r.rating > 0 && (
-                            <MiniStars rating={r.rating} size={18} />
-                          )}
-                          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </ProfileSection>
-            ),
+            content: (() => {
+              const reviewLikes = profile.likedReviews ?? [];
+              const imageLikes = profile.likedUploads ?? [];
+              const noLikes = reviewLikes.length === 0 && imageLikes.length === 0;
+              return (
+                <ProfileSection
+                  emptyMessage="You haven't liked any reviews or community images yet. Open a film’s Reviews tab or like a shot in Discover."
+                  isEmpty={noLikes}
+                >
+                  <div className="space-y-10">
+                    {reviewLikes.length > 0 ? (
+                      <div>
+                        <h3 className="mb-3 text-sm font-semibold tracking-tight text-muted-foreground">Reviews</h3>
+                        <ul className="space-y-3">
+                          {reviewLikes.map((r) => {
+                            const stock = stocksBySlug.get(r.film_stock_slug);
+                            const stockName = stock?.name ?? r.film_stock_slug;
+                            const dateLabel = formatReviewDate(r.liked_at);
+                            return (
+                              <li key={r.review_id}>
+                                <Link
+                                  href={`/films/${r.film_stock_slug}`}
+                                  className="flex items-center gap-4 rounded-[7px] border border-border/50 bg-card p-4 transition-colors hover:border-primary/30 hover:bg-accent/30"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-semibold text-foreground">{stockName}</span>
+                                    {r.review_title && (
+                                      <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">{r.review_title}</p>
+                                    )}
+                                    <p className="mt-1 text-xs text-muted-foreground">Liked {dateLabel}</p>
+                                  </div>
+                                  {r.rating != null && r.rating > 0 && (
+                                    <MiniStars rating={r.rating} size={18} />
+                                  )}
+                                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {imageLikes.length > 0 ? (
+                      <div>
+                        <h3 className="mb-3 text-sm font-semibold tracking-tight text-muted-foreground">
+                          Community images
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                          {imageLikes.map((u) => {
+                            const stock = stocksBySlug.get(u.film_stock_slug);
+                            const stockName = stock?.name ?? u.film_stock_slug;
+                            return (
+                              <Link
+                                key={u.upload_id}
+                                href={`/films/${u.film_stock_slug}`}
+                                className="group overflow-hidden rounded-[7px] border border-border/50 bg-card transition-colors hover:border-primary/30 hover:bg-accent/30"
+                              >
+                                <div className="relative aspect-[4/3] bg-muted">
+                                  {u.image_url ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                      src={u.image_url}
+                                      alt={plainTextFromPossibleHtml(u.caption ?? "")}
+                                      className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center">
+                                      <Camera className="h-8 w-8 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="p-3">
+                                  <p className="text-xs font-semibold text-foreground line-clamp-1">{stockName}</p>
+                                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                    Liked {formatReviewDate(u.liked_at)}
+                                  </p>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </ProfileSection>
+              );
+            })(),
           },
         ]}
       />

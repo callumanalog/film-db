@@ -45,6 +45,8 @@ export function ProfilePageClient() {
             reviews: p.reviews,
             uploads: p.uploads,
             likedReviews: p.likedReviews,
+            savedUploads: p.savedUploads,
+            likedUploads: p.likedUploads,
           });
         } else if (!cancelled) {
           setProfile({
@@ -54,6 +56,8 @@ export function ProfilePageClient() {
             inCameraEntries: [],
             ratings: {},
             likedReviews: [],
+            savedUploads: [],
+            likedUploads: [],
           });
         }
       })
@@ -74,6 +78,8 @@ export function ProfilePageClient() {
         ...(profile.reviews?.map((r) => r.film_stock_slug) ?? []),
         ...(profile.uploads?.map((u) => u.film_stock_slug) ?? []),
         ...(profile.likedReviews?.map((r) => r.film_stock_slug) ?? []),
+        ...(profile.savedUploads?.map((u) => u.film_stock_slug) ?? []),
+        ...(profile.likedUploads?.map((u) => u.film_stock_slug) ?? []),
       ]
     : [...shotSlugs, ...favouriteSlugs, ...inCameraSlugs, ...Object.keys(ratings)];
   const uniqueSlugs = [...new Set(allSlugs)];
@@ -122,7 +128,7 @@ export function ProfilePageClient() {
 
   if (authLoading || !user || profileLoading || !profile) {
     return (
-      <div className="mx-auto max-w-6xl px-4 pt-4 pb-8 sm:px-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 pt-4 pb-8 sm:px-6 md:flex-none">
         <div className="animate-pulse space-y-6">
           <div className="h-16 w-64 rounded-card bg-muted" />
           <div className="h-32 rounded-card bg-muted" />
@@ -132,9 +138,9 @@ export function ProfilePageClient() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pt-4 pb-8 sm:px-6">
+    <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-4 pt-4 pb-8 sm:px-6 md:flex-none md:overflow-visible md:pb-8">
       {isUnverified && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40">
+        <div className="mb-6 shrink-0 flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40">
           <p className="text-sm text-amber-900 dark:text-amber-200">
             Verify your email to unlock all account features
           </p>
@@ -148,7 +154,9 @@ export function ProfilePageClient() {
           </button>
         </div>
       )}
-      <ProfileView profile={profile} stocksBySlug={stocksBySlug} statsBySlug={statsBySlug} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:block md:flex-none">
+        <ProfileView profile={profile} stocksBySlug={stocksBySlug} statsBySlug={statsBySlug} />
+      </div>
     </div>
   );
 }

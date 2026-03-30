@@ -5,7 +5,11 @@ import Link from "next/link";
 import { Camera, Heart, Bookmark, ChevronDown, X } from "lucide-react";
 import type { GalleryImage, SampleImageSource } from "@/lib/sample-images";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
-import { collectLightboxSlidesFromGalleryImages } from "@/lib/lightbox-group";
+import {
+  collectLightboxSlidesFromGalleryImages,
+  findGalleryImageForLightboxSlide,
+  relatedGalleryLightboxSlidesForStock,
+} from "@/lib/lightbox-group";
 
 /** Strip aperture (e.g. " f/2", " f/1.4") from camera string for display. */
 function cameraWithoutAperture(camera: string): string {
@@ -88,6 +92,11 @@ export function GalleryGrid({
     }
     return list;
   }, [images, brandFilter, selectedStockSlugs, sourceFilter, sort]);
+
+  const relatedStockSlides = useMemo(() => {
+    if (!lightboxSession || lightboxSession.slides.length !== 1) return [];
+    return relatedGalleryLightboxSlidesForStock(lightboxSession.slides[0], filteredAndSorted);
+  }, [lightboxSession, filteredAndSorted]);
 
   const toggleStock = (slug: string) => {
     setSelectedStockSlugs((prev) => {
@@ -350,6 +359,13 @@ export function GalleryGrid({
           slides={lightboxSession.slides}
           initialIndex={lightboxSession.initialIndex}
           onClose={() => setLightboxSession(null)}
+          relatedStockSlides={relatedStockSlides}
+          onPickRelatedStock={(slide) => {
+            const img = findGalleryImageForLightboxSlide(slide, filteredAndSorted);
+            if (img) {
+              setLightboxSession(collectLightboxSlidesFromGalleryImages(filteredAndSorted, img));
+            }
+          }}
         />
       ) : null}
     </div>

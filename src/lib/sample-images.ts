@@ -77,6 +77,10 @@ export interface GalleryImage extends SampleImage {
   push_pull?: string | null;
   reviewId?: string | null;
   uploadBatchId?: string | null;
+  /** Set for real `user_uploads` rows (Discover/Community); omit for seeded sample images. */
+  uploadId?: string | null;
+  /** From user_uploads.save_count for real community rows. */
+  saves?: number;
 }
 
 export type StockForGallery = { slug: string; name: string; brand: { name: string } };

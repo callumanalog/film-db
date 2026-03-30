@@ -107,6 +107,8 @@ export function FilmDetailTabs({
   fullWidthTabBar = false,
   activeId: controlledActiveId,
   onTabChange,
+  /** Below md: tab row scrolls horizontally; only the tab panel scrolls vertically (fixed chrome). */
+  pinTabPanelOnMobile = false,
 }: {
   tabs: { id: string; label: string; content: ReactNode }[];
   defaultId?: string;
@@ -117,6 +119,7 @@ export function FilmDetailTabs({
   /** When provided, tab is controlled by parent (for lazy tab content). */
   activeId?: string;
   onTabChange?: (id: string) => void;
+  pinTabPanelOnMobile?: boolean;
 }) {
   const [internalActiveId, setInternalActiveId] = useState(defaultId ?? tabs[0]?.id ?? "");
   const activeId = controlledActiveId ?? internalActiveId;
@@ -131,7 +134,9 @@ export function FilmDetailTabs({
         className={
           fullWidthTabBar
             ? "grid w-full gap-0"
-            : "flex gap-8"
+            : pinTabPanelOnMobile
+              ? "flex min-w-0 flex-nowrap gap-6 overflow-x-auto overscroll-x-contain pb-px [-ms-overflow-style:none] [scrollbar-width:none] md:gap-8 md:overflow-visible [&::-webkit-scrollbar]:hidden"
+              : "flex gap-8"
         }
         style={
           fullWidthTabBar
@@ -147,7 +152,9 @@ export function FilmDetailTabs({
             className={`relative pb-3 pt-1 text-sm font-semibold transition-colors whitespace-nowrap ${
               fullWidthTabBar
                 ? "flex w-full min-w-0 justify-center px-1 text-center"
-                : "w-full"
+                : pinTabPanelOnMobile
+                  ? "shrink-0"
+                  : "w-full"
             } ${
               t.id === activeId
                 ? "text-foreground"
@@ -167,15 +174,27 @@ export function FilmDetailTabs({
   return (
     <FilmDetailTabsContext.Provider value={{ activeId, setActiveId }}>
       {/* Gap between title/stats and tab bar. Film detail: tab bar spans full content width. */}
-      <div className="mt-4">
+      <div
+        className={
+          pinTabPanelOnMobile
+            ? "mt-4 flex min-h-0 flex-1 flex-col overflow-hidden md:block md:flex-none md:overflow-visible"
+            : "mt-4"
+        }
+      >
         {fullWidthTabBar ? (
           <div className="w-full border-b border-border/50">
             {tabNav}
           </div>
         ) : (
-          tabNav
+          <div className={pinTabPanelOnMobile ? "shrink-0" : undefined}>{tabNav}</div>
         )}
-        <div className={`pt-6 ${showRightPane ? "flex gap-8" : ""}`}>
+        <div
+          className={
+            pinTabPanelOnMobile
+              ? `flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain pt-6 md:min-h-0 md:flex-none md:overflow-visible ${showRightPane ? "md:flex md:gap-8" : ""}`
+              : `pt-6 ${showRightPane ? "flex gap-8" : ""}`
+          }
+        >
           <div className={showRightPane ? "min-w-0 flex-1" : ""}>
             {activeTab?.content}
           </div>

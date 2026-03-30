@@ -1,7 +1,74 @@
 import type { FilmUploadRow } from "@/app/actions/uploads";
+import type { FlickrPhoto } from "@/lib/flickr";
 import type { GalleryImage } from "@/lib/sample-images";
 import type { ImageLightboxData } from "@/components/image-lightbox";
 import { plainTextFromPossibleHtml } from "@/lib/sanitize-review-like-html";
+
+export function isSameLightboxSlide(a: ImageLightboxData, b: ImageLightboxData): boolean {
+  const aId = a.uploadId?.trim();
+  const bId = b.uploadId?.trim();
+  if (aId && bId) return aId === bId;
+  return a.imageUrl === b.imageUrl;
+}
+
+/** Other community gallery images on the same film stock (Discover / Community page grid). */
+export function relatedGalleryLightboxSlidesForStock(
+  current: ImageLightboxData,
+  galleryImages: GalleryImage[]
+): ImageLightboxData[] {
+  const href = current.context?.href;
+  if (!href?.startsWith("/films/")) return [];
+  const slug = href.slice("/films/".length).split(/[/?#]/)[0];
+  if (!slug) return [];
+  const out: ImageLightboxData[] = [];
+  for (const img of galleryImages) {
+    if (img.stockSlug !== slug) continue;
+    const s = galleryImageToLightbox(img);
+    if (!s || isSameLightboxSlide(current, s)) continue;
+    out.push(s);
+  }
+  return out;
+}
+
+export function findGalleryImageForLightboxSlide(
+  slide: ImageLightboxData,
+  images: GalleryImage[]
+): GalleryImage | undefined {
+  return images.find((i) => {
+    const su = slide.uploadId?.trim();
+    const iu = i.uploadId?.trim();
+    if (su && iu) return su === iu;
+    return i.imageUrl === slide.imageUrl;
+  });
+}
+
+/** Other uploads + Flickr shots on the same film stock page (excludes `current`). */
+export function relatedFilmPageLightboxSlides(
+  current: ImageLightboxData,
+  uploads: FilmUploadRow[],
+  flickrPhotos: FlickrPhoto[],
+  stockName: string,
+  slug: string
+): ImageLightboxData[] {
+  const out: ImageLightboxData[] = [];
+  for (const u of uploads) {
+    const s = filmUploadToLightboxData(u, stockName, slug);
+    if (!s || isSameLightboxSlide(current, s)) continue;
+    out.push(s);
+  }
+  for (const f of flickrPhotos) {
+    const s: ImageLightboxData = {
+      imageUrl: f.imageUrl,
+      alt: f.title || `${stockName} on Flickr`,
+      caption: f.title?.trim() || null,
+      username: f.ownerName,
+      context: { label: stockName, href: `/films/${slug}` },
+    };
+    if (isSameLightboxSlide(current, s)) continue;
+    out.push(s);
+  }
+  return out;
+}
 
 export function galleryImageToLightbox(img: GalleryImage): ImageLightboxData | undefined {
   if (!img.imageUrl) return undefined;
@@ -10,9 +77,11 @@ export function galleryImageToLightbox(img: GalleryImage): ImageLightboxData | u
     : "";
   return {
     imageUrl: img.imageUrl,
+    uploadId: img.uploadId?.trim() || null,
     alt: altFromCaption || `${img.stockName} · ${img.username}`,
     caption: img.caption,
     username: img.username,
+    likeCount: img.likes ?? null,
     context: { label: img.stockName, href: `/films/${img.stockSlug}` },
     metadata: {
       camera: img.camera || null,
@@ -50,9 +119,13 @@ export function filmUploadToLightboxData(
     : "";
   return {
     imageUrl: u.image_url,
+    uploadId: u.id,
     alt: altFromCaption || `${stockName} · ${u.display_name ?? "Member"}`,
     caption: u.caption,
     username: u.display_name?.trim() || "Member",
+    location: u.location?.trim() || null,
+    createdAt: u.created_at ?? null,
+    likeCount: u.like_count ?? null,
     context: { label: stockName, href: `/films/${slug}` },
     metadata: metadataFromUpload(u),
   };

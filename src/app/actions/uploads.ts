@@ -4,7 +4,7 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-batch";
 
 const USER_UPLOAD_ROW_SELECT =
-  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id, image_width, image_height, review_id";
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
 
 export interface FilmUploadRow {
   id: string;
@@ -29,6 +29,8 @@ export interface FilmUploadRow {
   image_width?: number | null;
   image_height?: number | null;
   review_id?: string | null;
+  like_count?: number | null;
+  save_count?: number | null;
 }
 
 /** Shape for Community page gallery: one row per upload with stock/brand labels. */
@@ -42,6 +44,8 @@ export interface CommunityGalleryUpload {
   camera: string;
   settings: string;
   likes: number;
+  /** Denormalized save_count from user_uploads. */
+  saves: number;
   source: "community";
   imageUrl: string | null;
   caption?: string | null;
@@ -121,7 +125,8 @@ export async function getAllCommunityUploadsForGallery(
       username,
       camera: r.camera ?? "",
       settings: settingsParts.join(" · "),
-      likes: 0,
+      likes: Number(r.like_count ?? 0),
+      saves: Number(r.save_count ?? 0),
       source: "community",
       imageUrl: r.image_url,
       caption: r.caption,

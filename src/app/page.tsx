@@ -18,7 +18,7 @@ export default async function DiscoverPage() {
   const realUploads = await getAllCommunityUploadsForGallery(stocks);
   const uploadsAsGalleryImages: GalleryImage[] = realUploads
     .filter((u): u is typeof u & { imageUrl: string } => u.imageUrl != null)
-    .map((u) => ({ ...u, imageUrl: u.imageUrl }));
+    .map((u) => ({ ...u, imageUrl: u.imageUrl, uploadId: u.id }));
   const images: GalleryImage[] = uploadsAsGalleryImages;
 
   const brands = [...new Set(stocks.map((s) => s.brand.name))].sort();

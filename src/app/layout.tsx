@@ -101,7 +101,9 @@ export default function RootLayout({
               <Suspense fallback={<header className="sticky top-0 z-50 h-16 border-b border-border/50 bg-background/80 backdrop-blur-xl" />}>
                 <Header />
               </Suspense>
-              <main className="flex-1 pb-20 md:pb-0">{children}</main>
+              <main className="flex min-h-0 flex-1 flex-col overflow-x-hidden pb-20 md:overflow-x-visible md:pb-0">
+                {children}
+              </main>
               <Footer />
               <BottomNav />
               <PlusActionSheet />

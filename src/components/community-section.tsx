@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { SAMPLE_GALLERY } from "@/lib/sample-images";
 import type { FlickrPhoto } from "@/lib/flickr";
 import { ReviewsTabContent } from "@/components/reviews-tab-content";
@@ -30,7 +30,10 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { LazyImage } from "@/components/lazy-image";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
-import { collectLightboxSlidesFromFilmUploads } from "@/lib/lightbox-group";
+import {
+  collectLightboxSlidesFromFilmUploads,
+  relatedFilmPageLightboxSlides,
+} from "@/lib/lightbox-group";
 
 interface CommunityReview {
   id: string;
@@ -297,6 +300,44 @@ export function CommunityGallery({
   const displayTotal = view === "flickr" ? flickrCount : view === "community" ? communityItemsCount : yourImagesCount;
   const displayStart = displayTotal === 0 ? 0 : 1;
   const displayEnd = displayTotal;
+
+  const relatedStockSlides = useMemo(() => {
+    if (!lightboxSession || lightboxSession.slides.length !== 1 || !slug) return [];
+    return relatedFilmPageLightboxSlides(
+      lightboxSession.slides[0],
+      communityUploads,
+      flickrImages,
+      stockName,
+      slug
+    );
+  }, [lightboxSession, communityUploads, flickrImages, stockName, slug]);
+
+  const handlePickRelatedStock = useCallback(
+    (slide: ImageLightboxData) => {
+      if (!slug) return;
+      const u = communityUploads.find((x) => x.id === slide.uploadId);
+      if (u) {
+        setLightboxSession(collectLightboxSlidesFromFilmUploads(communityUploads, u, stockName, slug));
+        return;
+      }
+      const f = flickrImages.find((x) => x.imageUrl === slide.imageUrl);
+      if (f) {
+        setLightboxSession({
+          slides: [
+            {
+              imageUrl: f.imageUrl,
+              alt: f.title || `${stockName} on Flickr`,
+              caption: f.title?.trim() || null,
+              username: f.ownerName,
+              context: { label: stockName, href: `/films/${slug}` },
+            },
+          ],
+          initialIndex: 0,
+        });
+      }
+    },
+    [communityUploads, flickrImages, stockName, slug]
+  );
 
   return (
     <div className="space-y-6">
@@ -606,6 +647,8 @@ export function CommunityGallery({
           slides={lightboxSession.slides}
           initialIndex={lightboxSession.initialIndex}
           onClose={() => setLightboxSession(null)}
+          relatedStockSlides={relatedStockSlides}
+          onPickRelatedStock={handlePickRelatedStock}
         />
       ) : null}
     </div>
