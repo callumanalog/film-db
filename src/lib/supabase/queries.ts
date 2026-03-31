@@ -24,6 +24,7 @@ import {
   getFilmStocksFromSupabase,
   getFilmStockBySlugFromSupabase,
 } from "@/lib/supabase/catalog";
+import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 
 export interface FilmStockFilters {
   search?: string;
@@ -72,10 +73,17 @@ function getAllFilmStocks(): (FilmStock & { brand: FilmBrand })[] {
 }
 
 async function getAllFilmStocksMaybeFromSupabase(): Promise<(FilmStock & { brand: FilmBrand })[]> {
-  const fromSupabase = await getFilmStocksFromSupabase();
+  const fromSupabase = await getCachedSupabaseFilmStocks();
   if (fromSupabase && fromSupabase.length > 0) return fromSupabase;
   return getAllFilmStocks();
 }
+
+/** Cached 60s so list and detail pages agree on whether Supabase is the active catalog. */
+const getCachedSupabaseFilmStocks = unstable_cache(
+  getFilmStocksFromSupabase,
+  ["film-stocks-supabase"],
+  { revalidate: 60, tags: ["film-stocks"] }
+);
 
 /** Cached 60s so listing pages and filters avoid repeated DB round-trips. */
 const getCachedAllFilmStocks = unstable_cache(
@@ -221,8 +229,18 @@ export async function getFilmStocks(
 
   const sortBy = filters?.sort ?? "popular";
   if (sortBy === "popular") {
+    const statsBySlug =
+      stocks.length > 0 ? await getFilmStockStatsForSlugs(stocks.map((s) => s.slug)) : {};
     stocks.sort((a, b) => {
-      if (a.rating !== b.rating) return b.rating - a.rating;
+      const ra = statsBySlug[a.slug]?.avgRating ?? null;
+      const rb = statsBySlug[b.slug]?.avgRating ?? null;
+      if (ra == null && rb == null) {
+        if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      } else {
+        if (ra == null) return 1;
+        if (rb == null) return -1;
+        if (rb !== ra) return rb - ra;
+      }
       if (a.featured !== b.featured) return a.featured ? -1 : 1;
       const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
       const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
@@ -332,6 +350,11 @@ export const getFilmStockBySlug = cache(async function getFilmStockBySlug(
 ): Promise<FilmStockWithRelations | null> {
   const fromSupabase = await getFilmStockBySlugFromSupabase(slug);
   if (fromSupabase) return fromSupabase;
+
+  const supabaseCatalogStocks = await getCachedSupabaseFilmStocks();
+  if (supabaseCatalogStocks && supabaseCatalogStocks.length > 0) {
+    return null;
+  }
 
   const stocks = getFilmStocksFromFile() ?? seedFilmStocks;
   const stock = stocks.find((s) => s.slug === slug);

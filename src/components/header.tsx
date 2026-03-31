@@ -417,7 +417,7 @@ export function Header() {
               </div>
             )}
           </div>
-          {user && (
+          {!loading && user && (
             <div className="relative hidden items-center gap-0.5 lg:flex" ref={actionsRef}>
               <button
                 type="button"

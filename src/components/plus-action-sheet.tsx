@@ -15,6 +15,8 @@ import { useAuth } from "@/context/auth-context";
 import { useUserActions } from "@/context/user-actions-context";
 import { getSuggestedStocks, type SearchStocksResult } from "@/app/actions/search";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
+import { FilmStockListCardButton } from "@/components/film-stock-list-card";
+import { cn } from "@/lib/utils";
 
 const EVENT_OPEN = "plus-action-sheet:open";
 
@@ -50,7 +52,7 @@ export function PlusActionSheet() {
   const [reviewModalMode, setReviewModalMode] = useState<"review" | "upload">("review");
   const [searchStep, setSearchStep] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggested, setSuggested] = useState<{ label: string; stocks: SearchStocksResult[]; allStocks: SearchStocksResult[] } | null>(null);
+  const [suggested, setSuggested] = useState<{ stocks: SearchStocksResult[]; allStocks: SearchStocksResult[] } | null>(null);
   const [selectedStock, setSelectedStock] = useState<SearchStocksResult | null>(null);
   const { user } = useAuth();
   const { setRating: persistRating } = useUserActions();
@@ -80,7 +82,7 @@ export function PlusActionSheet() {
       ? suggested.allStocks.filter((s) =>
           s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           s.brandName.toLowerCase().includes(searchQuery.toLowerCase())
-        ).slice(0, 10)
+        )
       : suggested.stocks
     : [];
 
@@ -115,16 +117,23 @@ export function PlusActionSheet() {
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" showCloseButton={false} className="gap-0 px-0 pb-8">
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          className={cn(
+            "capacitor-safe-bottom gap-0 bg-white px-0 pb-8",
+            searchStep && "h-[78dvh] max-h-[78dvh]"
+          )}
+        >
           {searchStep && (
             <SheetHeader className="pb-4">
-              <SheetTitle>Choose a film stock</SheetTitle>
+              <SheetTitle>{reviewModalMode === "upload" ? "Choose the film stock for this roll" : "Choose a film stock"}</SheetTitle>
             </SheetHeader>
           )}
           {!searchStep && <SheetTitle className="sr-only">Actions</SheetTitle>}
 
           {searchStep ? (
-            <div className="px-4">
+            <div className="flex min-h-0 flex-1 flex-col px-4">
               <input
                 type="text"
                 value={searchQuery}
@@ -133,20 +142,10 @@ export function PlusActionSheet() {
                 autoFocus
                 className="w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
-              {!searchQuery && suggested && (
-                <p className="mt-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">{suggested.label}</p>
-              )}
-              <ul className="mt-2 max-h-64 overflow-y-auto">
+              <ul className="mt-3 h-[528px] min-h-[528px] overflow-y-auto rounded-[7px] border border-border/40 bg-card">
                 {filteredStocks.map((stock) => (
                   <li key={stock.slug}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectStock(stock)}
-                      className="flex w-full items-center gap-3 rounded-[7px] px-2 py-2.5 text-left transition-colors hover:bg-accent/50"
-                    >
-                      <span className="text-sm font-medium text-foreground">{stock.name}</span>
-                      <span className="text-xs text-muted-foreground">{stock.brandName}</span>
-                    </button>
+                    <FilmStockListCardButton stock={stock} onSelect={() => handleSelectStock(stock)} />
                   </li>
                 ))}
               </ul>
@@ -174,9 +173,9 @@ export function PlusActionSheet() {
                 >
                   <ImageIcon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-foreground">Add scans</span>
+                    <span className="block text-sm font-medium text-foreground">Add a roll</span>
                     <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-                      Search for a stock and upload scans
+                      Upload scans from a roll of film
                     </span>
                   </span>
                 </button>
@@ -274,7 +273,7 @@ export function PlusActionSheet() {
                 }
                 showToastViaEvent(
                   reviewModalMode === "upload"
-                    ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your images have been uploaded." : "Done.")
+                    ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your roll has been published." : "Done.")
                     : payload.files.length > 0
                       ? "Thanks! Your photos and review have been submitted."
                       : "Thanks! Your review has been submitted."
@@ -287,7 +286,11 @@ export function PlusActionSheet() {
               }
             } else {
               if (payload.rating > 0) persistRating(selectedStock.slug, payload.rating);
-              showToastViaEvent("Log in to save your review.");
+              showToastViaEvent(
+                reviewModalMode === "upload"
+                  ? (payload.files.length > 0 ? "Log in to save your roll." : "Done.")
+                  : "Log in to save your review."
+              );
             }
           }}
         />

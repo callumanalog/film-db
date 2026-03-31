@@ -1,7 +1,6 @@
 "use server";
 
 import { getFilmStocks, getBrands, getFeaturedFilmStocks, getFeaturedBrands } from "@/lib/supabase/queries";
-import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { createClient } from "@/lib/supabase/server";
 
@@ -250,62 +249,23 @@ export async function getLatestUsers(): Promise<SearchUsersResult[]> {
 }
 
 export interface SuggestedStocksResult {
-  label: string;
   stocks: SearchStocksResult[];
   /** Full stock catalog for instant client-side filtering. */
   allStocks: SearchStocksResult[];
 }
 
 /**
- * Returns 5 suggested film stocks for the action sheet search empty state,
+ * Returns 8 suggested film stocks for the action sheet search empty state,
  * plus the complete stock list for instant client-side filtering.
- * Signed-in users who have shot stocks → most recently shot (unique by slug).
- * Otherwise → top 5 by avg user rating (popular/trending).
+ * Empty state suggestions are the highest-rated stocks by average user rating.
  */
 export async function getSuggestedStocks(): Promise<SuggestedStocksResult> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
   const allStocks = await getFilmStocks({ sort: "alphabetical" });
   const allMapped: SearchStocksResult[] = allStocks.map(stockToSearchResult);
-
-  if (user) {
-    const { data: shots } = await supabase
-      .from("user_shot")
-      .select("film_stock_slug")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (shots && shots.length > 0) {
-      const bySlug = new Map(allMapped.map((s) => [s.slug, s]));
-      const recentStocks: SearchStocksResult[] = [];
-      for (const r of shots) {
-        const s = bySlug.get(r.film_stock_slug);
-        if (s) recentStocks.push(s);
-      }
-      if (recentStocks.length > 0) {
-        return { label: "Recently shot", stocks: recentStocks, allStocks: allMapped };
-      }
-    }
-  }
-
-  const popularStocks = await getFilmStocks({ sort: "popular" });
-  const topSlugs = popularStocks.slice(0, 20).map((s) => s.slug);
-  const statsBySlug = topSlugs.length > 0 ? await getFilmStockStatsForSlugs(topSlugs) : {};
-
-  const sorted = popularStocks
-    .slice(0, 20)
-    .sort((a, b) => {
-      const ra = statsBySlug[a.slug]?.avgRating ?? 0;
-      const rb = statsBySlug[b.slug]?.avgRating ?? 0;
-      return rb - ra;
-    })
-    .slice(0, 5);
+  const highestRated = await getFilmStocks({ sort: "popular" });
 
   return {
-    label: "Trending film stocks",
-    stocks: sorted.map(stockToSearchResult),
+    stocks: highestRated.slice(0, 8).map(stockToSearchResult),
     allStocks: allMapped,
   };
 }

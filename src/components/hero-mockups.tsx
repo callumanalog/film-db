@@ -439,9 +439,6 @@ function UserStarRating({
 export function FilmDetailMobileStockImage({
   stock,
 }: Pick<HeroMockupProps, "stock">) {
-  const { slug } = stock;
-  const isWide = slug === "cinestill-800t";
-
   return (
     <div className="relative md:hidden">
       {stock.discontinued && (
@@ -453,12 +450,12 @@ export function FilmDetailMobileStockImage({
         </span>
       )}
       <div className="flex w-full shrink-0 items-center justify-center px-0 pt-2 pb-1">
-        <div className={isWide ? "h-40 w-48 shrink-0" : "h-48 w-40 shrink-0"}>
+        <div className="aspect-[4/3] w-52 max-w-full shrink-0">
           <FilmImage
             stock={stock}
-            size={192}
+            width={208}
+            height={156}
             priority
-            {...(isWide ? { width: 192, height: 160 } : {})}
           />
         </div>
       </div>
@@ -826,7 +823,7 @@ export function FilmDetailMobileToolbar({
               }}
             >
               <ImageIcon className="h-5 w-5 text-muted-foreground" />
-              Add scans...
+              Add a roll...
             </button>
             <button
               type="button"
@@ -954,7 +951,7 @@ export function FilmDetailMobileToolbar({
               }
               showToastViaEvent(
                 reviewModalMode === "upload"
-                  ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your images have been uploaded." : "Done.")
+                  ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your roll has been published." : "Done.")
                   : payload.files.length > 0
                     ? "Thanks! Your photos and review have been submitted."
                     : "Thanks! Your review has been submitted."
@@ -970,7 +967,7 @@ export function FilmDetailMobileToolbar({
             if (payload.rating > 0) persistRating(slug, payload.rating);
             showToastViaEvent(
               reviewModalMode === "upload"
-                ? (payload.files.length > 0 ? "Log in to save your uploads." : "Done.")
+                ? (payload.files.length > 0 ? "Log in to save your roll." : "Done.")
                 : payload.files.length > 0
                   ? "Log in to save your photos and review."
                   : "Your rating was saved locally. Log in to save reviews and uploads."
@@ -1265,7 +1262,7 @@ export function StickyLeftPane({
               }
               showToastViaEvent(
                 reviewModalMode === "upload"
-                  ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your images have been uploaded." : "Done.")
+                  ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your roll has been published." : "Done.")
                   : payload.files.length > 0
                     ? "Thanks! Your photos and review have been submitted."
                     : "Thanks! Your review has been submitted."
@@ -1281,7 +1278,7 @@ export function StickyLeftPane({
             if (payload.rating > 0) persistRating(slug, payload.rating);
             showToastViaEvent(
               reviewModalMode === "upload"
-                ? (payload.files.length > 0 ? "Log in to save your uploads." : "Done.")
+                ? (payload.files.length > 0 ? "Log in to save your roll." : "Done.")
                 : payload.files.length > 0
                   ? "Log in to save your photos and review."
                   : "Your rating was saved locally. Log in to save reviews and uploads."

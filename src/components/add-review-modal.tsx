@@ -370,6 +370,7 @@ export function AddReviewModal({
   const [rating, setRating] = useState(initialRating);
   const [bestFor, setBestFor] = useState<BestFor[]>([]);
   const [camera, setCamera] = useState("");
+  const [rollName, setRollName] = useState("");
 
   const REVIEW_MAX_LENGTH = 10_000;
   const CAPTION_MAX_LENGTH = 500;
@@ -451,6 +452,7 @@ export function AddReviewModal({
     setRating(initialRating);
     editor?.commands.clearContent();
     setCamera("");
+    setRollName("");
     setBestFor([]);
     setExistingScanUrls([]);
     setFiles([]);
@@ -513,6 +515,7 @@ export function AddReviewModal({
     setRating(edit.rating > 0 ? Number(edit.rating) : 0);
     setBestFor((edit.best_for as BestFor[]) ?? []);
     setCamera("");
+    setRollName("");
     setExistingScanUrls(edit.existingScanUrls ?? []);
     setFiles([]);
     setPreviewUrls((urls) => {
@@ -565,7 +568,7 @@ export function AddReviewModal({
     reviewText: editorIsEmpty ? "" : editorHtml,
     files,
     camera: camera || undefined,
-    reviewTitle: undefined,
+    reviewTitle: mode === "upload" && rollName.trim() ? rollName.trim() : undefined,
     bestFor: bestFor.length > 0 ? bestFor : undefined,
     format: selectedFormat || undefined,
     location: location || undefined,
@@ -730,8 +733,12 @@ export function AddReviewModal({
               ? `Edit review — ${stock.name}`
               : `Review ${stock.name}`
             : step === 2
-              ? `Add scans — ${stock.name}`
-              : `Post scans — ${stock.name}`}
+              ? enteredViaUpload
+                ? `Add a roll — ${stock.name}`
+                : `Add scans — ${stock.name}`
+              : enteredViaUpload
+                ? `Add roll details — ${stock.name}`
+                : `Post scans — ${stock.name}`}
         </SheetTitle>
 
         {step === 1 ? (
@@ -860,7 +867,9 @@ export function AddReviewModal({
                   <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
                 </button>
               )}
-              <span className="text-sm font-semibold text-foreground">Add scans</span>
+              <span className="text-sm font-semibold text-foreground">
+                {enteredViaUpload ? "Add a roll" : "Add scans"}
+              </span>
               <button
                 type="button"
                 onClick={handleClose}
@@ -884,8 +893,8 @@ export function AddReviewModal({
                       <p className="text-sm font-medium text-foreground">{stock.name}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         {files.length === 0 && existingScanUrls.length === 0
-                          ? "Upload your scans. Review them here before adding details."
-                          : "Review your scans here before adding details."}
+                          ? "Upload up to 10 scans from the same roll, then add shared details."
+                          : "Review the scans from this roll before adding shared details."}
                       </p>
                     </div>
                   </div>
@@ -936,7 +945,7 @@ export function AddReviewModal({
                   {existingScanUrls.length > 0 && (
                     <div className="mb-4">
                       <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Your scans
+                        Existing scans
                       </p>
                       <div
                         className={cn(
@@ -984,7 +993,9 @@ export function AddReviewModal({
                         )}
                       >
                         <Plus className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm font-medium text-muted-foreground">Add more scans</span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {enteredViaUpload ? "Add more scans from this roll" : "Add more scans"}
+                        </span>
                       </button>
                     ) : (
                       <button
@@ -996,9 +1007,13 @@ export function AddReviewModal({
                         )}
                       >
                         <Plus className="h-10 w-10 text-muted-foreground" />
-                        <span className="text-sm font-medium text-muted-foreground">Add scans</span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {enteredViaUpload ? "Add scans from this roll" : "Add scans"}
+                        </span>
                         <span className="px-6 text-center text-xs text-muted-foreground/60">
-                          Upload your scans of {stock.name} to share with the community
+                          {enteredViaUpload
+                            ? `Upload up to 10 scans from one roll of ${stock.name}`
+                            : `Upload your scans of ${stock.name} to share with the community`}
                         </span>
                       </button>
                     )
@@ -1078,7 +1093,7 @@ export function AddReviewModal({
                           className="mt-3 flex w-full items-center justify-center gap-2 rounded-[7px] border border-border/50 bg-background py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary/30"
                         >
                           <Plus className="h-4 w-4 text-muted-foreground" />
-                          Add more scans
+                          {enteredViaUpload ? "Add more scans from this roll" : "Add more scans"}
                         </button>
                       )}
                     </div>
@@ -1217,7 +1232,7 @@ export function AddReviewModal({
                   disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
                   className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
                 >
-                  {submitting ? "Saving..." : enteredViaUpload ? "Next" : isEdit ? "Save changes" : "Submit review"}
+                  {submitting ? "Saving..." : enteredViaUpload ? "Add roll details" : isEdit ? "Save changes" : "Submit review"}
                 </button>
               </div>
             )}
@@ -1238,11 +1253,8 @@ export function AddReviewModal({
               >
                 <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
               </button>
-              <span
-                className="mx-12 block truncate text-center text-sm font-semibold text-foreground"
-                title={stock.name}
-              >
-                {stock.name}
+              <span className="mx-12 block truncate text-center text-sm font-semibold text-foreground">
+                Roll details
               </span>
               <button
                 type="button"
@@ -1256,6 +1268,12 @@ export function AddReviewModal({
 
             <div className="min-h-0 flex-1 overflow-y-auto">
                 <div className="space-y-3 px-4 py-5">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">{stock.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Add the shared details for this roll. These details apply to every scan in this upload.
+                    </p>
+                  </div>
                   {files.length > 0 && (
                     <div className="-mr-4 w-[calc(100%+1rem)] max-w-none">
                       <div className="scrollbar-hide flex items-start gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-4">
@@ -1279,16 +1297,33 @@ export function AddReviewModal({
                     </div>
                   )}
 
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="roll-name"
+                      className="block text-xs font-normal text-muted-foreground"
+                    >
+                      Roll name
+                    </label>
+                    <Input
+                      id="roll-name"
+                      type="text"
+                      value={rollName}
+                      onChange={(e) => setRollName(e.target.value)}
+                      placeholder="Optional, e.g. Paris weekend"
+                      className="min-w-0 w-full"
+                    />
+                  </div>
+
                   <div className="relative">
                     <label htmlFor="share-scans-caption" className="sr-only">
-                      Caption
+                      Roll notes
                     </label>
                     <textarea
                       id="share-scans-caption"
                       value={caption}
                       maxLength={CAPTION_MAX_LENGTH}
                       onChange={(e) => setCaption(e.target.value)}
-                      placeholder="Add a caption..."
+                      placeholder="Add a short description or notes for this roll..."
                       rows={4}
                       className="min-h-[100px] w-full resize-y rounded-[7px] border border-input bg-transparent px-3 py-3 pb-8 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-input/30"
                     />
@@ -1412,7 +1447,7 @@ export function AddReviewModal({
                             aria-expanded={false}
                             className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
                           >
-                            <span className="min-w-0 truncate text-left">Lens</span>
+                            <span className="min-w-0 truncate text-left">Add lens</span>
                             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
                           </button>
                         )}
@@ -1441,7 +1476,7 @@ export function AddReviewModal({
                             aria-expanded={false}
                             className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
                           >
-                            <span className="min-w-0 truncate text-left">Filter</span>
+                            <span className="min-w-0 truncate text-left">Add filter</span>
                             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
                           </button>
                         )}
@@ -1470,7 +1505,7 @@ export function AddReviewModal({
                             aria-expanded={false}
                             className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
                           >
-                            <span className="min-w-0 truncate text-left">Lab</span>
+                            <span className="min-w-0 truncate text-left">Add lab</span>
                             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
                           </button>
                         )}
@@ -1499,7 +1534,7 @@ export function AddReviewModal({
                             aria-expanded={false}
                             className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
                           >
-                            <span className="min-w-0 truncate text-left">Scanner</span>
+                            <span className="min-w-0 truncate text-left">Add scanner</span>
                             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
                           </button>
                         )}
@@ -1516,7 +1551,7 @@ export function AddReviewModal({
                   disabled={submitting || !files.length}
                   className="flex w-full items-center justify-center rounded-[7px] bg-[#1A1410] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1A1410]/90 disabled:opacity-40 dark:bg-[#1A1410] dark:hover:bg-[#1A1410]/90"
                 >
-                  {submitting ? "Sharing..." : "Share"}
+                  {submitting ? "Publishing..." : "Publish roll"}
                 </button>
               </div>
           </div>

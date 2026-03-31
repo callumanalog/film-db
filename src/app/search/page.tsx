@@ -69,8 +69,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const stocks =
     sortParam === "popular" && stocksBase.length > 0
       ? [...stocksBase].sort((a, b) => {
-          const ra = statsBySlug[a.slug]?.avgRating ?? 0;
-          const rb = statsBySlug[b.slug]?.avgRating ?? 0;
+          const ra = statsBySlug[a.slug]?.avgRating ?? null;
+          const rb = statsBySlug[b.slug]?.avgRating ?? null;
+          if (ra == null && rb == null) return 0;
+          if (ra == null) return 1;
+          if (rb == null) return -1;
           if (ra !== rb) return rb - ra;
           const keyA = `${a.brand.name} ${a.name}`.toLowerCase();
           const keyB = `${b.brand.name} ${b.name}`.toLowerCase();
