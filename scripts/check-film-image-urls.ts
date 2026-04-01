@@ -15,9 +15,10 @@ if (!url || !key) {
 const supabase = createClient(url, key, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
+const supabaseUrl = url;
 
 function getPublicPrefix(): string {
-  return `${url.replace(/\/$/, "")}/storage/v1/object/public/${BUCKET}/`;
+  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${BUCKET}/`;
 }
 
 async function main() {
