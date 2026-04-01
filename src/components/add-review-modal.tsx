@@ -903,7 +903,7 @@ export function AddReviewModal({
                 </button>
               </div>
               <div className={mobileHeaderTitleBlockClassName}>
-                <div className="pb-1 pt-0">
+                <div className="pt-0">
                   <h1 className={mobileHeaderTitleClassName}>New roll</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Upload up to 10 frames from a roll of this stock.
@@ -962,8 +962,16 @@ export function AddReviewModal({
 
                 {enteredViaUpload && files.length === 0 && existingScanUrls.length === 0 ? (
                   <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label htmlFor="step2-roll-name" className="block text-xs font-normal text-muted-foreground">
+                    <div className="relative">
+                      <label
+                        htmlFor="step2-roll-name"
+                        className={cn(
+                          "pointer-events-none absolute left-3 top-1/2 z-[1] origin-left -translate-y-1/2 text-sm text-muted-foreground transition-all duration-200",
+                          rollName
+                            ? "top-3 translate-y-0 text-[11px]"
+                            : "top-1/2 -translate-y-1/2 text-sm"
+                        )}
+                      >
                         Roll name
                       </label>
                       <Input
@@ -971,8 +979,8 @@ export function AddReviewModal({
                         type="text"
                         value={rollName}
                         onChange={(e) => setRollName(e.target.value)}
-                        placeholder="Optional, e.g. Paris weekend"
-                        className="min-h-[52pt] h-[52pt] min-w-0 w-full"
+                        placeholder=""
+                        className="min-h-[52px] h-[52px] min-w-0 w-full px-3 pb-2 pt-5"
                       />
                     </div>
                   </div>
@@ -1262,7 +1270,7 @@ export function AddReviewModal({
                   onClick={enteredViaUpload ? () => setStep(3) : handlePostScans}
                   disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
                   className={cn(
-                    "flex h-[52pt] w-full items-center justify-center text-sm font-semibold transition-colors disabled:opacity-40",
+                    "flex h-[52px] w-full items-center justify-center text-sm font-semibold transition-colors disabled:opacity-40",
                     enteredViaUpload
                       ? "rounded-full bg-black text-white hover:bg-black/90"
                       : "rounded-[7px] bg-primary text-primary-foreground hover:bg-primary/90"
