@@ -1,12 +1,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { additionalFilmStocks } from "../src/lib/missing-film-stock-additions";
+import type { FilmStock } from "../src/lib/types";
 
 const targetPath = path.resolve(process.cwd(), "data/film-stocks.json");
 
 function main() {
   const raw = fs.readFileSync(targetPath, "utf8");
-  const existing = JSON.parse(raw) as Array<Record<string, unknown>>;
+  const existing = JSON.parse(raw) as FilmStock[];
   const seen = new Set(existing.map((item) => String(item.slug)));
   const merged = [...existing];
 
