@@ -972,7 +972,7 @@ export function AddReviewModal({
                         value={rollName}
                         onChange={(e) => setRollName(e.target.value)}
                         placeholder="Optional, e.g. Paris weekend"
-                        className="min-w-0 w-full"
+                        className="min-h-[52pt] h-[52pt] min-w-0 w-full"
                       />
                     </div>
                   </div>
@@ -1262,9 +1262,9 @@ export function AddReviewModal({
                   onClick={enteredViaUpload ? () => setStep(3) : handlePostScans}
                   disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
                   className={cn(
-                    "flex w-full items-center justify-center py-3 text-sm font-semibold transition-colors disabled:opacity-40",
+                    "flex h-[52pt] w-full items-center justify-center text-sm font-semibold transition-colors disabled:opacity-40",
                     enteredViaUpload
-                      ? "rounded-[14px] bg-black text-white hover:bg-black/90"
+                      ? "rounded-full bg-black text-white hover:bg-black/90"
                       : "rounded-[7px] bg-primary text-primary-foreground hover:bg-primary/90"
                   )}
                 >
