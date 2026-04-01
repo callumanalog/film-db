@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/server";
 import { unstable_cache } from "next/cache";
 
 export interface FilmStockStats {
@@ -15,7 +15,7 @@ const EMPTY_STATS: FilmStockStats = { shotByCount: 0, favouritesCount: 0, avgRat
 /** Fetches real stats from Supabase (user_shot, user_favourites, user_ratings, user_uploads). */
 export async function getFilmStockStats(slug: string): Promise<FilmStockStats> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase.rpc("get_film_stock_stats", { p_slug: slug });
     if (error) {
       console.error("[getFilmStockStats]", slug, error);
@@ -40,7 +40,7 @@ export async function getFilmStockStats(slug: string): Promise<FilmStockStats> {
 async function fetchFilmStockStatsForSlugs(slugs: string[]): Promise<Record<string, FilmStockStats>> {
   if (slugs.length === 0) return {};
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase.rpc("get_film_stock_stats_batch", { p_slugs: slugs });
     if (!error && data != null) {
       const rows = Array.isArray(data) ? data : [];

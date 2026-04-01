@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { FilmBrand, FilmStock, FilmType } from "@/lib/types";
 import { FILM_TYPE_LABELS } from "@/lib/types";
 import type { SearchStocksResult } from "@/app/actions/search";
@@ -20,15 +20,12 @@ function buildSpecLine(type?: string, iso?: number | null, format?: string[]): s
   return `${typeStr} | ${isoStr} | ${formatStr}`;
 }
 
-type ListCardIcon = "chevron" | "plus";
-
 interface FilmStockListCardBaseProps {
   name: string;
   imageUrl?: string | null;
   brandInitial?: string;
   specLine: string;
   priority?: boolean;
-  icon?: ListCardIcon;
 }
 
 function FilmStockListCardInner({
@@ -37,9 +34,7 @@ function FilmStockListCardInner({
   brandInitial,
   specLine,
   priority = false,
-  icon = "chevron",
 }: FilmStockListCardBaseProps) {
-  const ActionIcon = icon === "plus" ? Plus : ChevronRight;
   return (
     <>
       <div className="flex items-center gap-3 py-3">
@@ -70,7 +65,7 @@ function FilmStockListCardInner({
           </p>
         </div>
         <div className="shrink-0 pl-1 pr-2">
-          <ActionIcon className="h-6 w-6 text-muted-foreground" aria-hidden />
+          <ChevronRight className="h-6 w-6 text-muted-foreground" aria-hidden />
         </div>
       </div>
       <div className="ml-[4.75rem] border-b border-border" aria-hidden />
@@ -119,7 +114,6 @@ export function FilmStockListCardButton({ stock, onSelect }: FilmStockListCardBu
         imageUrl={stock.imageUrl}
         brandInitial={stock.brandName?.charAt(0)}
         specLine={buildSpecLine(stock.type, stock.iso, stock.format)}
-        icon="plus"
       />
     </button>
   );

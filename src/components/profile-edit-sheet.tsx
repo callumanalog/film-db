@@ -243,7 +243,7 @@ export function ProfileEditSheet({
         <SheetTitle className="sr-only">{headerTitle}</SheetTitle>
 
         <header
-          className="relative flex shrink-0 items-center justify-center border-b border-border/60 px-2 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]"
+          className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/60 px-2 pt-[env(safe-area-inset-top,0px)]"
         >
           <button
             type="button"

@@ -80,11 +80,6 @@ export function FilmCarousels({ stocks, statsBySlug, viewMode = "all" }: FilmCar
   const typeSections = CAROUSEL_TYPE_ORDER.filter((type) => (byType.get(type)?.length ?? 0) > 0);
   const hasCommunityFavourites = communityFavourites.length > 0;
   const hasBudgetFriendly = budgetFriendly.length > 0;
-  const allStocksAlphabetical = [...stocks].sort((a, b) => {
-    const na = `${a.brand.name} ${a.name}`.toLowerCase();
-    const nb = `${b.brand.name} ${b.name}`.toLowerCase();
-    return na.localeCompare(nb);
-  });
   const showForYouSections = viewMode === "all" || viewMode === "for-you";
   const showAllStocksSection = viewMode === "all" || viewMode === "index";
   const hasAnySection =
@@ -147,7 +142,7 @@ export function FilmCarousels({ stocks, statsBySlug, viewMode = "all" }: FilmCar
           </div>
         </section>
       )}
-      {showAllStocksSection && allStocksAlphabetical.length > 0 && (
+      {showAllStocksSection && stocks.length > 0 && (
         <section
           key="all-stocks"
           className="film-row"
@@ -160,7 +155,7 @@ export function FilmCarousels({ stocks, statsBySlug, viewMode = "all" }: FilmCar
             All stocks
           </h3>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-            {allStocksAlphabetical.map((stock, index) => (
+            {stocks.map((stock, index) => (
               <FilmCard key={stock.id} stock={stock} priority={index < 4} />
             ))}
           </div>

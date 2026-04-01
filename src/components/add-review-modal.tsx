@@ -745,8 +745,8 @@ export function AddReviewModal({
           /* ──────────── STEP 1: REVIEW ──────────── */
           <div className="flex h-full flex-col">
             {/* Top bar */}
-            <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
-              <span className="text-sm font-semibold text-foreground">
+            <div className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/40 bg-white px-4">
+              <span className="font-sans text-base font-semibold tracking-tight text-foreground">
                 {isEdit ? "Edit review" : "Review film stock"}
               </span>
               <button
@@ -760,7 +760,7 @@ export function AddReviewModal({
             </div>
 
             {/* Scrollable content */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-white">
               <div className="px-4 py-5 space-y-6">
                 {/* Stock context */}
                 <div className="flex items-center gap-3">
@@ -852,7 +852,7 @@ export function AddReviewModal({
           /* ──────────── STEP 2: ADD SCANS ──────────── */
           <div className="flex h-full flex-col">
             {/* Top bar */}
-            <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
+            <div className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/40 px-4">
               {!enteredViaUpload && (
                 <button
                   type="button"
@@ -867,7 +867,7 @@ export function AddReviewModal({
                   <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
                 </button>
               )}
-              <span className="text-sm font-semibold text-foreground">
+              <span className="font-sans text-base font-semibold tracking-tight text-foreground">
                 {enteredViaUpload ? "Add a roll" : "Add scans"}
               </span>
               <button
@@ -882,7 +882,7 @@ export function AddReviewModal({
 
             {/* Scrollable content */}
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="px-4 py-5 space-y-5">
+              <div className="space-y-5 bg-white px-4 py-5">
                 {/* Stock context */}
                 {enteredViaUpload ? (
                   <div className="flex items-center gap-3">
@@ -939,6 +939,37 @@ export function AddReviewModal({
                     )}
                   </button>
                 )}
+
+                {enteredViaUpload && files.length === 0 && existingScanUrls.length === 0 ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label htmlFor="step2-roll-name" className="block text-xs font-normal text-muted-foreground">
+                        Roll name
+                      </label>
+                      <Input
+                        id="step2-roll-name"
+                        type="text"
+                        value={rollName}
+                        onChange={(e) => setRollName(e.target.value)}
+                        placeholder="Optional, e.g. Paris weekend"
+                        className="min-w-0 w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="step2-camera" className="block text-xs font-normal text-muted-foreground">
+                        Camera
+                      </label>
+                      <Input
+                        id="step2-camera"
+                        type="text"
+                        value={camera}
+                        onChange={(e) => setCamera(e.target.value)}
+                        placeholder="Optional, e.g. Canon AE-1"
+                        className="min-w-0 w-full"
+                      />
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Upload zone */}
                 <div>
@@ -1240,7 +1271,7 @@ export function AddReviewModal({
         ) : (
           /* ──────────── STEP 3: FINAL DETAILS (UPLOAD FLOW) ──────────── */
           <div className="flex h-full flex-col">
-            <div className="relative flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-3">
+            <div className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/40 px-4">
               <button
                 type="button"
                 onClick={() => setStep(2)}
@@ -1253,7 +1284,7 @@ export function AddReviewModal({
               >
                 <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
               </button>
-              <span className="mx-12 block truncate text-center text-sm font-semibold text-foreground">
+              <span className="mx-12 block truncate text-center font-sans text-base font-semibold tracking-tight text-foreground">
                 Roll details
               </span>
               <button

@@ -343,7 +343,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
           className="shrink-0 border-b border-border/60 bg-white dark:bg-background"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
-          <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-4 sm:h-16 sm:px-6">
+          <div className="mx-auto flex h-11 max-w-2xl items-center gap-2 px-4 sm:h-16 sm:px-6">
             <Link
               href={mode === "edit" && listId ? `/lists/${listId}` : "/profile"}
               className={topLeftNavIconButtonClassName}
@@ -351,7 +351,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
             >
               <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
             </Link>
-            <h1 className="min-w-0 flex-1 text-center font-sans text-base font-semibold text-foreground sm:text-lg">
+            <h1 className="min-w-0 flex-1 text-center font-sans text-base font-semibold tracking-tight text-foreground sm:text-lg">
               {headerTitle}
             </h1>
             <span className="h-11 w-11 shrink-0" aria-hidden />

@@ -40,14 +40,14 @@ export function FilmPageNav({ sections }: FilmPageNavProps) {
   function scrollTo(id: string) {
     const el = document.getElementById(id);
     if (el) {
-      const y = el.getBoundingClientRect().top + window.scrollY - 90;
+      const y = el.getBoundingClientRect().top + window.scrollY - 70;
       window.scrollTo({ top: y, behavior: "smooth" });
     }
   }
 
   return (
     <div>
-      <nav className="sticky top-16 z-10 -mx-1 mb-8 bg-background/95 px-1 backdrop-blur-sm">
+      <nav className="sticky top-11 z-10 -mx-1 mb-8 bg-background/95 px-1 backdrop-blur-sm">
         <div className="flex gap-6 border-b border-border/50">
           {sections.map((s) => (
             <button

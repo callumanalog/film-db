@@ -423,11 +423,11 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
           />
           {/* Filters: mobile drawer — full height from below header to viewport bottom (100dvh for mobile chrome). */}
           <div
-            className="fixed inset-x-0 top-16 z-[70] flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] flex-col overflow-hidden border-t border-border bg-background shadow-xl md:hidden"
+            className="fixed inset-x-0 top-11 z-[70] flex h-[calc(100dvh-2.75rem)] max-h-[calc(100dvh-2.75rem)] flex-col overflow-hidden border-t border-border bg-background shadow-xl md:hidden"
             role="dialog"
             aria-label="Filters"
           >
-            <header className="flex h-16 shrink-0 items-center justify-end border-b border-border bg-white relative">
+            <header className="relative flex h-11 shrink-0 items-center justify-end border-b border-border bg-white">
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
@@ -513,18 +513,18 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
       {(mobileSearchOpen || searchDrawerClosing) && (
         <>
           <div
-            className="fixed top-16 left-0 right-0 bottom-0 z-[60] bg-black/20 transition-opacity duration-300 md:hidden"
+            className="fixed top-11 left-0 right-0 bottom-0 z-[60] bg-black/20 transition-opacity duration-300 md:hidden"
             aria-hidden
             onClick={closeMobileSearchDrawer}
           />
           <div
-            className={`fixed inset-x-0 top-16 z-[70] flex h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-background transition-transform duration-300 ease-out md:hidden ${
+            className={`fixed inset-x-0 top-11 z-[70] flex h-[calc(100dvh-2.75rem)] max-h-[calc(100dvh-2.75rem)] flex-col overflow-hidden bg-background transition-transform duration-300 ease-out md:hidden ${
               searchDrawerReady && !searchDrawerClosing ? "translate-y-0" : "translate-y-full"
             }`}
             role="dialog"
             aria-label="Search films"
           >
-            <div className="flex shrink-0 items-center gap-2 bg-white px-4 py-3">
+            <div className="flex h-11 shrink-0 items-center gap-2 bg-white px-4">
               <button
                 type="button"
                 onClick={closeMobileSearchDrawer}
@@ -600,8 +600,8 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
             <div className="flex shrink-0 justify-center pt-3 pb-1">
               <div className="h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30" aria-hidden />
             </div>
-            <header className="flex h-16 shrink-0 items-center justify-center border-b border-border bg-white relative">
-              <h2 className="text-center font-sans text-sm font-semibold text-foreground">Vibes</h2>
+            <header className="relative flex h-11 shrink-0 items-center justify-center border-b border-border bg-white">
+              <h2 className="text-center font-sans text-base font-semibold tracking-tight text-foreground">Vibes</h2>
               <button
                 type="button"
                 onClick={() => setVibesDrawerOpen(false)}

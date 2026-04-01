@@ -81,7 +81,7 @@
 }
 
 :root {
-  --background: oklch(0.985 0.002 75);
+  --background: #ffffff;
   --foreground: #191919;
   --card: oklch(1 0 0);
   --card-foreground: #191919;
@@ -143,8 +143,32 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+  input:focus,
+  input:focus-visible,
+  textarea:focus,
+  textarea:focus-visible,
+  select:focus,
+  select:focus-visible {
+    outline: none;
+    box-shadow: none;
+  }
   html {
     scroll-behavior: smooth;
+  }
+  @media (max-width: 767px) {
+    html,
+    body {
+      /* Keep viewport overflow behavior, but suppress root scrollbar chrome on mobile. */
+      overflow-x: clip;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
   }
   html.app-shell-capacitor,
   html.app-shell-capacitor body {

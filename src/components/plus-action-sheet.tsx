@@ -127,7 +127,7 @@ export function PlusActionSheet() {
         >
           {searchStep && (
             <SheetHeader className="pb-4">
-              <SheetTitle>{reviewModalMode === "upload" ? "Choose the film stock for this roll" : "Choose a film stock"}</SheetTitle>
+              <SheetTitle>{reviewModalMode === "upload" ? "What did you shoot?" : "Choose a film stock"}</SheetTitle>
             </SheetHeader>
           )}
           {!searchStep && <SheetTitle className="sr-only">Actions</SheetTitle>}
@@ -142,7 +142,7 @@ export function PlusActionSheet() {
                 autoFocus
                 className="w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
-              <ul className="mt-3 h-[528px] min-h-[528px] overflow-y-auto rounded-[7px] border border-border/40 bg-card">
+              <ul className="no-scrollbar mt-3 h-[528px] min-h-[528px] overflow-x-hidden overflow-y-auto rounded-[7px] bg-card">
                 {filteredStocks.map((stock) => (
                   <li key={stock.slug}>
                     <FilmStockListCardButton stock={stock} onSelect={() => handleSelectStock(stock)} />

@@ -333,7 +333,7 @@ export function BoardDetailClient({ boardId }: { boardId: string }) {
         className="sticky top-0 z-30 border-b border-border/60 bg-white dark:bg-background"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        <div className="flex items-center justify-between px-4 pb-2 pt-2 sm:px-6">
+        <div className="flex h-11 items-center justify-between px-4 sm:px-6">
           <Link
             href="/profile"
             className={topLeftNavIconButtonClassName}

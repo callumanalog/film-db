@@ -159,7 +159,7 @@ export function CamerasHeader({ brands, currentSort }: CamerasHeaderProps) {
             aria-label="Filters"
           >
             <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center border-b border-border bg-white">
-              <h2 className="pointer-events-none absolute left-1/2 -translate-x-1/2 font-sans text-sm font-semibold text-foreground">Filters</h2>
+              <h2 className="pointer-events-none absolute left-1/2 -translate-x-1/2 font-sans text-base font-semibold tracking-tight text-foreground">Filters</h2>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}

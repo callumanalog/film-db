@@ -50,7 +50,7 @@ function isPublicMemberProfilePath(pathname: string | null): boolean {
   return PUBLIC_MEMBER_PROFILE_PATH.test(pathOnly);
 }
 
-const COLLAPSED_NAV_HEIGHT = 52;
+const COLLAPSED_NAV_HEIGHT = 44;
 
 /** ~px per character for `text-base font-semibold` in the film header (mixed case); used only for a coarse max-length. */
 const FILM_HEADER_PX_PER_CHAR = 9.1;
@@ -235,15 +235,12 @@ export function Header() {
                 aria-label={filmDetailIsShot ? "Remove from stocks you've shot" : "Mark as shot"}
               >
                 {filmDetailIsShot ? (
-                  <span
-                    className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-primary"
-                    aria-hidden
-                  >
+                  <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary" aria-hidden>
                     <Check className="size-3 text-white" strokeWidth={3} />
                   </span>
                 ) : (
                   <CircleCheck
-                    className="size-5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+                    className="size-6 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
                     strokeWidth={2}
                     aria-hidden
                   />
@@ -275,8 +272,8 @@ export function Header() {
           isFilmHero
             ? "hidden md:grid h-16"
             : isDiscoverHome
-              ? "grid max-md:min-h-14 max-md:items-stretch max-md:py-0 md:h-16"
-              : "grid h-16",
+              ? "grid max-md:min-h-11 max-md:items-stretch max-md:py-0 md:h-16"
+              : "grid h-11 md:h-16",
           isSearchPage && "hidden md:grid"
         )}
       >
@@ -284,7 +281,7 @@ export function Header() {
           className={cn(
             "flex min-w-0 items-center justify-start overflow-hidden gap-1",
             isDiscoverHome &&
-              "max-md:col-span-2 max-md:min-h-14 max-md:w-full max-md:flex-col max-md:justify-end max-md:overflow-visible"
+              "max-md:col-span-2 max-md:min-h-11 max-md:w-full max-md:flex-col max-md:justify-end max-md:overflow-visible"
           )}
         >
           {showBack ? (

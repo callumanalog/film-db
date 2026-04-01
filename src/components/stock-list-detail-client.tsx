@@ -250,7 +250,7 @@ export function StockListDetailClient({
           className="sticky top-0 z-10 bg-white dark:bg-background"
           style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
         >
-          <div className="mx-auto flex max-w-2xl items-center justify-between px-4 pb-2 pt-2 sm:px-6">
+          <div className="mx-auto flex h-11 max-w-2xl items-center justify-between px-4 sm:px-6">
             <Link
               href="/profile"
               className={topLeftNavIconButtonClassName}
