@@ -155,19 +155,6 @@ export function PlusActionSheet() {
               <div className="border-t border-border/40">
                 <button
                   type="button"
-                  onClick={() => handleAction("review")}
-                  className="flex w-full items-start gap-3 px-6 py-3.5 text-left transition-colors hover:bg-accent"
-                >
-                  <Pencil className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-foreground">Review a stock</span>
-                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-                      Search for a stock to review
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => handleAction("upload")}
                   className="flex w-full items-start gap-3 px-6 py-3.5 text-left transition-colors hover:bg-accent"
                 >
@@ -176,6 +163,19 @@ export function PlusActionSheet() {
                     <span className="block text-sm font-medium text-foreground">Add a roll</span>
                     <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
                       Upload scans from a roll of film
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAction("review")}
+                  className="flex w-full items-start gap-3 px-6 py-3.5 text-left transition-colors hover:bg-accent"
+                >
+                  <Pencil className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-foreground">Review a stock</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                      Search for a stock to review
                     </span>
                   </span>
                 </button>
