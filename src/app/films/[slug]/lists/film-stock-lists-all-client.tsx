@@ -5,6 +5,14 @@ import { ChevronLeft } from "lucide-react";
 import type { StockListFilmRow } from "@/app/actions/stock-lists";
 import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
+import {
+  mobileHeaderLeadingRowClassName,
+  mobileHeaderSafeAreaStyle,
+  mobileHeaderShellClassName,
+  mobileHeaderSubtitleClassName,
+  mobileHeaderTitleBlockClassName,
+  mobileHeaderTitleClassName,
+} from "@/lib/mobile-header";
 
 export function FilmStockListsAllClient({
   filmSlug,
@@ -18,10 +26,10 @@ export function FilmStockListsAllClient({
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-white dark:bg-background">
       <header
-        className="sticky top-0 z-30 border-b border-border/60 bg-white dark:bg-background"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className={`sticky top-0 z-30 border-b border-border/60 ${mobileHeaderShellClassName}`}
+        style={mobileHeaderSafeAreaStyle}
       >
-        <div className="flex items-center px-4 pb-2 pt-2 sm:px-6">
+        <div className={mobileHeaderLeadingRowClassName}>
           <Link
             href={`/films/${filmSlug}`}
             className={topLeftNavIconButtonClassName}
@@ -30,17 +38,20 @@ export function FilmStockListsAllClient({
             <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </Link>
         </div>
-        <div className="px-4 pb-4 pt-0 sm:px-6">
-          <h1 className="font-sans text-2xl font-bold leading-tight tracking-tight text-foreground md:text-[1.75rem]">
+        <div className={mobileHeaderTitleBlockClassName}>
+          <h1 className={mobileHeaderTitleClassName}>
             Lists with {stockName}
           </h1>
-          <span className="mt-1 block font-sans text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
+          <span className={mobileHeaderSubtitleClassName}>
             {rows.length} {rows.length === 1 ? "list" : "lists"}
           </span>
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 px-4 pb-24 pt-0 sm:px-6 md:pb-8">
+      <div
+        className="mobile-safe-bottom-clear-bar min-h-0 flex-1 px-4 pt-0 sm:px-6 md:pb-8"
+        style={{ ["--mobile-bottom-clearance" as string]: "4.5rem" }}
+      >
         {rows.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">No lists yet.</p>
         ) : (

@@ -15,6 +15,7 @@ import {
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
 import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import { mobileHeaderRowClassName, mobileHeaderSafeAreaStyle, mobileHeaderShellClassName } from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
 import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
 import { Button } from "@/components/ui/button";
@@ -340,10 +341,10 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
         style={overlayShellStyle}
       >
         <header
-          className="shrink-0 border-b border-border/60 bg-white dark:bg-background"
-          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+          className={`shrink-0 border-b border-border/60 ${mobileHeaderShellClassName}`}
+          style={mobileHeaderSafeAreaStyle}
         >
-          <div className="mx-auto flex h-11 max-w-2xl items-center gap-2 px-4 sm:h-16 sm:px-6">
+          <div className={cn("mx-auto max-w-2xl gap-2", mobileHeaderRowClassName)}>
             <Link
               href={mode === "edit" && listId ? `/lists/${listId}` : "/profile"}
               className={topLeftNavIconButtonClassName}
@@ -351,7 +352,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
             >
               <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
             </Link>
-            <h1 className="min-w-0 flex-1 text-center font-sans text-base font-semibold tracking-tight text-foreground sm:text-lg">
+            <h1 className="min-w-0 flex-1 text-center font-sans text-base font-semibold tracking-tight text-foreground">
               {headerTitle}
             </h1>
             <span className="h-11 w-11 shrink-0" aria-hidden />
@@ -365,8 +366,8 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
         >
           <div
             ref={scrollAreaRef}
-            className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:px-6"
-            style={{ WebkitOverflowScrolling: "touch" }}
+            className="mobile-safe-bottom-clear-bar mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-6"
+            style={{ WebkitOverflowScrolling: "touch", ["--mobile-bottom-clearance" as string]: "5.75rem" }}
           >
           <div className="space-y-5">
             <div>
@@ -563,8 +564,7 @@ export function StockListFormClient({ mode, listId }: { mode: "create" | "edit";
       </div>
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-[70] border-t border-border/60 bg-white px-4 py-3 dark:bg-background sm:px-6"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
+        className="mobile-safe-bottom-footer fixed bottom-0 left-0 right-0 z-[70] border-t border-border/60 bg-white px-4 py-3 dark:bg-background sm:px-6"
       >
         <div className="mx-auto max-w-2xl">
           <Button

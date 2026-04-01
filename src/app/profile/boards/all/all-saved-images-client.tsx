@@ -10,7 +10,15 @@ import { FilmNativeGrid } from "@/components/film-native-grid";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
-import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName, topNavActionIconButtonClassName, topRightNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import {
+  mobileHeaderRowClassName,
+  mobileHeaderSafeAreaStyle,
+  mobileHeaderShellClassName,
+  mobileHeaderSubtitleClassName,
+  mobileHeaderTitleBlockClassName,
+  mobileHeaderTitleClassName,
+} from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
 import {
   collectLightboxSlidesFromGalleryImages,
@@ -144,10 +152,10 @@ export function AllSavedImagesPageClient() {
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-white dark:bg-background">
       <header
-        className="sticky top-0 z-30 border-b border-border/60 bg-white dark:bg-background"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+        className={`sticky top-0 z-30 border-b border-border/60 ${mobileHeaderShellClassName}`}
+        style={mobileHeaderSafeAreaStyle}
       >
-        <div className="flex h-11 items-center justify-between px-4 sm:px-6">
+        <div className={mobileHeaderRowClassName}>
           <Link
             href="/profile"
             className={topLeftNavIconButtonClassName}
@@ -159,14 +167,14 @@ export function AllSavedImagesPageClient() {
             <button
               type="button"
               onClick={() => void shareSavedPage()}
-              className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+              className={topNavActionIconButtonClassName}
               aria-label="Share"
             >
               <Share2 className="h-5 w-5" strokeWidth={2} />
             </button>
             <button
               type="button"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+              className={topRightNavIconButtonClassName}
               aria-label="More options"
               onClick={() => showToastViaEvent("More options coming soon.")}
             >
@@ -174,17 +182,20 @@ export function AllSavedImagesPageClient() {
             </button>
           </div>
         </div>
-        <div className="px-4 pb-4 pt-0 sm:px-6">
-          <h1 className="font-sans text-2xl font-bold leading-tight tracking-tight text-foreground md:text-[1.75rem]">
+        <div className={mobileHeaderTitleBlockClassName}>
+          <h1 className={mobileHeaderTitleClassName}>
             All saved scans
           </h1>
-          <span className="mt-1 block font-sans text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
+          <span className={mobileHeaderSubtitleClassName}>
             {loading ? "…" : `${count} ${count === 1 ? "scan" : "scans"}`}
           </span>
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 px-4 pb-24 pt-0 sm:px-6 md:pb-8">
+      <div
+        className="mobile-safe-bottom-clear-bar min-h-0 flex-1 px-4 pt-0 sm:px-6 md:pb-8"
+        style={{ ["--mobile-bottom-clearance" as string]: "4.5rem" }}
+      >
         {loading ? (
           <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
         ) : count === 0 ? (

@@ -25,7 +25,8 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
 import { SITE_NAME } from "@/lib/site";
-import { topLeftNavChevronIconClassName, topLeftNavIconTouchClassName } from "@/lib/top-left-nav-icon";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import { mobileHeaderRowClassName, mobileHeaderSafeAreaStyle, mobileHeaderShellClassName } from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -243,17 +244,20 @@ export function ProfileEditSheet({
         <SheetTitle className="sr-only">{headerTitle}</SheetTitle>
 
         <header
-          className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/60 px-2 pt-[env(safe-area-inset-top,0px)]"
+          className={`shrink-0 border-b border-border/60 ${mobileHeaderShellClassName}`}
+          style={mobileHeaderSafeAreaStyle}
         >
+          <div className={`relative ${mobileHeaderRowClassName}`}>
           <button
             type="button"
             onClick={headerBack}
-            className={cn("absolute left-0 top-1/2 -translate-y-1/2", topLeftNavIconTouchClassName)}
+            className={cn("absolute left-4 top-1/2 -translate-y-1/2 sm:left-6", topLeftNavIconButtonClassName)}
             aria-label={screen === "menu" ? "Close account" : "Back"}
           >
             <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
           </button>
           <h2 className="font-sans text-base font-semibold tracking-tight text-foreground">{headerTitle}</h2>
+          </div>
         </header>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -403,7 +407,7 @@ export function ProfileEditSheet({
                   </div>
                 </div>
               </form>
-              <div className="shrink-0 border-t border-border/60 bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:pb-3">
+              <div className="mobile-safe-bottom-footer shrink-0 border-t border-border/60 bg-background px-4 pt-3 md:pb-3">
                 <Button
                   type="submit"
                   form={PROFILE_FORM_ID}

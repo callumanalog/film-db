@@ -293,6 +293,19 @@ html.app-shell-capacitor .capacitor-safe-bottom {
     scrollbar-width: none;
   }
 
+  /* Mobile bottom safe-area helpers for app-like full-screen surfaces */
+  .mobile-safe-bottom-content {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-safe-bottom-footer {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-safe-bottom-clear-bar {
+    padding-bottom: calc(var(--mobile-bottom-clearance, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+
 }
 
 /* Tiptap rich text editor */

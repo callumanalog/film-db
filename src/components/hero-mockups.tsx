@@ -629,7 +629,7 @@ export function FilmDetailMobileToolbar({
 
   return (
     <>
-      <div className="w-full min-w-0 md:hidden bg-[#ffffff]">
+      <div className="w-full min-w-0 bg-background md:hidden">
         <div className="mb-1 flex w-full min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[13px] leading-relaxed text-muted-foreground">
           <span className="min-w-0 shrink-0 text-foreground">{stock.typeLabel}</span>
           <span className="shrink-0 select-none text-foreground" aria-hidden>
@@ -1065,7 +1065,7 @@ export function StickyLeftPane({
     <div className="w-full min-w-0 flex flex-col md:w-56 md:min-w-[14rem] md:shrink-0 md:self-start md:overflow-visible">
       <div className="grid grid-cols-1 gap-4">
       <div className="flex min-w-0 flex-col gap-3">
-      <div className="relative mx-auto hidden w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-white md:mx-0 md:block md:max-w-none md:w-full">
+      <div className="relative mx-auto hidden w-full min-w-0 max-w-sm overflow-hidden rounded-[7px] border border-border/50 bg-card md:mx-0 md:block md:max-w-none md:w-full">
         {/* Image — desktop only */}
         <div className="relative hidden md:block">
           {stock.discontinued && (

@@ -20,7 +20,14 @@ import {
   Quote,
   Strikethrough,
 } from "lucide-react";
-import { topLeftNavChevronIconClassName, topLeftNavIconTouchClassName } from "@/lib/top-left-nav-icon";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName, topLeftNavIconTouchClassName, topRightNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import {
+  mobileHeaderLeadingRowClassName,
+  mobileHeaderSafeAreaStyle,
+  mobileHeaderShellClassName,
+  mobileHeaderTitleBlockClassName,
+  mobileHeaderTitleClassName,
+} from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { TextField } from "@/components/ui/text-field";
@@ -64,6 +71,14 @@ function uniqueFormatsInOrder(formats: string[] | undefined): string[] {
 
 function defaultFormatSelection(formats: string[] | undefined): string {
   return uniqueFormatsInOrder(formats)[0] ?? "";
+}
+
+function buildStockMetaLine(stock: TrackFilmModalStock): string {
+  const isoText = stock.iso != null ? `ISO ${stock.iso}` : "ISO —";
+  const formatText = uniqueFormatsInOrder(stock.format)
+    .map((format) => format.toUpperCase())
+    .join(", ") || "—";
+  return `${stock.brand.name.toUpperCase()} | ${isoText} | ${formatText}`;
 }
 
 /** Common box speeds and practical pull/push equivalents for stepping shot ISO. */
@@ -271,6 +286,7 @@ interface AddReviewModalProps {
   slotsUsed?: number;
   /** When set, modal opens in edit mode (same flow as create, pre-filled). */
   edit?: EditReviewSeed | null;
+  onBackToStockPicker?: () => void;
 }
 
 function StockThumbnail({ stock }: { stock: TrackFilmModalStock }) {
@@ -361,6 +377,7 @@ export function AddReviewModal({
   initialRating = 0,
   mode = "review",
   edit = null,
+  onBackToStockPicker,
 }: AddReviewModalProps) {
   const isEdit = !!edit;
   const enteredViaUpload = mode === "upload" && !isEdit;
@@ -745,19 +762,26 @@ export function AddReviewModal({
           /* ──────────── STEP 1: REVIEW ──────────── */
           <div className="flex h-full flex-col">
             {/* Top bar */}
-            <div className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/40 bg-white px-4">
-              <span className="font-sans text-base font-semibold tracking-tight text-foreground">
-                {isEdit ? "Edit review" : "Review film stock"}
-              </span>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="absolute right-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label="Close"
-              >
-                <XIcon className="h-5 w-5" />
-              </button>
-            </div>
+            <header
+              className={`shrink-0 border-b border-border/40 ${mobileHeaderShellClassName}`}
+              style={mobileHeaderSafeAreaStyle}
+            >
+              <div className={`relative ${mobileHeaderLeadingRowClassName}`}>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className={cn("absolute right-4 top-1/2 -translate-y-1/2 sm:right-6", topRightNavIconButtonClassName, "text-muted-foreground hover:text-foreground")}
+                  aria-label="Close"
+                >
+                  <XIcon className="h-5 w-5" />
+                </button>
+              </div>
+              <div className={mobileHeaderTitleBlockClassName}>
+                <h1 className={mobileHeaderTitleClassName}>
+                  {isEdit ? "Edit review" : "Review film stock"}
+                </h1>
+              </div>
+            </header>
 
             {/* Scrollable content */}
             <div className="min-h-0 flex-1 overflow-y-auto bg-white">
@@ -851,63 +875,59 @@ export function AddReviewModal({
         ) : step === 2 ? (
           /* ──────────── STEP 2: ADD SCANS ──────────── */
           <div className="flex h-full flex-col">
-            {/* Top bar */}
-            <div className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/40 px-4">
-              {!enteredViaUpload && (
+            <header
+              className={mobileHeaderShellClassName}
+              style={mobileHeaderSafeAreaStyle}
+            >
+              <div className={`relative ${mobileHeaderLeadingRowClassName}`}>
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => {
+                    if (enteredViaUpload && onBackToStockPicker) {
+                      onBackToStockPicker();
+                      return;
+                    }
+                    if (enteredViaUpload) {
+                      handleClose();
+                      return;
+                    }
+                    setStep(1);
+                  }}
                   className={cn(
-                    "absolute left-0 top-1/2 -translate-y-1/2",
-                    topLeftNavIconTouchClassName,
+                    topLeftNavIconButtonClassName,
                     "text-muted-foreground hover:text-foreground"
                   )}
                   aria-label="Back"
                 >
                   <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
                 </button>
-              )}
-              <span className="font-sans text-base font-semibold tracking-tight text-foreground">
-                {enteredViaUpload ? "Add a roll" : "Add scans"}
-              </span>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="absolute right-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label="Close"
-              >
-                <XIcon className="h-5 w-5" />
-              </button>
-            </div>
+              </div>
+              <div className={mobileHeaderTitleBlockClassName}>
+                <div className="pb-1 pt-0">
+                  <h1 className={mobileHeaderTitleClassName}>New roll</h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Upload up to 10 frames from a roll of this stock.
+                  </p>
+                </div>
+              </div>
+            </header>
 
             {/* Scrollable content */}
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="space-y-5 bg-white px-4 py-5">
+              <div className="space-y-5 bg-white px-4 pb-5 pt-0">
+
                 {/* Stock context */}
-                {enteredViaUpload ? (
-                  <div className="flex items-center gap-3">
-                    <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[7px] border border-border/50">
-                      <StockThumbnail stock={stock} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{stock.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {files.length === 0 && existingScanUrls.length === 0
-                          ? "Upload up to 10 scans from the same roll, then add shared details."
-                          : "Review the scans from this roll before adding shared details."}
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3 py-3">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-white">
+                    <StockThumbnail stock={stock} />
                   </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[7px] border border-border/50">
-                      <StockThumbnail stock={stock} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{stock.name}</p>
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-sans text-base font-semibold text-foreground">{stock.name}</p>
+                    <p className="truncate font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {buildStockMetaLine(stock)}
+                    </p>
                   </div>
-                )}
+                </div>
 
                 {/* Review summary */}
                 {!enteredViaUpload && (
@@ -952,19 +972,6 @@ export function AddReviewModal({
                         value={rollName}
                         onChange={(e) => setRollName(e.target.value)}
                         placeholder="Optional, e.g. Paris weekend"
-                        className="min-w-0 w-full"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="step2-camera" className="block text-xs font-normal text-muted-foreground">
-                        Camera
-                      </label>
-                      <Input
-                        id="step2-camera"
-                        type="text"
-                        value={camera}
-                        onChange={(e) => setCamera(e.target.value)}
-                        placeholder="Optional, e.g. Canon AE-1"
                         className="min-w-0 w-full"
                       />
                     </div>
@@ -1038,14 +1045,7 @@ export function AddReviewModal({
                         )}
                       >
                         <Plus className="h-10 w-10 text-muted-foreground" />
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {enteredViaUpload ? "Add scans from this roll" : "Add scans"}
-                        </span>
-                        <span className="px-6 text-center text-xs text-muted-foreground/60">
-                          {enteredViaUpload
-                            ? `Upload up to 10 scans from one roll of ${stock.name}`
-                            : `Upload your scans of ${stock.name} to share with the community`}
-                        </span>
+                        <span className="text-sm font-medium text-muted-foreground">Add scans</span>
                       </button>
                     )
                   ) : (
@@ -1254,16 +1254,21 @@ export function AddReviewModal({
               </div>
             </div>
 
-            {/* Bottom: Submit — upload flow: no bar until at least one scan is added */}
-            {(!enteredViaUpload || canAdvanceUploadFlow) && (
-              <div className="shrink-0 border-t border-border/40 px-4 py-4">
+            {/* Bottom actions */}
+            {(enteredViaUpload || canSubmitScansStep) && (
+              <div className="mobile-safe-bottom-footer shrink-0 px-4 py-4">
                 <button
                   type="button"
                   onClick={enteredViaUpload ? () => setStep(3) : handlePostScans}
                   disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
-                  className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+                  className={cn(
+                    "flex w-full items-center justify-center py-3 text-sm font-semibold transition-colors disabled:opacity-40",
+                    enteredViaUpload
+                      ? "rounded-[14px] bg-black text-white hover:bg-black/90"
+                      : "rounded-[7px] bg-primary text-primary-foreground hover:bg-primary/90"
+                  )}
                 >
-                  {submitting ? "Saving..." : enteredViaUpload ? "Add roll details" : isEdit ? "Save changes" : "Submit review"}
+                  {submitting ? "Saving..." : enteredViaUpload ? "Next" : isEdit ? "Save changes" : "Submit review"}
                 </button>
               </div>
             )}
@@ -1271,31 +1276,32 @@ export function AddReviewModal({
         ) : (
           /* ──────────── STEP 3: FINAL DETAILS (UPLOAD FLOW) ──────────── */
           <div className="flex h-full flex-col">
-            <div className="relative flex h-11 shrink-0 items-center justify-center border-b border-border/40 px-4">
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className={cn(
-                  "absolute left-0 top-1/2 -translate-y-1/2",
-                  topLeftNavIconTouchClassName,
-                  "text-muted-foreground hover:text-foreground"
-                )}
-                aria-label="Back"
-              >
-                <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
-              </button>
-              <span className="mx-12 block truncate text-center font-sans text-base font-semibold tracking-tight text-foreground">
-                Roll details
-              </span>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="absolute right-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
-                aria-label="Close"
-              >
-                <XIcon className="h-5 w-5" />
-              </button>
-            </div>
+            <header
+              className={`shrink-0 border-b border-border/40 ${mobileHeaderShellClassName}`}
+              style={mobileHeaderSafeAreaStyle}
+            >
+              <div className={`relative ${mobileHeaderLeadingRowClassName}`}>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className={cn("absolute left-4 top-1/2 -translate-y-1/2 sm:left-6", topLeftNavIconButtonClassName, "text-muted-foreground hover:text-foreground")}
+                  aria-label="Back"
+                >
+                  <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className={cn("absolute right-4 top-1/2 -translate-y-1/2 sm:right-6", topRightNavIconButtonClassName, "text-muted-foreground hover:text-foreground")}
+                  aria-label="Close"
+                >
+                  <XIcon className="h-5 w-5" />
+                </button>
+              </div>
+              <div className={mobileHeaderTitleBlockClassName}>
+                <h1 className={mobileHeaderTitleClassName}>Roll details</h1>
+              </div>
+            </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
                 <div className="space-y-3 px-4 py-5">

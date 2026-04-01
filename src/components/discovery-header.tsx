@@ -437,7 +437,10 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
                 <X className="h-5 w-5" />
               </button>
             </header>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-white px-4 pt-4 pb-32 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div
+              className="mobile-safe-bottom-clear-bar min-h-0 flex-1 overflow-y-auto bg-white px-4 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              style={{ ["--mobile-bottom-clearance" as string]: "6rem" }}
+            >
               {/* Vibes: first category in filter drawer on mobile, default open, same pill style with gradient circle */}
               <div className="border-b border-slate-100">
                 <button
@@ -471,7 +474,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
               </div>
               <FilterSidebar brands={brands} filterOptions={filterOptions} typeDefaultOpen={false} />
             </div>
-            <div className="shrink-0 border-t border-border bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="mobile-safe-bottom-content shrink-0 border-t border-border bg-white p-4">
               <div className="space-y-2">
                 <button
                   type="button"

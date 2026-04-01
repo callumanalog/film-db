@@ -16,6 +16,7 @@ import { useUserActions } from "@/context/user-actions-context";
 import { getSuggestedStocks, type SearchStocksResult } from "@/app/actions/search";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import { FilmStockListCardButton } from "@/components/film-stock-list-card";
+import { MobileStockPickerPanel } from "@/components/mobile-stock-picker-panel";
 import { cn } from "@/lib/utils";
 
 const EVENT_OPEN = "plus-action-sheet:open";
@@ -121,35 +122,50 @@ export function PlusActionSheet() {
           side="bottom"
           showCloseButton={false}
           className={cn(
-            "capacitor-safe-bottom gap-0 bg-white px-0 pb-8",
-            searchStep && "h-[78dvh] max-h-[78dvh]"
+            "mobile-safe-bottom-content gap-0 bg-white px-0",
+            searchStep &&
+              "inset-0 h-[100dvh] max-h-none rounded-none border-0 pb-0 data-[side=bottom]:top-0 data-[side=bottom]:h-[100dvh] data-[side=bottom]:max-h-none data-[side=bottom]:rounded-none data-[side=bottom]:border-0 md:inset-x-0 md:bottom-0 md:top-auto md:h-[78dvh] md:max-h-[78dvh] md:rounded-t-[20px] md:border-t md:pb-8 md:data-[side=bottom]:top-auto md:data-[side=bottom]:h-[78dvh] md:data-[side=bottom]:max-h-[78dvh] md:data-[side=bottom]:rounded-t-[20px] md:data-[side=bottom]:border-t"
           )}
         >
           {searchStep && (
-            <SheetHeader className="pb-4">
+            <SheetHeader className="hidden pb-4 md:flex">
               <SheetTitle>{reviewModalMode === "upload" ? "What did you shoot?" : "Choose a film stock"}</SheetTitle>
             </SheetHeader>
           )}
           {!searchStep && <SheetTitle className="sr-only">Actions</SheetTitle>}
 
           {searchStep ? (
-            <div className="flex min-h-0 flex-1 flex-col px-4">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search film stocks..."
-                autoFocus
-                className="w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            <>
+              <MobileStockPickerPanel
+                mode={reviewModalMode}
+                query={searchQuery}
+                onQueryChange={setSearchQuery}
+                onClose={() => {
+                  setSearchQuery("");
+                  setSearchStep(false);
+                }}
+                onSelectStock={handleSelectStock}
+                stocks={suggested?.allStocks ?? []}
               />
-              <ul className="no-scrollbar mt-3 h-[528px] min-h-[528px] overflow-x-hidden overflow-y-auto rounded-[7px] bg-card">
-                {filteredStocks.map((stock) => (
-                  <li key={stock.slug}>
-                    <FilmStockListCardButton stock={stock} onSelect={() => handleSelectStock(stock)} />
-                  </li>
-                ))}
-              </ul>
-            </div>
+
+              <div className="hidden min-h-0 flex-1 flex-col px-4 md:flex">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search film stocks..."
+                  autoFocus
+                  className="w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <ul className="no-scrollbar mt-3 h-[528px] min-h-[528px] overflow-x-hidden overflow-y-auto rounded-[7px] bg-card">
+                  {filteredStocks.map((stock) => (
+                    <li key={stock.slug}>
+                      <FilmStockListCardButton stock={stock} onSelect={() => handleSelectStock(stock)} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
           ) : (
             <>
               <div className="border-t border-border/40">
@@ -218,6 +234,13 @@ export function PlusActionSheet() {
           onOpenChange={(o) => {
             setReviewModalOpen(o);
             if (!o) setSelectedStock(null);
+          }}
+          onBackToStockPicker={() => {
+            setReviewModalOpen(false);
+            setSelectedStock(null);
+            setSearchQuery("");
+            setSearchStep(true);
+            setOpen(true);
           }}
           mode={reviewModalMode}
           slotsUsed={reviewModalMode === "upload" ? 1 : 0}

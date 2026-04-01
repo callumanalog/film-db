@@ -250,7 +250,7 @@ export async function getLatestUsers(): Promise<SearchUsersResult[]> {
 
 export interface SuggestedStocksResult {
   stocks: SearchStocksResult[];
-  /** Full stock catalog for instant client-side filtering. */
+  /** Full stock catalog in popularity order for instant client-side filtering. */
   allStocks: SearchStocksResult[];
 }
 
@@ -260,12 +260,11 @@ export interface SuggestedStocksResult {
  * Empty state suggestions are the highest-rated stocks by average user rating.
  */
 export async function getSuggestedStocks(): Promise<SuggestedStocksResult> {
-  const allStocks = await getFilmStocks({ sort: "alphabetical" });
-  const allMapped: SearchStocksResult[] = allStocks.map(stockToSearchResult);
-  const highestRated = await getFilmStocks({ sort: "popular" });
+  const popularityOrderedStocks = await getFilmStocks({ sort: "popular" });
+  const allMapped: SearchStocksResult[] = popularityOrderedStocks.map(stockToSearchResult);
 
   return {
-    stocks: highestRated.slice(0, 8).map(stockToSearchResult),
+    stocks: allMapped.slice(0, 8),
     allStocks: allMapped,
   };
 }

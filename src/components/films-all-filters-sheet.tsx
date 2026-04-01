@@ -72,7 +72,7 @@ export function FilmsAllFiltersSheet({ brands, filterOptions }: FilmsAllFiltersS
             initialOpenCategory={initialOpenCategory}
           />
         </div>
-        <div className="shrink-0 flex flex-col gap-2 border-t border-border bg-background px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="mobile-safe-bottom-content shrink-0 flex flex-col gap-2 border-t border-border bg-background px-4 py-3">
           <button
             type="button"
             onClick={() => setOpen(false)}

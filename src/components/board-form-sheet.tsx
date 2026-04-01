@@ -134,7 +134,7 @@ export function BoardFormSheet({
               />
             </div>
           </div>
-          <SheetFooter className="border-t border-border/60 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <SheetFooter className="mobile-safe-bottom-content border-t border-border/60">
             <Button type="submit" size="cta" variant="default" className="w-full" disabled={saving}>
               {saving ? "Saving…" : mode === "create" ? "Create board" : "Save changes"}
             </Button>

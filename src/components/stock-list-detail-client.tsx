@@ -24,7 +24,8 @@ import { FilmCard } from "@/components/film-card";
 import { showToastViaEvent } from "@/components/toast";
 import { useAuth } from "@/context/auth-context";
 import { formatStockListActivityPhrase } from "@/lib/stock-list-relative-activity";
-import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName, topNavActionIconButtonClassName, topRightNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import { mobileHeaderRowClassName, mobileHeaderSafeAreaStyle, mobileHeaderShellClassName } from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
 import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
 import { Button } from "@/components/ui/button";
@@ -247,10 +248,10 @@ export function StockListDetailClient({
         style={{ WebkitOverflowScrolling: "touch" }}
       >
         <header
-          className="sticky top-0 z-10 bg-white dark:bg-background"
-          style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+          className={`sticky top-0 z-10 ${mobileHeaderShellClassName}`}
+          style={mobileHeaderSafeAreaStyle}
         >
-          <div className="mx-auto flex h-11 max-w-2xl items-center justify-between px-4 sm:px-6">
+          <div className={cn("mx-auto max-w-2xl", mobileHeaderRowClassName)}>
             <Link
               href="/profile"
               className={topLeftNavIconButtonClassName}
@@ -262,7 +263,7 @@ export function StockListDetailClient({
               {!user ? (
                 <Link
                   href={`/auth/sign-in?next=${encodeURIComponent(`/lists/${listId}`)}`}
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+                  className={topNavActionIconButtonClassName}
                   aria-label="Sign in to save this list"
                 >
                   <Bookmark className="h-5 w-5" strokeWidth={2} />
@@ -273,7 +274,7 @@ export function StockListDetailClient({
                   disabled={bookmarkBusy || authLoading}
                   onClick={() => void toggleBookmark()}
                   className={cn(
-                    "flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-muted/80",
+                    topNavActionIconButtonClassName,
                     saved ? "text-primary" : "text-foreground"
                   )}
                   aria-label={saved ? "Remove from saved lists" : "Save list"}
@@ -284,7 +285,7 @@ export function StockListDetailClient({
               <button
                 type="button"
                 onClick={() => void shareList()}
-                className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+                className={isOwner ? topNavActionIconButtonClassName : topRightNavIconButtonClassName}
                 aria-label="Share"
               >
                 <Share2 className="h-5 w-5" strokeWidth={2} />
@@ -293,7 +294,7 @@ export function StockListDetailClient({
                 <button
                   type="button"
                   onClick={() => setMenuOpen(true)}
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted/80"
+                  className={topRightNavIconButtonClassName}
                   aria-label="More options"
                 >
                   <MoreHorizontal className="h-6 w-6" strokeWidth={2} />
@@ -303,7 +304,10 @@ export function StockListDetailClient({
           </div>
         </header>
 
-        <div className="px-4 pb-[max(1.5rem,calc(4.5rem+env(safe-area-inset-bottom,0px)))] pt-2 sm:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div
+          className="mobile-safe-bottom-clear-bar px-4 pt-2 sm:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+          style={{ ["--mobile-bottom-clearance" as string]: "4.5rem" }}
+        >
           <Link
             href={`/users/${list.ownerUserId}`}
             className="-mx-1 mb-3 flex min-w-0 max-w-full items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -393,7 +397,7 @@ export function StockListDetailClient({
           <p className="px-4 py-3 text-sm text-muted-foreground">
             This removes “{list.title}” and cannot be undone.
           </p>
-          <div className="flex flex-col gap-2 border-t border-border/60 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="mobile-safe-bottom-content flex flex-col gap-2 border-t border-border/60 p-4">
             <Button
               type="button"
               variant="destructive"
