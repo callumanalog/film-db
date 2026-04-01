@@ -1,4 +1,5 @@
 import type { FilmBrand, FilmStock, FilmStockPurchaseLink, GrainLevel, ContrastLevel, BestFor } from "@/lib/types";
+import { additionalFilmBrands, additionalFilmStocks } from "@/lib/missing-film-stock-additions";
 
 export const seedBrands: FilmBrand[] = [
   {
@@ -215,6 +216,7 @@ export const seedBrands: FilmBrand[] = [
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
+  ...additionalFilmBrands,
 ];
 
 /** Legacy shape (grain_level "strong", shooting_tips, etc.) is normalized at runtime in queries. */
@@ -3072,4 +3074,5 @@ export const seedPurchaseLinks: FilmStockPurchaseLink[] = [
   { id: "pl-201", film_stock_id: "stock-street-candy-mtn-100", retailer_name: "Amazon", url: `https://www.amazon.com/s?k=street+candy+mtn${AMAZON_AFF}`, price_note: null, created_at: new Date().toISOString() },
   { id: "pl-202", film_stock_id: "stock-orwo-wolfen-nc500", retailer_name: "B&H Photo", url: `https://www.bhphotovideo.com/c/search?q=orwo%20wolfen%20nc500${BH_AFF}`, price_note: null, created_at: new Date().toISOString() },
   { id: "pl-203", film_stock_id: "stock-orwo-wolfen-nc500", retailer_name: "Amazon", url: `https://www.amazon.com/s?k=orwo+wolfen+nc500${AMAZON_AFF}`, price_note: null, created_at: new Date().toISOString() },
+  ...additionalFilmStocks,
 ];

@@ -27,11 +27,15 @@ const EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const revalidateSecret = process.env.CACHE_REVALIDATE_SECRET ?? serviceRoleKey;
+const cacheVersion = Date.now().toString();
 
-function getPublicUrl(filename: string): string {
+function getPublicUrl(filename: string, version?: string): string {
   if (!url) return "";
   const base = url.replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/${BUCKET}/${filename}`;
+  const publicUrl = `${base}/storage/v1/object/public/${BUCKET}/${filename}`;
+  return version ? `${publicUrl}?v=${encodeURIComponent(version)}` : publicUrl;
 }
 
 function getMime(filename: string): string {
@@ -45,6 +49,25 @@ function getMime(filename: string): string {
     ".svg": "image/svg+xml",
   };
   return m[ext] ?? "application/octet-stream";
+}
+
+async function revalidateFilmStocksTag(): Promise<void> {
+  if (!revalidateSecret) {
+    console.warn("Cache revalidation skipped: no CACHE_REVALIDATE_SECRET or SUPABASE_SERVICE_ROLE_KEY available.");
+    return;
+  }
+
+  const response = await fetch(`${appUrl}/api/revalidate/film-stocks`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${revalidateSecret}`,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Cache revalidation failed (${response.status}): ${body}`);
+  }
 }
 
 async function main() {
@@ -91,12 +114,12 @@ async function main() {
     }
     uploaded++;
 
-    const publicUrl = getPublicUrl(filename);
-    // Update any row whose image_url ends with this filename (handles full URL or path)
+    const publicUrl = getPublicUrl(filename, cacheVersion);
+    // Update any row whose image_url references this filename (handles full URL or path, with or without cache query).
     const { data: rows, error: selectError } = await supabase
       .from("film_stocks")
       .select("id, slug")
-      .like("image_url", `%/${filename}`);
+      .like("image_url", `%/${filename}%`);
 
     let rowCount = 0;
     if (!selectError && rows?.length) {
@@ -115,6 +138,13 @@ async function main() {
   }
 
   console.log("\nDone. Uploaded:", uploaded, "DB rows updated:", updated);
+
+  try {
+    await revalidateFilmStocksTag();
+    console.log("Cache revalidated: film-stocks");
+  } catch (error) {
+    console.warn("Cache revalidation skipped:", error instanceof Error ? error.message : String(error));
+  }
 }
 
 main().catch((err) => {

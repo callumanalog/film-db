@@ -27,11 +27,13 @@ const EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const cacheVersion = Date.now().toString();
 
-function getPublicUrl(filename: string): string {
+function getPublicUrl(filename: string, version?: string): string {
   if (!url) return "";
   const base = url.replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/${BUCKET}/${filename}`;
+  const publicUrl = `${base}/storage/v1/object/public/${BUCKET}/${filename}`;
+  return version ? `${publicUrl}?v=${encodeURIComponent(version)}` : publicUrl;
 }
 
 async function main() {
@@ -87,7 +89,7 @@ async function main() {
     }
     uploaded++;
 
-    const publicUrl = getPublicUrl(filename);
+    const publicUrl = getPublicUrl(filename, cacheVersion);
     const { error: updateError } = await supabase
       .from("film_stocks")
       .update({ image_url: publicUrl })

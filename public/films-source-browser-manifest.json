@@ -1,0 +1,121 @@
+[
+  {
+    "slug": "agfa-vista-plus-400",
+    "sourcePageUrl": "https://www.freestylephoto.com/1175259-AgfaPhoto-Vista-Plus-400-ISO-35mm-x-36-exp.",
+    "status": "captured",
+    "outputFile": "agfa-vista-plus-400.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "ferrania-ortho",
+    "sourcePageUrl": "https://www.filmferrania.com/pages/orto",
+    "status": "captured",
+    "outputFile": "ferrania-ortho.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "ferrania-solaris-fg-plus-100",
+    "sourcePageUrl": "https://lomography.com/films/871935627-ferrania-solaris-fg-plus-100",
+    "status": "captured",
+    "outputFile": "ferrania-solaris-fg-plus-100.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "ferrania-solaris-fg-plus-200",
+    "sourcePageUrl": "https://lomography.com/films/871957472-ferrania-solaris-fg-plus-iso-200",
+    "status": "captured",
+    "outputFile": "ferrania-solaris-fg-plus-200.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "ferrania-solaris-fg-plus-400",
+    "sourcePageUrl": "https://lomography.com/films/871911368-ferrania-solaris-400-fg-plus",
+    "status": "captured",
+    "outputFile": "ferrania-solaris-fg-plus-400.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "fujifilm-neopan-400",
+    "sourcePageUrl": "https://www.freestylephoto.com/302405-Fuji-Neopan-400-iso-35mm-x-36-exp.",
+    "status": "captured",
+    "outputFile": "fujifilm-neopan-400.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "fujifilm-reala-ace-100",
+    "sourcePageUrl": "https://lomography.com/films/871920055-fuji-reala-ace-100",
+    "status": "captured",
+    "outputFile": "fujifilm-reala-ace-100.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "kodak-aerochrome-iii",
+    "sourcePageUrl": "https://lomography.com/films/871912868-kodak-aerochrome-iii-1443",
+    "status": "captured",
+    "outputFile": "kodak-aerochrome-iii.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "kodak-bw400cn",
+    "sourcePageUrl": "https://www.freestylephoto.com/8694010-Kodak-BW400CN-ISO-35mm-x-36-exp.-C-41-Process",
+    "status": "captured",
+    "outputFile": "kodak-bw400cn.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "kodak-ektachrome-e100g",
+    "sourcePageUrl": "https://www.bhphotovideo.com/c/product/274846-USA/Kodak_1884576_E100G_135_36_Ektachrome_Professional.html",
+    "status": "captured",
+    "outputFile": "kodak-ektachrome-e100g.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "kodak-ektachrome-e100vs",
+    "sourcePageUrl": "https://www.freestylephoto.com/8169773-Kodak-Ektachrome-E100VS-100-iso-35mm-x-36-exp.",
+    "status": "captured",
+    "outputFile": "kodak-ektachrome-e100vs.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "kodak-kodachrome-64",
+    "sourcePageUrl": "https://www.freestylephoto.com/1560028-Kodak-Kodachrome-64-iso-35mm-x-36-exp.-KR",
+    "status": "captured",
+    "outputFile": "kodak-kodachrome-64.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "kodak-plus-x-pan-125",
+    "sourcePageUrl": "https://www.bhphotovideo.com/c/product/28702-USA/Kodak_8793606_PX_135_36_Plus_X_Pan.html",
+    "status": "captured",
+    "outputFile": "kodak-plus-x-pan-125.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "kodak-tri-x-professional-320",
+    "sourcePageUrl": "https://www.bhphotovideo.com/c/product/1310512-REG/kodak_1006881_txp_4164_4x5_10_tri_x.html",
+    "status": "captured",
+    "outputFile": "kodak-tri-x-professional-320.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "orwo-n75",
+    "sourcePageUrl": "https://orwonorthamerica.com/shop-orwo-na/orwo-n75-400asa-black-and-white-negative-camera-film",
+    "status": "captured",
+    "outputFile": "orwo-n75.jpg",
+    "note": "Captured primary image element via browser screenshot."
+  },
+  {
+    "slug": "rollei-atp-1-1",
+    "sourcePageUrl": "https://www.freestylephoto.com/4222106-Rollei-ATP-1.1-Advanced-Technical-Pan-Black-and-White-Film-120-Size",
+    "status": "captured",
+    "outputFile": "rollei-atp-1-1.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  },
+  {
+    "slug": "street-candy-atm-400",
+    "sourcePageUrl": "https://www.streetcandyfilm.com/product-page/street-candy-atm400",
+    "status": "captured",
+    "outputFile": "street-candy-atm-400.jpg",
+    "note": "Captured top viewport fallback because no isolated product image element was detected."
+  }
+]

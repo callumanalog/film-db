@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { ConditionalFooter } from "@/components/conditional-footer";
 import { BottomNav } from "@/components/bottom-nav";
 import { PlusActionSheet } from "@/components/plus-action-sheet";
+import { AppRuntimeBridge } from "@/components/app-runtime-bridge";
 import { UserActionsProvider } from "@/context/user-actions-context";
 import { AuthProvider } from "@/context/auth-context";
 import { Toaster } from "@/components/ui/sonner";
@@ -102,6 +103,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${advercase.variable} ${workSans.variable} ${geistMono.variable} ${playfairDisplay.variable} ${youngSerif.variable} ${cabinetGrotesk.variable}`}>
       <body className="antialiased" style={{ pointerEvents: 'auto' }}>
+        <AppRuntimeBridge />
         <div className="flex min-h-screen flex-col" style={{ pointerEvents: 'auto' }}>
           <AuthProvider>
           <UserActionsProvider>

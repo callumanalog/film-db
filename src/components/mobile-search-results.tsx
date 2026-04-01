@@ -146,13 +146,17 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                     href={`/films/${s.slug}`}
                     thumb={
                       s.imageUrl ? (
-                        <Image
-                          src={s.imageUrl}
-                          alt=""
-                          width={64}
-                          height={64}
-                          className="h-full w-full object-cover"
-                        />
+                        <div className="flex h-full w-full items-center justify-center bg-white p-1">
+                          <div className="flex aspect-[4/3] w-full items-center justify-center">
+                            <Image
+                              src={s.imageUrl}
+                              alt=""
+                              width={64}
+                              height={48}
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+                        </div>
                       ) : (
                         <div className="h-full w-full bg-slate-100" />
                       )

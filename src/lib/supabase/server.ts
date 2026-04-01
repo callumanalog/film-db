@@ -62,3 +62,22 @@ export async function createServiceRoleClient() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
+
+/**
+ * Server-only anon client for public read queries that must be safe inside
+ * cached functions. Unlike the cookie-aware SSR client, this does not touch
+ * `cookies()` and can be used inside `unstable_cache`.
+ */
+export function createPublicClient() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? getEnvFromLocal("NEXT_PUBLIC_SUPABASE_URL");
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    getEnvFromLocal("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Supabase is not configured");
+  }
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}

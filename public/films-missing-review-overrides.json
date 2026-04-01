@@ -1,0 +1,19 @@
+{
+  "agfa-vista-plus-400": {
+    "occupancy": 0.62
+  },
+  "ferrania-ortho": {
+    "occupancy": 0.64
+  },
+  "fujifilm-reala-ace-100": {
+    "backgroundThreshold": 235,
+    "preferRightmost": false,
+    "componentIndex": 0
+  },
+  "lucky-shd-100": {
+    "occupancy": 0.58
+  },
+  "orwo-wolfen-nc400": {
+    "occupancy": 0.62
+  }
+}

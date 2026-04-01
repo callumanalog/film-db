@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/server";
 import type {
   FilmStock,
   FilmBrand,
@@ -101,7 +101,7 @@ function mapRowToStock(row: Record<string, unknown>, brand: FilmBrand): FilmStoc
 
 export async function getBrandsFromSupabase(): Promise<FilmBrand[] | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase.from("film_brands").select("*").order("name");
     if (error || !data || data.length === 0) return null;
     return data.map((row) => mapRowToBrand(row));
@@ -112,7 +112,7 @@ export async function getBrandsFromSupabase(): Promise<FilmBrand[] | null> {
 
 export async function getBrandBySlugFromSupabase(slug: string): Promise<FilmBrand | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase.from("film_brands").select("*").eq("slug", slug).single();
     if (error || !data) return null;
     return mapRowToBrand(data);
@@ -123,7 +123,7 @@ export async function getBrandBySlugFromSupabase(slug: string): Promise<FilmBran
 
 export async function getFilmStocksFromSupabase(): Promise<(FilmStock & { brand: FilmBrand })[] | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data: brands, error: brandsError } = await supabase.from("film_brands").select("*");
     if (brandsError || !brands?.length) return null;
     const brandMap = new Map(brands.map((b) => [b.id, mapRowToBrand(b)]));
@@ -145,7 +145,7 @@ export async function getFilmStockBySlugFromSupabase(
   slug: string
 ): Promise<import("@/lib/types").FilmStockWithRelations | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data: row, error } = await supabase
       .from("film_stocks")
       .select("*")

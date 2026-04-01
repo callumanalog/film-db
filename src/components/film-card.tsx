@@ -48,19 +48,21 @@ export function FilmCard({
               Budget
             </span>
           )}
-          <div className="flex h-full w-full items-center justify-center bg-white p-2 relative">
+          <div className="flex h-full w-full items-center justify-center bg-white p-1.5 relative">
             {stock.image_url ? (
-              <Image
-                src={stock.image_url}
-                alt={displayName}
-                width={200}
-                height={200}
-                sizes={CARD_IMAGE_SIZES}
-                priority={priority}
-                placeholder="blur"
-                blurDataURL={BLUR_DATA_URL}
-                className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-              />
+              <div className="flex aspect-[4/3] w-full items-center justify-center">
+                <Image
+                  src={stock.image_url}
+                  alt={displayName}
+                  width={200}
+                  height={150}
+                  sizes={CARD_IMAGE_SIZES}
+                  priority={priority}
+                  placeholder="blur"
+                  blurDataURL={BLUR_DATA_URL}
+                  className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-80">
                 <Camera className={`h-7 w-7 ${accent}`} />

@@ -136,7 +136,7 @@ export function BottomNav() {
   return (
     <nav
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] transition-opacity duration-150 md:hidden",
+        "capacitor-safe-bottom fixed bottom-0 left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] transition-opacity duration-150 md:hidden",
         hideForKeyboard && "pointer-events-none invisible opacity-0"
       )}
       aria-label="Bottom navigation"

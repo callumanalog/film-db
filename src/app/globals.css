@@ -146,6 +146,15 @@
   html {
     scroll-behavior: smooth;
   }
+  html.app-shell-capacitor,
+  html.app-shell-capacitor body {
+    min-height: 100%;
+    overscroll-behavior-y: none;
+  }
+  html.app-shell-capacitor body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
   h1 {
     font-family: var(--font-sans), sans-serif !important;
   }
@@ -186,6 +195,18 @@
 .work-sans-content h5,
 .work-sans-content h6 {
   font-family: inherit !important;
+}
+
+html.app-shell-capacitor main {
+  min-height: 100dvh;
+}
+
+html.app-shell-capacitor .capacitor-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+html.app-shell-capacitor .capacitor-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Force Work Sans for modal titles (reliable when inheritance fails) */

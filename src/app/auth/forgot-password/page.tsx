@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { AuthLayout } from "@/components/auth/auth-layout";
-import { getRedirectTo } from "@/lib/auth-redirect";
+import { buildCallbackUrl, getEmailRedirectOrigin, getRedirectTo } from "@/lib/auth-redirect";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 
@@ -22,8 +22,9 @@ function ForgotPasswordForm() {
     setLoading(true);
     setMessage(null);
     const supabase = createClient();
+    const origin = getEmailRedirectOrigin() || window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+      redirectTo: buildCallbackUrl(redirectTo, origin),
     });
     setLoading(false);
     if (error) {

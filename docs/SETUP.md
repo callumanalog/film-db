@@ -41,6 +41,16 @@ Without these, the app still runs using local/seed data, but log-in and profile/
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 ```
 
+**Capacitor app shells:** Internal app builds should point at a hosted deployment, not localhost:
+
+```env
+CAPACITOR_SERVER_URL=https://staging.your-domain.com
+CAPACITOR_APP_ID=club.exposure.app
+CAPACITOR_APP_NAME=Exposure Club
+```
+
+Use your staging domain for internal Android/iOS builds first, then switch `CAPACITOR_SERVER_URL` to production for store-ready builds. Full rollout notes live in [docs/CAPACITOR.md](docs/CAPACITOR.md).
+
 **Sending email with Resend (optional):** If you use the Resend Node.js SDK (e.g. `/api/send` or custom transactional emails), add:
 
 ```env
@@ -131,12 +141,14 @@ By default the app reads brands and film stocks from local files / seed data. To
 
 2. **Catalog images in Storage**  
    - Create the **film-stocks** bucket by running `src/supabase/migrations/008_film_stocks_storage_bucket.sql` in the SQL Editor (or run `npx supabase db push` if you use the CLI).
-   - Either upload images manually in the Dashboard (Storage → film-stocks) and set each `film_stocks.image_url` to the image’s public URL, or use the automated script:
+   - Treat Supabase Storage as the **only runtime source** for film stock product images once your catalog is in Supabase. `film_stocks.image_url` should be either a canonical public URL in the `film-stocks` bucket or `null` if a stock has no image yet.
+   - You can upload manually in the Dashboard (Storage → film-stocks) and set each `film_stocks.image_url` to the image’s public URL, or use the automated script:
      - Put your image files in a folder (e.g. `film-stock-images/`) with **filenames matching film stock slugs** (e.g. `portra-400.jpg`, `adox-chs-100-ii.jpg`).
      - In `.env.local` set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
      - Run: `npx tsx scripts/upload-film-stock-images.ts film-stock-images`  
      The script uploads each file to the bucket and updates `film_stocks.image_url` for the matching slug.
    - Public URL form: `https://<project>.supabase.co/storage/v1/object/public/film-stocks/<filename>`.
+   - Local `public/films` files are best treated as **staging input** for upload/replace scripts, not as a runtime image source.
 
 3. **Replacing placeholder images**  
    When you have new images (e.g. background-removed or reshot) for existing stocks:
@@ -146,6 +158,30 @@ By default the app reads brands and film stocks from local files / seed data. To
      ```
      This uploads each file (overwriting the object in the bucket) and updates any `film_stocks` row that points to that filename. No slug list needed.
    - **Option B — Name by slug:** Name files by `film_stocks.slug` (e.g. `adox-chs-100-ii.jpg`, `kodak-gold-200.jpg`). Run `npx tsx scripts/upload-film-stock-images.ts <folder>`. Use this when adding new stocks or when you prefer slug-based filenames.
+   - For one-off replacements, run `npx tsx scripts/replace-single-film-image.ts <slug>`.
+   - To verify image URLs stay canonical, run `npm run check:film-image-urls`.
+
+4. **Optional: normalize all product images to a consistent box-only style**
+   - Put raw source product shots in `public/films-source` using stock slugs as filenames.
+   - Run:
+     ```bash
+     npm run normalize:film-images
+     ```
+   - The normalizer currently outputs a `1600x1200` landscape master image on a white background.
+   - This generates:
+     - `public/films-normalized` for final images
+     - `public/films-debug` for crop-review images
+     - optional override support via `public/films-overrides.json`
+   - If a stock crops incorrectly, add a manual override for that slug and rerun normalization.
+   - Once the normalized set looks good, publish it with:
+     ```bash
+     npm run replace:normalized-film-images
+     npm run check:film-image-urls
+     ```
+   - For a full batch refresh in one command:
+     ```bash
+     npm run refresh:film-images
+     ```
 
 Until `brands` and `film_stocks` are populated in Supabase, the app keeps using the existing file/seed catalog.
 
@@ -158,6 +194,7 @@ In your hosting dashboard, set at least:
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Same as local. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon key only in the client bundle. |
 | `NEXT_PUBLIC_APP_URL` | **Yes (production)** | Canonical `https://your-domain.com` — auth email links and SEO metadata. |
+| `CAPACITOR_SERVER_URL` | App builds | Hosted domain loaded by Capacitor. Use staging for internal testing first. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Recommended** | Server-only. Used for sign-up edge cases (`sign-up-status`). Without it, duplicate-email flows are less graceful. |
 | `RESEND_API_KEY` | Optional | For `/api/send` and/or custom Auth SMTP. |
 | `FLICKR_API_KEY` | Optional | Reference photos on film pages. |

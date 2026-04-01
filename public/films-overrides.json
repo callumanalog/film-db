@@ -1,0 +1,36 @@
+{
+  "_example": {
+    "crop": { "left": 0, "top": 0, "width": 1000, "height": 1000 },
+    "occupancy": 0.72,
+    "backgroundThreshold": 242,
+    "componentIndex": 0,
+    "preferRightmost": true
+  },
+  "ilford-hp5-plus": {
+    "occupancy": 0.64
+  },
+  "ilford-delta-100": {
+    "occupancy": 0.66
+  },
+  "harman-phoenix-200": {
+    "occupancy": 0.68
+  },
+  "kodak-ektar-100": {
+    "occupancy": 0.79
+  },
+  "kodak-gold-200": {
+    "occupancy": 0.72
+  },
+  "lomography-color-negative-400": {
+    "crop": { "left": 0, "top": 0, "width": 500, "height": 333 },
+    "occupancy": 0.66
+  },
+  "kosmo-foto-mono-100": {
+    "crop": { "left": 0, "top": 0, "width": 1240, "height": 1000 },
+    "occupancy": 0.64
+  },
+  "fomapan-200-creative": {
+    "crop": { "left": 0, "top": 0, "width": 500, "height": 458 },
+    "occupancy": 0.64
+  }
+}

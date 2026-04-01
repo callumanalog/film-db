@@ -28,11 +28,15 @@ const EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"];
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
+const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const revalidateSecret = process.env.CACHE_REVALIDATE_SECRET ?? serviceRoleKey;
+const cacheVersion = Date.now().toString();
 
-function getPublicUrl(filename: string): string {
+function getPublicUrl(filename: string, version?: string): string {
   if (!url) return "";
   const base = url.replace(/\/$/, "");
-  return `${base}/storage/v1/object/public/${BUCKET}/${filename}`;
+  const publicUrl = `${base}/storage/v1/object/public/${BUCKET}/${filename}`;
+  return version ? `${publicUrl}?v=${encodeURIComponent(version)}` : publicUrl;
 }
 
 function getMime(filename: string): string {
@@ -57,6 +61,25 @@ function findFileForSlug(dir: string, slug: string): string | null {
     }
   }
   return null;
+}
+
+async function revalidateFilmStocksTag(): Promise<void> {
+  if (!revalidateSecret) {
+    console.warn("Cache revalidation skipped: no CACHE_REVALIDATE_SECRET or service role key available.");
+    return;
+  }
+
+  const response = await fetch(`${appUrl}/api/revalidate/film-stocks`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${revalidateSecret}`,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Cache revalidation failed (${response.status}): ${body}`);
+  }
 }
 
 async function main() {
@@ -98,7 +121,7 @@ async function main() {
   }
   console.log("Uploaded", filename, "to bucket", BUCKET);
 
-  const publicUrl = getPublicUrl(filename);
+  const publicUrl = getPublicUrl(filename, cacheVersion);
   const { data: row, error: updateError } = await supabase
     .from("film_stocks")
     .update({ image_url: publicUrl })
@@ -113,6 +136,13 @@ async function main() {
 
   console.log("Updated film_stocks:", row.slug, row.name ?? "");
   console.log("image_url:", publicUrl);
+
+  try {
+    await revalidateFilmStocksTag();
+    console.log("Cache revalidated: film-stocks");
+  } catch (error) {
+    console.warn("Cache revalidation skipped:", error instanceof Error ? error.message : String(error));
+  }
 }
 
 main().catch((err) => {
