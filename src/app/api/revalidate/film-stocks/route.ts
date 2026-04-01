@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  revalidateTag("film-stocks");
+  revalidateTag("film-stocks", "max");
 
   return NextResponse.json({ ok: true, revalidated: ["film-stocks"] });
 }
