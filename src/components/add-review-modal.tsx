@@ -73,8 +73,10 @@ import {
 } from "@/components/ui/sheet";
 import { ShotDateCalendarDrawerContent } from "@/components/shot-date-calendar-drawer-content";
 import { ShareRollLocationSheet } from "@/components/share-roll-location-sheet";
+import { ShareRollFormatSheet } from "@/components/share-roll-format-sheet";
+import { ShareRollIsoSheet } from "@/components/share-roll-iso-sheet";
 import type { LucideIcon } from "lucide-react";
-import { nearestPresetIso, ShotIsoStepper, ShotIsoStepperWithInput } from "@/components/shot-iso-controls";
+import { nearestPresetIso, ShotIsoStepper } from "@/components/shot-iso-controls";
 import { ShareRollCameraPicker } from "@/components/share-roll-camera-picker";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
@@ -248,20 +250,12 @@ function Step3MetadataNavRow({
   );
 }
 
-type Step3MetadataSubpage =
-  | "tags"
-  | "camera"
-  | "lens"
-  | "format"
-  | "iso"
-  | "processing";
+type Step3MetadataSubpage = "tags" | "camera" | "lens" | "processing";
 
 const STEP3_METADATA_SUBPAGE_LABELS: Record<Step3MetadataSubpage, string> = {
   tags: "Tags",
   camera: "Camera",
   lens: "Lens",
-  format: "Format",
-  iso: "Shot at ISO",
   processing: "Processing",
 };
 
@@ -677,6 +671,8 @@ export function AddReviewModal({
   const [step3MetadataSubpage, setStep3MetadataSubpage] = useState<Step3MetadataSubpage | null>(null);
   const [dateShotSheetOpen, setDateShotSheetOpen] = useState(false);
   const [locationSheetOpen, setLocationSheetOpen] = useState(false);
+  const [formatSheetOpen, setFormatSheetOpen] = useState(false);
+  const [isoSheetOpen, setIsoSheetOpen] = useState(false);
 
   const MAX_SHOT_SIZE_BYTES = 50 * 1024 * 1024;
   const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
@@ -716,12 +712,16 @@ export function AddReviewModal({
     setStep3MetadataSubpage(null);
     setDateShotSheetOpen(false);
     setLocationSheetOpen(false);
+    setFormatSheetOpen(false);
+    setIsoSheetOpen(false);
   }, [enteredViaUpload, initialRating, editor, stock]);
 
   useEffect(() => {
     if (!open) {
       setDateShotSheetOpen(false);
       setLocationSheetOpen(false);
+      setFormatSheetOpen(false);
+      setIsoSheetOpen(false);
     }
   }, [open]);
 
@@ -1658,7 +1658,7 @@ export function AddReviewModal({
                             icon={Film}
                             fixedLeftLabel="Format"
                             value={selectedFormat}
-                            onNavigate={() => setStep3MetadataSubpage("format")}
+                            onNavigate={() => setFormatSheetOpen(true)}
                           />
                         ) : null}
                         <Step3MetadataNavRow
@@ -1666,7 +1666,7 @@ export function AddReviewModal({
                           fixedLeftLabel="ISO"
                           value={shotIso}
                           valueTabular
-                          onNavigate={() => setStep3MetadataSubpage("iso")}
+                          onNavigate={() => setIsoSheetOpen(true)}
                         />
                         <Step3MetadataNavRow
                           icon={FlaskConical}
@@ -1711,27 +1711,6 @@ export function AddReviewModal({
                         placeholder="Comma-separated, e.g. street, summer, Paris"
                       />
                     ) : null}
-                    {step3MetadataSubpage === "format" && formatOptions.length > 0 ? (
-                      <div className="flex min-h-[44px] w-full flex-wrap gap-2" role="listbox" aria-label="Format">
-                        {formatOptions.map((fmt) => (
-                          <button
-                            key={fmt}
-                            type="button"
-                            role="option"
-                            aria-selected={selectedFormat === fmt}
-                            onClick={() => setSelectedFormat(fmt)}
-                            className={cn(
-                              "rounded-[7px] border px-3 py-2 text-sm font-medium transition-colors",
-                              selectedFormat === fmt
-                                ? "border-primary/40 bg-primary/10 text-primary"
-                                : "border-border/50 bg-background text-foreground/80 hover:border-primary/30 hover:bg-primary/5"
-                            )}
-                          >
-                            {fmt}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
                     {step3MetadataSubpage === "camera" ? (
                       <ShareRollCameraPicker
                         camera={camera}
@@ -1756,23 +1735,6 @@ export function AddReviewModal({
                           value={filter}
                           onChange={(e) => setFilter(e.target.value)}
                           placeholder="e.g. Yellow #8"
-                        />
-                      </div>
-                    ) : null}
-                    {step3MetadataSubpage === "iso" ? (
-                      <div>
-                        <label
-                          htmlFor="step3-inline-shot-iso"
-                          id="step3-inline-iso-label"
-                          className="mb-2 block text-sm font-medium text-foreground"
-                        >
-                          Shot at ISO
-                        </label>
-                        <ShotIsoStepperWithInput
-                          id="step3-inline-shot-iso"
-                          aria-labelledby="step3-inline-iso-label"
-                          value={shotIso}
-                          onChange={setShotIso}
                         />
                       </div>
                     ) : null}
@@ -1865,6 +1827,27 @@ export function AddReviewModal({
       }}
       value={location}
       onChange={setLocation}
+    />
+
+    <ShareRollFormatSheet
+      open={open && formatSheetOpen && formatOptions.length > 0}
+      onOpenChange={(next) => {
+        if (!open) return;
+        setFormatSheetOpen(next);
+      }}
+      options={formatOptions}
+      value={selectedFormat}
+      onChange={setSelectedFormat}
+    />
+
+    <ShareRollIsoSheet
+      open={open && isoSheetOpen}
+      onOpenChange={(next) => {
+        if (!open) return;
+        setIsoSheetOpen(next);
+      }}
+      value={shotIso}
+      onChange={setShotIso}
     />
 
     {typeof document !== "undefined" &&
