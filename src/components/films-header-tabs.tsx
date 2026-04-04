@@ -13,7 +13,7 @@ const FILMS_TABS = [
 
 function buildHref(tabId: string, searchParams: URLSearchParams, pathname: string | null): string {
   const hasSearch = searchParams.has("search");
-  const onFilmsPage = pathname === "/films";
+  const onFilmsPage = pathname === "/";
   if (!hasSearch && !onFilmsPage) {
     if (tabId === "brands") return "/brands";
     if (tabId === "users") return "/community";
@@ -22,7 +22,7 @@ function buildHref(tabId: string, searchParams: URLSearchParams, pathname: strin
   if (tabId === "stocks") params.delete("tab");
   else params.set("tab", tabId);
   const q = params.toString();
-  return q ? `/films?${q}` : "/films";
+  return q ? `/?${q}` : "/";
 }
 
 export function FilmsHeaderTabs() {
@@ -35,7 +35,7 @@ export function FilmsHeaderTabs() {
       ? "brands"
       : pathname === "/community"
         ? "users"
-        : pathname === "/films"
+        : pathname === "/"
           ? (tabParam === "shots" ? "shots" : tabParam === "notes" ? "notes" : tabParam === "brands" ? "brands" : tabParam === "users" ? "users" : "stocks")
           : "stocks";
 

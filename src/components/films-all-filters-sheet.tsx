@@ -22,9 +22,9 @@ export function FilmsAllFiltersSheet({ brands, filterOptions }: FilmsAllFiltersS
   const [open, setOpen] = useState(false);
   const [initialOpenCategory, setInitialOpenCategory] = useState<string | undefined>(undefined);
   const router = useRouter();
-  const pathname = usePathname() ?? "/films";
+  const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
-  const basePath = pathname.startsWith("/search") ? "/search" : "/films";
+  const basePath = pathname.startsWith("/search") ? "/search" : "/";
 
   useEffect(() => {
     const handleOpen = (e: Event) => {

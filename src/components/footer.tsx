@@ -37,7 +37,7 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link href="/films" className="text-sm text-foreground/70 transition-colors hover:text-primary">
+                <Link href="/search" className="text-sm text-foreground/70 transition-colors hover:text-primary">
                   All Film Stocks
                 </Link>
               </li>
@@ -55,17 +55,17 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link href="/films?type=color_negative" className="text-sm text-foreground/70 transition-colors hover:text-primary">
+                <Link href="/search?type=color_negative" className="text-sm text-foreground/70 transition-colors hover:text-primary">
                   Color Negative
                 </Link>
               </li>
               <li>
-                <Link href="/films?type=color_reversal" className="text-sm text-foreground/70 transition-colors hover:text-primary">
+                <Link href="/search?type=color_reversal" className="text-sm text-foreground/70 transition-colors hover:text-primary">
                   Slide / Reversal
                 </Link>
               </li>
               <li>
-                <Link href="/films?type=bw_negative" className="text-sm text-foreground/70 transition-colors hover:text-primary">
+                <Link href="/search?type=bw_negative" className="text-sm text-foreground/70 transition-colors hover:text-primary">
                   Black & White
                 </Link>
               </li>

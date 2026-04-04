@@ -1,52 +1,22 @@
-import type { Metadata } from "next";
-import { getFilmsPageData } from "@/app/actions/nav-cache";
-import { FilmsPageClient } from "@/app/films/films-page-client";
+import { permanentRedirect } from "next/navigation";
 
-export const revalidate = 60;
-
-export const metadata: Metadata = {
-  title: "Film Stocks",
-  description: "Browse and filter every film stock — color negative, slide, black & white, and more.",
-};
-
-interface FilmsPageProps {
-  searchParams: Promise<{
-    tab?: string;
-    search?: string;
-    vibe?: string;
-    brand?: string;
-    type?: string;
-    format?: string;
-    grain?: string;
-    contrast?: string;
-    latitude?: string;
-    saturation?: string;
-    bestFor?: string;
-    iso?: string;
-    sort?: string;
-    filters?: string;
-  }>;
+interface FilmsLegacyRedirectProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function FilmsPage({ searchParams }: FilmsPageProps) {
-  const params = await searchParams;
-  const navParams = {
-    tab: params.tab,
-    search: params.search,
-    vibe: params.vibe,
-    brand: params.brand,
-    type: params.type,
-    format: params.format,
-    grain: params.grain,
-    contrast: params.contrast,
-    latitude: params.latitude,
-    saturation: params.saturation,
-    bestFor: params.bestFor,
-    iso: params.iso,
-    sort: params.sort,
-    filters: params.filters,
-  };
-  const fallbackData = await getFilmsPageData(navParams);
-
-  return <FilmsPageClient fallbackData={fallbackData} />;
+export default async function FilmsLegacyRedirect({ searchParams }: FilmsLegacyRedirectProps) {
+  const sp = await searchParams;
+  const usp = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        usp.append(key, item);
+      }
+    } else {
+      usp.set(key, value);
+    }
+  }
+  const q = usp.toString();
+  permanentRedirect(q ? `/?${q}` : "/");
 }

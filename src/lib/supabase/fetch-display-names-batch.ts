@@ -23,3 +23,35 @@ export async function fetchDisplayNamesByUserIds(userIds: string[]): Promise<Map
   }
   return out;
 }
+
+export type MemberPublicFields = {
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
+/** Display name + avatar for feed and lists (same RLS/service-role pattern as display names). */
+export async function fetchMemberPublicFieldsByUserIds(
+  userIds: string[]
+): Promise<Map<string, MemberPublicFields>> {
+  const unique = [...new Set(userIds.filter(Boolean))];
+  const out = new Map<string, MemberPublicFields>();
+  if (unique.length === 0) return out;
+
+  const sr = await createServiceRoleClient();
+  const supabase = sr ?? (await createClient());
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url")
+    .in("id", unique);
+  if (error) {
+    console.error("[fetchMemberPublicFieldsByUserIds]", error.message);
+    return out;
+  }
+  for (const p of data ?? []) {
+    const row = p as { id: string; display_name: string | null; avatar_url: string | null };
+    const av = row.avatar_url?.trim() ? row.avatar_url.trim() : null;
+    out.set(row.id, { displayName: row.display_name ?? null, avatarUrl: av });
+  }
+  return out;
+}

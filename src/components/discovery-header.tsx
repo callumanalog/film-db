@@ -177,7 +177,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
         else params.set(key, value);
       }
       const q = params.toString();
-      return q ? `/films?${q}` : "/films";
+      return q ? `/?${q}` : "/";
     },
     [searchParams]
   );
@@ -188,11 +188,11 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
       const params = new URLSearchParams(searchParams.toString());
       params.delete("filters");
       const q = params.toString();
-      router.push(q ? `/films?${q}` : "/films");
+      router.push(q ? `/?${q}` : "/");
     } else {
       const params = new URLSearchParams(searchParams.toString());
       params.set("filters", "1");
-      router.push(`/films?${params.toString()}`);
+      router.push(`/?${params.toString()}`);
     }
   }, [filtersPaneOpen, router, searchParams]);
 
@@ -367,7 +367,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
                       onClick={() => {
                         setSearchInput("");
                         setSearchExpanded(false);
-                        router.push("/films");
+                        router.push("/");
                       }}
                       aria-label="Clear search and close"
                       className="rounded-card p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -499,7 +499,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
                 <button
                   type="button"
                   onClick={() => {
-                    router.push("/films");
+                    router.push("/");
                     setDrawerOpen(false);
                   }}
                   className="w-full py-2 text-center font-sans text-sm text-muted-foreground transition-colors hover:text-foreground hover:underline"
@@ -554,7 +554,7 @@ export function DiscoveryHeader({ brands, filterOptions, currentSort, showUseCas
                     type="button"
                     onClick={() => {
                       setMobileSearchInput("");
-                      router.push("/films");
+                      router.push("/");
                     }}
                     aria-label="Clear search"
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card text-muted-foreground hover:bg-secondary hover:text-foreground"

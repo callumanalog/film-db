@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     "",
-    "/films",
+    "/explore",
     "/search",
     "/community",
     "/cameras",
@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ].map((path) => ({
     url: `${base}${path}`,
     changeFrequency: path === "" ? "daily" : "weekly",
-    priority: path === "" ? 1 : path === "/films" ? 0.95 : 0.8,
+    priority: path === "" ? 1 : path === "/explore" ? 0.95 : 0.8,
   }));
 
   const filmRoutes: MetadataRoute.Sitemap = stocks.map((s) => ({

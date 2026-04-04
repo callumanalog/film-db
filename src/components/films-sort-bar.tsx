@@ -32,7 +32,7 @@ export function FilmsSortBar({ currentSort }: FilmsSortBarProps) {
       params.set("sort", value);
     }
     const q = params.toString();
-    router.push(q ? `/films?${q}` : "/films");
+    router.push(q ? `/?${q}` : "/");
   }
 
   const currentLabel =

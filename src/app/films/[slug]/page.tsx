@@ -252,7 +252,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
             <FilmDetailMobileStockImage stock={stockProps.stock} />
             <FilmDetailMobileToolbar stock={stockProps.stock} stats={stockProps.stats} />
             <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
-              <Link href="/films" className="transition-colors hover:text-foreground">Film Stocks</Link>
+              <Link href="/search" className="transition-colors hover:text-foreground">Browse stocks</Link>
               <ChevronRight className="h-3.5 w-3.5" />
               <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
               <ChevronRight className="h-3.5 w-3.5" />

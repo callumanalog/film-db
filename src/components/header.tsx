@@ -5,7 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, CircleUser, Check, CircleCheck } from "lucide-react";
+import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, CircleUser } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
   topLeftNavChevronIconClassName,
@@ -16,8 +16,7 @@ import { cn } from "@/lib/utils";
 import { isStockListFormFullscreenPath } from "@/lib/stock-list-form-route";
 import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
-import { useUserActions } from "@/context/user-actions-context";
-import { showToastViaEvent } from "@/components/toast";
+import { FilmStockFollowHeaderButton } from "@/components/film-stock-follow-header-button";
 import { buttonVariants } from "@/components/ui/button";
 import { FilmsHeaderSearch } from "@/components/films-header-search";
 
@@ -28,7 +27,7 @@ const GlobalSearchOverlay = dynamic(
 
 const navLinks = [
   { href: "/community", label: "Community" },
-  { href: "/films", label: "Film Stocks" },
+  { href: "/search", label: "Browse" },
   { href: "/cameras", label: "Film Cameras" },
   { href: "/labs", label: "Labs" },
 ];
@@ -38,7 +37,7 @@ const PRIORITY_NAV_COUNT = 2;
 const priorityNavLinks = navLinks.slice(0, PRIORITY_NAV_COUNT);
 const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 
-const MAIN_LANDING_PATHS = ["/", "/films", "/search", "/profile"];
+const MAIN_LANDING_PATHS = ["/", "/explore", "/search", "/profile"];
 
 /** Public member profile (`/users/{uuid}`) — ProfileView provides its own sticky chrome. */
 const PUBLIC_MEMBER_PROFILE_PATH =
@@ -48,6 +47,14 @@ function isPublicMemberProfilePath(pathname: string | null): boolean {
   if (!pathname) return false;
   const pathOnly = pathname.split("?")[0] ?? pathname;
   return PUBLIC_MEMBER_PROFILE_PATH.test(pathOnly);
+}
+
+/** Film Stocks home is `/`; detail and vibe routes stay under `/films/…`. */
+function isMainNavLinkActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (pathname === href) return true;
+  if (href === "/") return pathname.startsWith("/films/");
+  return pathname.startsWith(`${href}/`);
 }
 
 const COLLAPSED_NAV_HEIGHT = 44;
@@ -61,15 +68,13 @@ export function Header() {
   const searchParams = useSearchParams();
   const { user, loading, signOut } = useAuth();
   const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast, filmSlug } = useMobileHeaderTitle() ?? {};
-  const { shotSlugs, toggleShot } = useUserActions();
-  const filmDetailIsShot = filmSlug != null && shotSlugs.includes(filmSlug);
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
-  const isFilmsPage = pathname === "/films";
+  const isFilmsPage = pathname === "/";
   const isSearchPage = pathname === "/search";
   const isProfilePage = pathname === "/profile" || pathname?.startsWith("/profile/");
-  const isDiscoverHome = pathname === "/";
+  const isDiscoverHome = pathname === "/explore";
   const discoverFeed = searchParams.get("feed") === "latest" ? "latest" : "popular";
 
   const setDiscoverFeed = (f: "latest" | "popular") => {
@@ -77,7 +82,7 @@ export function Header() {
     if (f === "popular") p.delete("feed");
     else p.set("feed", "latest");
     const q = p.toString();
-    router.replace(q ? `/?${q}` : "/", { scroll: false });
+    router.replace(q ? `/explore?${q}` : "/explore", { scroll: false });
   };
 
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
@@ -90,7 +95,7 @@ export function Header() {
   const moreRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
 
-  const filmHeroRightActionPx = (filmSlug != null ? 44 : 0) + 44;
+  const filmHeroRightActionPx = (filmSlug != null ? 92 : 0) + 44;
   const filmHeroTitlePadLeftPx = 44 + 4;
   const filmHeroTitlePadRightPx = filmHeroRightActionPx + 4;
   /** Same inset both sides so the title band is viewport-centred (asymmetric chrome would skew text-center). */
@@ -220,32 +225,9 @@ export function Header() {
           </div>
           <div className="relative z-10 flex flex-shrink-0 items-center">
             {filmSlug != null && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (filmDetailIsShot) {
-                    toggleShot(filmSlug);
-                    showToastViaEvent("Removed from stocks you've shot");
-                  } else {
-                    toggleShot(filmSlug);
-                    showToastViaEvent("Marked as shot");
-                  }
-                }}
-                className="group flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
-                aria-label={filmDetailIsShot ? "Remove from stocks you've shot" : "Mark as shot"}
-              >
-                {filmDetailIsShot ? (
-                  <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-primary" aria-hidden>
-                    <Check className="size-3 text-white" strokeWidth={3} />
-                  </span>
-                ) : (
-                  <CircleCheck
-                    className="size-6 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                )}
-              </button>
+              <div className="flex min-h-[44px] min-w-0 flex-shrink-0 items-center pr-1">
+                <FilmStockFollowHeaderButton filmStockSlug={filmSlug} />
+              </div>
             )}
             <button
               type="button"
@@ -358,7 +340,7 @@ export function Header() {
                 href={link.href}
                 className={cn(
                   "shrink-0 rounded-md px-3 py-2 whitespace-nowrap transition-colors",
-                  pathname === link.href || pathname.startsWith(link.href + "/")
+                  isMainNavLinkActive(pathname, link.href)
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 )}
@@ -373,7 +355,7 @@ export function Header() {
                 href={link.href}
                 className={cn(
                   "hidden shrink-0 rounded-md px-3 py-2 whitespace-nowrap transition-colors xl:inline-block",
-                  pathname === link.href || pathname.startsWith(link.href + "/")
+                  isMainNavLinkActive(pathname, link.href)
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 )}
@@ -403,7 +385,7 @@ export function Header() {
                     onClick={() => setMoreMenuOpen(false)}
                     className={cn(
                       "block whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors",
-                      pathname === link.href || pathname.startsWith(link.href + "/")
+                      isMainNavLinkActive(pathname, link.href)
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                     )}
@@ -429,7 +411,7 @@ export function Header() {
               {actionsOpen && (
                 <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-card border border-border/50 bg-card py-1 shadow-lg">
                   <Link
-                    href="/films"
+                    href="/"
                     onClick={() => setActionsOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
@@ -437,7 +419,7 @@ export function Header() {
                     Add a review
                   </Link>
                   <Link
-                    href="/films"
+                    href="/"
                     onClick={() => setActionsOpen(false)}
                     className="flex items-center gap-2 px-4 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/50"
                   >
@@ -606,7 +588,7 @@ export function Header() {
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   "rounded-md px-3 py-2.5 transition-colors",
-                  pathname === link.href || pathname.startsWith(link.href + "/")
+                  isMainNavLinkActive(pathname, link.href)
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 )}
@@ -638,7 +620,7 @@ export function Header() {
               <>
                 <div className="my-1 border-t border-border/50" />
                 <Link
-                  href="/films"
+                  href="/"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
@@ -646,7 +628,7 @@ export function Header() {
                   Add a review
                 </Link>
                 <Link
-                  href="/films"
+                  href="/"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >
@@ -654,7 +636,7 @@ export function Header() {
                   Add shots
                 </Link>
                 <Link
-                  href="/films"
+                  href="/"
                   onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2 rounded-md px-3 py-2.5 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 >

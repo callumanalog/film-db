@@ -26,9 +26,9 @@ function getParamArray(searchParams: URLSearchParams, key: string): string[] {
 
 export function FilterSidebar({ brands, filterOptions, variant = "drawer", typeDefaultOpen = true, initialOpenCategory }: FilterSidebarProps) {
   const router = useRouter();
-  const pathname = usePathname() ?? "/films";
+  const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
-  const basePath = pathname.startsWith("/search") ? "/search" : "/films";
+  const basePath = pathname.startsWith("/search") ? "/search" : "/";
 
   const selectedBrands = getParamArray(searchParams, "brand");
   const selectedTypes = getParamArray(searchParams, "type");

@@ -23,15 +23,15 @@ export function SearchBar({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (query.trim()) {
-      router.push(`/films?search=${encodeURIComponent(query.trim())}`);
+      router.push(`/?search=${encodeURIComponent(query.trim())}`);
     } else {
-      router.push("/films");
+      router.push("/");
     }
   }
 
   function handleClear() {
     setQuery("");
-    router.push("/films");
+    router.push("/");
   }
 
   const sizeClasses =
@@ -59,7 +59,7 @@ export function SearchBar({
             const newValue = e.target.value;
             setQuery(newValue);
             if (!newValue.trim()) {
-              router.push("/films");
+              router.push("/");
             }
           }}
           placeholder={placeholder}

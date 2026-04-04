@@ -1,66 +1,51 @@
 import type { Metadata } from "next";
-import { getFilmStocks } from "@/lib/supabase/queries";
-import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
-import { GalleryGrid, type StockOption } from "@/components/gallery-grid";
-import { DiscoverMobileSection } from "@/components/discover-mobile-section";
-import type { GalleryImage } from "@/lib/sample-images";
+import { createClient } from "@/lib/supabase/server";
+import { getHomeFeedGroups } from "@/app/actions/home-feed";
+import { getFilmStocksBySlugs } from "@/lib/supabase/queries";
+import { getLikedUploadIdsAmong } from "@/app/actions/upload-likes";
+import { getSavedUploadIdsAmong } from "@/app/actions/saved-uploads";
+import { HomeFeedClient, HomeFeedSignedOut } from "@/components/home-feed-client";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Discover",
-  description:
-    "Images from the community. Browse uploads by film stock and brand.",
+  title: "Home",
+  description: "Scans from people and film stocks you follow, plus your own posts.",
 };
 
-export default async function DiscoverPage() {
-  const stocks = await getFilmStocks({ sort: "alphabetical" });
-  const realUploads = await getAllCommunityUploadsForGallery(stocks);
-  const uploadsAsGalleryImages: GalleryImage[] = realUploads
-    .filter((u): u is typeof u & { imageUrl: string } => u.imageUrl != null)
-    .map((u) => ({ ...u, imageUrl: u.imageUrl, uploadId: u.id }));
-  const images: GalleryImage[] = uploadsAsGalleryImages;
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const brands = [...new Set(stocks.map((s) => s.brand.name))].sort();
-  const stockOptions: StockOption[] = stocks.map((s) => ({
-    slug: s.slug,
-    name: s.name,
-    brandName: s.brand.name,
-  }));
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <HomeFeedSignedOut />
+      </div>
+    );
+  }
+
+  const groups = await getHomeFeedGroups();
+  const slugs = [...new Set(groups.map((g) => g.film_stock_slug))];
+  const stocks = await getFilmStocksBySlugs(slugs);
+  const stockLabelBySlug = Object.fromEntries(stocks.map((s) => [s.slug, s.name]));
+
+  const allIds = groups.flatMap((g) => g.uploads.map((u) => u.id));
+  const [likedArr, savedArr] = await Promise.all([
+    getLikedUploadIdsAmong(allIds),
+    getSavedUploadIdsAmong(allIds),
+  ]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pt-0 pb-24 sm:px-6 md:pb-8">
-      <header className="mb-6 hidden md:block">
-        <h1 className="text-2xl font-bold tracking-tight font-sans">Discover</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Community uploads from across the database.
-        </p>
-      </header>
-
-      {images.length === 0 ? (
-        <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-16 text-center">
-          <p className="text-sm font-medium text-muted-foreground">
-            No uploads yet.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Upload shots from a film stock page to see them here.
-          </p>
-        </div>
-      ) : (
-        <>
-          {/* Mobile: feed + filters driven by header URL params + sheet */}
-          <DiscoverMobileSection images={images} brands={brands} />
-          {/* Desktop: filters + grid */}
-          <div className="hidden md:block">
-            <GalleryGrid
-              images={images}
-              brands={brands}
-              stocks={stockOptions}
-              initialSelectedStockSlugs={[]}
-            />
-          </div>
-        </>
-      )}
+    <div className="min-h-screen bg-background">
+      <HomeFeedClient
+        initialGroups={groups}
+        stockLabelBySlug={stockLabelBySlug}
+        initialLikedIds={likedArr}
+        initialSavedIds={savedArr}
+      />
     </div>
   );
 }

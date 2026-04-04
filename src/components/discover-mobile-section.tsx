@@ -74,7 +74,7 @@ export function DiscoverMobileSection({ images, brands }: DiscoverMobileSectionP
     if (draftBrand === "all") p.delete("brand");
     else p.set("brand", draftBrand);
     const q = p.toString();
-    router.replace(q ? `/?${q}` : "/", { scroll: false });
+    router.replace(q ? `/explore?${q}` : "/explore", { scroll: false });
     setSheetOpen(false);
   }, [draftBrand, router, searchParams]);
 
@@ -83,7 +83,7 @@ export function DiscoverMobileSection({ images, brands }: DiscoverMobileSectionP
     const p = new URLSearchParams(searchParams.toString());
     p.delete("brand");
     const q = p.toString();
-    router.replace(q ? `/?${q}` : "/", { scroll: false });
+    router.replace(q ? `/explore?${q}` : "/explore", { scroll: false });
     setSheetOpen(false);
   }, [router, searchParams]);
 

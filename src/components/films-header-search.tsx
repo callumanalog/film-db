@@ -35,7 +35,7 @@ export function FilmsHeaderSearch({ variant = "default", onAfterSubmit }: FilmsH
       if (q.trim()) params.set("search", q.trim());
       else params.delete("search");
       const query = params.toString();
-      router.push(query ? `/films?${query}` : "/films");
+      router.push(query ? `/?${query}` : "/");
     },
     [searchParams, router]
   );
@@ -67,7 +67,7 @@ export function FilmsHeaderSearch({ variant = "default", onAfterSubmit }: FilmsH
     if (q) params.set("search", q);
     else params.delete("search");
     const query = params.toString();
-    router.push(query ? `/films?${query}` : "/films");
+    router.push(query ? `/?${query}` : "/");
     onAfterSubmit?.();
   };
 
@@ -80,7 +80,7 @@ export function FilmsHeaderSearch({ variant = "default", onAfterSubmit }: FilmsH
     const params = new URLSearchParams(searchParams.toString());
     params.delete("search");
     const query = params.toString();
-    router.push(query ? `/films?${query}` : "/films");
+    router.push(query ? `/?${query}` : "/");
   };
 
   const handleFocus = () => filmsSearch?.setIsSearchFocused(true);
@@ -95,7 +95,7 @@ export function FilmsHeaderSearch({ variant = "default", onAfterSubmit }: FilmsH
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
     }
-    router.push("/films");
+    router.push("/");
     filmsSearch?.setIsSearchFocused(false);
     inputRef.current?.blur();
   };

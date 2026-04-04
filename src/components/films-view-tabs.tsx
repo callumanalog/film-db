@@ -5,8 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { id: "for-you", label: "FOR YOU", href: "/films" },
-  { id: "index", label: "INDEX", href: "/films?tab=index" },
+  { id: "for-you", label: "FOR YOU", href: "/" },
+  { id: "index", label: "INDEX", href: "/?tab=index" },
 ] as const;
 
 export function FilmsViewTabs() {

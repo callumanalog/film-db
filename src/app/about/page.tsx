@@ -95,7 +95,7 @@ export default function AboutPage() {
           Browse film stocks from Kodak, Fujifilm, Ilford, and more.
         </p>
         <Link
-          href="/films"
+          href="/search"
           className="mt-4 inline-flex items-center gap-2 rounded-card bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Browse Film Stocks

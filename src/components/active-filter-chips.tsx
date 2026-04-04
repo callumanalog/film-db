@@ -59,9 +59,9 @@ interface ActiveFilterChipsProps {
 
 export function ActiveFilterChips({ brands }: ActiveFilterChipsProps) {
   const router = useRouter();
-  const pathname = usePathname() ?? "/films";
+  const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
-  const basePath = pathname.startsWith("/search") ? "/search" : "/films";
+  const basePath = pathname.startsWith("/search") ? "/search" : "/";
 
   const selectedTypes = getParamArray(searchParams, "type");
   const selectedFormats = getParamArray(searchParams, "format");

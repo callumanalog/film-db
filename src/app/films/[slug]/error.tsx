@@ -32,7 +32,7 @@ export default function FilmPageError({
           Try again
         </button>
         <Link
-          href="/films"
+          href="/"
           className="inline-flex items-center gap-2 rounded-card bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <ArrowLeft className="h-4 w-4" />

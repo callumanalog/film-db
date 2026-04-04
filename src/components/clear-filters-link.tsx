@@ -40,7 +40,7 @@ export function ClearFiltersLink() {
   return (
     <button
       type="button"
-      onClick={() => router.push("/films")}
+      onClick={() => router.push("/")}
       className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
     >
       Clear all filters

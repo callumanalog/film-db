@@ -8,12 +8,12 @@ import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { isStockListFormEditorPath } from "@/lib/stock-list-form-route";
 import { openPlusActionSheet } from "@/components/plus-action-sheet";
-import { searchPageDataKey, filmsPageDataKey } from "@/lib/nav-cache-swr";
-import { getSearchPageData, getFilmsPageData } from "@/app/actions/nav-cache";
+import { searchPageDataKey } from "@/lib/nav-cache-swr";
+import { getSearchPageData } from "@/app/actions/nav-cache";
 
 const LEFT_ITEMS = [
-  { href: "/films", label: "Home", icon: Home },
-  { href: "/", label: "Discover", icon: GalleryHorizontalEnd },
+  { href: "/", label: "Home", icon: Home },
+  { href: "/explore", label: "Discover", icon: GalleryHorizontalEnd },
 ] as const;
 
 const RIGHT_ITEMS = [
@@ -39,8 +39,8 @@ function slugToName(slug: string): string {
 
 function getActiveHref(pathname: string | null): string | null {
   if (!pathname) return null;
-  if (pathname === "/") return "/";
-  if (pathname === "/films" || pathname.startsWith("/films/")) return "/films";
+  if (pathname === "/" || pathname.startsWith("/films/")) return "/";
+  if (pathname === "/explore" || pathname.startsWith("/explore/")) return "/explore";
   if (pathname === "/search" || pathname.startsWith("/search")) return "/search";
   if (pathname === "/profile" || pathname.startsWith("/profile/")) return "/profile";
   return null;
@@ -145,7 +145,7 @@ export function BottomNav() {
     >
       {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = href === activeHref;
-        const onPrefetch = href === "/films" ? () => preload(filmsPageDataKey({}), () => getFilmsPageData({})) : undefined;
+        const onPrefetch = undefined;
         return (
           <Link
             key={href}

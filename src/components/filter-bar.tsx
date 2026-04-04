@@ -48,7 +48,7 @@ export function FilterBar({ brands, filterOptions }: FilterBarProps) {
         params.set(key, next.join(","));
       }
       startTransition(() => {
-        router.push(`/films?${params.toString()}`);
+        router.push(`/?${params.toString()}`);
       });
     },
     [router, searchParams]
