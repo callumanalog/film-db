@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { ShotIsoStepperWithInput } from "@/components/shot-iso-controls";
-import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
+import { useKeyboardSafeViewport } from "@/lib/use-keyboard-safe-viewport";
 import { cn } from "@/lib/utils";
 
 const ISO_INPUT_ID = "share-roll-shot-iso-sheet-input";
@@ -15,19 +15,12 @@ type ShareRollIsoSheetProps = {
   onChange: (value: string) => void;
 };
 
-/** Bottom sheet for shot ISO; focuses the numeric field and tracks the visual viewport above the keyboard. */
+/** Bottom sheet for shot ISO; lifts with visual viewport inset above the OSK (see `layout.tsx` viewport). */
 export function ShareRollIsoSheet({ open, onOpenChange, value, onChange }: ShareRollIsoSheetProps) {
-  const vvBox = useVisualViewportBox();
-  const keyboardOverlap =
-    typeof window !== "undefined" && vvBox != null
-      ? Math.max(0, window.innerHeight - vvBox.top - vvBox.height)
-      : 0;
-
-  /** Keep the sheet within the visible viewport above the software keyboard. */
-  const sheetViewportStyle =
-    typeof window !== "undefined" && vvBox != null
-      ? { maxHeight: Math.max(160, vvBox.height - 20) }
-      : undefined;
+  const ksv = useKeyboardSafeViewport(open);
+  const bottomInset = ksv?.bottomInset ?? 0;
+  const maxSheetHeight =
+    ksv != null ? Math.max(200, ksv.visualHeight - 24) : undefined;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const labelId = "share-roll-shot-iso-sheet-label";
@@ -60,8 +53,8 @@ export function ShareRollIsoSheet({ open, onOpenChange, value, onChange }: Share
           "rounded-t-[20px] bg-background data-[side=bottom]:h-auto data-[side=bottom]:max-h-[50dvh]"
         )}
         style={{
-          bottom: keyboardOverlap,
-          ...sheetViewportStyle,
+          bottom: bottomInset,
+          ...(maxSheetHeight != null ? { maxHeight: maxSheetHeight } : {}),
         }}
       >
         <SheetTitle className="sr-only">Shot at ISO</SheetTitle>

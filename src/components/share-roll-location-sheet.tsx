@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { useVisualViewportBox } from "@/lib/use-visual-viewport-box";
+import { useKeyboardSafeViewport } from "@/lib/use-keyboard-safe-viewport";
 import { cn } from "@/lib/utils";
 
 type ShareRollLocationSheetProps = {
@@ -14,8 +14,8 @@ type ShareRollLocationSheetProps = {
 };
 
 /**
- * Bottom sheet for editing roll location. Focuses the field on open and lifts the sheet
- * with the visual viewport so the input stays above the software keyboard (viewport `interactiveWidget: overlays-content`).
+ * Bottom sheet for editing roll location. Lifts with `visualViewport` bottom inset so the field
+ * stays above the OSK (needs `interactive-widget: resizes-visual` — see root viewport in `layout.tsx`).
  */
 export function ShareRollLocationSheet({
   open,
@@ -23,11 +23,10 @@ export function ShareRollLocationSheet({
   value,
   onChange,
 }: ShareRollLocationSheetProps) {
-  const vvBox = useVisualViewportBox();
-  const keyboardOverlap =
-    typeof window !== "undefined" && vvBox != null
-      ? Math.max(0, window.innerHeight - vvBox.top - vvBox.height)
-      : 0;
+  const ksv = useKeyboardSafeViewport(open);
+  const bottomInset = ksv?.bottomInset ?? 0;
+  const maxSheetHeight =
+    ksv != null ? Math.max(200, ksv.visualHeight - 24) : undefined;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [focusReady, setFocusReady] = useState(false);
@@ -58,7 +57,10 @@ export function ShareRollLocationSheet({
           "!z-[110] flex flex-col gap-0 border-0 p-0 shadow-2xl",
           "rounded-t-[20px] bg-background data-[side=bottom]:h-auto data-[side=bottom]:max-h-[50dvh]"
         )}
-        style={keyboardOverlap > 0 ? { bottom: keyboardOverlap } : undefined}
+        style={{
+          bottom: bottomInset,
+          ...(maxSheetHeight != null ? { maxHeight: maxSheetHeight } : {}),
+        }}
       >
         <SheetTitle className="sr-only">Location</SheetTitle>
         <div className="px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">

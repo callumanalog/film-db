@@ -64,15 +64,15 @@ const defaultDescription =
   "Discover film stocks, community references, reviews, and where to buy — built for analog photographers.";
 
 /**
- * Let the virtual keyboard overlay the layout so `position: fixed; bottom: 0`
- * stays at the screen bottom (covered by the keyboard). List forms pair this with
- * a visual-viewport-sized panel for scroll content so inputs stay visible.
- * Bottom nav hides while a text field is focused (`bottom-nav.tsx`).
+ * `resizes-visual`: when the OSK opens, the visual viewport shrinks (Chrome default on Android).
+ * That lets `visualViewport` + bottom inset lift fixed bottom sheets above the keyboard.
+ * `overlays-content` keeps both viewports full-size so inset math stays 0 and sheets sit under the OSK.
+ * Layout viewport / `100vh` are stable when the keyboard toggles; bottom nav still hides on text focus.
  */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  interactiveWidget: "overlays-content",
+  interactiveWidget: "resizes-visual",
 };
 
 export const metadata: Metadata = {
