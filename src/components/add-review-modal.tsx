@@ -1,6 +1,15 @@
 "use client";
 
-import { Fragment, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+  type CSSProperties,
+  type SyntheticEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
@@ -13,14 +22,40 @@ import {
   ChevronRight,
   ChevronDown,
   Plus,
-  Minus,
   Loader2,
   Bold,
   Italic,
   Quote,
   Strikethrough,
+  MapPin,
+  Aperture,
+  Filter as FilterIcon,
+  Building2,
+  ScanLine,
+  Gauge,
+  Film,
+  FlaskConical,
+  CalendarDays,
+  Tags,
 } from "lucide-react";
-import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName, topLeftNavIconTouchClassName, topRightNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName, topRightNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import {
   mobileHeaderLeadingRowClassName,
   mobileHeaderSafeAreaStyle,
@@ -36,6 +71,11 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { ShotDateCalendarDrawerContent } from "@/components/shot-date-calendar-drawer-content";
+import { ShareRollLocationSheet } from "@/components/share-roll-location-sheet";
+import type { LucideIcon } from "lucide-react";
+import { nearestPresetIso, ShotIsoStepper, ShotIsoStepperWithInput } from "@/components/shot-iso-controls";
+import { ShareRollCameraPicker } from "@/components/share-roll-camera-picker";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
 import type { BestFor } from "@/lib/types";
@@ -70,34 +110,10 @@ function uniqueFormatsInOrder(formats: string[] | undefined): string[] {
 }
 
 function defaultFormatSelection(formats: string[] | undefined): string {
-  return uniqueFormatsInOrder(formats)[0] ?? "";
-}
-
-function buildStockMetaLine(stock: TrackFilmModalStock): string {
-  const isoText = stock.iso != null ? `ISO ${stock.iso}` : "ISO —";
-  const formatText = uniqueFormatsInOrder(stock.format)
-    .map((format) => format.toUpperCase())
-    .join(", ") || "—";
-  return `${stock.brand.name.toUpperCase()} | ${isoText} | ${formatText}`;
-}
-
-/** Common box speeds and practical pull/push equivalents for stepping shot ISO. */
-const FILM_SHOT_ISO_PRESETS = [
-  25, 32, 40, 50, 64, 80, 100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000,
-  2500, 3200, 6400, 12800,
-] as const;
-
-function nearestPresetIso(iso: number): (typeof FILM_SHOT_ISO_PRESETS)[number] {
-  let best: (typeof FILM_SHOT_ISO_PRESETS)[number] = FILM_SHOT_ISO_PRESETS[0];
-  let bestDist = Math.abs(iso - best);
-  for (const v of FILM_SHOT_ISO_PRESETS) {
-    const d = Math.abs(iso - v);
-    if (d < bestDist) {
-      best = v;
-      bestDist = d;
-    }
-  }
-  return best;
+  const list = uniqueFormatsInOrder(formats);
+  const preferred = list.find((f) => f.replace(/\s+/g, "").toLowerCase() === "35mm");
+  if (preferred) return preferred;
+  return list[0] ?? "";
 }
 
 function defaultShotIsoForStock(stock: TrackFilmModalStock): string {
@@ -107,136 +123,194 @@ function defaultShotIsoForStock(stock: TrackFilmModalStock): string {
   return "400";
 }
 
-function shotIsoPresetIndex(value: string): number {
-  const n = parseInt(value.trim(), 10);
-  if (!Number.isFinite(n)) {
-    return FILM_SHOT_ISO_PRESETS.indexOf(400);
+/** `YYYY-MM-DD` → readable label for metadata row (local timezone midday avoids DST edge cases). */
+function formatShotDateRowDisplay(isoDate: string): string {
+  const t = isoDate.trim();
+  if (!t) return "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const d = new Date(`${t}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return t;
+  try {
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return t;
   }
-  const exact = FILM_SHOT_ISO_PRESETS.findIndex((v) => v === n);
-  if (exact >= 0) return exact;
-  const nearest = nearestPresetIso(n);
-  return FILM_SHOT_ISO_PRESETS.findIndex((v) => v === nearest);
 }
 
-function ShotIsoStepper({
+/** Title: bottom rule only (no top line); pairs with description having no borders so one seam between them. */
+const step3ShareRollTitleBorderClassName =
+  "border-[0.5px] border-x-0 border-t-0 border-b border-border/40 dark:border-white/15";
+
+/** Hairlines: outer top/bottom + explicit line between each metadata row (`border-0` on rows would hide these). */
+const step3MetadataListClassName = cn(
+  "-mx-4 flex flex-col",
+  "border-t-[0.5px] border-b-[0.5px] border-border/40 dark:border-white/15",
+  "[&>button+button]:border-t-[0.5px] [&>button+button]:border-border/40 dark:[&>button+button]:border-white/15"
+);
+
+const step3MetadataNavRowClassName = cn(
+  "flex h-[50px] min-h-[50px] w-full items-center gap-3 pl-4 pr-4 text-left transition-colors",
+  "hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
+);
+
+const step3MetadataStackedLabelClassName =
+  "text-[10px] font-normal leading-tight text-muted-foreground";
+
+const step3MetadataStackedRowClassName = cn(
+  step3MetadataNavRowClassName,
+  "h-auto min-h-[50px] items-center py-2.5"
+);
+
+function Step3MetadataNavRow({
+  icon: Icon,
+  placeholderLabel = "",
   value,
-  onChange,
-  className,
-  "aria-labelledby": ariaLabelledBy,
+  onNavigate,
+  /** Fixed label on the left; current value sits right-aligned next to the chevron (Instagram-style audience row). */
+  fixedLeftLabel,
+  /** Use tabular figures for the trailing value (e.g. ISO digits). */
+  valueTabular,
+  /** When false, empty value shows nothing instead of an em dash (e.g. Camera). */
+  showDashWhenEmpty = true,
 }: {
+  icon: LucideIcon;
+  placeholderLabel?: string;
   value: string;
-  onChange: (next: string) => void;
-  className?: string;
-  "aria-labelledby"?: string;
+  onNavigate: () => void;
+  fixedLeftLabel?: string;
+  valueTabular?: boolean;
+  showDashWhenEmpty?: boolean;
 }) {
-  const idx = shotIsoPresetIndex(value);
-  const current = FILM_SHOT_ISO_PRESETS[idx];
-  const atMin = idx <= 0;
-  const atMax = idx >= FILM_SHOT_ISO_PRESETS.length - 1;
+  const trimmed = value.trim();
+  const hasValue = trimmed.length > 0;
+
+  const stackedValueClassName = cn(
+    "truncate text-sm font-normal leading-tight text-foreground",
+    valueTabular && "tabular-nums"
+  );
+
+  if (fixedLeftLabel) {
+    const display = hasValue ? trimmed : showDashWhenEmpty ? "—" : "";
+
+    if (hasValue) {
+      return (
+        <button type="button" className={step3MetadataStackedRowClassName} onClick={onNavigate}>
+          <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
+            <div className={step3MetadataStackedLabelClassName}>{fixedLeftLabel}</div>
+            <div className={stackedValueClassName}>{trimmed}</div>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+        </button>
+      );
+    }
+
+    return (
+      <button type="button" className={step3MetadataNavRowClassName} onClick={onNavigate}>
+        <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="shrink-0 text-sm font-normal text-muted-foreground">{fixedLeftLabel}</span>
+        <span className="min-w-0 flex-1" aria-hidden />
+        <span
+          className={cn(
+            "max-w-[min(12rem,45%)] shrink-0 truncate text-right text-sm font-normal",
+            hasValue ? "text-foreground" : "text-muted-foreground",
+            valueTabular && "tabular-nums"
+          )}
+        >
+          {display}
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+      </button>
+    );
+  }
+
+  if (hasValue && placeholderLabel) {
+    return (
+      <button type="button" className={step3MetadataStackedRowClassName} onClick={onNavigate}>
+        <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-left">
+          <div className={step3MetadataStackedLabelClassName}>{placeholderLabel}</div>
+          <div className={stackedValueClassName}>{trimmed}</div>
+        </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+      </button>
+    );
+  }
 
   return (
-    <div
-      role="group"
-      aria-labelledby={ariaLabelledBy}
-      className={cn(
-        "flex h-10 w-full min-w-0 items-stretch overflow-hidden rounded-card border border-input bg-transparent dark:bg-input/30",
-        className
-      )}
-    >
-      <button
-        type="button"
-        onClick={() => {
-          if (atMin) return;
-          onChange(String(FILM_SHOT_ISO_PRESETS[idx - 1]));
-        }}
-        disabled={atMin}
-        className="flex w-11 shrink-0 items-center justify-center border-r border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-        aria-label="Lower ISO"
-      >
-        <Minus className="h-4 w-4" strokeWidth={2} aria-hidden />
-      </button>
-      <div
-        className="flex min-w-0 flex-1 items-center justify-center tabular-nums text-sm font-medium text-foreground"
-        aria-live="polite"
-      >
-        {current}
-      </div>
-      <button
-        type="button"
-        onClick={() => {
-          if (atMax) return;
-          onChange(String(FILM_SHOT_ISO_PRESETS[idx + 1]));
-        }}
-        disabled={atMax}
-        className="flex w-11 shrink-0 items-center justify-center border-l border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-        aria-label="Raise ISO"
-      >
-        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-      </button>
-    </div>
+    <button type="button" className={step3MetadataNavRowClassName} onClick={onNavigate}>
+      <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-sm font-normal text-muted-foreground">
+        {placeholderLabel}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
+    </button>
   );
 }
 
-/** Step 3: same preset stepping as {@link ShotIsoStepper}, with a free-text center field. */
-function ShotIsoStepperWithInput({
-  id,
-  value,
-  onChange,
-  className,
-  "aria-labelledby": ariaLabelledBy,
-}: {
-  id: string;
-  value: string;
-  onChange: (next: string) => void;
-  className?: string;
-  "aria-labelledby"?: string;
-}) {
-  const idx = shotIsoPresetIndex(value);
-  const atMin = idx <= 0;
-  const atMax = idx >= FILM_SHOT_ISO_PRESETS.length - 1;
+type Step3MetadataSubpage =
+  | "tags"
+  | "camera"
+  | "lens"
+  | "format"
+  | "iso"
+  | "processing";
 
+const STEP3_METADATA_SUBPAGE_LABELS: Record<Step3MetadataSubpage, string> = {
+  tags: "Tags",
+  camera: "Camera",
+  lens: "Lens",
+  format: "Format",
+  iso: "Shot at ISO",
+  processing: "Processing",
+};
+
+function Step3CompactNavBar({
+  title,
+  onBack,
+  onClose,
+  showClose = true,
+}: {
+  title: string;
+  onBack: () => void;
+  onClose?: () => void;
+  /** When false, hides the X (e.g. metadata sub-drawer: use Back only). */
+  showClose?: boolean;
+}) {
   return (
-    <div
-      role="group"
-      aria-labelledby={ariaLabelledBy}
-      className={cn(
-        "inline-flex h-10 w-max max-w-full shrink-0 items-stretch overflow-hidden rounded-card border border-input bg-transparent dark:bg-input/30",
-        className
-      )}
-    >
-      <button
-        type="button"
-        onClick={() => {
-          if (atMin) return;
-          onChange(String(FILM_SHOT_ISO_PRESETS[idx - 1]));
-        }}
-        disabled={atMin}
-        className="flex w-11 shrink-0 items-center justify-center border-r border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-        aria-label="Lower ISO"
-      >
-        <Minus className="h-4 w-4" strokeWidth={2} aria-hidden />
-      </button>
-      <Input
-        id={id}
-        type="text"
-        autoComplete="off"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-10 min-h-0 w-[5.75ch] min-w-[5.75ch] max-w-[10ch] shrink-0 rounded-none border-0 bg-transparent px-1 py-0 text-center text-sm font-medium tabular-nums shadow-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0 dark:bg-transparent"
-      />
-      <button
-        type="button"
-        onClick={() => {
-          if (atMax) return;
-          onChange(String(FILM_SHOT_ISO_PRESETS[idx + 1]));
-        }}
-        disabled={atMax}
-        className="flex w-11 shrink-0 items-center justify-center border-l border-input text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-        aria-label="Raise ISO"
-      >
-        <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-      </button>
-    </div>
+    <header className={mobileHeaderShellClassName} style={mobileHeaderSafeAreaStyle}>
+      <div className={mobileHeaderLeadingRowClassName}>
+        <button
+          type="button"
+          onClick={onBack}
+          className={cn(
+            topLeftNavIconButtonClassName,
+            "shrink-0 text-muted-foreground hover:text-foreground"
+          )}
+          aria-label="Back"
+        >
+          <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
+        </button>
+        <h1 className="min-w-0 flex-1 truncate text-left font-sans text-lg font-semibold leading-tight tracking-tight text-foreground">
+          {title}
+        </h1>
+        {showClose && onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className={cn(
+              topRightNavIconButtonClassName,
+              "shrink-0 text-muted-foreground hover:text-foreground"
+            )}
+            aria-label="Close"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+        ) : (
+          <div className="w-[44px] shrink-0" aria-hidden />
+        )}
+      </div>
+    </header>
   );
 }
 
@@ -259,6 +333,10 @@ export interface AddReviewModalPayload {
   lens?: string;
   developedAt?: string;
   caption?: string;
+  /** `YYYY-MM-DD` from date picker; stored as `user_uploads.shot_date`. */
+  shotDate?: string;
+  /** Comma-separated; stored as `user_uploads.tags` (max 500 chars). */
+  tags?: string;
   shotIso?: string;
   lab?: string;
   filter?: string;
@@ -289,21 +367,34 @@ interface AddReviewModalProps {
   onBackToStockPicker?: () => void;
 }
 
-function StockThumbnail({ stock }: { stock: TrackFilmModalStock }) {
+function StockThumbnail({
+  stock,
+  size = "md",
+}: {
+  stock: TrackFilmModalStock;
+  /** `sm` for step 3 share roll (less visual weight vs user scans). */
+  size?: "sm" | "md";
+}) {
+  const px = size === "sm" ? 48 : 64;
   if (stock.image_url) {
     return (
       <Image
         src={stock.image_url}
         alt={stock.name}
-        width={64}
-        height={64}
+        width={px}
+        height={px}
         className="h-full w-full object-cover"
       />
     );
   }
   return (
     <div className="flex h-full w-full items-center justify-center bg-muted/30">
-      <Camera className="h-6 w-6 text-muted-foreground/40" />
+      <Camera
+        className={cn(
+          "text-muted-foreground/40",
+          size === "sm" ? "h-5 w-5" : "h-6 w-6"
+        )}
+      />
     </div>
   );
 }
@@ -369,6 +460,119 @@ function HalfStarRating({
   );
 }
 
+/** Dashed “upload” look shared by empty state and in-grid add tile. */
+const scanUploadDashedSurfaceClassName = cn(
+  "rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 transition-colors",
+  "hover:border-primary/40 hover:bg-primary/5 active:bg-primary/10"
+);
+
+function ScanReviewThumb({
+  url,
+  onRemove,
+  onOpenPreview,
+  onIntrinsicSize,
+}: {
+  url: string;
+  onRemove: () => void;
+  onOpenPreview: () => void;
+  onIntrinsicSize?: (width: number, height: number) => void;
+}) {
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    setDims(null);
+  }, [url]);
+
+  const frameStyle: CSSProperties | undefined = dims
+    ? { aspectRatio: `${dims.w} / ${dims.h}` }
+    : { minHeight: "6rem" };
+
+  const handleImgLoad = (e: SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = e.currentTarget;
+    if (naturalWidth < 1 || naturalHeight < 1) return;
+    setDims({ w: naturalWidth, h: naturalHeight });
+    onIntrinsicSize?.(naturalWidth, naturalHeight);
+  };
+
+  return (
+    <div className="relative min-w-0 self-start">
+      <div className="relative w-full overflow-hidden" style={frameStyle}>
+        <button
+          type="button"
+          onClick={onOpenPreview}
+          className="relative block h-full min-h-0 w-full touch-manipulation"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt=""
+            className="h-full w-full object-contain"
+            draggable={false}
+            onLoad={handleImgLoad}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+          aria-label="Remove scan"
+        >
+          <XIcon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function mapPreviewIndexAfterReorder(i: number, from: number, to: number): number {
+  if (i === from) return to;
+  if (from < to && i > from && i <= to) return i - 1;
+  if (from > to && i >= to && i < from) return i + 1;
+  return i;
+}
+
+/** Step 3 grid: press-and-hold then drag to reorder (no handle icon). */
+function Step3SortableScanCell({
+  id,
+  index,
+  url,
+  onTapPreview,
+}: {
+  id: string;
+  index: number;
+  url: string;
+  onTapPreview: (index: number) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <button
+      type="button"
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "relative aspect-square min-w-0 w-full touch-none overflow-hidden rounded-[7px] border border-border/50 bg-muted/10 p-0 text-left ring-offset-background transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isDragging && "z-50 opacity-95 shadow-lg"
+      )}
+      onClick={() => onTapPreview(index)}
+      {...attributes}
+      {...listeners}
+      aria-label={`Preview scan ${index + 1}. Press and hold to reorder.`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" className="pointer-events-none h-full w-full object-cover" draggable={false} />
+    </button>
+  );
+}
+
 export function AddReviewModal({
   open,
   onOpenChange,
@@ -391,6 +595,7 @@ export function AddReviewModal({
 
   const REVIEW_MAX_LENGTH = 10_000;
   const CAPTION_MAX_LENGTH = 500;
+  const TAGS_MAX_LENGTH = 500;
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -421,6 +626,20 @@ export function AddReviewModal({
   const [existingScanUrls, setExistingScanUrls] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  /** naturalWidth / naturalHeight per scan index — used to match in-grid “add” tile aspect to the neighbor shot. */
+  const [scanIntrinsicSizes, setScanIntrinsicSizes] = useState<
+    ({ w: number; h: number } | null)[]
+  >([]);
+  /** Stable row ids for step 3 drag-reorder (aligned with files / previewUrls). */
+  const [uploadScanOrderIds, setUploadScanOrderIds] = useState<string[]>([]);
+  const uploadScanOrderIdsRef = useRef<string[]>([]);
+  uploadScanOrderIdsRef.current = uploadScanOrderIds;
+  const step3SortSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 220, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
   /** Resolved via same loader as film detail page; avoids stale list/search payloads missing sheet sizes. */
   const [fetchedFormats, setFetchedFormats] = useState<string[] | null>(null);
   const stockFormatKey = JSON.stringify(stock.format ?? []);
@@ -436,30 +655,28 @@ export function AddReviewModal({
   const [lens, setLens] = useState("");
   const [shotIso, setShotIso] = useState(() => defaultShotIsoForStock(stock));
   const [location, setLocation] = useState("");
+  const [shotDate, setShotDate] = useState("");
+  const [tags, setTags] = useState("");
   const [lab, setLab] = useState("");
   const [filter, setFilter] = useState("");
   const [scanner, setScanner] = useState("");
   const [caption, setCaption] = useState("");
   const [shootingOpen, setShootingOpen] = useState(false);
   const [processingOpen, setProcessingOpen] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const carouselRef = useRef<HTMLDivElement>(null);
-  /** Heights of each slide's image frame (bordered box) — controls track uses active slide only. */
-  const scanSlideFrameRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [activeScanFrameHeight, setActiveScanFrameHeight] = useState<number | null>(null);
-  /** Step 3: full-bleed preview when tapping a scan thumbnail. */
+  /** Step 2 / 3: full-bleed preview when tapping a scan thumbnail. */
+  const [step2ScanPreviewIndex, setStep2ScanPreviewIndex] = useState<number | null>(null);
   const [step3ImagePreviewIndex, setStep3ImagePreviewIndex] = useState<number | null>(null);
-  /** Step 3 upload: optional metadata rows toggled from “Lens +” style buttons. */
-  const [step3LensOpen, setStep3LensOpen] = useState(false);
-  const [step3FilterOpen, setStep3FilterOpen] = useState(false);
-  const [step3LabOpen, setStep3LabOpen] = useState(false);
-  const [step3ScannerOpen, setStep3ScannerOpen] = useState(false);
+  const scanPreviewIndex = step2ScanPreviewIndex ?? step3ImagePreviewIndex;
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const step3CaptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [step3MetadataSubpage, setStep3MetadataSubpage] = useState<Step3MetadataSubpage | null>(null);
+  const [dateShotSheetOpen, setDateShotSheetOpen] = useState(false);
+  const [locationSheetOpen, setLocationSheetOpen] = useState(false);
 
   const MAX_SHOT_SIZE_BYTES = 50 * 1024 * 1024;
   const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
@@ -473,6 +690,8 @@ export function AddReviewModal({
     setBestFor([]);
     setExistingScanUrls([]);
     setFiles([]);
+    setScanIntrinsicSizes([]);
+    setUploadScanOrderIds([]);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -482,21 +701,29 @@ export function AddReviewModal({
     setLens("");
     setShotIso(defaultShotIsoForStock(stock));
     setLocation("");
+    setShotDate("");
+    setTags("");
     setLab("");
     setFilter("");
     setScanner("");
     setShootingOpen(false);
     setProcessingOpen(false);
-    setCurrentSlide(0);
+    setStep2ScanPreviewIndex(null);
     setStep3ImagePreviewIndex(null);
-    setStep3LensOpen(false);
-    setStep3FilterOpen(false);
-    setStep3LabOpen(false);
-    setStep3ScannerOpen(false);
     setIsUploading(false);
     setUploadError(null);
     setSubmitting(false);
+    setStep3MetadataSubpage(null);
+    setDateShotSheetOpen(false);
+    setLocationSheetOpen(false);
   }, [enteredViaUpload, initialRating, editor, stock]);
+
+  useEffect(() => {
+    if (!open) {
+      setDateShotSheetOpen(false);
+      setLocationSheetOpen(false);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open || !stock.slug) {
@@ -518,8 +745,15 @@ export function AddReviewModal({
 
   useEffect(() => {
     if (formatOptions.length === 0) return;
-    setSelectedFormat((prev) => (prev && formatOptions.includes(prev) ? prev : formatOptions[0]));
+    setSelectedFormat((prev) =>
+      prev && formatOptions.includes(prev) ? prev : defaultFormatSelection(formatOptions)
+    );
   }, [formatOptions]);
+
+  const step3ProcessingSummary = useMemo(
+    () => [lab.trim(), scanner.trim()].filter(Boolean).join(" · "),
+    [lab, scanner]
+  );
 
   useEffect(() => {
     if (!open || edit) return;
@@ -535,6 +769,8 @@ export function AddReviewModal({
     setRollName("");
     setExistingScanUrls(edit.existingScanUrls ?? []);
     setFiles([]);
+    setScanIntrinsicSizes([]);
+    setUploadScanOrderIds([]);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -544,21 +780,34 @@ export function AddReviewModal({
     setLens("");
     setShotIso(defaultShotIsoForStock(stock));
     setLocation("");
+    setShotDate("");
+    setTags("");
     setLab("");
     setFilter("");
     setScanner("");
     setShootingOpen(false);
     setProcessingOpen(false);
-    setCurrentSlide(0);
+    setStep2ScanPreviewIndex(null);
     setStep3ImagePreviewIndex(null);
-    setStep3LensOpen(false);
-    setStep3FilterOpen(false);
-    setStep3LabOpen(false);
-    setStep3ScannerOpen(false);
     setIsUploading(false);
     setUploadError(null);
     setSubmitting(false);
+    setStep3MetadataSubpage(null);
   }, [open, edit?.id, edit, stock]);
+
+  const syncStep3CaptionTextareaHeight = useCallback(() => {
+    const el = step3CaptionTextareaRef.current;
+    if (!el || typeof window === "undefined") return;
+    el.style.height = "auto";
+    const rootFontPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const minPx = rootFontPx * 4.75;
+    el.style.height = `${Math.max(el.scrollHeight, minPx)}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open || !enteredViaUpload || step !== 3) return;
+    syncStep3CaptionTextareaHeight();
+  }, [open, enteredViaUpload, step, caption, syncStep3CaptionTextareaHeight]);
 
   useEffect(() => {
     if (!open || !edit || !editor) return;
@@ -568,7 +817,9 @@ export function AddReviewModal({
   }, [open, edit?.id, edit?.review_text, editor]);
 
   const handleClose = useCallback(() => {
+    setStep2ScanPreviewIndex(null);
     setStep3ImagePreviewIndex(null);
+    setStep3MetadataSubpage(null);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -589,6 +840,8 @@ export function AddReviewModal({
     bestFor: bestFor.length > 0 ? bestFor : undefined,
     format: selectedFormat || undefined,
     location: location || undefined,
+    shotDate: shotDate.trim() ? shotDate.trim() : undefined,
+    tags: tags.trim() ? tags.trim().slice(0, TAGS_MAX_LENGTH) : undefined,
     lens: lens || undefined,
     caption: caption.trim() ? caption.trim() : undefined,
     shotIso: shotIso || undefined,
@@ -656,70 +909,78 @@ export function AddReviewModal({
       return next.map((f) => URL.createObjectURL(f));
     });
     setFiles(next);
+    setScanIntrinsicSizes(next.map(() => null));
   };
 
+  const handleStep3DragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = uploadScanOrderIdsRef.current;
+    const oldIndex = ids.indexOf(String(active.id));
+    const newIndex = ids.indexOf(String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+    setUploadScanOrderIds(arrayMove(ids, oldIndex, newIndex));
+    setFiles((f) => arrayMove(f, oldIndex, newIndex));
+    setPreviewUrls((u) => arrayMove(u, oldIndex, newIndex));
+    setScanIntrinsicSizes((s) => arrayMove(s, oldIndex, newIndex));
+    setStep3ImagePreviewIndex((prev) =>
+      prev === null ? null : mapPreviewIndexAfterReorder(prev, oldIndex, newIndex)
+    );
+    setStep2ScanPreviewIndex((prev) =>
+      prev === null ? null : mapPreviewIndexAfterReorder(prev, oldIndex, newIndex)
+    );
+  }, []);
+
   const removeFile = (index: number) => {
+    setStep2ScanPreviewIndex((prev) => {
+      if (prev === null) return null;
+      if (prev === index) return null;
+      if (prev > index) return prev - 1;
+      return prev;
+    });
+    setStep3ImagePreviewIndex((prev) => {
+      if (prev === null) return null;
+      if (prev === index) return null;
+      if (prev > index) return prev - 1;
+      return prev;
+    });
     setPreviewUrls((urls) => {
       URL.revokeObjectURL(urls[index]);
       return urls.filter((_, i) => i !== index);
     });
-    setFiles((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      if (currentSlide >= next.length) setCurrentSlide(Math.max(0, next.length - 1));
-      return next;
-    });
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setScanIntrinsicSizes((prev) => prev.filter((_, i) => i !== index));
+    setUploadScanOrderIds((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const scrollToSlide = useCallback((index: number) => {
-    const el = carouselRef.current;
-    if (!el || files.length === 0) return;
-    const w = el.clientWidth;
-    if (w <= 0) return;
-    el.scrollTo({ left: w * index, behavior: "smooth" });
-  }, [files.length]);
-
-  const handleCarouselScroll = useCallback(() => {
-    const el = carouselRef.current;
-    if (!el || files.length === 0) return;
-    const w = el.clientWidth;
-    if (w <= 0) return;
-    const index = Math.min(
-      files.length - 1,
-      Math.max(0, Math.round(el.scrollLeft / w))
-    );
-    setCurrentSlide(index);
-  }, [files.length]);
-
-  useLayoutEffect(() => {
-    if (files.length === 0) {
-      setActiveScanFrameHeight(null);
-      return;
+  /** Next slot: even index → left column, odd → right (same as row-major grid order). */
+  const scanAddTileAspectRatio = useMemo(() => {
+    if (files.length === 0 || files.length >= 10) return "3 / 2";
+    if (files.length % 2 === 0) {
+      // Add tile starts a new row on the left; landscape placeholder.
+      return "3 / 2";
     }
-    const frame = scanSlideFrameRefs.current[currentSlide];
-    if (!frame) {
-      setActiveScanFrameHeight(null);
-      return;
-    }
-    const measure = () => {
-      const h = Math.round(frame.getBoundingClientRect().height);
-      setActiveScanFrameHeight(h > 0 ? h : null);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(frame);
-    return () => ro.disconnect();
-  }, [currentSlide, files.length, previewUrls]);
+    // Add tile stacks under the previous item in the right column — match that shot, not the last upload overall.
+    const neighborIdx = files.length >= 2 ? files.length - 2 : 0;
+    const d = scanIntrinsicSizes[neighborIdx];
+    return d && d.w > 0 && d.h > 0 ? `${d.w} / ${d.h}` : "3 / 2";
+  }, [files.length, scanIntrinsicSizes]);
 
   useEffect(() => {
+    if (step !== 2) setStep2ScanPreviewIndex(null);
     if (step !== 3) {
       setStep3ImagePreviewIndex(null);
+      setStep3MetadataSubpage(null);
     }
   }, [step]);
 
   useEffect(() => {
-    if (step3ImagePreviewIndex === null) return;
+    if (scanPreviewIndex === null) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setStep3ImagePreviewIndex(null);
+      if (e.key === "Escape") {
+        setStep2ScanPreviewIndex(null);
+        setStep3ImagePreviewIndex(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -728,7 +989,17 @@ export function AddReviewModal({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [step3ImagePreviewIndex]);
+  }, [scanPreviewIndex]);
+
+  useLayoutEffect(() => {
+    if (files.length === 0) {
+      setUploadScanOrderIds([]);
+      return;
+    }
+    setUploadScanOrderIds((prev) =>
+      prev.length === files.length ? prev : files.map(() => crypto.randomUUID())
+    );
+  }, [files]);
 
   const hasReviewContent =
     rating > 0 || !editorIsEmpty || bestFor.length > 0;
@@ -754,7 +1025,7 @@ export function AddReviewModal({
                 ? `Add a roll — ${stock.name}`
                 : `Add scans — ${stock.name}`
               : enteredViaUpload
-                ? `Add roll details — ${stock.name}`
+                ? `Share your roll — ${stock.name}`
                 : `Post scans — ${stock.name}`}
         </SheetTitle>
 
@@ -879,7 +1150,7 @@ export function AddReviewModal({
               className={mobileHeaderShellClassName}
               style={mobileHeaderSafeAreaStyle}
             >
-              <div className={`relative ${mobileHeaderLeadingRowClassName}`}>
+              <div className={mobileHeaderLeadingRowClassName}>
                 <button
                   type="button"
                   onClick={() => {
@@ -895,37 +1166,29 @@ export function AddReviewModal({
                   }}
                   className={cn(
                     topLeftNavIconButtonClassName,
-                    "text-muted-foreground hover:text-foreground"
+                    "shrink-0 text-muted-foreground hover:text-foreground"
                   )}
                   aria-label="Back"
                 >
                   <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
                 </button>
-              </div>
-              <div className={mobileHeaderTitleBlockClassName}>
-                <div className="pt-0">
-                  <h1 className={mobileHeaderTitleClassName}>New roll</h1>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Upload up to 10 frames from a roll of this stock.
-                  </p>
-                </div>
+                <h1 className="min-w-0 flex-1 truncate font-sans text-lg font-semibold leading-tight tracking-tight text-foreground">
+                  Upload your scans
+                </h1>
               </div>
             </header>
 
             {/* Scrollable content */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
               <div className="space-y-5 bg-white px-4 pb-5 pt-0">
 
                 {/* Stock context */}
                 <div className="flex items-center gap-3 py-3">
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-white">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-white">
                     <StockThumbnail stock={stock} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-sans text-base font-semibold text-foreground">{stock.name}</p>
-                    <p className="truncate font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      {buildStockMetaLine(stock)}
-                    </p>
                   </div>
                 </div>
 
@@ -959,32 +1222,6 @@ export function AddReviewModal({
                     )}
                   </button>
                 )}
-
-                {enteredViaUpload && files.length === 0 && existingScanUrls.length === 0 ? (
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <label
-                        htmlFor="step2-roll-name"
-                        className={cn(
-                          "pointer-events-none absolute left-3 top-1/2 z-[1] origin-left -translate-y-1/2 text-sm text-muted-foreground transition-all duration-200",
-                          rollName
-                            ? "top-3 translate-y-0 text-[11px]"
-                            : "top-1/2 -translate-y-1/2 text-sm"
-                        )}
-                      >
-                        Roll name
-                      </label>
-                      <Input
-                        id="step2-roll-name"
-                        type="text"
-                        value={rollName}
-                        onChange={(e) => setRollName(e.target.value)}
-                        placeholder=""
-                        className="min-h-[52px] h-[52px] min-w-0 w-full px-3 pb-2 pt-5"
-                      />
-                    </div>
-                  </div>
-                ) : null}
 
                 {/* Upload zone */}
                 <div>
@@ -1034,8 +1271,8 @@ export function AddReviewModal({
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className={cn(
-                          "flex w-full flex-col items-center justify-center gap-2 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 py-8 transition-colors",
-                          "hover:border-primary/40 hover:bg-primary/5"
+                          scanUploadDashedSurfaceClassName,
+                          "flex w-full flex-col items-center justify-center gap-2 py-8"
                         )}
                       >
                         <Plus className="h-8 w-8 text-muted-foreground" />
@@ -1048,93 +1285,99 @@ export function AddReviewModal({
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         className={cn(
-                          "flex w-full flex-col items-center justify-center gap-3 rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 py-12 transition-colors",
-                          "hover:border-primary/40 hover:bg-primary/5"
+                          scanUploadDashedSurfaceClassName,
+                          "flex w-full flex-col items-center justify-center gap-3 py-12"
                         )}
                       >
                         <Plus className="h-10 w-10 text-muted-foreground" />
-                        <span className="text-sm font-medium text-muted-foreground">Add scans</span>
+                        <span className="text-sm font-medium text-muted-foreground">Upload up to 10 scans</span>
                       </button>
                     )
                   ) : (
                     <div>
-                      <div
-                        className="overflow-hidden"
-                        style={
-                          activeScanFrameHeight != null
-                            ? { height: activeScanFrameHeight }
-                            : { minHeight: "8rem" }
-                        }
-                      >
-                        <div
-                          ref={carouselRef}
-                          onScroll={handleCarouselScroll}
-                          className="flex h-full max-h-full snap-x snap-mandatory items-start overflow-x-auto overflow-y-hidden scrollbar-hide"
-                        >
-                          {files.map((file, i) => (
-                            <div
-                              key={`${file.name}-${i}`}
-                              className="relative w-full min-w-full shrink-0 snap-center flex-none self-start"
-                            >
-                              <div
-                                ref={(node) => {
-                                  scanSlideFrameRefs.current[i] = node;
+                      {/* Two flex columns (not CSS Grid rows): avoids huge gaps when one side is much taller. */}
+                      <div className="flex gap-2">
+                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                          {files.map((file, i) =>
+                            i % 2 === 0 ? (
+                              <ScanReviewThumb
+                                key={previewUrls[i] ?? `${file.name}-${i}`}
+                                url={previewUrls[i] ?? ""}
+                                onRemove={() => removeFile(i)}
+                                onOpenPreview={() => {
+                                  setStep3ImagePreviewIndex(null);
+                                  setStep2ScanPreviewIndex(i);
                                 }}
-                                className="overflow-hidden rounded-[7px] border border-border/50"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={previewUrls[i]}
-                                  alt=""
-                                  className="h-auto w-full object-contain"
-                                />
-                              </div>
+                                onIntrinsicSize={(w, h) => {
+                                  setScanIntrinsicSizes((sizes) => {
+                                    const next = files.map((_, idx) => sizes[idx] ?? null);
+                                    next[i] = { w, h };
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ) : null
+                          )}
+                          {files.length < 10 && files.length % 2 === 0 && (
+                            <div className="min-w-0 w-full">
                               <button
                                 type="button"
-                                onClick={() => removeFile(i)}
-                                className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                                aria-label="Remove"
+                                onClick={() => fileInputRef.current?.click()}
+                                className={cn(
+                                  scanUploadDashedSurfaceClassName,
+                                  "flex w-full touch-manipulation items-center justify-center"
+                                )}
+                                style={{ aspectRatio: scanAddTileAspectRatio }}
+                                aria-label={
+                                  enteredViaUpload ? "Add more scans from this roll" : "Add more scans"
+                                }
                               >
-                                <XIcon className="h-3.5 w-3.5" />
+                                <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
                               </button>
                             </div>
-                          ))}
+                          )}
+                        </div>
+                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                          {files.map((file, i) =>
+                            i % 2 === 1 ? (
+                              <ScanReviewThumb
+                                key={previewUrls[i] ?? `${file.name}-${i}`}
+                                url={previewUrls[i] ?? ""}
+                                onRemove={() => removeFile(i)}
+                                onOpenPreview={() => {
+                                  setStep3ImagePreviewIndex(null);
+                                  setStep2ScanPreviewIndex(i);
+                                }}
+                                onIntrinsicSize={(w, h) => {
+                                  setScanIntrinsicSizes((sizes) => {
+                                    const next = files.map((_, idx) => sizes[idx] ?? null);
+                                    next[i] = { w, h };
+                                    return next;
+                                  });
+                                }}
+                              />
+                            ) : null
+                          )}
+                          {files.length < 10 && files.length % 2 === 1 && (
+                            <div className="min-w-0 w-full">
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className={cn(
+                                  scanUploadDashedSurfaceClassName,
+                                  "flex w-full touch-manipulation items-center justify-center"
+                                )}
+                                style={{ aspectRatio: scanAddTileAspectRatio }}
+                                aria-label={
+                                  enteredViaUpload ? "Add more scans from this roll" : "Add more scans"
+                                }
+                              >
+                                <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Carousel indicators (row-centred) + count (right) */}
-                      <div className="relative mt-3 flex min-h-[1.375rem] items-center justify-center">
-                        <div className="flex items-center gap-1.5">
-                          {files.map((_, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => scrollToSlide(i)}
-                              className={cn(
-                                "h-1.5 rounded-full transition-all",
-                                i === currentSlide
-                                  ? "w-4 bg-primary"
-                                  : "w-1.5 bg-muted-foreground/30"
-                              )}
-                              aria-label={`Go to image ${i + 1}`}
-                            />
-                          ))}
-                        </div>
-                        <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-xs text-muted-foreground tabular-nums">
-                          {files.length} of 10
-                        </span>
-                      </div>
-
-                      {files.length < 10 && (
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="mt-3 flex w-full items-center justify-center gap-2 rounded-[7px] border border-border/50 bg-background py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/30 hover:bg-secondary/30"
-                        >
-                          <Plus className="h-4 w-4 text-muted-foreground" />
-                          {enteredViaUpload ? "Add more scans from this roll" : "Add more scans"}
-                        </button>
-                      )}
                     </div>
                   )}
 
@@ -1263,7 +1506,7 @@ export function AddReviewModal({
             </div>
 
             {/* Bottom actions */}
-            {(enteredViaUpload || canSubmitScansStep) && (
+            {(enteredViaUpload ? canAdvanceUploadFlow : canSubmitScansStep) && (
               <div className="mobile-safe-bottom-footer shrink-0 px-4 py-4">
                 <button
                   type="button"
@@ -1283,329 +1526,350 @@ export function AddReviewModal({
           </div>
         ) : (
           /* ──────────── STEP 3: FINAL DETAILS (UPLOAD FLOW) ──────────── */
-          <div className="flex h-full flex-col">
-            <header
-              className={`shrink-0 border-b border-border/40 ${mobileHeaderShellClassName}`}
-              style={mobileHeaderSafeAreaStyle}
-            >
-              <div className={`relative ${mobileHeaderLeadingRowClassName}`}>
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className={cn("absolute left-4 top-1/2 -translate-y-1/2 sm:left-6", topLeftNavIconButtonClassName, "text-muted-foreground hover:text-foreground")}
-                  aria-label="Back"
-                >
-                  <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className={cn("absolute right-4 top-1/2 -translate-y-1/2 sm:right-6", topRightNavIconButtonClassName, "text-muted-foreground hover:text-foreground")}
-                  aria-label="Close"
-                >
-                  <XIcon className="h-5 w-5" />
-                </button>
-              </div>
-              <div className={mobileHeaderTitleBlockClassName}>
-                <h1 className={mobileHeaderTitleClassName}>Roll details</h1>
-              </div>
-            </header>
-
-            <div className="min-h-0 flex-1 overflow-y-auto">
-                <div className="space-y-3 px-4 py-5">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">{stock.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Add the shared details for this roll. These details apply to every scan in this upload.
-                    </p>
-                  </div>
-                  {files.length > 0 && (
-                    <div className="-mr-4 w-[calc(100%+1rem)] max-w-none">
-                      <div className="scrollbar-hide flex items-start gap-2 overflow-x-auto overflow-y-hidden pb-1 pr-4">
-                        {files.map((file, i) => (
-                          <button
-                            key={`${file.name}-${i}`}
-                            type="button"
-                            onClick={() => setStep3ImagePreviewIndex(i)}
-                            className="relative aspect-square min-w-0 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted/10 p-0 text-left ring-offset-background flex-[0_0_calc((100%-1rem)/2.5)] transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label={`Preview scan ${i + 1}`}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={previewUrls[i]}
-                              alt=""
-                              className="pointer-events-none h-full w-full object-cover"
-                            />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <label
-                      htmlFor="roll-name"
-                      className="block text-xs font-normal text-muted-foreground"
-                    >
-                      Roll name
-                    </label>
-                    <Input
-                      id="roll-name"
-                      type="text"
-                      value={rollName}
-                      onChange={(e) => setRollName(e.target.value)}
-                      placeholder="Optional, e.g. Paris weekend"
-                      className="min-w-0 w-full"
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <label htmlFor="share-scans-caption" className="sr-only">
-                      Roll notes
-                    </label>
-                    <textarea
-                      id="share-scans-caption"
-                      value={caption}
-                      maxLength={CAPTION_MAX_LENGTH}
-                      onChange={(e) => setCaption(e.target.value)}
-                      placeholder="Add a short description or notes for this roll..."
-                      rows={4}
-                      className="min-h-[100px] w-full resize-y rounded-[7px] border border-input bg-transparent px-3 py-3 pb-8 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:bg-input/30"
-                    />
-                    <span
-                      className="pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums text-muted-foreground/60"
-                      aria-live="polite"
-                    >
-                      {caption.length}/{CAPTION_MAX_LENGTH}
-                    </span>
-                  </div>
-
-                  {formatOptions.length > 0 ? (
-                    <div className="pt-0.5">
-                      <p className="mb-1.5 block text-xs font-normal text-muted-foreground">
-                        Format
-                      </p>
-                      <div
-                        className="flex min-h-[44px] w-full items-stretch overflow-hidden rounded-[7px] border border-border/70 bg-background shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:border-border dark:shadow-none"
-                        role="tablist"
-                        aria-label="Film format"
-                      >
-                        {formatOptions.map((fmt, index) => (
-                          <Fragment key={fmt}>
-                            {index > 0 ? (
-                              <div
-                                className="w-px shrink-0 self-stretch bg-border/80 dark:bg-border"
-                                aria-hidden
-                              />
-                            ) : null}
-                            <button
-                              type="button"
-                              role="tab"
-                              aria-selected={selectedFormat === fmt}
-                              onClick={() => setSelectedFormat(fmt)}
-                              className={cn(
-                                "min-w-0 flex-1 px-1.5 py-2.5 text-center text-sm font-medium tracking-tight transition-[color,background-color,transform,box-shadow]",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                                "active:scale-[0.98] active:transition-none",
-                                selectedFormat === fmt
-                                  ? "bg-background text-primary font-semibold"
-                                  : "bg-muted/45 text-foreground hover:bg-muted/50 active:bg-muted/55"
-                              )}
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <div
+                className={cn(
+                  "flex h-full w-[200%] transition-transform duration-300 ease-out motion-reduce:transition-none",
+                  step3MetadataSubpage ? "-translate-x-1/2" : "translate-x-0"
+                )}
+              >
+                <div className="flex h-full min-h-0 w-1/2 min-w-[50%] flex-col">
+                  <Step3CompactNavBar
+                    title="Share your roll"
+                    onBack={() => setStep(2)}
+                    onClose={handleClose}
+                  />
+                  <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+                    <div className="space-y-3 px-4 pb-5 pt-0">
+                      <div className="pt-3">
+                        <div className="flex items-center gap-2">
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-white">
+                            <StockThumbnail stock={stock} size="sm" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-sans text-sm font-medium text-foreground">{stock.name}</p>
+                          </div>
+                        </div>
+                        {files.length > 0 && uploadScanOrderIds.length === files.length && (
+                          <div className="mt-5 w-full">
+                            <DndContext
+                              sensors={step3SortSensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handleStep3DragEnd}
                             >
-                              {fmt}
-                            </button>
-                          </Fragment>
-                        ))}
+                              <SortableContext items={uploadScanOrderIds} strategy={rectSortingStrategy}>
+                                <div className="grid grid-cols-5 gap-2">
+                                  {uploadScanOrderIds.map((sortId, i) => (
+                                    <Step3SortableScanCell
+                                      key={sortId}
+                                      id={sortId}
+                                      index={i}
+                                      url={previewUrls[i] ?? ""}
+                                      onTapPreview={(idx) => {
+                                        setStep2ScanPreviewIndex(null);
+                                        setStep3ImagePreviewIndex(idx);
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : null}
 
-                  <div className="flex flex-col gap-3">
-                    <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-1">
-                      <div className="min-w-0 space-y-1">
-                        <label
-                          htmlFor="step3-inline-camera"
-                          className="block text-xs font-normal text-muted-foreground"
-                        >
-                          Camera
-                        </label>
-                        <Input
-                          id="step3-inline-camera"
-                          type="text"
+                      <div className="flex flex-col gap-0">
+                        <div className="-mx-4">
+                          <label htmlFor="roll-name" className="sr-only">
+                            Title
+                          </label>
+                          <Input
+                            id="roll-name"
+                            type="text"
+                            value={rollName}
+                            onChange={(e) => setRollName(e.target.value)}
+                            placeholder="Title"
+                            autoComplete="off"
+                            className={cn(
+                              step3ShareRollTitleBorderClassName,
+                              "min-h-11 min-w-0 w-full rounded-none bg-transparent py-2.5 pl-4 pr-4 shadow-none",
+                              "text-sm font-normal text-foreground placeholder:text-muted-foreground",
+                              "outline-none focus-visible:border-foreground/35 focus-visible:outline-none focus-visible:ring-0 dark:bg-transparent dark:focus-visible:border-foreground/40"
+                            )}
+                          />
+                        </div>
+                        <div className="-mx-4">
+                          <label htmlFor="share-scans-caption" className="sr-only">
+                            Description
+                          </label>
+                          <textarea
+                            ref={step3CaptionTextareaRef}
+                            id="share-scans-caption"
+                            value={caption}
+                            maxLength={CAPTION_MAX_LENGTH}
+                            onChange={(e) => setCaption(e.target.value)}
+                            placeholder="Description"
+                            rows={1}
+                            className={cn(
+                              "border-0",
+                              "min-h-[4.75rem] min-w-0 w-full resize-none overflow-hidden rounded-none bg-transparent py-2.5 pl-4 pr-4 shadow-none",
+                              "text-sm font-normal text-foreground placeholder:text-muted-foreground",
+                              "outline-none focus-visible:border-foreground/35 focus-visible:outline-none focus-visible:ring-0 dark:bg-transparent dark:focus-visible:border-foreground/40"
+                            )}
+                          />
+                        </div>
+                      </div>
+
+                      <div className={step3MetadataListClassName}>
+                        <Step3MetadataNavRow
+                          icon={CalendarDays}
+                          placeholderLabel="Date shot"
+                          value={formatShotDateRowDisplay(shotDate)}
+                          onNavigate={() => setDateShotSheetOpen(true)}
+                        />
+                        <Step3MetadataNavRow
+                          icon={MapPin}
+                          placeholderLabel="Location"
+                          value={location}
+                          onNavigate={() => setLocationSheetOpen(true)}
+                        />
+                        <Step3MetadataNavRow
+                          icon={Tags}
+                          placeholderLabel="Tags"
+                          value={tags}
+                          onNavigate={() => setStep3MetadataSubpage("tags")}
+                        />
+                        <Step3MetadataNavRow
+                          icon={Camera}
+                          fixedLeftLabel="Camera"
                           value={camera}
-                          onChange={(e) => setCamera(e.target.value)}
-                          className="min-w-0 w-full max-w-full"
+                          showDashWhenEmpty={false}
+                          onNavigate={() => setStep3MetadataSubpage("camera")}
                         />
-                      </div>
-                      <div className="w-max min-w-0 shrink-0 space-y-1 justify-self-end">
-                        <label
-                          id="step3-iso-label"
-                          htmlFor="step3-shot-iso"
-                          className="block text-xs font-normal text-muted-foreground"
-                        >
-                          Shot at ISO
-                        </label>
-                        <ShotIsoStepperWithInput
-                          id="step3-shot-iso"
-                          aria-labelledby="step3-iso-label"
+                        <Step3MetadataNavRow
+                          icon={Aperture}
+                          placeholderLabel="Lens"
+                          value={lens}
+                          onNavigate={() => setStep3MetadataSubpage("lens")}
+                        />
+                        {formatOptions.length > 0 ? (
+                          <Step3MetadataNavRow
+                            icon={Film}
+                            fixedLeftLabel="Format"
+                            value={selectedFormat}
+                            onNavigate={() => setStep3MetadataSubpage("format")}
+                          />
+                        ) : null}
+                        <Step3MetadataNavRow
+                          icon={Gauge}
+                          fixedLeftLabel="ISO"
                           value={shotIso}
-                          onChange={setShotIso}
+                          valueTabular
+                          onNavigate={() => setStep3MetadataSubpage("iso")}
                         />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="step3-inline-location"
-                        className="block text-xs font-normal text-muted-foreground"
-                      >
-                        Location
-                      </label>
-                      <Input
-                        id="step3-inline-location"
-                        type="text"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex w-full flex-col gap-2">
-                      <div className="min-w-0 w-full">
-                        {step3LensOpen ? (
-                          <div className="space-y-1">
-                            <label
-                              htmlFor="step3-inline-lens"
-                              className="block text-xs font-normal text-muted-foreground"
-                            >
-                              Lens
-                            </label>
-                            <Input
-                              id="step3-inline-lens"
-                              type="text"
-                              value={lens}
-                              onChange={(e) => setLens(e.target.value)}
-                              className="min-w-0 w-full"
-                            />
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setStep3LensOpen(true)}
-                            aria-expanded={false}
-                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
-                          >
-                            <span className="min-w-0 truncate text-left">Add lens</span>
-                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
-                          </button>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full">
-                        {step3FilterOpen ? (
-                          <div className="space-y-1">
-                            <label
-                              htmlFor="step3-inline-filter"
-                              className="block text-xs font-normal text-muted-foreground"
-                            >
-                              Filter
-                            </label>
-                            <Input
-                              id="step3-inline-filter"
-                              type="text"
-                              value={filter}
-                              onChange={(e) => setFilter(e.target.value)}
-                              className="min-w-0 w-full"
-                            />
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setStep3FilterOpen(true)}
-                            aria-expanded={false}
-                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
-                          >
-                            <span className="min-w-0 truncate text-left">Add filter</span>
-                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
-                          </button>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full">
-                        {step3LabOpen ? (
-                          <div className="space-y-1">
-                            <label
-                              htmlFor="step3-inline-lab"
-                              className="block text-xs font-normal text-muted-foreground"
-                            >
-                              Lab / Processing
-                            </label>
-                            <Input
-                              id="step3-inline-lab"
-                              type="text"
-                              value={lab}
-                              onChange={(e) => setLab(e.target.value)}
-                              className="min-w-0 w-full"
-                            />
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setStep3LabOpen(true)}
-                            aria-expanded={false}
-                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
-                          >
-                            <span className="min-w-0 truncate text-left">Add lab</span>
-                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
-                          </button>
-                        )}
-                      </div>
-                      <div className="min-w-0 w-full">
-                        {step3ScannerOpen ? (
-                          <div className="space-y-1">
-                            <label
-                              htmlFor="step3-inline-scanner"
-                              className="block text-xs font-normal text-muted-foreground"
-                            >
-                              Scanner
-                            </label>
-                            <Input
-                              id="step3-inline-scanner"
-                              type="text"
-                              value={scanner}
-                              onChange={(e) => setScanner(e.target.value)}
-                              className="min-w-0 w-full"
-                            />
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setStep3ScannerOpen(true)}
-                            aria-expanded={false}
-                            className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/70 bg-muted/45 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 active:bg-muted/55"
-                          >
-                            <span className="min-w-0 truncate text-left">Add scanner</span>
-                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />
-                          </button>
-                        )}
+                        <Step3MetadataNavRow
+                          icon={FlaskConical}
+                          placeholderLabel="Processing"
+                          value={step3ProcessingSummary}
+                          onNavigate={() => setStep3MetadataSubpage("processing")}
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
+
+                <div
+                  className="flex h-full min-h-0 w-1/2 min-w-[50%] flex-col bg-white dark:bg-background"
+                  inert={step3MetadataSubpage === null}
+                >
+                  <Step3CompactNavBar
+                    title={
+                      step3MetadataSubpage
+                        ? STEP3_METADATA_SUBPAGE_LABELS[step3MetadataSubpage]
+                        : ""
+                    }
+                    onBack={() => setStep3MetadataSubpage(null)}
+                    showClose={false}
+                  />
+                  <div
+                    className={cn(
+                      "min-h-0 flex-1 px-4 pb-4 pt-4",
+                      step3MetadataSubpage === "camera"
+                        ? "flex flex-col overflow-hidden"
+                        : "no-scrollbar overflow-y-auto"
+                    )}
+                  >
+                    {step3MetadataSubpage === "tags" ? (
+                      <TextField
+                        id="step3-inline-tags"
+                        label="Tags"
+                        type="text"
+                        value={tags}
+                        maxLength={TAGS_MAX_LENGTH}
+                        onChange={(e) => setTags(e.target.value)}
+                        placeholder="Comma-separated, e.g. street, summer, Paris"
+                      />
+                    ) : null}
+                    {step3MetadataSubpage === "format" && formatOptions.length > 0 ? (
+                      <div className="flex min-h-[44px] w-full flex-wrap gap-2" role="listbox" aria-label="Format">
+                        {formatOptions.map((fmt) => (
+                          <button
+                            key={fmt}
+                            type="button"
+                            role="option"
+                            aria-selected={selectedFormat === fmt}
+                            onClick={() => setSelectedFormat(fmt)}
+                            className={cn(
+                              "rounded-[7px] border px-3 py-2 text-sm font-medium transition-colors",
+                              selectedFormat === fmt
+                                ? "border-primary/40 bg-primary/10 text-primary"
+                                : "border-border/50 bg-background text-foreground/80 hover:border-primary/30 hover:bg-primary/5"
+                            )}
+                          >
+                            {fmt}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {step3MetadataSubpage === "camera" ? (
+                      <ShareRollCameraPicker
+                        camera={camera}
+                        onCameraChange={setCamera}
+                        onPicked={() => setStep3MetadataSubpage(null)}
+                      />
+                    ) : null}
+                    {step3MetadataSubpage === "lens" ? (
+                      <div className="space-y-4">
+                        <TextField
+                          id="step3-inline-lens"
+                          label="Lens"
+                          type="text"
+                          value={lens}
+                          onChange={(e) => setLens(e.target.value)}
+                          placeholder="e.g. 50mm f/1.8"
+                        />
+                        <TextField
+                          id="step3-inline-filter"
+                          label="Filter"
+                          type="text"
+                          value={filter}
+                          onChange={(e) => setFilter(e.target.value)}
+                          placeholder="e.g. Yellow #8"
+                        />
+                      </div>
+                    ) : null}
+                    {step3MetadataSubpage === "iso" ? (
+                      <div>
+                        <label
+                          htmlFor="step3-inline-shot-iso"
+                          id="step3-inline-iso-label"
+                          className="mb-2 block text-sm font-medium text-foreground"
+                        >
+                          Shot at ISO
+                        </label>
+                        <ShotIsoStepperWithInput
+                          id="step3-inline-shot-iso"
+                          aria-labelledby="step3-inline-iso-label"
+                          value={shotIso}
+                          onChange={setShotIso}
+                        />
+                      </div>
+                    ) : null}
+                    {step3MetadataSubpage === "processing" ? (
+                      <div className="space-y-4">
+                        <TextField
+                          id="step3-inline-lab"
+                          label="Lab / Processing"
+                          type="text"
+                          value={lab}
+                          onChange={(e) => setLab(e.target.value)}
+                          placeholder="e.g. Home dev"
+                        />
+                        <TextField
+                          id="step3-inline-scanner"
+                          label="Scanner"
+                          type="text"
+                          value={scanner}
+                          onChange={(e) => setScanner(e.target.value)}
+                          placeholder="e.g. Epson V600"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                  {step3MetadataSubpage !== "camera" ? (
+                    <div className="mobile-safe-bottom-footer shrink-0 px-4 py-4">
+                      <button
+                        type="button"
+                        onClick={() => setStep3MetadataSubpage(null)}
+                        className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
-              <div className="shrink-0 border-t border-border/40 px-4 py-4">
+            {!step3MetadataSubpage ? (
+              <div className="mobile-safe-bottom-footer shrink-0 px-4 py-4">
                 <button
                   type="button"
                   onClick={handlePostScans}
                   disabled={submitting || !files.length}
-                  className="flex w-full items-center justify-center rounded-[7px] bg-[#1A1410] py-3 text-sm font-semibold text-white transition-colors hover:bg-[#1A1410]/90 disabled:opacity-40 dark:bg-[#1A1410] dark:hover:bg-[#1A1410]/90"
+                  className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
                 >
-                  {submitting ? "Publishing..." : "Publish roll"}
+                  {submitting ? "Sharing..." : "Share roll"}
                 </button>
               </div>
+            ) : null}
           </div>
         )}
       </SheetContent>
     </Sheet>
+
+    <Sheet
+      open={open && dateShotSheetOpen}
+      modal="trap-focus"
+      onOpenChange={(next) => {
+        if (!open) return;
+        setDateShotSheetOpen(next);
+      }}
+    >
+      <SheetContent
+        side="bottom"
+        showCloseButton={false}
+        overlayClassName="!z-[105] bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
+        className={cn(
+          // Intrinsic height from drawer content (tight month view); cap viewport. Year grid sets its own min height inside.
+          "!z-[110] flex min-h-0 flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl data-[side=bottom]:h-auto data-[side=bottom]:max-h-[65dvh]",
+          "rounded-t-[20px] bg-background"
+        )}
+      >
+        {open && dateShotSheetOpen ? (
+          <ShotDateCalendarDrawerContent
+            shotDate={shotDate}
+            onShotDateChange={setShotDate}
+            onRequestClose={() => setDateShotSheetOpen(false)}
+          />
+        ) : null}
+      </SheetContent>
+    </Sheet>
+
+    <ShareRollLocationSheet
+      open={open && locationSheetOpen}
+      onOpenChange={(next) => {
+        if (!open) return;
+        setLocationSheetOpen(next);
+      }}
+      value={location}
+      onChange={setLocation}
+    />
+
     {typeof document !== "undefined" &&
-      step3ImagePreviewIndex !== null &&
-      previewUrls[step3ImagePreviewIndex] &&
+      scanPreviewIndex !== null &&
+      previewUrls[scanPreviewIndex] &&
       createPortal(
         <div
           className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-zinc-950"
@@ -1613,27 +1877,31 @@ export function AddReviewModal({
           aria-modal="true"
           aria-label="Preview"
         >
-          <div className="relative flex shrink-0 items-center justify-center border-b border-neutral-200 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] dark:border-zinc-800">
-            <button
-              type="button"
-              onClick={() => setStep3ImagePreviewIndex(null)}
-              className={cn(
-                "absolute left-0 top-1/2 -translate-y-1/2",
-                topLeftNavIconTouchClassName,
-                "text-neutral-900 hover:bg-neutral-100 dark:text-zinc-100 dark:hover:bg-zinc-900"
-              )}
-              aria-label="Back"
-            >
-              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
-            </button>
-            <span className="text-base font-semibold text-neutral-900 dark:text-zinc-50">
-              Preview
-            </span>
-          </div>
+          <header className="shrink-0" style={mobileHeaderSafeAreaStyle}>
+            <div className={mobileHeaderLeadingRowClassName}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep2ScanPreviewIndex(null);
+                  setStep3ImagePreviewIndex(null);
+                }}
+                className={cn(
+                  topLeftNavIconButtonClassName,
+                  "shrink-0 text-muted-foreground hover:text-foreground"
+                )}
+                aria-label="Back"
+              >
+                <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
+              </button>
+              <h1 className="min-w-0 flex-1 truncate font-sans text-lg font-semibold leading-tight tracking-tight text-foreground">
+                Preview
+              </h1>
+            </div>
+          </header>
           <div className="flex min-h-0 flex-1 w-full items-center justify-center px-0 pb-[env(safe-area-inset-bottom)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={previewUrls[step3ImagePreviewIndex]}
+              src={previewUrls[scanPreviewIndex]}
               alt=""
               className="max-h-full w-full object-contain"
             />

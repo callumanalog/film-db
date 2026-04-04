@@ -32,19 +32,6 @@ export function openPlusActionSheet(payload?: OpenPayload) {
   }
 }
 
-function getFilmSlug(pathname: string | null): string | null {
-  if (!pathname) return null;
-  const parts = pathname.split("/").filter(Boolean);
-  if (parts[0] === "films" && parts.length >= 2 && !["images"].includes(parts[parts.length - 1])) {
-    return parts[1];
-  }
-  return null;
-}
-
-function slugToName(slug: string): string {
-  return slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-}
-
 export function PlusActionSheet() {
   const [open, setOpen] = useState(false);
   const [contextSlug, setContextSlug] = useState<string | null>(null);
@@ -233,7 +220,9 @@ export function PlusActionSheet() {
           open={reviewModalOpen}
           onOpenChange={(o) => {
             setReviewModalOpen(o);
-            if (!o) setSelectedStock(null);
+            if (!o) {
+              setSelectedStock(null);
+            }
           }}
           onBackToStockPicker={() => {
             setReviewModalOpen(false);
@@ -271,6 +260,8 @@ export function PlusActionSheet() {
               if (payload.scanner) formData.set("scanner", payload.scanner);
               if (payload.format) formData.set("format", payload.format);
               if (payload.location) formData.set("location", payload.location);
+              if (payload.shotDate) formData.set("shot_date", payload.shotDate);
+              if (payload.tags) formData.set("tags", payload.tags);
               if (payload.iso) formData.set("iso", payload.iso);
               if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
               const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;

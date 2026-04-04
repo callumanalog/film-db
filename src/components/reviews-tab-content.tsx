@@ -368,6 +368,8 @@ export function ReviewsTabContent({
       if (payload.scanner) formData.set("scanner", payload.scanner);
       if (payload.format) formData.set("format", payload.format);
       if (payload.location) formData.set("location", payload.location);
+      if (payload.shotDate) formData.set("shot_date", payload.shotDate);
+      if (payload.tags) formData.set("tags", payload.tags);
       if (payload.iso) formData.set("iso", payload.iso);
       if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
       if (payload.uploadedImageUrl) formData.set("image_url", payload.uploadedImageUrl);

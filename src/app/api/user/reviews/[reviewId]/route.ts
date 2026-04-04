@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import imageSize from "image-size";
 import { createClient } from "@/lib/supabase/server";
+import { shotDateForUserUploadDb } from "@/lib/user-upload-shot-date";
 
 const BUCKET = "user-uploads";
 const MAX_FILES = 10;
@@ -74,6 +75,9 @@ export async function PATCH(
   const lab = (formData.get("lab") as string) || null;
   const filter = (formData.get("filter") as string) || null;
   const scanner = (formData.get("scanner") as string) || null;
+  const shotDate = shotDateForUserUploadDb(formData.get("shot_date") as string);
+  const tagsTrim = ((formData.get("tags") as string) || "").trim().slice(0, 500);
+  const tags = tagsTrim.length > 0 ? tagsTrim : null;
   const bestForRaw = (formData.get("best_for") as string) || null;
   let bestFor: string[] = [];
   if (bestForRaw) {
@@ -194,6 +198,8 @@ export async function PATCH(
     push_pull: pushPull || null,
     format: format || null,
     location: location || null,
+    shot_date: shotDate,
+    tags,
   };
 
   const uploadBatchId = uploadedRows.length > 0 ? crypto.randomUUID() : null;

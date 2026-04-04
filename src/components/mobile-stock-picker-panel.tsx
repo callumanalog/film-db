@@ -5,6 +5,12 @@ import { ChevronLeft } from "lucide-react";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { FilmStockListCardButton } from "@/components/film-stock-list-card";
 import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
+import {
+  mobileHeaderLeadingRowClassName,
+  mobileHeaderSafeAreaStyle,
+  mobileHeaderShellClassName,
+} from "@/lib/mobile-header";
+import { cn } from "@/lib/utils";
 import type { SearchStocksResult } from "@/app/actions/search";
 
 interface MobileStockPickerPanelProps {
@@ -43,29 +49,34 @@ export function MobileStockPickerPanel({
     <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden bg-white md:hidden">
       <header
         aria-label="Select film stock"
-        className="sticky top-0 z-10 bg-white pt-4 pb-2"
+        className={cn("sticky top-0 z-10", mobileHeaderShellClassName)}
+        style={mobileHeaderSafeAreaStyle}
       >
-        <div className="px-4 sm:px-6">
-          <div className="flex w-full items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Back"
-              className={topLeftNavIconButtonClassName}
-            >
-              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
-            </button>
-            <div className="min-w-0 flex-1">
-              <SearchPageHeaderForm
-                value={query}
-                onChange={onQueryChange}
-                onClear={() => onQueryChange("")}
-                autoFocus
-                placeholder={prompt}
-                ariaLabel={prompt}
-              />
-            </div>
-          </div>
+        <div className={mobileHeaderLeadingRowClassName}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Back"
+            className={cn(
+              topLeftNavIconButtonClassName,
+              "shrink-0 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
+          </button>
+          <h1 className="min-w-0 flex-1 truncate font-sans text-lg font-semibold leading-tight tracking-tight text-foreground">
+            Choose your film stock
+          </h1>
+        </div>
+        <div className="px-4 pb-3 pt-3 sm:px-6">
+          <SearchPageHeaderForm
+            value={query}
+            onChange={onQueryChange}
+            onClear={() => onQueryChange("")}
+            autoFocus
+            placeholder={prompt}
+            ariaLabel={prompt}
+          />
         </div>
       </header>
 

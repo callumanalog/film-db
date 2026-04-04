@@ -5,7 +5,7 @@ import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-b
 import type { FilmBrand, FilmStock } from "@/lib/types";
 
 const USER_UPLOAD_ROW_SELECT =
-  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
 
 export interface FilmUploadRow {
   id: string;
@@ -24,6 +24,8 @@ export interface FilmUploadRow {
   push_pull?: string | null;
   format?: string | null;
   location?: string | null;
+  shot_date?: string | null;
+  tags?: string | null;
   /** Shared id for all images from the same submit (batch of 1–10). */
   upload_batch_id?: string | null;
   /** Set on upload when available; used for film hero landscape carousel. */
@@ -83,13 +85,13 @@ export async function getAllCommunityUploadsForGallery(
   const slugFilter = matchingStockSlugs?.length ? matchingStockSlugs : [];
   if (term && slugFilter.length > 0) {
     const pattern = `%${term}%`;
-    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern}`;
+    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`;
     const slugIn = `film_stock_slug.in.(${slugFilter.map((s) => `"${s.replace(/"/g, '\\"')}"`).join(",")})`;
     query = query.or(`${textOr},${slugIn}`);
   } else if (term) {
     const pattern = `%${term}%`;
     query = query.or(
-      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern}`
+      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`
     );
   } else if (slugFilter.length > 0) {
     query = query.in("film_stock_slug", slugFilter);
@@ -113,6 +115,8 @@ export async function getAllCommunityUploadsForGallery(
     const stock = stockBySlug.get(r.film_stock_slug);
     if (!stock) continue;
     const settingsParts = [
+      r.shot_date,
+      r.tags,
       r.format,
       r.location,
       r.shot_iso,
