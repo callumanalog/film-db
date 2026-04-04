@@ -60,6 +60,7 @@ function buildFeedGalleryPool(
         filter: u.filter,
         scanner: u.scanner,
         push_pull: u.push_pull,
+        format: u.format ?? null,
         reviewId: u.review_id ?? null,
         uploadBatchId: u.upload_batch_id ?? null,
         uploadId: u.id,

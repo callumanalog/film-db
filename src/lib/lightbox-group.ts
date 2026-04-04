@@ -171,6 +171,12 @@ export function galleryImageToLightbox(img: GalleryImage): ImageLightboxData | u
     metadata: {
       camera: img.camera || null,
       shot_iso: img.shot_iso || null,
+      format:
+        img.format?.trim() ||
+        (img.stockFormat?.length
+          ? img.stockFormat.filter(Boolean).join(", ")
+          : null) ||
+        null,
       lens: img.lens || null,
       lab: img.lab || null,
       filter: img.filter || null,
@@ -184,6 +190,7 @@ function metadataFromUpload(u: FilmUploadRow) {
   return {
     camera: u.camera ?? null,
     shot_iso: u.shot_iso ?? null,
+    format: u.format ?? null,
     lens: u.lens ?? null,
     lab: u.lab ?? null,
     filter: u.filter ?? null,

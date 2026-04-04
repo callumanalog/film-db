@@ -7,27 +7,20 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 import {
-  Aperture,
-  ArrowDownUp,
   Bookmark,
-  Calendar,
   Camera,
   ChevronLeft,
+  ChevronRight,
+  Clock,
   Film,
-  Filter,
-  FlaskConical,
-  Gauge,
   Heart,
-  MapPin,
   MessageCircle,
   MoreHorizontal,
-  ScanLine,
+  RectangleHorizontal,
 } from "lucide-react";
 import { getSavedUploadIdsAmong, toggleSaveUpload } from "@/app/actions/saved-uploads";
 import { showSavedScanBoardToast } from "@/components/saved-scan-board-toast";
@@ -59,6 +52,8 @@ import { isSameLightboxSlide } from "@/lib/lightbox-group";
 export type ImageLightboxMetadata = {
   camera?: string | null;
   shot_iso?: string | null;
+  /** Upload / scan format (e.g. 35mm); shown in metadata table. */
+  format?: string | null;
   lens?: string | null;
   lab?: string | null;
   filter?: string | null;
@@ -97,26 +92,20 @@ export type ImageLightboxData = {
   } | null;
 };
 
-function formatAbsolutePostDate(iso: string): string | null {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  return new Date(t).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+const lightboxMetaHairline = "border-t border-[0.5px] border-border/40 dark:border-white/15";
 
-function LightboxMetaRow({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-3 py-2 first:pt-0">
-      <Icon
-        className="size-[18px] shrink-0 stroke-[1.5] text-neutral-400 dark:text-neutral-500"
-        aria-hidden
-      />
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
-  );
+/** Leading row icons: 16×16, muted tertiary */
+const lightboxMetaLeadingIconClass =
+  "size-4 shrink-0 stroke-[1.5] text-muted-foreground/80 dark:text-muted-foreground/70";
+
+/** Trailing chevron: 14×14, muted tertiary */
+const lightboxMetaChevronClass =
+  "h-3.5 w-3.5 shrink-0 stroke-[1.5] text-muted-foreground/80 dark:text-muted-foreground/70";
+
+function formatIsoRowValue(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  return /^\s*ISO\b/i.test(t) ? t : `ISO ${t}`;
 }
 
 function getInitials(name: string): string {
@@ -532,15 +521,14 @@ export function ImageLightbox({
   const profileUserId = current.userId?.trim() ?? "";
   const profileHref = profileUserId ? `/users/${profileUserId}` : null;
   const relativeTime = current.createdAt ? formatRelativeTime(current.createdAt) : null;
-  const absolutePostDate = current.createdAt ? formatAbsolutePostDate(current.createdAt) : null;
   const filmStockName = current.stockCard?.name ?? current.context?.label ?? null;
   const filmStockHref = current.stockCard?.href ?? current.context?.href ?? null;
   const showFilmMetaRow = !!(filmStockName && filmStockHref);
-  const hasInlineDetails =
-    showFilmMetaRow ||
-    !!hasMeta ||
-    !!current.location?.trim() ||
-    !!absolutePostDate;
+  const cameraValue = current.metadata?.camera?.trim() ?? "";
+  const shotIsoValue = current.metadata?.shot_iso?.trim() ?? "";
+  const formatValue = current.metadata?.format?.trim() ?? "";
+  const hasMetadataTable =
+    showFilmMetaRow || !!cameraValue || !!shotIsoValue || !!formatValue;
   const captionPlain = current.caption?.trim() ? plainCaptionFull(current.caption) : "";
 
   const comments = current.commentCount ?? null;
@@ -674,12 +662,12 @@ export function ImageLightbox({
                     <Link
                       href={profileHref}
                       onClick={onClose}
-                      className="min-w-0 truncate text-xs font-medium leading-tight text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
+                      className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
                     >
                       {name}
                     </Link>
                   ) : (
-                    <span className="min-w-0 truncate text-xs font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+                    <span className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
                       {name}
                     </span>
                   )}
@@ -768,81 +756,58 @@ export function ImageLightbox({
                   </div>
                 ) : null}
 
-                {hasInlineDetails ? (
-                  <div className="flex flex-col">
+                {hasMetadataTable ? (
+                  <div className="-mx-4 flex flex-col">
                     {showFilmMetaRow ? (
-                      <LightboxMetaRow icon={Film}>
-                        <Link
-                          href={filmStockHref!}
-                          onClick={onClose}
-                          className="text-[12px] font-medium leading-snug text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
-                        >
+                      <Link
+                        href={filmStockHref!}
+                        onClick={onClose}
+                        className={cn(
+                          lightboxMetaHairline,
+                          "flex min-h-11 items-center pl-4 pr-4 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
+                        )}
+                      >
+                        <Film className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-foreground">
                           {filmStockName}
-                        </Link>
-                      </LightboxMetaRow>
+                        </span>
+                        <ChevronRight className={cn(lightboxMetaChevronClass, "ml-2 shrink-0")} aria-hidden />
+                      </Link>
                     ) : null}
-                    {current.metadata?.camera?.trim() ? (
-                      <LightboxMetaRow icon={Camera}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-900 dark:text-neutral-100">
-                          {current.metadata.camera.trim()}
-                        </p>
-                      </LightboxMetaRow>
+                    {cameraValue ? (
+                      <Link
+                        href={`/cameras?search=${encodeURIComponent(cameraValue)}`}
+                        onClick={onClose}
+                        className={cn(
+                          lightboxMetaHairline,
+                          "flex min-h-11 items-center pl-4 pr-4 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
+                        )}
+                      >
+                        <Camera className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-foreground">
+                          {cameraValue}
+                        </span>
+                        <ChevronRight className={cn(lightboxMetaChevronClass, "ml-2 shrink-0")} aria-hidden />
+                      </Link>
                     ) : null}
-                    {current.metadata?.lens?.trim() ? (
-                      <LightboxMetaRow icon={Aperture}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {current.metadata.lens.trim()}
-                        </p>
-                      </LightboxMetaRow>
+                    {shotIsoValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <Clock className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {formatIsoRowValue(shotIsoValue)}
+                        </span>
+                      </div>
                     ) : null}
-                    {current.metadata?.shot_iso?.trim() ? (
-                      <LightboxMetaRow icon={Gauge}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {current.metadata.shot_iso.trim()}
-                        </p>
-                      </LightboxMetaRow>
-                    ) : null}
-                    {current.metadata?.lab?.trim() ? (
-                      <LightboxMetaRow icon={FlaskConical}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {current.metadata.lab.trim()}
-                        </p>
-                      </LightboxMetaRow>
-                    ) : null}
-                    {current.metadata?.push_pull?.trim() ? (
-                      <LightboxMetaRow icon={ArrowDownUp}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {current.metadata.push_pull.trim()}
-                        </p>
-                      </LightboxMetaRow>
-                    ) : null}
-                    {current.metadata?.filter?.trim() ? (
-                      <LightboxMetaRow icon={Filter}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {current.metadata.filter.trim()}
-                        </p>
-                      </LightboxMetaRow>
-                    ) : null}
-                    {current.metadata?.scanner?.trim() ? (
-                      <LightboxMetaRow icon={ScanLine}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {current.metadata.scanner.trim()}
-                        </p>
-                      </LightboxMetaRow>
-                    ) : null}
-                    {current.location?.trim() ? (
-                      <LightboxMetaRow icon={MapPin}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {current.location.trim()}
-                        </p>
-                      </LightboxMetaRow>
-                    ) : null}
-                    {absolutePostDate ? (
-                      <LightboxMetaRow icon={Calendar}>
-                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
-                          {absolutePostDate}
-                        </p>
-                      </LightboxMetaRow>
+                    {formatValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <RectangleHorizontal
+                          className={cn(lightboxMetaLeadingIconClass, "mr-3")}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {formatValue}
+                        </span>
+                      </div>
                     ) : null}
                   </div>
                 ) : null}
@@ -875,7 +840,7 @@ export function ImageLightbox({
                   </div>
                 ) : null}
 
-                {!current.caption?.trim() && !(displayLikes > 0) && !hasInlineDetails ? (
+                {!current.caption?.trim() && !(displayLikes > 0) && !hasMetadataTable ? (
                   <p className="text-sm text-neutral-500">No caption for this shot.</p>
                 ) : null}
               </div>
