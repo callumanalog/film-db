@@ -76,7 +76,7 @@ import { ShareRollLocationSheet } from "@/components/share-roll-location-sheet";
 import { ShareRollFormatSheet } from "@/components/share-roll-format-sheet";
 import { ShareRollIsoSheet } from "@/components/share-roll-iso-sheet";
 import type { LucideIcon } from "lucide-react";
-import { nearestPresetIso, ShotIsoStepper } from "@/components/shot-iso-controls";
+import { nearestPresetIso } from "@/components/shot-iso-controls";
 import { ShareRollCameraPicker } from "@/components/share-roll-camera-picker";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
@@ -339,13 +339,12 @@ export interface AddReviewModalPayload {
   uploadedStoragePath?: string;
 }
 
-/** Pre-fill when editing an existing review (step 1 + existing scan URLs on step 2). */
+/** Pre-fill when editing an existing review (text-only flow). */
 export interface EditReviewSeed {
   id: string;
   rating: number;
   review_text: string | null;
   best_for: string[];
-  existingScanUrls: string[];
 }
 
 interface AddReviewModalProps {
@@ -617,7 +616,6 @@ export function AddReviewModal({
   });
 
   // Step 2 fields
-  const [existingScanUrls, setExistingScanUrls] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   /** naturalWidth / naturalHeight per scan index — used to match in-grid “add” tile aspect to the neighbor shot. */
@@ -655,8 +653,6 @@ export function AddReviewModal({
   const [filter, setFilter] = useState("");
   const [scanner, setScanner] = useState("");
   const [caption, setCaption] = useState("");
-  const [shootingOpen, setShootingOpen] = useState(false);
-  const [processingOpen, setProcessingOpen] = useState(false);
   /** Step 2 / 3: full-bleed preview when tapping a scan thumbnail. */
   const [step2ScanPreviewIndex, setStep2ScanPreviewIndex] = useState<number | null>(null);
   const [step3ImagePreviewIndex, setStep3ImagePreviewIndex] = useState<number | null>(null);
@@ -684,7 +680,6 @@ export function AddReviewModal({
     setCamera("");
     setRollName("");
     setBestFor([]);
-    setExistingScanUrls([]);
     setFiles([]);
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
@@ -702,8 +697,6 @@ export function AddReviewModal({
     setLab("");
     setFilter("");
     setScanner("");
-    setShootingOpen(false);
-    setProcessingOpen(false);
     setStep2ScanPreviewIndex(null);
     setStep3ImagePreviewIndex(null);
     setIsUploading(false);
@@ -767,7 +760,6 @@ export function AddReviewModal({
     setBestFor((edit.best_for as BestFor[]) ?? []);
     setCamera("");
     setRollName("");
-    setExistingScanUrls(edit.existingScanUrls ?? []);
     setFiles([]);
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
@@ -785,8 +777,6 @@ export function AddReviewModal({
     setLab("");
     setFilter("");
     setScanner("");
-    setShootingOpen(false);
-    setProcessingOpen(false);
     setStep2ScanPreviewIndex(null);
     setStep3ImagePreviewIndex(null);
     setIsUploading(false);
@@ -853,8 +843,8 @@ export function AddReviewModal({
   const handleLogSubmit = async () => {
     setSubmitting(true);
     try {
-      await Promise.resolve(onSubmit(buildPayload()));
-      handleClose();
+      const result = await Promise.resolve(onSubmit(buildPayload()));
+      if (result && typeof result === "object" && result.success === true) handleClose();
     } finally {
       setSubmitting(false);
     }
@@ -869,8 +859,8 @@ export function AddReviewModal({
   const handlePostScans = async () => {
     setSubmitting(true);
     try {
-      await Promise.resolve(onSubmit(buildPayload()));
-      handleClose();
+      const result = await Promise.resolve(onSubmit(buildPayload()));
+      if (result && typeof result === "object" && result.success === true) handleClose();
     } finally {
       setSubmitting(false);
     }
@@ -1003,8 +993,8 @@ export function AddReviewModal({
 
   const hasReviewContent =
     rating > 0 || !editorIsEmpty || bestFor.length > 0;
-  /** Edit flow always allows save from step 2 (including clearing fields). */
-  const canSubmitScansStep = isEdit || hasReviewContent || files.length > 0;
+  /** Create requires rating, text, or “best for”; edit allows save even when cleared. */
+  const canSubmitTextReview = isEdit || hasReviewContent;
   const canAdvanceUploadFlow = files.length > 0;
 
   return (
@@ -1016,20 +1006,16 @@ export function AddReviewModal({
         className="!h-[100dvh] !max-h-[100dvh] !rounded-none gap-0 p-0"
       >
         <SheetTitle className="sr-only">
-          {step === 1
+          {!enteredViaUpload
             ? isEdit
               ? `Edit review — ${stock.name}`
               : `Review ${stock.name}`
             : step === 2
-              ? enteredViaUpload
-                ? `Add a roll — ${stock.name}`
-                : `Add scans — ${stock.name}`
-              : enteredViaUpload
-                ? `Share your roll — ${stock.name}`
-                : `Post scans — ${stock.name}`}
+              ? `Add a roll — ${stock.name}`
+              : `Share your roll — ${stock.name}`}
         </SheetTitle>
 
-        {step === 1 ? (
+        {!enteredViaUpload ? (
           /* ──────────── STEP 1: REVIEW ──────────── */
           <div className="flex h-full flex-col">
             {/* Top bar */}
@@ -1132,14 +1118,15 @@ export function AddReviewModal({
               </div>
             </div>
 
-            {/* Bottom: Next */}
+            {/* Bottom: submit text-only review */}
             <div className="shrink-0 border-t border-border/40 px-4 py-4">
               <button
                 type="button"
-                onClick={() => setStep(2)}
-                className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                onClick={handleLogSubmit}
+                disabled={submitting || !canSubmitTextReview}
+                className="flex w-full items-center justify-center rounded-[7px] bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
               >
-                Next
+                {submitting ? "Saving..." : isEdit ? "Save changes" : "Submit review"}
               </button>
             </div>
           </div>
@@ -1154,15 +1141,11 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={() => {
-                    if (enteredViaUpload && onBackToStockPicker) {
+                    if (onBackToStockPicker) {
                       onBackToStockPicker();
                       return;
                     }
-                    if (enteredViaUpload) {
-                      handleClose();
-                      return;
-                    }
-                    setStep(1);
+                    handleClose();
                   }}
                   className={cn(
                     topLeftNavIconButtonClassName,
@@ -1192,70 +1175,8 @@ export function AddReviewModal({
                   </div>
                 </div>
 
-                {/* Review summary */}
-                {!enteredViaUpload && (
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="w-full rounded-[7px] border border-border/50 bg-secondary/30 px-3 py-3 text-left transition-colors hover:border-primary/30"
-                  >
-                    <div className="flex items-center justify-between">
-                      <HalfStarRating value={rating} onChange={() => {}} size={16} readonly />
-                      <span className="text-xs font-medium text-primary">Edit</span>
-                    </div>
-                    {editor?.getText().trim() && (
-                      <p className="mt-1.5 line-clamp-2 text-xs text-foreground/80">
-                        {editor.getText()}
-                      </p>
-                    )}
-                    {bestFor.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {bestFor.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary"
-                          >
-                            {BEST_FOR_LABELS[tag]}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                )}
-
                 {/* Upload zone */}
                 <div>
-                  {existingScanUrls.length > 0 && (
-                    <div className="mb-4">
-                      <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Existing scans
-                      </p>
-                      <div
-                        className={cn(
-                          "flex gap-2 overflow-x-auto pb-1",
-                          "snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                        )}
-                      >
-                        {existingScanUrls.map((url, i) => (
-                          <div
-                            key={`${url}-${i}`}
-                            className="snap-start shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-muted ring-offset-background"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={url}
-                              alt=""
-                              className="block h-[7rem] w-[7rem] object-cover sm:h-[7.5rem] sm:w-[7.5rem]"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Add more scans below. Existing images stay on your review.
-                      </p>
-                    </div>
-                  )}
-
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1266,33 +1187,17 @@ export function AddReviewModal({
                   />
 
                   {files.length === 0 ? (
-                    existingScanUrls.length > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={cn(
-                          scanUploadDashedSurfaceClassName,
-                          "flex w-full flex-col items-center justify-center gap-2 py-8"
-                        )}
-                      >
-                        <Plus className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {enteredViaUpload ? "Add more scans from this roll" : "Add more scans"}
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={cn(
-                          scanUploadDashedSurfaceClassName,
-                          "flex w-full flex-col items-center justify-center gap-3 py-12"
-                        )}
-                      >
-                        <Plus className="h-10 w-10 text-muted-foreground" />
-                        <span className="text-sm font-medium text-muted-foreground">Upload up to 10 scans</span>
-                      </button>
-                    )
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        scanUploadDashedSurfaceClassName,
+                        "flex w-full flex-col items-center justify-center gap-3 py-12"
+                      )}
+                    >
+                      <Plus className="h-10 w-10 text-muted-foreground" />
+                      <span className="text-sm font-medium text-muted-foreground">Upload up to 10 scans</span>
+                    </button>
                   ) : (
                     <div>
                       {/* Two flex columns (not CSS Grid rows): avoids huge gaps when one side is much taller. */}
@@ -1328,9 +1233,7 @@ export function AddReviewModal({
                                   "flex w-full touch-manipulation items-center justify-center"
                                 )}
                                 style={{ aspectRatio: scanAddTileAspectRatio }}
-                                aria-label={
-                                  enteredViaUpload ? "Add more scans from this roll" : "Add more scans"
-                                }
+                                aria-label="Add more scans from this roll"
                               >
                                 <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
                               </button>
@@ -1368,9 +1271,7 @@ export function AddReviewModal({
                                   "flex w-full touch-manipulation items-center justify-center"
                                 )}
                                 style={{ aspectRatio: scanAddTileAspectRatio }}
-                                aria-label={
-                                  enteredViaUpload ? "Add more scans from this roll" : "Add more scans"
-                                }
+                                aria-label="Add more scans from this roll"
                               >
                                 <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
                               </button>
@@ -1385,141 +1286,19 @@ export function AddReviewModal({
                     <p className="mt-2 text-xs text-destructive" role="alert">{uploadError}</p>
                   )}
                 </div>
-
-                {/* Metadata fields for regular review flow */}
-                {!enteredViaUpload && files.length > 0 && (
-                  <div className="space-y-4">
-                    {/* Collapsible: Shooting details */}
-                    <div className="overflow-hidden rounded-[7px] border border-border/50">
-                      <button
-                        type="button"
-                        onClick={() => setShootingOpen((v) => !v)}
-                        className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
-                      >
-                        Add shooting details
-                        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", shootingOpen && "rotate-90")} />
-                      </button>
-                      {shootingOpen && (
-                        <div className="space-y-3 border-t border-border/40 px-3 py-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <TextField
-                              id="scan-camera"
-                              label="Camera"
-                              type="text"
-                              value={camera}
-                              onChange={(e) => setCamera(e.target.value)}
-                              placeholder="e.g. Canon AE-1"
-                            />
-                            <TextField
-                              id="scan-lens"
-                              label="Lens"
-                              type="text"
-                              value={lens}
-                              onChange={(e) => setLens(e.target.value)}
-                              placeholder="e.g. 50mm f/1.4"
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="min-w-0">
-                              <label id="scan-iso-label" className="mb-1 block text-field-label">
-                                Shot at ISO
-                              </label>
-                              <ShotIsoStepper aria-labelledby="scan-iso-label" value={shotIso} onChange={setShotIso} />
-                            </div>
-                            <TextField
-                              id="scan-filter"
-                              label="Filter"
-                              type="text"
-                              value={filter}
-                              onChange={(e) => setFilter(e.target.value)}
-                              placeholder="e.g. None, 81A"
-                            />
-                          </div>
-                          <TextField
-                            id="scan-location"
-                            label="Location"
-                            type="text"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            placeholder="e.g. London, UK"
-                          />
-                          <div>
-                            <p className="mb-1 block text-xs font-medium text-muted-foreground">Format</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {formatOptions.map((fmt) => (
-                                <button
-                                  key={fmt}
-                                  type="button"
-                                  onClick={() => setSelectedFormat(fmt)}
-                                  className={cn(
-                                    "rounded-[7px] border px-3 py-1.5 text-xs font-medium transition-colors",
-                                    selectedFormat === fmt
-                                      ? "border-primary/40 bg-primary/10 text-primary"
-                                      : "border-border/50 bg-background text-foreground/70 hover:border-primary/30 hover:bg-primary/5"
-                                  )}
-                                >
-                                  {fmt}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Collapsible: Processing details */}
-                    <div className="overflow-hidden rounded-[7px] border border-border/50">
-                      <button
-                        type="button"
-                        onClick={() => setProcessingOpen((v) => !v)}
-                        className="flex w-full items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-secondary/30"
-                      >
-                        Add processing details
-                        <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", processingOpen && "rotate-90")} />
-                      </button>
-                      {processingOpen && (
-                        <div className="space-y-3 border-t border-border/40 px-3 py-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <TextField
-                              id="scan-lab"
-                              label="Lab / Processing"
-                              type="text"
-                              value={lab}
-                              onChange={(e) => setLab(e.target.value)}
-                              placeholder="e.g. Home dev"
-                            />
-                            <TextField
-                              id="scan-scanner"
-                              label="Scanner"
-                              type="text"
-                              value={scanner}
-                              onChange={(e) => setScanner(e.target.value)}
-                              placeholder="e.g. Epson V600"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Bottom actions */}
-            {(enteredViaUpload ? canAdvanceUploadFlow : canSubmitScansStep) && (
+            {/* Bottom actions — share-roll step 2 only */}
+            {canAdvanceUploadFlow && (
               <div className="mobile-safe-bottom-footer shrink-0 px-4 py-4">
                 <button
                   type="button"
-                  onClick={enteredViaUpload ? () => setStep(3) : handlePostScans}
-                  disabled={submitting || (enteredViaUpload ? !canAdvanceUploadFlow : !canSubmitScansStep)}
-                  className={cn(
-                    "flex h-[52px] w-full items-center justify-center text-sm font-semibold transition-colors disabled:opacity-40",
-                    enteredViaUpload
-                      ? "rounded-full bg-black text-white hover:bg-black/90"
-                      : "rounded-[7px] bg-primary text-primary-foreground hover:bg-primary/90"
-                  )}
+                  onClick={() => setStep(3)}
+                  disabled={submitting || !canAdvanceUploadFlow}
+                  className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
                 >
-                  {submitting ? "Saving..." : enteredViaUpload ? "Next" : isEdit ? "Save changes" : "Submit review"}
+                  {submitting ? "Saving..." : "Next"}
                 </button>
               </div>
             )}
@@ -1851,6 +1630,7 @@ export function AddReviewModal({
     />
 
     {typeof document !== "undefined" &&
+      enteredViaUpload &&
       scanPreviewIndex !== null &&
       previewUrls[scanPreviewIndex] &&
       createPortal(

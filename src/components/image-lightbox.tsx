@@ -13,6 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bookmark,
   Camera,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -21,6 +22,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   RectangleHorizontal,
+  Tags,
 } from "lucide-react";
 import { getSavedUploadIdsAmong, toggleSaveUpload } from "@/app/actions/saved-uploads";
 import { showSavedScanBoardToast } from "@/components/saved-scan-board-toast";
@@ -59,6 +61,10 @@ export type ImageLightboxMetadata = {
   filter?: string | null;
   scanner?: string | null;
   push_pull?: string | null;
+  /** `user_uploads.shot_date` as `YYYY-MM-DD`. */
+  shot_date?: string | null;
+  /** `user_uploads.tags` (comma-separated). */
+  tags?: string | null;
 };
 
 export type ImageLightboxData = {
@@ -106,6 +112,19 @@ function formatIsoRowValue(raw: string): string {
   const t = raw.trim();
   if (!t) return "";
   return /^\s*ISO\b/i.test(t) ? t : `ISO ${t}`;
+}
+
+function formatShotDateLabel(isoDate: string): string {
+  const t = isoDate.trim();
+  if (!t) return "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const d = new Date(`${t}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return t;
+  try {
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return t;
+  }
 }
 
 function getInitials(name: string): string {
@@ -511,11 +530,14 @@ export function ImageLightbox({
     current.metadata &&
     (current.metadata.camera ||
       current.metadata.shot_iso ||
+      current.metadata.format?.trim() ||
       current.metadata.lens ||
       current.metadata.lab ||
       current.metadata.filter ||
       current.metadata.scanner ||
-      current.metadata.push_pull);
+      current.metadata.push_pull ||
+      current.metadata.shot_date?.trim() ||
+      current.metadata.tags?.trim());
 
   const name = current.username?.trim() || "Member";
   const profileUserId = current.userId?.trim() ?? "";
@@ -527,8 +549,15 @@ export function ImageLightbox({
   const cameraValue = current.metadata?.camera?.trim() ?? "";
   const shotIsoValue = current.metadata?.shot_iso?.trim() ?? "";
   const formatValue = current.metadata?.format?.trim() ?? "";
+  const shotDateValue = current.metadata?.shot_date?.trim() ?? "";
+  const tagsValue = current.metadata?.tags?.trim() ?? "";
   const hasMetadataTable =
-    showFilmMetaRow || !!cameraValue || !!shotIsoValue || !!formatValue;
+    showFilmMetaRow ||
+    !!cameraValue ||
+    !!shotIsoValue ||
+    !!formatValue ||
+    !!shotDateValue ||
+    !!tagsValue;
   const captionPlain = current.caption?.trim() ? plainCaptionFull(current.caption) : "";
 
   const comments = current.commentCount ?? null;
@@ -809,6 +838,25 @@ export function ImageLightbox({
                         </span>
                       </div>
                     ) : null}
+                    {shotDateValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <CalendarDays
+                          className={cn(lightboxMetaLeadingIconClass, "mr-3")}
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {formatShotDateLabel(shotDateValue)}
+                        </span>
+                      </div>
+                    ) : null}
+                    {tagsValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <Tags className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {tagsValue}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -958,6 +1006,32 @@ export function ImageLightbox({
                         Scanner
                       </dt>
                       <dd className="mt-0.5 text-foreground">{current.metadata!.scanner}</dd>
+                    </div>
+                  ) : null}
+                  {current.metadata!.format?.trim() ? (
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Format
+                      </dt>
+                      <dd className="mt-0.5 text-foreground">{current.metadata!.format.trim()}</dd>
+                    </div>
+                  ) : null}
+                  {current.metadata!.shot_date?.trim() ? (
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Shot date
+                      </dt>
+                      <dd className="mt-0.5 text-foreground">
+                        {formatShotDateLabel(current.metadata!.shot_date)}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {current.metadata!.tags?.trim() ? (
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Tags
+                      </dt>
+                      <dd className="mt-0.5 text-foreground">{current.metadata!.tags.trim()}</dd>
                     </div>
                   ) : null}
                 </dl>

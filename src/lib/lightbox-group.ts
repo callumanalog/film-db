@@ -182,6 +182,8 @@ export function galleryImageToLightbox(img: GalleryImage): ImageLightboxData | u
       filter: img.filter || null,
       scanner: img.scanner || null,
       push_pull: img.push_pull || null,
+      shot_date: img.shot_date?.trim() || null,
+      tags: img.tags?.trim() || null,
     },
   };
 }
@@ -196,6 +198,8 @@ function metadataFromUpload(u: FilmUploadRow) {
     filter: u.filter ?? null,
     scanner: u.scanner ?? null,
     push_pull: u.push_pull ?? null,
+    shot_date: u.shot_date?.trim() || null,
+    tags: u.tags?.trim() || null,
   };
 }
 

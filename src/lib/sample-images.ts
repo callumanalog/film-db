@@ -77,6 +77,8 @@ export interface GalleryImage extends SampleImage {
   push_pull?: string | null;
   /** From `user_uploads.format` when present. */
   format?: string | null;
+  shot_date?: string | null;
+  tags?: string | null;
   reviewId?: string | null;
   uploadBatchId?: string | null;
   /** Set for real `user_uploads` rows (Discover/Community); omit for seeded sample images. */

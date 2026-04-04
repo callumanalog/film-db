@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
   if (mode === "upload" && preUploadedImageUrl && preUploadedImageUrl.trim().length > 0) {
     uploadedRows = [{ url: preUploadedImageUrl.trim(), image_width: null, image_height: null }];
-  } else {
+  } else if (mode === "upload") {
     const files: File[] = [];
     for (let i = 0; i < MAX_FILES; i++) {
       const f = formData.get(`file_${i}`) ?? formData.get("files");
@@ -154,13 +154,19 @@ export async function POST(request: Request) {
   const shootingTipTrim = shootingTip?.trim() ?? "";
 
   const shouldSaveReview =
-    mode === "review" &&
-    (rating > 0 ||
-      reviewTitleTrim.length > 0 ||
-      reviewTextTrim.length > 0 ||
-      shootingTipTrim.length > 0 ||
-      bestFor.length > 0 ||
-      uploadedRows.length > 0);
+    (mode === "review" &&
+      (rating > 0 ||
+        reviewTitleTrim.length > 0 ||
+        reviewTextTrim.length > 0 ||
+        shootingTipTrim.length > 0 ||
+        bestFor.length > 0)) ||
+    (mode === "upload" &&
+      uploadedRows.length > 0 &&
+      (reviewTitleTrim.length > 0 ||
+        rating > 0 ||
+        reviewTextTrim.length > 0 ||
+        shootingTipTrim.length > 0 ||
+        bestFor.length > 0));
 
   let newReviewId: string | null = null;
   if (shouldSaveReview) {
@@ -183,8 +189,16 @@ export async function POST(request: Request) {
       .select("id")
       .single();
     if (reviewError || !inserted?.id) {
-      console.error("[reviews] insert error:", reviewError);
-      return NextResponse.json({ error: "Failed to save review" }, { status: 500 });
+      console.error("[reviews] insert error:", reviewError?.code, reviewError?.message);
+      const hint =
+        reviewError?.message?.toLowerCase().includes("column") ||
+        reviewError?.code === "42703"
+          ? "If this mentions a missing column, apply the latest Supabase migrations for `reviews`."
+          : undefined;
+      return NextResponse.json(
+        { error: "Could not save your review.", detail: hint ?? reviewError?.message?.slice(0, 200) },
+        { status: 500 }
+      );
     }
     newReviewId = inserted.id as string;
   }
@@ -197,6 +211,8 @@ export async function POST(request: Request) {
   }
 
   let uploadInsertErrors = 0;
+  let uploadInserted = 0;
+  let firstUploadInsertError: { message?: string; code?: string } | null = null;
   const captionToUse = caption || null;
   const metadata = {
     camera: camera || null,
@@ -225,21 +241,40 @@ export async function POST(request: Request) {
       ...metadata,
     });
     if (insertError) {
-      console.error("[reviews] user_uploads insert error:", insertError);
+      console.error("[reviews] user_uploads insert error:", insertError.code, insertError.message);
       uploadInsertErrors++;
+      if (!firstUploadInsertError) firstUploadInsertError = insertError;
+    } else {
+      uploadInserted++;
     }
   }
 
   if (uploadedRows.length > 0 && uploadInsertErrors === uploadedRows.length) {
+    const raw = (firstUploadInsertError?.message ?? "").toLowerCase();
+    const missingShotDateOrTags =
+      raw.includes("shot_date") ||
+      raw.includes("tags") ||
+      (raw.includes("column") && (raw.includes("shot_date") || raw.includes("tags")));
+    const detail = missingShotDateOrTags
+      ? "Your database is missing columns used by the share-roll flow. Apply Supabase migration 057_user_uploads_shot_date_tags.sql (adds `shot_date` and `tags`). Also ensure migrations 038 (format, location) and 004/005 (base user_uploads + RLS) are applied."
+      : /policy|row-level|rls|permission|denied/i.test(raw)
+        ? "Saving scans was blocked by database rules. Ensure migration 005 (and related RLS) allows inserts into `user_uploads` for authenticated users."
+        : firstUploadInsertError?.message?.slice(0, 400) ||
+          "Ensure migrations 004 and 005 are applied (user_uploads columns and RLS).";
+
     return NextResponse.json(
-      { error: "Images were uploaded but could not be saved. Ensure migrations 004 and 005 are applied (user_uploads columns and RLS)." },
+      {
+        error: "Photos uploaded, but they could not be saved to your gallery.",
+        detail,
+      },
       { status: 500 }
     );
   }
 
   return NextResponse.json({
     ok: true,
-    uploaded: uploadedRows.length,
+    uploaded: uploadInserted,
+    uploadFailed: uploadInsertErrors > 0 ? uploadInsertErrors : undefined,
     reviewSaved: shouldSaveReview,
   });
 }

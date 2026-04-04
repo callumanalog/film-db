@@ -134,7 +134,7 @@ export async function PATCH(
 
   if (mode === "upload" && preUploadedImageUrl && preUploadedImageUrl.trim().length > 0) {
     uploadedRows = [{ url: preUploadedImageUrl.trim(), image_width: null, image_height: null }];
-  } else {
+  } else if (mode === "upload") {
     const files: File[] = [];
     for (let i = 0; i < MAX_FILES; i++) {
       const f = formData.get(`file_${i}`) ?? formData.get("files");

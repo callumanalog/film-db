@@ -52,6 +52,8 @@ Copy [.env.local.example](.env.local.example) to `.env.local` and fill in values
 
 Migrations live in `src/supabase/migrations/` (core schema and community tables) and `supabase/migrations/` (catalog evolutions and follow-on features). Apply **both** tracks in numeric order on a new project — full instructions in [docs/SETUP.md](docs/SETUP.md).
 
+Production must include **`038`** (upload `format` / `location`) and **`057`** (`user_uploads.shot_date`, `tags`); without them, share-roll inserts can fail after storage uploads. The API surfaces migration hints when inserts error.
+
 ## Scripts
 
 | Script | Purpose |

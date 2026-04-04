@@ -17,6 +17,11 @@ import { getSuggestedStocks, type SearchStocksResult } from "@/app/actions/searc
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import { FilmStockListCardButton } from "@/components/film-stock-list-card";
 import { MobileStockPickerPanel } from "@/components/mobile-stock-picker-panel";
+import {
+  apiErrorMessageForToast,
+  interpretReviewsPostResult,
+  networkErrorToastMessage,
+} from "@/lib/review-submit-feedback";
 import { cn } from "@/lib/utils";
 
 const EVENT_OPEN = "plus-action-sheet:open";
@@ -272,31 +277,50 @@ export function PlusActionSheet() {
               }
               try {
                 const res = await fetch("/api/user/reviews", { method: "POST", body: formData });
-                const data = await res.json().catch(() => ({}));
+                const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
                 if (!res.ok) {
-                  const msg = [data.error, data.detail].filter(Boolean).join(" ");
-                  showToastViaEvent(msg || "Failed to submit");
-                  return;
+                  showToastViaEvent(apiErrorMessageForToast(data));
+                  return { success: false };
                 }
-                const uploadSucceeded = data.uploaded > 0;
+                const interpreted = interpretReviewsPostResult(data, {
+                  mode: reviewModalMode,
+                  fileCount: payload.files.length,
+                  usedPreUploadedUrl: usedPreUpload,
+                });
+                if (!interpreted.ok) {
+                  showToastViaEvent(interpreted.message);
+                  return { success: false };
+                }
+                const uploadSucceeded = interpreted.uploaded > 0;
                 if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
-                  window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug: selectedStock.slug } }));
+                  window.dispatchEvent(
+                    new CustomEvent("film-upload-complete", { detail: { slug: selectedStock.slug } })
+                  );
                 }
-                if (data.reviewSaved) {
-                  window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug: selectedStock.slug } }));
+                if (interpreted.reviewSaved) {
+                  window.dispatchEvent(
+                    new CustomEvent("review-submitted", { detail: { slug: selectedStock.slug } })
+                  );
                 }
-                showToastViaEvent(
-                  reviewModalMode === "upload"
-                    ? (payload.uploadedImageUrl || payload.files.length > 0 ? "Thanks! Your roll has been published." : "Done.")
-                    : payload.files.length > 0
-                      ? "Thanks! Your photos and review have been submitted."
-                      : "Thanks! Your review has been submitted."
-                );
-                if (reviewModalMode === "upload" && (payload.uploadedImageUrl || payload.files.length > 0) && uploadSucceeded) {
-                  return { success: true };
+                if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
+                  showToastViaEvent(
+                    `${interpreted.uploaded} photo(s) saved; ${interpreted.uploadFailed} could not be saved. Try again from your profile if needed.`
+                  );
+                } else if (reviewModalMode === "upload") {
+                  if (payload.uploadedImageUrl || payload.files.length > 0) {
+                    showToastViaEvent("Thanks! Your roll has been published.");
+                  } else {
+                    showToastViaEvent("Done.");
+                  }
+                } else if (payload.files.length > 0) {
+                  showToastViaEvent("Thanks! Your photos and review have been submitted.");
+                } else {
+                  showToastViaEvent("Thanks! Your review has been submitted.");
                 }
+                return { success: true };
               } catch {
-                showToastViaEvent("Failed to submit");
+                showToastViaEvent(networkErrorToastMessage());
+                return { success: false };
               }
             } else {
               if (payload.rating > 0) persistRating(selectedStock.slug, payload.rating);

@@ -29,6 +29,8 @@ function buildFeedGalleryPool(
       const settingsParts = [
         u.format,
         u.location,
+        u.shot_date,
+        u.tags,
         u.shot_iso,
         u.lens,
         u.lab,
@@ -61,6 +63,8 @@ function buildFeedGalleryPool(
         scanner: u.scanner,
         push_pull: u.push_pull,
         format: u.format ?? null,
+        shot_date: u.shot_date ?? null,
+        tags: u.tags ?? null,
         reviewId: u.review_id ?? null,
         uploadBatchId: u.upload_batch_id ?? null,
         uploadId: u.id,

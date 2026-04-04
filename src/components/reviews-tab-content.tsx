@@ -37,6 +37,7 @@ import {
   type AddReviewModalPayload,
   type EditReviewSeed,
 } from "@/components/add-review-modal";
+import { apiErrorMessageForToast, networkErrorToastMessage } from "@/lib/review-submit-feedback";
 
 function sanitizeReviewHtml(html: string): string {
   return sanitizeReviewLikeHtml(html);
@@ -324,7 +325,6 @@ export function ReviewsTabContent({
       rating: editingReview.rating != null && editingReview.rating > 0 ? Number(editingReview.rating) : 0,
       review_text: editingReview.review_text,
       best_for: editingReview.best_for ?? [],
-      existingScanUrls: editingReview.scan_urls ?? [],
     };
   }, [editingReview]);
 
@@ -380,11 +380,10 @@ export function ReviewsTabContent({
           method: "PATCH",
           body: formData,
         });
-        const data = await res.json().catch(() => ({}));
+        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
         if (!res.ok) {
-          const msg = [data.error, data.detail].filter(Boolean).join(" ");
-          showToastViaEvent(msg || "Could not save changes");
-          return;
+          showToastViaEvent(apiErrorMessageForToast(data));
+          return { success: false };
         }
         showToastViaEvent("Review updated.");
         window.dispatchEvent(
@@ -393,8 +392,10 @@ export function ReviewsTabContent({
         setEditModalOpen(false);
         setEditingReview(null);
         refetch();
+        return { success: true };
       } catch {
-        showToastViaEvent("Could not save changes");
+        showToastViaEvent(networkErrorToastMessage());
+        return { success: false };
       }
     },
     [user, editingReview, modalStock.slug, refetch]

@@ -61,6 +61,8 @@ export interface CommunityGalleryUpload {
   scanner?: string | null;
   push_pull?: string | null;
   format?: string | null;
+  shot_date?: string | null;
+  tags?: string | null;
   reviewId?: string | null;
   uploadBatchId?: string | null;
   stockIso?: number | null;
@@ -150,6 +152,8 @@ export async function getAllCommunityUploadsForGallery(
       scanner: r.scanner,
       push_pull: r.push_pull,
       format: r.format ?? null,
+      shot_date: r.shot_date ?? null,
+      tags: r.tags ?? null,
       reviewId: r.review_id ?? null,
       uploadBatchId: r.upload_batch_id ?? null,
       stockIso: stock.iso ?? null,
