@@ -83,6 +83,13 @@ export interface GalleryImage extends SampleImage {
   userId?: string | null;
   /** From user_uploads.save_count for real community rows. */
   saves?: number;
+  /** `profiles.avatar_url` when available (e.g. home feed). */
+  avatarUrl?: string | null;
+  /** From `film_stocks` for lightbox @ row (community / feed). */
+  stockIso?: number | null;
+  stockType?: string;
+  stockFormat?: string[];
+  stockImageUrl?: string | null;
 }
 
 export type StockForGallery = { slug: string; name: string; brand: { name: string } };

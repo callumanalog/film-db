@@ -2,6 +2,7 @@
 
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-batch";
+import type { FilmBrand, FilmStock } from "@/lib/types";
 
 const USER_UPLOAD_ROW_SELECT =
   "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
@@ -59,11 +60,15 @@ export interface CommunityGalleryUpload {
   push_pull?: string | null;
   reviewId?: string | null;
   uploadBatchId?: string | null;
+  stockIso?: number | null;
+  stockType?: string;
+  stockFormat?: string[];
+  stockImageUrl?: string | null;
 }
 
 /** All community uploads for the global Community page gallery. Optional search by caption/metadata and/or by film stock slugs (e.g. match by stock name). */
 export async function getAllCommunityUploadsForGallery(
-  stocks: { slug: string; name: string; brand: { name: string } }[],
+  stocks: (FilmStock & { brand: FilmBrand })[],
   search?: string,
   matchingStockSlugs?: string[]
 ): Promise<CommunityGalleryUpload[]> {
@@ -141,6 +146,10 @@ export async function getAllCommunityUploadsForGallery(
       push_pull: r.push_pull,
       reviewId: r.review_id ?? null,
       uploadBatchId: r.upload_batch_id ?? null,
+      stockIso: stock.iso ?? null,
+      stockType: stock.type,
+      stockFormat: stock.format ?? [],
+      stockImageUrl: stock.image_url ?? null,
     });
   }
   return out;

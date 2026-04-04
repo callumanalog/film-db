@@ -1,10 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bookmark, ChevronLeft, Heart, Info, MessageCircle, MoreVertical } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Aperture,
+  ArrowDownUp,
+  Bookmark,
+  Calendar,
+  Camera,
+  ChevronLeft,
+  Film,
+  Filter,
+  FlaskConical,
+  Gauge,
+  Heart,
+  MapPin,
+  MessageCircle,
+  MoreHorizontal,
+  ScanLine,
+} from "lucide-react";
 import { getSavedUploadIdsAmong, toggleSaveUpload } from "@/app/actions/saved-uploads";
 import { showSavedScanBoardToast } from "@/components/saved-scan-board-toast";
 import {
@@ -17,8 +41,10 @@ import { getFollowingIdsAmong, toggleFollowUser } from "@/app/actions/user-follo
 import { useAuth } from "@/context/auth-context";
 import {
   topLeftNavChevronIconClassName,
-  topLeftNavLabeledRowClassName,
+  topLeftNavIconButtonClassName,
+  topRightNavIconButtonClassName,
 } from "@/lib/top-left-nav-icon";
+import { mobileHeaderRowClassName, mobileHeaderSafeAreaStyle } from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
 import { sanitizeReviewLikeHtml } from "@/lib/sanitize-review-like-html";
 import {
@@ -61,7 +87,37 @@ export type ImageLightboxData = {
   metadata?: ImageLightboxMetadata;
   /** e.g. film stock — link in details */
   context?: { label: string; href: string };
+  /** Film stock for under-caption metadata (name + link; image/specLine optional for other surfaces). */
+  stockCard?: {
+    name: string;
+    specLine: string;
+    imageUrl?: string | null;
+    brandInitial?: string;
+    href: string;
+  } | null;
 };
+
+function formatAbsolutePostDate(iso: string): string | null {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return null;
+  return new Date(t).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function LightboxMetaRow({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 py-2 first:pt-0">
+      <Icon
+        className="size-[18px] shrink-0 stroke-[1.5] text-neutral-400 dark:text-neutral-500"
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
 
 function getInitials(name: string): string {
   if (!name) return "?";
@@ -139,6 +195,8 @@ export function ImageLightbox({
   const [followingInLikesSheet, setFollowingInLikesSheet] = useState<Set<string>>(() => new Set());
   const [followPendingUserId, setFollowPendingUserId] = useState<string | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
+  const [chromeMenuOpen, setChromeMenuOpen] = useState(false);
+  const chromeMenuRef = useRef<HTMLDivElement>(null);
 
   const slideUploadIdsKey = safeSlides.map((s) => s.uploadId?.trim() ?? "").join("|");
 
@@ -184,20 +242,22 @@ export function ImageLightbox({
   }, [safeSlides, relatedStockSlides, onPickRelatedStock]);
 
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!chromeMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (chromeMenuRef.current && !chromeMenuRef.current.contains(e.target as Node)) {
+        setChromeMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChromeMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
     };
-  }, []);
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
+  }, [chromeMenuOpen]);
 
   useLayoutEffect(() => {
     const s = mainScrollRef.current;
@@ -457,10 +517,6 @@ export function ImageLightbox({
     return null;
   }
 
-  if (typeof document === "undefined") {
-    return null;
-  }
-
   const current = safeSlides[active] ?? safeSlides[0];
   const hasMeta =
     current.metadata &&
@@ -475,11 +531,16 @@ export function ImageLightbox({
   const name = current.username?.trim() || "Member";
   const profileUserId = current.userId?.trim() ?? "";
   const profileHref = profileUserId ? `/users/${profileUserId}` : null;
-  const subtitle =
-    current.location?.trim() ||
-    current.context?.label ||
-    null;
   const relativeTime = current.createdAt ? formatRelativeTime(current.createdAt) : null;
+  const absolutePostDate = current.createdAt ? formatAbsolutePostDate(current.createdAt) : null;
+  const filmStockName = current.stockCard?.name ?? current.context?.label ?? null;
+  const filmStockHref = current.stockCard?.href ?? current.context?.href ?? null;
+  const showFilmMetaRow = !!(filmStockName && filmStockHref);
+  const hasInlineDetails =
+    showFilmMetaRow ||
+    !!hasMeta ||
+    !!current.location?.trim() ||
+    !!absolutePostDate;
   const captionPlain = current.caption?.trim() ? plainCaptionFull(current.caption) : "";
 
   const comments = current.commentCount ?? null;
@@ -492,245 +553,336 @@ export function ImageLightbox({
   const likeDelta = currentUploadId ? (likeDeltaByUploadId[currentUploadId] ?? 0) : 0;
   const displayLikes = Math.max(0, baseLikeCount + likeDelta);
 
-  return createPortal(
+  const avatarBlock = (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-white text-neutral-900 dark:bg-black dark:text-neutral-100"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Photo"
+      className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full bg-neutral-200 dark:bg-white/15"
+      aria-hidden
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {/* Top: back + Explore */}
-        <div className="flex shrink-0 items-center gap-1 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className={cn(
-              topLeftNavLabeledRowClassName,
-              "text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
-            )}
-            aria-label="Back to Explore"
-          >
-            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
-            <span className="text-base font-semibold tracking-tight">Explore</span>
-          </button>
+      {current.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={current.avatarUrl} alt="" className="h-full w-full object-cover" width={24} height={24} />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold leading-none text-neutral-700 dark:text-white">
+          {getInitials(name)}
         </div>
+      )}
+    </div>
+  );
 
-        {/* User row */}
-        <header className="flex shrink-0 items-center gap-3 border-b border-neutral-200 px-3 pb-3 dark:border-white/10">
-          {profileHref ? (
-            <Link
-              href={profileHref}
-              onClick={onClose}
-              aria-label={`View ${name}'s profile`}
-              className="flex min-w-0 flex-1 items-center gap-3 text-left outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <div
-                className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-neutral-200 ring-1 ring-neutral-300 dark:bg-white/15 dark:ring-white/10"
-                aria-hidden
-              >
-                {current.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={current.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[11px] font-semibold text-neutral-700 dark:text-white">
-                    {getInitials(name)}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold leading-tight">{name}</p>
-                {subtitle ? (
-                  <p className="truncate text-xs font-normal text-neutral-400">{subtitle}</p>
-                ) : null}
-              </div>
-            </Link>
-          ) : (
-            <>
-              <div
-                className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-neutral-200 ring-1 ring-neutral-300 dark:bg-white/15 dark:ring-white/10"
-                aria-hidden
-              >
-                {current.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={current.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[11px] font-semibold text-neutral-700 dark:text-white">
-                    {getInitials(name)}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold leading-tight">{name}</p>
-                {subtitle ? (
-                  <p className="truncate text-xs font-normal text-neutral-400">{subtitle}</p>
-                ) : null}
-              </div>
-            </>
+  return (
+    <>
+      <Sheet
+        open={true}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          overlayClassName="z-[100]"
+          className={cn(
+            "z-[100] gap-0 border-0 bg-white p-0 text-neutral-900 shadow-xl dark:bg-black dark:text-neutral-100",
+            // Flush to all viewport edges (avoids gaps from h-dvh vs layout viewport on mobile).
+            "data-[side=bottom]:inset-0 data-[side=bottom]:h-auto data-[side=bottom]:max-h-none data-[side=bottom]:rounded-none data-[side=bottom]:border-t-0"
           )}
-          <button
-            type="button"
-            className="shrink-0 rounded-full p-2 text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
-            aria-label="More options"
-          >
-            <MoreVertical className="h-5 w-5 stroke-[1.75]" />
-          </button>
-        </header>
-
-        <div
-          ref={mainScrollRef}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]"
         >
-          {/* Hero image (batch siblings appear under “More from this roll” below the caption). */}
-          <div className="w-full bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={current.imageUrl}
-              alt={current.alt ?? ""}
-              className="block w-full object-contain"
-              style={{ maxHeight: "min(72vh, 900px)" }}
-              sizes="100vw"
-            />
-          </div>
-
-          {/* Action bar — directly under image */}
-          <div className="flex items-center justify-between px-3 pt-1 pb-2 sm:pt-2">
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <span className="flex items-center">
+          <SheetTitle className="sr-only">Photo</SheetTitle>
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            <div className="flex shrink-0 flex-col" style={mobileHeaderSafeAreaStyle}>
+              <div
+                className={cn(
+                  mobileHeaderRowClassName,
+                  "text-neutral-900 dark:text-neutral-100"
+                )}
+              >
                 <button
                   type="button"
-                  disabled={!currentUploadId || likePending}
-                  onClick={() => void handleLikeClick()}
-                  className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
-                  aria-label={isLiked ? "Unlike" : "Like"}
-                  aria-pressed={isLiked}
+                  onClick={onClose}
+                  className={cn(
+                    topLeftNavIconButtonClassName,
+                    "text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+                  )}
+                  aria-label="Back"
                 >
-                  <Heart
-                    className={`h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5] ${isLiked ? "fill-primary text-primary" : ""}`}
-                  />
+                  <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
                 </button>
-                {currentUploadId && displayLikes > 0 ? (
+                <div className="relative" ref={chromeMenuRef}>
                   <button
                     type="button"
-                    onClick={() => openLikesSheet(currentUploadId)}
-                    className="-ml-0.5 pr-0.5 text-left text-sm font-semibold tabular-nums text-neutral-800 sm:text-xs dark:text-neutral-100"
-                    aria-label={`${displayLikes.toLocaleString()} likes, view list`}
+                    onClick={() => setChromeMenuOpen((o) => !o)}
+                    className={cn(
+                      topRightNavIconButtonClassName,
+                      "text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+                    )}
+                    aria-label="More options"
+                    aria-expanded={chromeMenuOpen}
                   >
-                    {displayLikes.toLocaleString()}
+                    <MoreHorizontal className="size-6 stroke-[1.75]" />
                   </button>
-                ) : null}
-              </span>
-              <span className="flex items-center">
-                <button
-                  type="button"
-                  className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10"
-                  aria-label="Comment"
-                >
-                  <MessageCircle className="h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5]" />
-                </button>
-                {comments != null ? (
-                  <span className="-ml-0.5 pr-0.5 text-sm font-normal tabular-nums sm:text-xs">{comments}</span>
-                ) : null}
-              </span>
-              <button
-                type="button"
-                onClick={() => setInfoOpen(true)}
-                className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10"
-                aria-label="Photo details"
-              >
-                <Info className="h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5]" />
-              </button>
-            </div>
-            <button
-              type="button"
-              disabled={!canSave || savePending}
-              onClick={() => void handleSaveClick()}
-              className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 sm:p-1.5 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
-              aria-label={isSaved ? "Remove from saved" : "Save"}
-              aria-pressed={isSaved}
-            >
-              <Bookmark
-                className={`h-6 w-6 stroke-[1.75] sm:h-5 sm:w-5 sm:stroke-[1.5] ${isSaved ? "fill-current" : ""}`}
-              />
-            </button>
-          </div>
-
-          <div className="space-y-3 px-3 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+12px))]">
-            {/* Caption (username in header only; collapsed = 2 lines + trailing "more") */}
-            {current.caption?.trim() ? (
-              <div className="relative text-sm leading-relaxed">
-                {!captionExpanded ? (
-                  <>
-                    <p
-                      ref={captionClampedRef}
-                      className="text-neutral-900 dark:text-neutral-100 line-clamp-2 break-words"
+                  {chromeMenuOpen ? (
+                    <div
+                      className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] rounded-md border border-neutral-200 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-neutral-900"
+                      role="menu"
                     >
-                      {captionPlain}
-                    </p>
-                    {captionOverflowsTwoLines ? (
-                      <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-l from-white from-40% to-transparent pl-10 dark:from-black">
-                        <button
-                          type="button"
-                          onClick={() => setCaptionExpanded(true)}
-                          className="pointer-events-auto text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400"
-                        >
-                          more
-                        </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="block w-full px-4 py-2.5 text-left text-sm text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+                        onClick={() => {
+                          setChromeMenuOpen(false);
+                          setInfoOpen(true);
+                        }}
+                      >
+                        Photo details
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div
+              ref={mainScrollRef}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="w-full bg-neutral-100 dark:bg-neutral-950">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={current.imageUrl}
+                  alt={current.alt ?? ""}
+                  className="block max-h-[min(85dvh,900px)] w-full object-cover"
+                  sizes="100vw"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  {profileHref ? (
+                    <Link
+                      href={profileHref}
+                      onClick={onClose}
+                      className="shrink-0 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label={`View ${name}'s profile`}
+                    >
+                      {avatarBlock}
+                    </Link>
+                  ) : (
+                    avatarBlock
+                  )}
+                  {profileHref ? (
+                    <Link
+                      href={profileHref}
+                      onClick={onClose}
+                      className="min-w-0 truncate text-xs font-medium leading-tight text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
+                    >
+                      {name}
+                    </Link>
+                  ) : (
+                    <span className="min-w-0 truncate text-xs font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+                      {name}
+                    </span>
+                  )}
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <span className="flex items-center">
+                    <button
+                      type="button"
+                      disabled={!currentUploadId || likePending}
+                      onClick={() => void handleLikeClick()}
+                      className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
+                      aria-label={isLiked ? "Unlike" : "Like"}
+                      aria-pressed={isLiked}
+                    >
+                      <Heart
+                        className={`h-5 w-5 stroke-[1.5] ${isLiked ? "fill-primary text-primary" : ""}`}
+                      />
+                    </button>
+                    {currentUploadId && displayLikes > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => openLikesSheet(currentUploadId)}
+                        className="-ml-0.5 pr-0.5 text-left text-xs font-medium tabular-nums text-neutral-800 dark:text-neutral-100"
+                        aria-label={`${displayLikes.toLocaleString()} likes, view list`}
+                      >
+                        {displayLikes.toLocaleString()}
+                      </button>
+                    ) : null}
+                  </span>
+                  <span className="flex items-center">
+                    <button
+                      type="button"
+                      className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+                      aria-label="Comment"
+                    >
+                      <MessageCircle className="h-5 w-5 stroke-[1.5]" />
+                    </button>
+                    {comments != null ? (
+                      <span className="-ml-0.5 pr-0.5 text-xs font-normal tabular-nums text-neutral-600 dark:text-neutral-300">
+                        {comments}
                       </span>
                     ) : null}
-                  </>
-                ) : (
-                  <div
-                    className="text-neutral-900 [&_a]:text-blue-600 [&_a]:underline dark:text-neutral-100 dark:[&_a]:text-blue-400 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-neutral-300 [&_blockquote]:pl-2 dark:[&_blockquote]:border-white/25 [&_p]:m-0 [&_p]:mb-2 [&_p:last-child]:mb-0"
-                    dangerouslySetInnerHTML={{ __html: sanitizeReviewLikeHtml(current.caption) }}
-                  />
-                )}
-              </div>
-            ) : null}
-
-            {moreRollItems.length > 0 ? (
-              <div className="space-y-2 pt-8">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-foreground">
-                  More from this roll
-                </h3>
-                <div className="min-w-0 -mx-3 w-[calc(100%+1.5rem)]">
-                  <FilmNativeMasonryGrid
-                    items={moreRollItems}
-                    ariaLabel="More from this roll"
-                    frameClassName="border-neutral-200 bg-white dark:border-white"
-                  />
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!canSave || savePending}
+                    onClick={() => void handleSaveClick()}
+                    className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
+                    aria-label={isSaved ? "Remove from saved" : "Save"}
+                    aria-pressed={isSaved}
+                  >
+                    <Bookmark className={`h-5 w-5 stroke-[1.5] ${isSaved ? "fill-current" : ""}`} />
+                  </button>
                 </div>
               </div>
-            ) : moreFromStockItems.length > 0 ? (
-              <div className="space-y-2 pt-8">
-                <h3 className="text-xs font-medium uppercase tracking-wider text-foreground">
-                  More from this stock
-                </h3>
-                <div className="min-w-0 -mx-3 w-[calc(100%+1.5rem)]">
-                  <FilmNativeMasonryGrid
-                    items={moreFromStockItems}
-                    ariaLabel="More from this stock"
-                    frameClassName="border-neutral-200 bg-white dark:border-white"
-                  />
-                </div>
+
+              <div className="space-y-2 px-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+12px))]">
+                {current.caption?.trim() ? (
+                  <div className="relative text-sm leading-relaxed">
+                    {!captionExpanded ? (
+                      <>
+                        <p
+                          ref={captionClampedRef}
+                          className="text-neutral-900 dark:text-neutral-100 line-clamp-2 break-words"
+                        >
+                          {captionPlain}
+                        </p>
+                        {captionOverflowsTwoLines ? (
+                          <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-l from-white from-40% to-transparent pl-10 dark:from-black">
+                            <button
+                              type="button"
+                              onClick={() => setCaptionExpanded(true)}
+                              className="pointer-events-auto text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400"
+                            >
+                              more
+                            </button>
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div
+                        className="text-neutral-900 [&_a]:text-blue-600 [&_a]:underline dark:text-neutral-100 dark:[&_a]:text-blue-400 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-neutral-300 [&_blockquote]:pl-2 dark:[&_blockquote]:border-white/25 [&_p]:m-0 [&_p]:mb-2 [&_p:last-child]:mb-0"
+                        dangerouslySetInnerHTML={{ __html: sanitizeReviewLikeHtml(current.caption) }}
+                      />
+                    )}
+                  </div>
+                ) : null}
+
+                {hasInlineDetails ? (
+                  <div className="flex flex-col">
+                    {showFilmMetaRow ? (
+                      <LightboxMetaRow icon={Film}>
+                        <Link
+                          href={filmStockHref!}
+                          onClick={onClose}
+                          className="text-[12px] font-medium leading-snug text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
+                        >
+                          {filmStockName}
+                        </Link>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.metadata?.camera?.trim() ? (
+                      <LightboxMetaRow icon={Camera}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-900 dark:text-neutral-100">
+                          {current.metadata.camera.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.metadata?.lens?.trim() ? (
+                      <LightboxMetaRow icon={Aperture}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {current.metadata.lens.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.metadata?.shot_iso?.trim() ? (
+                      <LightboxMetaRow icon={Gauge}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {current.metadata.shot_iso.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.metadata?.lab?.trim() ? (
+                      <LightboxMetaRow icon={FlaskConical}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {current.metadata.lab.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.metadata?.push_pull?.trim() ? (
+                      <LightboxMetaRow icon={ArrowDownUp}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {current.metadata.push_pull.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.metadata?.filter?.trim() ? (
+                      <LightboxMetaRow icon={Filter}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {current.metadata.filter.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.metadata?.scanner?.trim() ? (
+                      <LightboxMetaRow icon={ScanLine}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {current.metadata.scanner.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {current.location?.trim() ? (
+                      <LightboxMetaRow icon={MapPin}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {current.location.trim()}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                    {absolutePostDate ? (
+                      <LightboxMetaRow icon={Calendar}>
+                        <p className="text-[12px] font-medium leading-snug text-neutral-600 dark:text-neutral-400">
+                          {absolutePostDate}
+                        </p>
+                      </LightboxMetaRow>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {moreRollItems.length > 0 ? (
+                  <div className="space-y-2 pt-6">
+                    <h3 className="text-xs font-medium uppercase tracking-wider text-foreground">
+                      More from this roll
+                    </h3>
+                    <div className="min-w-0 -mx-4 w-[calc(100%+2rem)]">
+                      <FilmNativeMasonryGrid
+                        items={moreRollItems}
+                        ariaLabel="More from this roll"
+                        frameClassName="border-neutral-200 bg-white dark:border-white"
+                      />
+                    </div>
+                  </div>
+                ) : moreFromStockItems.length > 0 ? (
+                  <div className="space-y-2 pt-6">
+                    <h3 className="text-xs font-medium uppercase tracking-wider text-foreground">
+                      More from this stock
+                    </h3>
+                    <div className="min-w-0 -mx-4 w-[calc(100%+2rem)]">
+                      <FilmNativeMasonryGrid
+                        items={moreFromStockItems}
+                        ariaLabel="More from this stock"
+                        frameClassName="border-neutral-200 bg-white dark:border-white"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                {!current.caption?.trim() && !(displayLikes > 0) && !hasInlineDetails ? (
+                  <p className="text-sm text-neutral-500">No caption for this shot.</p>
+                ) : null}
               </div>
-            ) : null}
-
-            {relativeTime ? (
-              <p className="text-xs uppercase tracking-wide text-neutral-500">{relativeTime}</p>
-            ) : null}
-
-            {!current.caption?.trim() &&
-            !relativeTime &&
-            !(displayLikes > 0) &&
-            !current.context &&
-            !hasMeta &&
-            !current.location?.trim() ? (
-              <p className="text-sm text-neutral-500">No caption for this shot.</p>
-            ) : null}
+            </div>
           </div>
-        </div>
-      </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
         <SheetContent
@@ -937,7 +1089,6 @@ export function ImageLightbox({
           </div>
         </SheetContent>
       </Sheet>
-    </div>,
-    document.body
+    </>
   );
 }

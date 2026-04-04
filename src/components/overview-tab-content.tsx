@@ -13,6 +13,7 @@ import {
   buildBestForPillTags,
 } from "@/components/film-technical-tabs";
 import { BestForSection } from "@/components/best-for-section";
+import type { FilmStockLightboxSummary } from "@/lib/lightbox-group";
 
 interface PurchaseLink {
   id: string;
@@ -40,6 +41,7 @@ export interface OverviewTabContentProps {
   flickrImages?: FlickrPhoto[];
   avgRating?: number | null;
   reviewFilmStock?: ReviewFlowFilmStock | null;
+  lightboxStockSummary?: FilmStockLightboxSummary | null;
 }
 
 export function OverviewTabContent({
@@ -55,6 +57,7 @@ export function OverviewTabContent({
   filmType,
   flickrImages = [],
   reviewFilmStock = null,
+  lightboxStockSummary = null,
 }: OverviewTabContentProps) {
   const gallerySlug = filmSlug ?? "";
   const galleryName = stockName ?? "This stock";
@@ -99,10 +102,21 @@ export function OverviewTabContent({
               </div>
             </div>
             <div className="md:hidden">
-              <GalleryPreview slug={gallerySlug} stockName={galleryName} flickrImages={flickrImages} />
+              <GalleryPreview
+                slug={gallerySlug}
+                stockName={galleryName}
+                flickrImages={flickrImages}
+                lightboxStockSummary={lightboxStockSummary}
+              />
             </div>
             <div className="hidden md:block">
-              <CommunityGallery stockName={galleryName} slug={gallerySlug} flickrImages={flickrImages} variant="tab" />
+              <CommunityGallery
+                stockName={galleryName}
+                slug={gallerySlug}
+                flickrImages={flickrImages}
+                variant="tab"
+                lightboxStockSummary={lightboxStockSummary}
+              />
             </div>
           </section>
         ) : null}

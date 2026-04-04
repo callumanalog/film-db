@@ -1,9 +1,74 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
+import {
+  collectLightboxSlidesFromGalleryImages,
+  findGalleryImageForLightboxSlide,
+  relatedGalleryLightboxSlidesForStock,
+  type FilmStockLightboxSummary,
+} from "@/lib/lightbox-group";
+import type { GalleryImage } from "@/lib/sample-images";
 import { cn } from "@/lib/utils";
 import type { HomeFeedGroup } from "@/app/actions/home-feed";
+
+function buildFeedGalleryPool(
+  groups: HomeFeedGroup[],
+  stockLabelBySlug: Record<string, string>,
+  lightboxStockBySlug: Record<string, FilmStockLightboxSummary>
+): GalleryImage[] {
+  const out: GalleryImage[] = [];
+  for (const g of groups) {
+    const summ = lightboxStockBySlug[g.film_stock_slug];
+    const stockName =
+      summ?.name ?? stockLabelBySlug[g.film_stock_slug] ?? g.film_stock_slug.replace(/-/g, " ");
+    const brandName = summ?.brandName ?? "";
+    for (const u of g.uploads) {
+      if (!u.image_url?.trim()) continue;
+      const settingsParts = [
+        u.format,
+        u.location,
+        u.shot_iso,
+        u.lens,
+        u.lab,
+        u.push_pull,
+        u.filter,
+        u.scanner,
+      ].filter(Boolean);
+      out.push({
+        id: u.id,
+        galleryId: `upload-${u.id}`,
+        stockSlug: u.film_stock_slug,
+        stockName,
+        brandName,
+        stockIso: summ?.iso ?? null,
+        stockFormat: summ?.format ?? [],
+        stockImageUrl: summ?.image_url ?? null,
+        userId: u.user_id,
+        username: u.display_name?.trim() || "Member",
+        camera: u.camera ?? "",
+        settings: settingsParts.join(" · "),
+        likes: Number(u.like_count ?? 0),
+        saves: Number(u.save_count ?? 0),
+        source: "community",
+        imageUrl: u.image_url,
+        caption: u.caption,
+        shot_iso: u.shot_iso,
+        lens: u.lens,
+        lab: u.lab,
+        filter: u.filter,
+        scanner: u.scanner,
+        push_pull: u.push_pull,
+        reviewId: u.review_id ?? null,
+        uploadBatchId: u.upload_batch_id ?? null,
+        uploadId: u.id,
+        avatarUrl: u.avatar_url ?? null,
+      });
+    }
+  }
+  return out;
+}
 
 function getInitials(name: string): string {
   if (!name) return "?";
@@ -12,14 +77,28 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-function FeedImage({ src, alt }: { src: string; alt: string }) {
+function FeedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className="block h-auto max-h-[85dvh] w-full object-contain" sizes="(max-width: 768px) 100vw, 720px" loading="lazy" />
+    <img
+      src={src}
+      alt={alt}
+      className={cn("block h-auto max-h-[85dvh] w-full object-contain", className)}
+      sizes="(max-width: 768px) 100vw, 720px"
+      loading="lazy"
+    />
   );
 }
 
-function HomeFeedPost({ group, stockLabel }: { group: HomeFeedGroup; stockLabel: string }) {
+function HomeFeedPost({
+  group,
+  stockLabel,
+  onOpenImage,
+}: {
+  group: HomeFeedGroup;
+  stockLabel: string;
+  onOpenImage: (uploadId: string) => void;
+}) {
   const primary = group.uploads[0]!;
   const username = primary.display_name?.trim() || "Member";
 
@@ -67,9 +146,14 @@ function HomeFeedPost({ group, stockLabel }: { group: HomeFeedGroup; stockLabel:
                 key={u.id}
                 className="shrink-0 grow-0 basis-full snap-start"
               >
-                <Link href={`/films/${u.film_stock_slug}?shot=${u.id}`} className="block">
-                  <FeedImage src={u.image_url} alt="" />
-                </Link>
+                <button
+                  type="button"
+                  className="block w-full cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  onClick={() => onOpenImage(u.id)}
+                  aria-label={`View scan: ${stockLabel}`}
+                >
+                  <FeedImage src={u.image_url} alt="" className="pointer-events-none" />
+                </button>
               </div>
             ))}
           </div>
@@ -91,9 +175,14 @@ function HomeFeedPost({ group, stockLabel }: { group: HomeFeedGroup; stockLabel:
         </div>
       ) : slides[0] ? (
         <div className="w-full">
-          <Link href={`/films/${slides[0].film_stock_slug}?shot=${slides[0].id}`} className="block">
-            <FeedImage src={slides[0].image_url} alt="" />
-          </Link>
+          <button
+            type="button"
+            className="block w-full cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            onClick={() => onOpenImage(slides[0]!.id)}
+            aria-label={`View scan: ${stockLabel}`}
+          >
+            <FeedImage src={slides[0].image_url} alt="" className="pointer-events-none" />
+          </button>
         </div>
       ) : null}
 
@@ -136,10 +225,36 @@ function HomeFeedPost({ group, stockLabel }: { group: HomeFeedGroup; stockLabel:
 export function HomeFeedClient({
   initialGroups,
   stockLabelBySlug,
+  lightboxStockBySlug = {},
 }: {
   initialGroups: HomeFeedGroup[];
   stockLabelBySlug: Record<string, string>;
+  lightboxStockBySlug?: Record<string, FilmStockLightboxSummary>;
 }) {
+  const feedGalleryImages = useMemo(
+    () => buildFeedGalleryPool(initialGroups, stockLabelBySlug, lightboxStockBySlug),
+    [initialGroups, stockLabelBySlug, lightboxStockBySlug]
+  );
+
+  const [lightboxSession, setLightboxSession] = useState<{
+    slides: ImageLightboxData[];
+    initialIndex: number;
+  } | null>(null);
+
+  const relatedStockSlides = useMemo(() => {
+    if (!lightboxSession || lightboxSession.slides.length !== 1) return [];
+    return relatedGalleryLightboxSlidesForStock(lightboxSession.slides[0]!, feedGalleryImages);
+  }, [lightboxSession, feedGalleryImages]);
+
+  const openFeedLightbox = useCallback(
+    (uploadId: string) => {
+      const clicked = feedGalleryImages.find((i) => i.uploadId === uploadId);
+      if (!clicked) return;
+      setLightboxSession(collectLightboxSlidesFromGalleryImages(feedGalleryImages, clicked));
+    },
+    [feedGalleryImages]
+  );
+
   if (initialGroups.length === 0) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center sm:px-6">
@@ -154,13 +269,34 @@ export function HomeFeedClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 pb-24 pt-8 sm:px-6 md:pb-8">
-      {initialGroups.map((group) => {
-        const label =
-          stockLabelBySlug[group.film_stock_slug] ?? group.film_stock_slug.replace(/-/g, " ");
-        return <HomeFeedPost key={group.key} group={group} stockLabel={label} />;
-      })}
-    </div>
+    <>
+      <div className="mx-auto w-full max-w-lg px-4 pb-24 pt-8 sm:px-6 md:pb-8">
+        {initialGroups.map((group) => {
+          const label =
+            stockLabelBySlug[group.film_stock_slug] ?? group.film_stock_slug.replace(/-/g, " ");
+          return (
+            <HomeFeedPost
+              key={group.key}
+              group={group}
+              stockLabel={label}
+              onOpenImage={openFeedLightbox}
+            />
+          );
+        })}
+      </div>
+      {lightboxSession ? (
+        <ImageLightbox
+          slides={lightboxSession.slides}
+          initialIndex={lightboxSession.initialIndex}
+          onClose={() => setLightboxSession(null)}
+          relatedStockSlides={relatedStockSlides}
+          onPickRelatedStock={(slide) => {
+            const img = findGalleryImageForLightboxSlide(slide, feedGalleryImages);
+            if (img) setLightboxSession(collectLightboxSlidesFromGalleryImages(feedGalleryImages, img));
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 

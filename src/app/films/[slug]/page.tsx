@@ -25,6 +25,7 @@ import { FilmMobileTabProvider } from "@/context/film-mobile-tab-context";
 import { FilmMobileTabContent } from "@/components/film-mobile-tab-content";
 import { GalleryPreview } from "@/components/gallery-preview";
 import { CommunityReviews } from "@/components/community-section";
+import { filmStockToLightboxSummary } from "@/lib/lightbox-group";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
 const RETAILER_ORDER = ["Amazon", "Adorama", "Analogue Wonderland", "B&H Photo"];
@@ -97,6 +98,8 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
     brand: { name: stock.brand.name, slug: stock.brand.slug },
     iso: stock.iso,
   };
+
+  const lightboxStockSummary = filmStockToLightboxSummary(stock);
 
   const typeColor = FILM_TYPE_COLORS[stock.type];
 
@@ -286,6 +289,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
                       }}
                       filmType={stock.type}
                       flickrImages={flickrImages}
+                      lightboxStockSummary={lightboxStockSummary}
                     />
                   }
                   scans={
@@ -294,6 +298,7 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
                       stockName={stock.name}
                       flickrImages={flickrImages}
                       layout="masonry"
+                      lightboxStockSummary={lightboxStockSummary}
                     />
                   }
                   reviews={

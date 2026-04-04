@@ -31,6 +31,7 @@ import type { InCameraEntry } from "@/app/actions/user-actions";
 import type { FilmUploadRow } from "@/app/actions/uploads";
 import {
   collectLightboxSlidesFromFilmUploads,
+  filmStockToLightboxSummary,
   relatedFilmPageLightboxSlides,
 } from "@/lib/lightbox-group";
 type StockWithBrand = FilmStock & { brand: FilmBrand };
@@ -749,12 +750,19 @@ function ProfileScansMasonry({
             const row = profileUploadToFilmRow(u, displayName, profileUserId);
             const stock = stocksBySlug.get(u.film_stock_slug);
             const stockName = stock?.name ?? u.film_stock_slug;
+            const summary = stock ? filmStockToLightboxSummary(stock) : null;
             setLightboxSession(
-              collectLightboxSlidesFromFilmUploads(filmRows, row, stockName, u.film_stock_slug)
+              collectLightboxSlidesFromFilmUploads(
+                filmRows,
+                row,
+                stockName,
+                u.film_stock_slug,
+                summary
+              )
             );
           },
         })),
-    [uploads, displayName, stocksBySlug, filmRows]
+    [uploads, displayName, profileUserId, stocksBySlug, filmRows]
   );
 
   const relatedStockSlides = useMemo(() => {
@@ -766,8 +774,9 @@ function ProfileScansMasonry({
     if (!slug) return [];
     const stock = stocksBySlug.get(slug);
     const stockName = stock?.name ?? slug;
+    const summary = stock ? filmStockToLightboxSummary(stock) : null;
     const sameStockRows = filmRows.filter((r) => r.film_stock_slug === slug);
-    return relatedFilmPageLightboxSlides(current, sameStockRows, [], stockName, slug);
+    return relatedFilmPageLightboxSlides(current, sameStockRows, [], stockName, slug, summary);
   }, [lightboxSession, filmRows, stocksBySlug]);
 
   return (
@@ -788,8 +797,15 @@ function ProfileScansMasonry({
             const row = profileUploadToFilmRow(u, displayName, profileUserId);
             const stock = stocksBySlug.get(u.film_stock_slug);
             const stockName = stock?.name ?? u.film_stock_slug;
+            const summary = stock ? filmStockToLightboxSummary(stock) : null;
             setLightboxSession(
-              collectLightboxSlidesFromFilmUploads(filmRows, row, stockName, u.film_stock_slug)
+              collectLightboxSlidesFromFilmUploads(
+                filmRows,
+                row,
+                stockName,
+                u.film_stock_slug,
+                summary
+              )
             );
           }}
         />

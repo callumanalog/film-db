@@ -33,8 +33,10 @@ import { LazyImage } from "@/components/lazy-image";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import { useAuth } from "@/context/auth-context";
 import {
+  buildLightboxStockCard,
   collectLightboxSlidesFromFilmUploads,
   relatedFilmPageLightboxSlides,
+  type FilmStockLightboxSummary,
 } from "@/lib/lightbox-group";
 
 interface CommunityReview {
@@ -238,12 +240,14 @@ export function CommunityGallery({
   slug,
   flickrImages = [],
   variant,
+  lightboxStockSummary = null,
 }: {
   stockName: string;
   slug?: string;
   flickrImages?: FlickrPhoto[];
   /** When "tab", show the Gallery tab header (Flickr | Community | You + count + sort). */
   variant?: "tab";
+  lightboxStockSummary?: FilmStockLightboxSummary | null;
 }) {
   const useFlickr = flickrImages.length > 0;
   const { user: authUser } = useAuth();
@@ -311,16 +315,25 @@ export function CommunityGallery({
       communityUploads,
       flickrImages,
       stockName,
-      slug
+      slug,
+      lightboxStockSummary
     );
-  }, [lightboxSession, communityUploads, flickrImages, stockName, slug]);
+  }, [lightboxSession, communityUploads, flickrImages, stockName, slug, lightboxStockSummary]);
 
   const handlePickRelatedStock = useCallback(
     (slide: ImageLightboxData) => {
       if (!slug) return;
       const u = communityUploads.find((x) => x.id === slide.uploadId);
       if (u) {
-        setLightboxSession(collectLightboxSlidesFromFilmUploads(communityUploads, u, stockName, slug));
+        setLightboxSession(
+          collectLightboxSlidesFromFilmUploads(
+            communityUploads,
+            u,
+            stockName,
+            slug,
+            lightboxStockSummary
+          )
+        );
         return;
       }
       const f = flickrImages.find((x) => x.imageUrl === slide.imageUrl);
@@ -333,13 +346,14 @@ export function CommunityGallery({
               caption: f.title?.trim() || null,
               username: f.ownerName,
               context: { label: stockName, href: `/films/${slug}` },
+              stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
             },
           ],
           initialIndex: 0,
         });
       }
     },
-    [communityUploads, flickrImages, stockName, slug]
+    [communityUploads, flickrImages, stockName, slug, lightboxStockSummary]
   );
 
   return (
@@ -409,7 +423,13 @@ export function CommunityGallery({
             onClick={() => {
               if (!u.image_url || !slug) return;
               setLightboxSession(
-                collectLightboxSlidesFromFilmUploads(communityUploadsToShow, u, stockName, slug)
+                collectLightboxSlidesFromFilmUploads(
+                  communityUploadsToShow,
+                  u,
+                  stockName,
+                  slug,
+                  lightboxStockSummary
+                )
               );
             }}
             className="group block w-full cursor-pointer break-inside-avoid mb-1.5 text-left overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
@@ -462,7 +482,8 @@ export function CommunityGallery({
                 myUploadsToShow,
                 u,
                 stockName,
-                slug
+                slug,
+                lightboxStockSummary
               );
               setLightboxSession({
                 slides: slides.map((s) => ({
@@ -568,6 +589,9 @@ export function CommunityGallery({
                       context: slug
                         ? { label: stockName, href: `/films/${slug}` }
                         : undefined,
+                      stockCard: slug
+                        ? buildLightboxStockCard(slug, stockName, lightboxStockSummary)
+                        : undefined,
                     },
                   ],
                   initialIndex: 0,
@@ -614,6 +638,9 @@ export function CommunityGallery({
                         alt: "",
                         context: slug
                           ? { label: stockName, href: `/films/${slug}` }
+                          : undefined,
+                        stockCard: slug
+                          ? buildLightboxStockCard(slug, stockName, lightboxStockSummary)
                           : undefined,
                       },
                     ],

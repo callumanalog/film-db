@@ -17,8 +17,10 @@ import {
 } from "@/components/film-native-grid";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import {
+  buildLightboxStockCard,
   collectLightboxSlidesFromFilmUploads,
   relatedFilmPageLightboxSlides,
+  type FilmStockLightboxSummary,
 } from "@/lib/lightbox-group";
 import { SegmentedViewTabs, type SegmentedView } from "@/components/segmented-view-tabs";
 import { useAuth } from "@/context/auth-context";
@@ -31,6 +33,8 @@ interface GalleryPreviewProps {
   flickrImages?: FlickrPhoto[];
   /** `masonry` = same 2-col full-bleed grid as Discover; `carousel` = overview strip. */
   layout?: "carousel" | "masonry";
+  /** When set, lightbox shows @ stock row with brand | ISO | formats. */
+  lightboxStockSummary?: FilmStockLightboxSummary | null;
 }
 
 type PreviewImage = {
@@ -46,6 +50,7 @@ export function GalleryPreview({
   stockName,
   flickrImages = [],
   layout = "carousel",
+  lightboxStockSummary = null,
 }: GalleryPreviewProps) {
   const { user } = useAuth();
   const [uploads, setUploads] = useState<FilmUploadRow[]>([]);
@@ -93,15 +98,18 @@ export function GalleryPreview({
       uploads,
       flickrForRelatedPool,
       stockName,
-      slug
+      slug,
+      lightboxStockSummary
     );
-  }, [lightboxSession, uploads, flickrForRelatedPool, stockName, slug]);
+  }, [lightboxSession, uploads, flickrForRelatedPool, stockName, slug, lightboxStockSummary]);
 
   const handlePickRelatedStock = useCallback(
     (slide: ImageLightboxData) => {
       const u = uploads.find((x) => x.id === slide.uploadId);
       if (u) {
-        setLightboxSession(collectLightboxSlidesFromFilmUploads(uploads, u, stockName, slug));
+        setLightboxSession(
+          collectLightboxSlidesFromFilmUploads(uploads, u, stockName, slug, lightboxStockSummary)
+        );
         return;
       }
       const f = flickrImages.find((x) => x.imageUrl === slide.imageUrl);
@@ -114,13 +122,14 @@ export function GalleryPreview({
               caption: f.title?.trim() || null,
               username: f.ownerName,
               context: { label: stockName, href: `/films/${slug}` },
+              stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
             },
           ],
           initialIndex: 0,
         });
       }
     },
-    [uploads, flickrImages, stockName, slug]
+    [uploads, flickrImages, stockName, slug, lightboxStockSummary]
   );
 
   const masonryItems: FilmNativeMasonryItem[] = useMemo(() => {
@@ -133,7 +142,9 @@ export function GalleryPreview({
         overlayLabel: u.display_name?.trim() || "Member",
         href: galleryHref,
         onActivate: () =>
-          setLightboxSession(collectLightboxSlidesFromFilmUploads(uploads, u, stockName, slug)),
+          setLightboxSession(
+            collectLightboxSlidesFromFilmUploads(uploads, u, stockName, slug, lightboxStockSummary)
+          ),
       });
     }
     if (scansView === "everyone") {
@@ -152,6 +163,7 @@ export function GalleryPreview({
                   caption: f.title?.trim() || null,
                   username: f.ownerName,
                   context: { label: stockName, href: `/films/${slug}` },
+                  stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
                 },
               ],
               initialIndex: 0,
@@ -160,7 +172,7 @@ export function GalleryPreview({
       }
     }
     return items;
-  }, [uploads, flickrImages, galleryHref, scansView, slug, stockName]);
+  }, [uploads, flickrImages, galleryHref, scansView, slug, stockName, lightboxStockSummary]);
 
   const images: PreviewImage[] = [];
 
@@ -184,6 +196,7 @@ export function GalleryPreview({
         location: u.location?.trim() || null,
         createdAt: u.created_at ?? null,
         context: { label: stockName, href: `/films/${slug}` },
+        stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
         metadata: {
           camera: u.camera,
           shot_iso: u.shot_iso,
@@ -210,6 +223,7 @@ export function GalleryPreview({
         caption: f.title?.trim() || null,
         username: f.ownerName,
         context: { label: stockName, href: `/films/${slug}` },
+        stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
       },
     });
   }
