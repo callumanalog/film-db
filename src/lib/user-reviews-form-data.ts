@@ -9,7 +9,7 @@ export function appendReviewsPayloadFields(
   formData.set("film_stock_slug", filmStockSlug);
   formData.set("mode", mode);
   formData.set("rating", String(payload.rating));
-  if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
+  if (payload.reviewTitle !== undefined) formData.set("review_title", payload.reviewTitle);
   if (payload.reviewText) formData.set("review_text", payload.reviewText);
   if (payload.camera) formData.set("camera", payload.camera);
   if (payload.lens) formData.set("lens", payload.lens);

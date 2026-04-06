@@ -129,6 +129,11 @@ export async function buildUserReviewsFormData(
   const formData = new FormData();
   appendReviewsPayloadFields(formData, filmStockSlug, mode, payload);
 
+  if (payload.shareRollMetadataOnly) {
+    formData.set("share_roll_metadata_only", "1");
+    return { formData };
+  }
+
   const usedPreUpload = mode === "upload" && !!payload.uploadedImageUrl;
 
   if (clientStoredImages && clientStoredImages.length > 0) {
@@ -262,6 +267,8 @@ export async function submitUserReviewPatch(opts: {
   reviewId: string;
   filmStockSlug: string;
   payload: AddReviewModalPayload;
+  /** Use `"upload"` when patching share-roll fields (with `payload.shareRollMetadataOnly`). */
+  mode?: "review" | "upload";
   onProgress?: (label: string) => void;
   signal?: AbortSignal;
 }): Promise<{
@@ -272,7 +279,7 @@ export async function submitUserReviewPatch(opts: {
 }> {
   const { formData, clientUploadFailures } = await buildUserReviewsFormData({
     filmStockSlug: opts.filmStockSlug,
-    mode: "review",
+    mode: opts.mode ?? "review",
     payload: opts.payload,
     onProgress: opts.onProgress,
   });
@@ -285,6 +292,7 @@ export async function patchReviewModalSubmission(opts: {
   reviewId: string;
   filmStockSlug: string;
   payload: AddReviewModalPayload;
+  mode?: "review" | "upload";
   onProgress?: (label: string | null) => void;
   signal?: AbortSignal;
 }): Promise<
@@ -296,6 +304,7 @@ export async function patchReviewModalSubmission(opts: {
       reviewId: opts.reviewId,
       filmStockSlug: opts.filmStockSlug,
       payload: opts.payload,
+      mode: opts.mode,
       onProgress: (label) => opts.onProgress?.(label),
       signal: opts.signal,
     });

@@ -29,6 +29,20 @@ export interface ProfileFromDb {
     caption: string | null;
     created_at: string;
     upload_batch_id?: string | null;
+    review_id?: string | null;
+    camera?: string | null;
+    shot_iso?: string | null;
+    lens?: string | null;
+    lab?: string | null;
+    scanner?: string | null;
+    push_pull?: string | null;
+    format?: string | null;
+    location?: string | null;
+    shot_date?: string | null;
+    tags?: string | null;
+    image_width?: number | null;
+    image_height?: number | null;
+    like_count?: number | null;
   }[];
   likedReviews: {
     review_id: string;
@@ -134,7 +148,7 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
       supabase
         .from("user_uploads")
         .select(
-          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id"
+          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, review_id, image_width, image_height, like_count"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
@@ -513,6 +527,20 @@ export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
         caption: u.caption,
         created_at: u.created_at,
         upload_batch_id: u.upload_batch_id ?? null,
+        review_id: (u as { review_id?: string | null }).review_id ?? null,
+        camera: (u as { camera?: string | null }).camera ?? null,
+        shot_iso: (u as { shot_iso?: string | null }).shot_iso ?? null,
+        lens: (u as { lens?: string | null }).lens ?? null,
+        lab: (u as { lab?: string | null }).lab ?? null,
+        scanner: (u as { scanner?: string | null }).scanner ?? null,
+        push_pull: (u as { push_pull?: string | null }).push_pull ?? null,
+        format: (u as { format?: string | null }).format ?? null,
+        location: (u as { location?: string | null }).location ?? null,
+        shot_date: (u as { shot_date?: string | null }).shot_date ?? null,
+        tags: (u as { tags?: string | null }).tags ?? null,
+        image_width: (u as { image_width?: number | null }).image_width ?? null,
+        image_height: (u as { image_height?: number | null }).image_height ?? null,
+        like_count: (u as { like_count?: number | null }).like_count ?? null,
       })),
       likedReviews,
       savedUploads,
@@ -552,7 +580,7 @@ export async function getMemberProfileByUserId(targetUserId: string): Promise<Pr
       supabase
         .from("user_uploads")
         .select(
-          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id"
+          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, review_id, image_width, image_height, like_count"
         )
         .eq("user_id", id)
         .order("created_at", { ascending: false }),
@@ -595,6 +623,20 @@ export async function getMemberProfileByUserId(targetUserId: string): Promise<Pr
       caption: u.caption as string | null,
       created_at: u.created_at as string,
       upload_batch_id: (u as { upload_batch_id?: string | null }).upload_batch_id ?? null,
+      review_id: (u as { review_id?: string | null }).review_id ?? null,
+      camera: (u as { camera?: string | null }).camera ?? null,
+      shot_iso: (u as { shot_iso?: string | null }).shot_iso ?? null,
+      lens: (u as { lens?: string | null }).lens ?? null,
+      lab: (u as { lab?: string | null }).lab ?? null,
+      scanner: (u as { scanner?: string | null }).scanner ?? null,
+      push_pull: (u as { push_pull?: string | null }).push_pull ?? null,
+      format: (u as { format?: string | null }).format ?? null,
+      location: (u as { location?: string | null }).location ?? null,
+      shot_date: (u as { shot_date?: string | null }).shot_date ?? null,
+      tags: (u as { tags?: string | null }).tags ?? null,
+      image_width: (u as { image_width?: number | null }).image_width ?? null,
+      image_height: (u as { image_height?: number | null }).image_height ?? null,
+      like_count: (u as { like_count?: number | null }).like_count ?? null,
     }));
 
     let createdStockLists: ProfileFromDb["createdStockLists"] = [];

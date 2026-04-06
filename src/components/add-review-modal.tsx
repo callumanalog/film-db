@@ -99,7 +99,7 @@ import StarterKit from "@tiptap/starter-kit";
 import TiptapPlaceholder from "@tiptap/extension-placeholder";
 import { useAuth } from "@/context/auth-context";
 
-interface TrackFilmModalStock {
+export interface TrackFilmModalStock {
   slug: string;
   name: string;
   brand: { name: string; slug: string };
@@ -360,7 +360,28 @@ export interface AddReviewModalPayload {
    * so share does not re-run canvas encode and failures surface during upload step.
    */
   preparedShareRollScans?: PreparedShareRollImage[];
+  /** PATCH: update share-roll title + `user_uploads` metadata only (no new files). */
+  shareRollMetadataOnly?: boolean;
 }
+
+/** Open share-roll step 3 to edit an existing roll (same `review_id` on all scans). */
+export type EditShareRollSeed = {
+  reviewId: string;
+  imageUrls: string[];
+  imageWidths: (number | null)[];
+  imageHeights: (number | null)[];
+  rollName: string;
+  caption: string;
+  camera: string;
+  lens: string;
+  location: string;
+  shotDate: string;
+  tags: string;
+  lab: string;
+  scanner: string;
+  shotIso: string;
+  selectedFormat: string;
+};
 
 /** Pre-fill when editing an existing review (text-only flow). */
 export interface EditReviewSeed {
@@ -380,9 +401,13 @@ interface AddReviewModalProps {
   slotsUsed?: number;
   /** When set, modal opens in edit mode (same flow as create, pre-filled). */
   edit?: EditReviewSeed | null;
+  /** When set with `mode="upload"`, opens directly on share-roll step 3 for metadata edits. */
+  editShareRoll?: EditShareRollSeed | null;
   onBackToStockPicker?: () => void;
   /** Overrides footer “Sharing…” while `submitting` (upload flow) — e.g. per-photo progress from parent. */
   shareRollSubmitHint?: string | null;
+  /** Raise sheet z-index above e.g. z-[100] full-screen lightbox. */
+  stackAboveLightbox?: boolean;
 }
 
 function StockThumbnail({
@@ -616,13 +641,18 @@ export function AddReviewModal({
   initialRating = 0,
   mode = "review",
   edit = null,
+  editShareRoll = null,
   onBackToStockPicker,
   shareRollSubmitHint = null,
+  stackAboveLightbox = false,
 }: AddReviewModalProps) {
   const isEdit = !!edit;
-  const enteredViaUpload = mode === "upload" && !isEdit;
+  const isEditShareRoll = !!editShareRoll;
+  const enteredViaUpload = mode === "upload" && !isEdit && !isEditShareRoll;
   const { user } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3>(enteredViaUpload ? 2 : 1);
+  const [step, setStep] = useState<1 | 2 | 3>(() =>
+    isEditShareRoll ? 3 : enteredViaUpload ? 2 : 1
+  );
 
   // Step 1 fields
   const [rating, setRating] = useState(initialRating);
@@ -741,7 +771,9 @@ export function AddReviewModal({
     setPreparedShareRollScans([]);
     setScanImportJob(null);
     setPreviewUrls((urls) => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.forEach((u) => {
+        if (u.startsWith("blob:")) URL.revokeObjectURL(u);
+      });
       return [];
     });
     setCaption("");
@@ -810,11 +842,51 @@ export function AddReviewModal({
       createModalWasOpenRef.current = false;
       return;
     }
+    if (isEditShareRoll) {
+      createModalWasOpenRef.current = true;
+      return;
+    }
     if (!createModalWasOpenRef.current) {
       resetAll();
     }
     createModalWasOpenRef.current = true;
-  }, [open, edit, resetAll]);
+  }, [open, edit, isEditShareRoll, resetAll]);
+
+  useEffect(() => {
+    if (!open || !editShareRoll) return;
+    setStep(3);
+    setRollName(editShareRoll.rollName);
+    setCaption(editShareRoll.caption);
+    setCamera(editShareRoll.camera);
+    setLens(editShareRoll.lens);
+    setLocation(editShareRoll.location);
+    setShotDate(editShareRoll.shotDate);
+    setTags(editShareRoll.tags);
+    setLab(editShareRoll.lab);
+    setScanner(editShareRoll.scanner);
+    setShotIso(editShareRoll.shotIso);
+    if (editShareRoll.selectedFormat.trim()) {
+      setSelectedFormat(editShareRoll.selectedFormat);
+    }
+    setFiles([]);
+    setPreparedShareRollScans([]);
+    setPreviewUrls([...editShareRoll.imageUrls]);
+    setUploadScanOrderIds(editShareRoll.imageUrls.map(() => crypto.randomUUID()));
+    setScanIntrinsicSizes(
+      editShareRoll.imageUrls.map((_, i) => {
+        const w = editShareRoll.imageWidths[i] ?? null;
+        const h = editShareRoll.imageHeights[i] ?? null;
+        return w != null && h != null && w > 0 && h > 0 ? { w, h } : null;
+      })
+    );
+    setStep2ScanPreviewIndex(null);
+    setStep3ImagePreviewIndex(null);
+    setStep3MetadataSubpage(null);
+    setUploadError(null);
+    setScanImportJob(null);
+    setIsUploading(false);
+    setSubmitting(false);
+  }, [open, editShareRoll]);
 
   useEffect(() => {
     if (!open || !edit) return;
@@ -829,7 +901,9 @@ export function AddReviewModal({
     setPreparedShareRollScans([]);
     setScanImportJob(null);
     setPreviewUrls((urls) => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.forEach((u) => {
+        if (u.startsWith("blob:")) URL.revokeObjectURL(u);
+      });
       return [];
     });
     setCaption("");
@@ -864,9 +938,9 @@ export function AddReviewModal({
   }, []);
 
   useLayoutEffect(() => {
-    if (!open || !enteredViaUpload || step !== 3) return;
+    if (!open || step !== 3 || (!enteredViaUpload && !isEditShareRoll)) return;
     syncStep3CaptionTextareaHeight();
-  }, [open, enteredViaUpload, step, caption, syncStep3CaptionTextareaHeight]);
+  }, [open, enteredViaUpload, isEditShareRoll, step, caption, syncStep3CaptionTextareaHeight]);
 
   useEffect(() => {
     if (!open || !edit || !editor) return;
@@ -880,7 +954,9 @@ export function AddReviewModal({
     setStep3ImagePreviewIndex(null);
     setStep3MetadataSubpage(null);
     setPreviewUrls((urls) => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.forEach((u) => {
+        if (u.startsWith("blob:")) URL.revokeObjectURL(u);
+      });
       return [];
     });
     onOpenChange(false);
@@ -895,7 +971,11 @@ export function AddReviewModal({
     reviewText: editorIsEmpty ? "" : editorHtml,
     files,
     camera: camera || undefined,
-    reviewTitle: mode === "upload" && rollName.trim() ? rollName.trim() : undefined,
+    reviewTitle: isEditShareRoll
+      ? rollName.trim()
+      : mode === "upload" && rollName.trim()
+        ? rollName.trim()
+        : undefined,
     bestFor: bestFor.length > 0 ? bestFor : undefined,
     format: selectedFormat || undefined,
     location: location || undefined,
@@ -910,6 +990,7 @@ export function AddReviewModal({
       files.length > 0 && files.length === preparedShareRollScans.length
         ? preparedShareRollScans
         : undefined,
+    shareRollMetadataOnly: isEditShareRoll || undefined,
   });
 
   const handleLogSubmit = async () => {
@@ -1073,7 +1154,8 @@ export function AddReviewModal({
       return prev;
     });
     setPreviewUrls((urls) => {
-      URL.revokeObjectURL(urls[index]);
+      const u = urls[index];
+      if (u?.startsWith("blob:")) URL.revokeObjectURL(u);
       return urls.filter((_, i) => i !== index);
     });
     setFiles((prev) => prev.filter((_, i) => i !== index));
@@ -1148,7 +1230,15 @@ export function AddReviewModal({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        className="!h-[100dvh] !max-h-[100dvh] !rounded-none gap-0 p-0"
+        overlayClassName={
+          stackAboveLightbox
+            ? "!z-[105] bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
+            : undefined
+        }
+        className={cn(
+          "!h-[100dvh] !max-h-[100dvh] !rounded-none gap-0 p-0",
+          stackAboveLightbox && "!z-[110]"
+        )}
       >
         <SheetTitle className="sr-only">
           {!enteredViaUpload
@@ -1498,8 +1588,8 @@ export function AddReviewModal({
               >
                 <div className="flex h-full min-h-0 w-1/2 min-w-[50%] flex-col">
                   <Step3CompactNavBar
-                    title="Share your roll"
-                    onBack={() => setStep(2)}
+                    title={isEditShareRoll ? "Edit roll" : "Share your roll"}
+                    onBack={isEditShareRoll ? handleClose : () => setStep(2)}
                     onClose={handleClose}
                   />
                   <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
@@ -1513,7 +1603,32 @@ export function AddReviewModal({
                             <p className="truncate font-sans text-sm font-medium text-foreground">{stock.name}</p>
                           </div>
                         </div>
-                        {files.length > 0 && uploadScanOrderIds.length === files.length && (
+                        {isEditShareRoll && previewUrls.length > 0 ? (
+                          <div className="mt-5 w-full">
+                            <div className="grid grid-cols-5 gap-2">
+                              {previewUrls.map((url, i) => (
+                                <button
+                                  key={`${url}-${i}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setStep2ScanPreviewIndex(null);
+                                    setStep3ImagePreviewIndex(i);
+                                  }}
+                                  className="relative aspect-square min-w-0 w-full overflow-hidden rounded-[7px] border border-border/50 bg-muted/10 p-0 text-left ring-offset-background hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  aria-label={`Preview scan ${i + 1}`}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={url}
+                                    alt=""
+                                    className="pointer-events-none h-full w-full object-cover"
+                                    draggable={false}
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : files.length > 0 && uploadScanOrderIds.length === files.length ? (
                           <div className="mt-5 w-full">
                             <DndContext
                               sensors={step3SortSensors}
@@ -1538,7 +1653,7 @@ export function AddReviewModal({
                               </SortableContext>
                             </DndContext>
                           </div>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="flex flex-col gap-0">
@@ -1721,10 +1836,14 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={handlePostScans}
-                  disabled={submitting || !files.length || isUploading}
+                  disabled={submitting || (!isEditShareRoll && !files.length) || isUploading}
                   className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
                 >
-                  {submitting ? (shareRollSubmitHint?.trim() || "Sharing…") : "Share roll"}
+                  {submitting
+                    ? shareRollSubmitHint?.trim() || (isEditShareRoll ? "Saving…" : "Sharing…")
+                    : isEditShareRoll
+                      ? "Save changes"
+                      : "Share roll"}
                 </button>
               </div>
             ) : null}

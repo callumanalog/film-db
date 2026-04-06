@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -61,6 +61,20 @@ export interface ProfileData {
     caption: string | null;
     created_at: string;
     upload_batch_id?: string | null;
+    review_id?: string | null;
+    camera?: string | null;
+    shot_iso?: string | null;
+    lens?: string | null;
+    lab?: string | null;
+    scanner?: string | null;
+    push_pull?: string | null;
+    format?: string | null;
+    location?: string | null;
+    shot_date?: string | null;
+    tags?: string | null;
+    image_width?: number | null;
+    image_height?: number | null;
+    like_count?: number | null;
   }[];
   likedReviews?: {
     review_id: string;
@@ -708,6 +722,20 @@ function profileUploadToFilmRow(u: ProfileUpload, displayName: string, profileUs
     created_at: u.created_at,
     display_name: displayName,
     upload_batch_id: u.upload_batch_id ?? null,
+    review_id: u.review_id ?? null,
+    camera: u.camera ?? null,
+    shot_iso: u.shot_iso ?? null,
+    lens: u.lens ?? null,
+    lab: u.lab ?? null,
+    scanner: u.scanner ?? null,
+    push_pull: u.push_pull ?? null,
+    format: u.format ?? null,
+    location: u.location ?? null,
+    shot_date: u.shot_date ?? null,
+    tags: u.tags ?? null,
+    image_width: u.image_width ?? null,
+    image_height: u.image_height ?? null,
+    like_count: u.like_count ?? null,
   };
 }
 
@@ -717,6 +745,7 @@ function ProfileScansMasonry({
   profileUserId,
   stocksBySlug,
   scansAriaLabel = "Your scans",
+  reviewsForRollTitles = null,
 }: {
   uploads: NonNullable<ProfileData["uploads"]>;
   displayName: string;
@@ -724,6 +753,8 @@ function ProfileScansMasonry({
   profileUserId: string;
   stocksBySlug: Map<string, StockWithBrand>;
   scansAriaLabel?: string;
+  /** When set (own profile), maps `review_id` → `review_title` for lightbox roll edit. */
+  reviewsForRollTitles?: { id: string; review_title: string | null }[] | null;
 }) {
   const [lightboxSession, setLightboxSession] = useState<{
     slides: ImageLightboxData[];
@@ -734,6 +765,26 @@ function ProfileScansMasonry({
     () =>
       uploads.filter((u) => u.image_url).map((u) => profileUploadToFilmRow(u, displayName, profileUserId)),
     [uploads, displayName, profileUserId]
+  );
+
+  const rollTitleByReviewId = useMemo(() => {
+    const m = new Map<string, string | null>();
+    if (!reviewsForRollTitles) return m;
+    for (const r of reviewsForRollTitles) {
+      m.set(r.id, r.review_title);
+    }
+    return m;
+  }, [reviewsForRollTitles]);
+
+  const withRollTitles = useCallback(
+    (session: { slides: ImageLightboxData[]; initialIndex: number }) => ({
+      ...session,
+      slides: session.slides.map((s) => ({
+        ...s,
+        rollTitle: s.reviewId ? (rollTitleByReviewId.get(s.reviewId) ?? null) : null,
+      })),
+    }),
+    [rollTitleByReviewId]
   );
 
   const masonryItems = useMemo(
@@ -752,17 +803,19 @@ function ProfileScansMasonry({
             const stockName = stock?.name ?? u.film_stock_slug;
             const summary = stock ? filmStockToLightboxSummary(stock) : null;
             setLightboxSession(
-              collectLightboxSlidesFromFilmUploads(
-                filmRows,
-                row,
-                stockName,
-                u.film_stock_slug,
-                summary
+              withRollTitles(
+                collectLightboxSlidesFromFilmUploads(
+                  filmRows,
+                  row,
+                  stockName,
+                  u.film_stock_slug,
+                  summary
+                )
               )
             );
           },
         })),
-    [uploads, displayName, profileUserId, stocksBySlug, filmRows]
+    [uploads, displayName, profileUserId, stocksBySlug, filmRows, withRollTitles]
   );
 
   const relatedStockSlides = useMemo(() => {
@@ -799,12 +852,14 @@ function ProfileScansMasonry({
             const stockName = stock?.name ?? u.film_stock_slug;
             const summary = stock ? filmStockToLightboxSummary(stock) : null;
             setLightboxSession(
-              collectLightboxSlidesFromFilmUploads(
-                filmRows,
-                row,
-                stockName,
-                u.film_stock_slug,
-                summary
+              withRollTitles(
+                collectLightboxSlidesFromFilmUploads(
+                  filmRows,
+                  row,
+                  stockName,
+                  u.film_stock_slug,
+                  summary
+                )
               )
             );
           }}
@@ -1180,6 +1235,7 @@ export function ProfileView({
                   profileUserId={userId}
                   stocksBySlug={stocksBySlug}
                   scansAriaLabel={isMember ? `${headline} scans` : "Your scans"}
+                  reviewsForRollTitles={isMember ? null : (profile.reviews ?? null)}
                 />
               </ProfileSection>
             ),

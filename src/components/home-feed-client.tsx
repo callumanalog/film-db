@@ -74,6 +74,7 @@ function buildFeedGalleryPool(
         shot_date: u.shot_date ?? null,
         tags: u.tags ?? null,
         reviewId: u.review_id ?? null,
+        reviewTitle: u.review_title ?? null,
         uploadBatchId: u.upload_batch_id ?? null,
         uploadId: u.id,
         avatarUrl: u.avatar_url ?? null,

@@ -100,9 +100,61 @@ export async function PATCH(
     if (!Array.isArray(bestFor)) bestFor = [];
   }
 
+  const captionToUse = caption || null;
+  const metadata = {
+    camera: camera || null,
+    shot_iso: shotIso || null,
+    lens: lens || null,
+    lab: lab || null,
+    scanner: scanner || null,
+    push_pull: pushPull || null,
+    format: format || null,
+    location: location || null,
+    shot_date: shotDate,
+    tags,
+  };
+
   const reviewTitleTrim = reviewTitle?.trim() ?? "";
   const reviewTextTrim = reviewText?.trim() ?? "";
   const shootingTipTrim = shootingTip?.trim() ?? "";
+
+  const shareRollMetadataOnly = formData.get("share_roll_metadata_only") === "1";
+  if (shareRollMetadataOnly) {
+    if (formData.has("review_title")) {
+      const titleRaw = (formData.get("review_title") as string) || "";
+      const titleTrim = titleRaw.trim();
+      const { error: titleErr } = await supabase
+        .from("reviews")
+        .update({ review_title: titleTrim || null })
+        .eq("id", reviewId)
+        .eq("user_id", user.id);
+
+      if (titleErr) {
+        console.error("[reviews PATCH] review title (share roll):", titleErr);
+        return NextResponse.json({ error: "Failed to update roll title" }, { status: 500 });
+      }
+    }
+
+    const { error: metaErr } = await supabase
+      .from("user_uploads")
+      .update({
+        ...metadata,
+        caption: captionToUse,
+      })
+      .eq("review_id", reviewId)
+      .eq("user_id", user.id);
+
+    if (metaErr) {
+      console.error("[reviews PATCH] user_uploads share-roll metadata:", metaErr);
+      return NextResponse.json({ error: "Failed to update roll metadata" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      reviewUpdated: true,
+      shareRollMetadataUpdated: true,
+    });
+  }
 
   const { error: updateError } = await supabase
     .from("reviews")
@@ -225,20 +277,6 @@ export async function PATCH(
       );
     }
   }
-
-  const captionToUse = caption || null;
-  const metadata = {
-    camera: camera || null,
-    shot_iso: shotIso || null,
-    lens: lens || null,
-    lab: lab || null,
-    scanner: scanner || null,
-    push_pull: pushPull || null,
-    format: format || null,
-    location: location || null,
-    shot_date: shotDate,
-    tags,
-  };
 
   const uploadBatchId = uploadedRows.length > 0 ? crypto.randomUUID() : null;
   let uploadInsertErrors = 0;

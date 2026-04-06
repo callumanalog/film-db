@@ -14,6 +14,8 @@ export interface HomeFeedUpload extends FilmUploadRow {
   display_name: string | null;
   /** From `profiles.avatar_url` for the uploader. */
   avatar_url: string | null;
+  /** From `reviews.review_title` when `review_id` is set (batch-loaded for feed). */
+  review_title?: string | null;
 }
 
 export interface HomeFeedGroup {
@@ -143,12 +145,37 @@ export async function getHomeFeedGroups(): Promise<HomeFeedGroup[]> {
   const userIds = [...new Set(uniqueSorted.map((r) => r.user_id))];
   const fieldsByUserId = await fetchMemberPublicFieldsByUserIds(userIds);
 
+  const reviewIds = [
+    ...new Set(
+      uniqueSorted
+        .map((r) => r.review_id?.trim())
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const titleByReviewId = new Map<string, string | null>();
+  if (reviewIds.length > 0) {
+    const { data: revRows, error: revErr } = await supabase
+      .from("reviews")
+      .select("id, review_title")
+      .in("id", reviewIds);
+    if (revErr) {
+      console.error("[getHomeFeedGroups] reviews titles:", revErr.message);
+    } else {
+      for (const row of revRows ?? []) {
+        const id = (row as { id: string }).id;
+        titleByReviewId.set(id, (row as { review_title: string | null }).review_title ?? null);
+      }
+    }
+  }
+
   const withNames: HomeFeedUpload[] = uniqueSorted.map((r) => {
     const f = fieldsByUserId.get(r.user_id);
+    const rid = r.review_id?.trim();
     return {
       ...r,
       display_name: f?.displayName ?? null,
       avatar_url: f?.avatarUrl ?? null,
+      review_title: rid ? (titleByReviewId.get(rid) ?? null) : null,
     };
   });
 

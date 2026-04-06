@@ -8,6 +8,14 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  AddReviewModal,
+  type AddReviewModalPayload,
+  type EditShareRollSeed,
+  type TrackFilmModalStock,
+} from "@/components/add-review-modal";
+import { patchReviewModalSubmission } from "@/lib/user-reviews-client-submit";
+import { showToastViaEvent } from "@/components/toast";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -50,7 +58,6 @@ import {
 } from "@/components/ui/sheet";
 import { FilmNativeMasonryGrid, type FilmNativeMasonryItem } from "@/components/film-native-grid";
 import { isSameLightboxSlide } from "@/lib/lightbox-group";
-import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 
 export type ImageLightboxMetadata = {
   camera?: string | null;
@@ -71,6 +78,10 @@ export type ImageLightboxData = {
   imageUrl: string;
   /** `user_uploads.id` when this slide is a real upload; omit for Flickr/samples. */
   uploadId?: string | null;
+  /** `reviews.id` when this slide is part of a shared roll (same id for all frames in the roll). */
+  reviewId?: string | null;
+  /** `reviews.review_title` when known (e.g. own profile lightbox). */
+  rollTitle?: string | null;
   /** When set, header avatar/name link to `/users/{userId}`. */
   userId?: string | null;
   alt?: string;
@@ -88,6 +99,8 @@ export type ImageLightboxData = {
   metadata?: ImageLightboxMetadata;
   /** e.g. film stock — link in details */
   context?: { label: string; href: string };
+  /** `user_uploads.film_stock_slug` / gallery stock slug; avoids relying on href parsing alone. */
+  filmStockSlug?: string | null;
   /** Film stock for under-caption metadata (name + link; image/specLine optional for other surfaces). */
   stockCard?: {
     name: string;
@@ -138,23 +151,33 @@ function plainCaptionFull(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function formatRelativeTime(iso: string): string | null {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return null;
-  const sec = Math.floor((Date.now() - t) / 1000);
-  if (sec < 45) return "Just now";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min} minute${min === 1 ? "" : "s"} ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} hour${hr === 1 ? "" : "s"} ago`;
-  const day = Math.floor(hr / 24);
-  if (day < 7) return `${day} day${day === 1 ? "" : "s"} ago`;
-  const week = Math.floor(day / 7);
-  if (week < 5) return `${week} week${week === 1 ? "" : "s"} ago`;
-  const month = Math.floor(day / 30);
-  if (month < 12) return `${month} month${month === 1 ? "" : "s"} ago`;
-  const year = Math.floor(day / 365);
-  return `${year} year${year === 1 ? "" : "s"} ago`;
+function buildEditShareRollSeed(
+  slides: ImageLightboxData[],
+  reviewId: string
+): EditShareRollSeed | null {
+  const rid = reviewId.trim();
+  if (!rid) return null;
+  const rollSlides = slides.filter((s) => (s.reviewId?.trim() ?? "") === rid);
+  if (rollSlides.length === 0) return null;
+  const first = rollSlides[0]!;
+  const meta = first.metadata ?? {};
+  return {
+    reviewId: rid,
+    imageUrls: rollSlides.map((s) => s.imageUrl),
+    imageWidths: rollSlides.map(() => null),
+    imageHeights: rollSlides.map(() => null),
+    rollName: first.rollTitle?.trim() ?? "",
+    caption: first.caption?.trim() ? plainCaptionFull(first.caption) : "",
+    camera: meta.camera?.trim() ?? "",
+    lens: meta.lens?.trim() ?? "",
+    location: first.location?.trim() ?? "",
+    shotDate: meta.shot_date?.trim() ?? "",
+    tags: meta.tags?.trim() ?? "",
+    lab: meta.lab?.trim() ?? "",
+    scanner: meta.scanner?.trim() ?? "",
+    shotIso: meta.shot_iso?.trim() ?? "",
+    selectedFormat: meta.format?.trim() ?? "",
+  };
 }
 
 export type ImageLightboxProps = {
@@ -186,7 +209,6 @@ export function ImageLightbox({
     Math.min(Math.max(0, initialIndex), Math.max(0, safeSlides.length - 1))
   );
   const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [infoOpen, setInfoOpen] = useState(false);
   const [captionOverflowsTwoLines, setCaptionOverflowsTwoLines] = useState(false);
   const captionClampedRef = useRef<HTMLParagraphElement>(null);
   const [savedUploadIds, setSavedUploadIds] = useState<Set<string>>(() => new Set());
@@ -203,8 +225,12 @@ export function ImageLightbox({
   const [followingInLikesSheet, setFollowingInLikesSheet] = useState<Set<string>>(() => new Set());
   const [followPendingUserId, setFollowPendingUserId] = useState<string | null>(null);
   const mainScrollRef = useRef<HTMLDivElement>(null);
-  const [chromeMenuOpen, setChromeMenuOpen] = useState(false);
-  const chromeMenuRef = useRef<HTMLDivElement>(null);
+  const [rollOwnerSheetOpen, setRollOwnerSheetOpen] = useState(false);
+  const [rollDeleteSheetOpen, setRollDeleteSheetOpen] = useState(false);
+  const [deleteRollReviewId, setDeleteRollReviewId] = useState<string | null>(null);
+  const [deleteRollPending, setDeleteRollPending] = useState(false);
+  const [editRollOpen, setEditRollOpen] = useState(false);
+  const [editRollSeed, setEditRollSeed] = useState<EditShareRollSeed | null>(null);
 
   const slideUploadIdsKey = safeSlides.map((s) => s.uploadId?.trim() ?? "").join("|");
 
@@ -249,24 +275,6 @@ export function ImageLightbox({
       }));
   }, [safeSlides, relatedStockSlides, onPickRelatedStock]);
 
-  useEffect(() => {
-    if (!chromeMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (chromeMenuRef.current && !chromeMenuRef.current.contains(e.target as Node)) {
-        setChromeMenuOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setChromeMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [chromeMenuOpen]);
-
   useLayoutEffect(() => {
     const s = mainScrollRef.current;
     if (s) s.scrollTop = 0;
@@ -274,7 +282,6 @@ export function ImageLightbox({
 
   useEffect(() => {
     setCaptionExpanded(false);
-    setInfoOpen(false);
   }, [active]);
 
   useLayoutEffect(() => {
@@ -521,27 +528,126 @@ export function ImageLightbox({
     };
   }, [likesList, likesSheetOpen, user?.id]);
 
+  const currentForHooks =
+    safeSlides.length > 0 ? (safeSlides[active] ?? safeSlides[0]) : undefined;
+  const filmStockHrefForRoll =
+    currentForHooks?.stockCard?.href ?? currentForHooks?.context?.href ?? null;
+  const filmStockSlugFromHref = useMemo(() => {
+    if (!filmStockHrefForRoll?.startsWith("/films/")) return "";
+    return filmStockHrefForRoll.slice("/films/".length).split(/[/?#]/)[0] ?? "";
+  }, [filmStockHrefForRoll]);
+
+  const resolvedFilmStockSlug = (
+    currentForHooks?.filmStockSlug?.trim() ||
+    filmStockSlugFromHref ||
+    ""
+  ).trim();
+
+  const profileUserIdForRoll = currentForHooks?.userId?.trim() ?? "";
+  const authId = user?.id?.trim() ?? "";
+  const isOwnLightboxUpload =
+    !!authId &&
+    !!profileUserIdForRoll &&
+    authId.toLowerCase() === profileUserIdForRoll.toLowerCase();
+
+  const canOwnerManageRoll =
+    isOwnLightboxUpload &&
+    !!currentForHooks?.reviewId?.trim() &&
+    !!resolvedFilmStockSlug;
+
+  const editRollModalStock: TrackFilmModalStock = useMemo(() => {
+    if (!currentForHooks) {
+      return {
+        slug: "unknown",
+        name: "Film",
+        brand: { name: "", slug: "" },
+        format: [],
+        image_url: null,
+        iso: null,
+      };
+    }
+    const href = currentForHooks.context?.href ?? currentForHooks.stockCard?.href ?? "";
+    const slug =
+      (currentForHooks.filmStockSlug?.trim() ||
+        (href.startsWith("/films/")
+          ? href.slice("/films/".length).split(/[/?#]/)[0] ?? ""
+          : "")) ||
+      "";
+    const stockName = currentForHooks.stockCard?.name ?? currentForHooks.context?.label ?? slug;
+    const brandTok = currentForHooks.stockCard?.specLine?.split("·")[0]?.trim() ?? "";
+    return {
+      slug: slug || "unknown",
+      name: stockName || "Film",
+      brand: { name: brandTok, slug: "" },
+      format: [],
+      image_url: currentForHooks.stockCard?.imageUrl ?? null,
+      iso: null,
+    };
+  }, [currentForHooks]);
+
+  const handleEditRollSubmit = useCallback(
+    async (payload: AddReviewModalPayload) => {
+      if (!user || !editRollSeed || !resolvedFilmStockSlug) {
+        return { success: false as const };
+      }
+      const outcome = await patchReviewModalSubmission({
+        reviewId: editRollSeed.reviewId,
+        filmStockSlug: resolvedFilmStockSlug,
+        payload,
+        mode: "upload",
+      });
+      if (!outcome.ok) {
+        showToastViaEvent(outcome.toast);
+        return { success: false as const };
+      }
+      showToastViaEvent("Roll updated.");
+      window.dispatchEvent(
+        new CustomEvent("review-submitted", { detail: { slug: resolvedFilmStockSlug } })
+      );
+      setEditRollOpen(false);
+      setEditRollSeed(null);
+      onClose();
+      router.refresh();
+      return { success: true as const };
+    },
+    [user, editRollSeed, resolvedFilmStockSlug, onClose, router]
+  );
+
+  const confirmDeleteOwnRoll = useCallback(async () => {
+    const id = deleteRollReviewId?.trim();
+    if (!id || !user) return;
+    setDeleteRollPending(true);
+    try {
+      const res = await fetch(`/api/user/reviews/${id}`, { method: "DELETE" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        showToastViaEvent(data.error || "Could not delete roll");
+        return;
+      }
+      showToastViaEvent("Roll deleted.");
+      if (resolvedFilmStockSlug) {
+        window.dispatchEvent(
+          new CustomEvent("review-submitted", { detail: { slug: resolvedFilmStockSlug } })
+        );
+      }
+      setRollDeleteSheetOpen(false);
+      setDeleteRollReviewId(null);
+      onClose();
+      router.refresh();
+    } finally {
+      setDeleteRollPending(false);
+    }
+  }, [user, deleteRollReviewId, resolvedFilmStockSlug, onClose, router]);
+
   if (safeSlides.length === 0) {
     return null;
   }
 
   const current = safeSlides[active] ?? safeSlides[0];
-  const hasMeta =
-    current.metadata &&
-    (current.metadata.camera ||
-      current.metadata.shot_iso ||
-      current.metadata.format?.trim() ||
-      current.metadata.lens ||
-      current.metadata.lab ||
-      current.metadata.scanner ||
-      current.metadata.push_pull ||
-      current.metadata.shot_date?.trim() ||
-      current.metadata.tags?.trim());
 
   const name = current.username?.trim() || "Member";
   const profileUserId = current.userId?.trim() ?? "";
   const profileHref = profileUserId ? `/users/${profileUserId}` : null;
-  const relativeTime = current.createdAt ? formatRelativeTime(current.createdAt) : null;
   const filmStockName = current.stockCard?.name ?? current.context?.label ?? null;
   const filmStockHref = current.stockCard?.href ?? current.context?.href ?? null;
   const showFilmMetaRow = !!(filmStockName && filmStockHref);
@@ -623,38 +729,22 @@ export function ImageLightbox({
                 >
                   <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
                 </button>
-                <div className="relative" ref={chromeMenuRef}>
+                {canOwnerManageRoll ? (
                   <button
                     type="button"
-                    onClick={() => setChromeMenuOpen((o) => !o)}
+                    onClick={() => setRollOwnerSheetOpen(true)}
                     className={cn(
                       topRightNavIconButtonClassName,
                       "text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
                     )}
-                    aria-label="More options"
-                    aria-expanded={chromeMenuOpen}
+                    aria-label="Roll options"
+                    aria-expanded={rollOwnerSheetOpen}
                   >
                     <MoreHorizontal className="size-6 stroke-[1.75]" />
                   </button>
-                  {chromeMenuOpen ? (
-                    <div
-                      className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] rounded-md border border-neutral-200 bg-white py-1 shadow-lg dark:border-white/10 dark:bg-neutral-900"
-                      role="menu"
-                    >
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="block w-full px-4 py-2.5 text-left text-sm text-neutral-900 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
-                        onClick={() => {
-                          setChromeMenuOpen(false);
-                          setInfoOpen(true);
-                        }}
-                      >
-                        Photo details
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+                ) : (
+                  <div className="min-h-[44px] min-w-[44px] shrink-0" aria-hidden />
+                )}
               </div>
             </div>
 
@@ -896,148 +986,6 @@ export function ImageLightbox({
         </SheetContent>
       </Sheet>
 
-      <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
-        <SheetContent
-          side="bottom"
-          overlayClassName="z-[105]"
-          className="z-[110] gap-0 p-0"
-          showCloseButton
-        >
-          <SheetHeader className="border-b border-border px-4 pb-3 pt-2 text-left">
-            <SheetTitle>Photo details</SheetTitle>
-          </SheetHeader>
-          <div className="max-h-[min(70dvh,520px)] overflow-y-auto overscroll-contain px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            {current.context ? (
-              <div className="mb-4">
-                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Film stock
-                </h2>
-                <p className="mt-1.5">
-                  <Link
-                    href={current.context.href}
-                    className="text-sm font-medium text-primary hover:underline"
-                    onClick={() => {
-                      setInfoOpen(false);
-                      onClose();
-                    }}
-                  >
-                    {current.context.label}
-                  </Link>
-                </p>
-              </div>
-            ) : null}
-
-            {current.location?.trim() ? (
-              <div className="mb-4">
-                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Location
-                </h2>
-                <p className="mt-1.5 text-sm text-foreground">{current.location.trim()}</p>
-              </div>
-            ) : null}
-
-            {relativeTime ? (
-              <div className="mb-4">
-                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Posted
-                </h2>
-                <p className="mt-1.5 text-sm text-foreground">{relativeTime}</p>
-              </div>
-            ) : null}
-
-            {hasMeta ? (
-              <div className="space-y-3">
-                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Camera &amp; processing
-                </h2>
-                <dl className="space-y-2.5 text-sm">
-                  {current.metadata!.camera ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Camera
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.camera}</dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.shot_iso ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Shot at ISO
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.shot_iso}</dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.lens ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Lens
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.lens}</dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.lab ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Lab / processing
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">
-                        {filmLabPublicLabel(current.metadata!.lab)}
-                      </dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.push_pull ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Push / pull
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.push_pull}</dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.scanner ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Scanner
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.scanner}</dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.format?.trim() ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Format
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.format.trim()}</dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.shot_date?.trim() ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Shot date
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">
-                        {formatShotDateLabel(current.metadata!.shot_date)}
-                      </dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.tags?.trim() ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Tags
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.tags.trim()}</dd>
-                    </div>
-                  ) : null}
-                </dl>
-              </div>
-            ) : null}
-
-            {!current.context && !current.location?.trim() && !relativeTime && !hasMeta ? (
-              <p className="text-sm text-muted-foreground">No extra details for this photo.</p>
-            ) : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-
       <Sheet open={likesSheetOpen} onOpenChange={onLikesSheetOpenChange}>
         <SheetContent
           side="bottom"
@@ -1121,6 +1069,113 @@ export function ImageLightbox({
           </div>
         </SheetContent>
       </Sheet>
+
+      <Sheet open={rollOwnerSheetOpen} onOpenChange={(o) => !o && setRollOwnerSheetOpen(false)}>
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          overlayClassName="z-[110]"
+          className="z-[110] gap-0 pb-8"
+        >
+          <SheetTitle className="sr-only">Roll actions</SheetTitle>
+          <div className="flex flex-col px-4">
+            <button
+              type="button"
+              onClick={() => {
+                const rid = current.reviewId?.trim();
+                if (!rid) return;
+                const seed = buildEditShareRollSeed(safeSlides, rid);
+                if (!seed) return;
+                setRollOwnerSheetOpen(false);
+                setEditRollSeed(seed);
+                setEditRollOpen(true);
+              }}
+              className="w-full py-4 text-left text-sm font-medium text-foreground transition-colors hover:text-primary"
+            >
+              Edit roll
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const rid = current.reviewId?.trim() ?? null;
+                setRollOwnerSheetOpen(false);
+                if (rid) setDeleteRollReviewId(rid);
+                setRollDeleteSheetOpen(true);
+              }}
+              className="w-full border-t border-border/50 py-4 text-left text-sm font-medium text-destructive transition-colors hover:text-destructive/90"
+            >
+              Delete roll
+            </button>
+            <button
+              type="button"
+              onClick={() => setRollOwnerSheetOpen(false)}
+              className="w-full border-t border-border/50 pt-4 text-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Close
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={rollDeleteSheetOpen}
+        onOpenChange={(o) => {
+          if (!o && !deleteRollPending) {
+            setRollDeleteSheetOpen(false);
+            setDeleteRollReviewId(null);
+          }
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          showCloseButton={false}
+          overlayClassName="z-[110]"
+          className="z-[110] gap-0 pb-8"
+        >
+          <SheetHeader className="pb-4">
+            <SheetTitle className="text-left text-base font-semibold">Delete your roll?</SheetTitle>
+          </SheetHeader>
+          <p className="px-4 pb-4 text-sm text-muted-foreground">This action cannot be undone.</p>
+          <div className="flex flex-col gap-2 px-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                if (!deleteRollPending) {
+                  setRollDeleteSheetOpen(false);
+                  setDeleteRollReviewId(null);
+                }
+              }}
+              disabled={deleteRollPending}
+              className="order-2 rounded-[7px] border border-border/50 bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent/50 disabled:opacity-50 sm:order-1"
+            >
+              Go back
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmDeleteOwnRoll()}
+              disabled={deleteRollPending}
+              className="order-1 rounded-[7px] bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50 sm:order-2"
+            >
+              {deleteRollPending ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {editRollOpen && editRollSeed ? (
+        <AddReviewModal
+          open={editRollOpen}
+          onOpenChange={(o) => {
+            setEditRollOpen(o);
+            if (!o) setEditRollSeed(null);
+          }}
+          mode="upload"
+          stock={editRollModalStock}
+          editShareRoll={editRollSeed}
+          stackAboveLightbox
+          onSubmit={handleEditRollSubmit}
+        />
+      ) : null}
     </>
   );
 }
