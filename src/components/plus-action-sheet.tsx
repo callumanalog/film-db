@@ -17,7 +17,10 @@ import { getSuggestedStocks, type SearchStocksResult } from "@/app/actions/searc
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import { FilmStockListCardButton } from "@/components/film-stock-list-card";
 import { MobileStockPickerPanel } from "@/components/mobile-stock-picker-panel";
-import { interpretReviewsPostResult } from "@/lib/review-submit-feedback";
+import {
+  formatClientUploadFailuresForToast,
+  interpretReviewsPostResult,
+} from "@/lib/review-submit-feedback";
 import { postReviewModalSubmission } from "@/lib/user-reviews-client-submit";
 import { cn } from "@/lib/utils";
 
@@ -262,9 +265,11 @@ export function PlusActionSheet() {
                 return { success: false };
               }
               const data = outcome.data;
+              const attemptedPhotos = payload.files.length;
               const interpreted = interpretReviewsPostResult(data, {
                 mode: reviewModalMode,
-                fileCount: payload.files.length,
+                fileCount: attemptedPhotos,
+                attemptedUploads: attemptedPhotos,
                 usedPreUploadedUrl: usedPreUpload,
               });
               if (!interpreted.ok) {
@@ -272,7 +277,7 @@ export function PlusActionSheet() {
                 return { success: false };
               }
               const uploadSucceeded = interpreted.uploaded > 0;
-              if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
+              if ((attemptedPhotos > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
                 window.dispatchEvent(
                   new CustomEvent("film-upload-complete", { detail: { slug: selectedStock.slug } })
                 );
@@ -282,17 +287,27 @@ export function PlusActionSheet() {
                   new CustomEvent("review-submitted", { detail: { slug: selectedStock.slug } })
                 );
               }
+              const uploadedCount = interpreted.uploaded;
+              if (outcome.clientUploadFailures?.length) {
+                showToastViaEvent(
+                  formatClientUploadFailuresForToast(
+                    outcome.clientUploadFailures,
+                    uploadedCount,
+                    attemptedPhotos
+                  )
+                );
+              }
               if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
                 showToastViaEvent(
-                  `${interpreted.uploaded} photo(s) saved; ${interpreted.uploadFailed} could not be saved. Try again from your profile if needed.`
+                  `${uploadedCount} photo(s) saved; ${interpreted.uploadFailed} could not be saved to your gallery. Try again from your profile if needed.`
                 );
               } else if (reviewModalMode === "upload") {
-                if (payload.uploadedImageUrl || payload.files.length > 0) {
+                if (payload.uploadedImageUrl || attemptedPhotos > 0) {
                   showToastViaEvent("Thanks! Your roll has been published.");
                 } else {
                   showToastViaEvent("Done.");
                 }
-              } else if (payload.files.length > 0) {
+              } else if (attemptedPhotos > 0) {
                 showToastViaEvent("Thanks! Your photos and review have been submitted.");
               } else {
                 showToastViaEvent("Thanks! Your review has been submitted.");

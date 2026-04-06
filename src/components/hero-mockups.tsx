@@ -69,7 +69,11 @@ import { useAuth } from "@/context/auth-context";
 import { listMyStockListsForPicker } from "@/app/actions/stock-lists";
 import { AddToListsSheet } from "@/components/add-to-lists-sheet";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
-import { interpretReviewsPostResult, networkErrorToastMessage } from "@/lib/review-submit-feedback";
+import {
+  formatClientUploadFailuresForToast,
+  interpretReviewsPostResult,
+  networkErrorToastMessage,
+} from "@/lib/review-submit-feedback";
 import { postReviewModalSubmission } from "@/lib/user-reviews-client-submit";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
@@ -927,9 +931,11 @@ export function FilmDetailMobileToolbar({
               return { success: false };
             }
             const data = outcome.data;
+            const attemptedPhotos = payload.files.length;
             const interpreted = interpretReviewsPostResult(data, {
               mode: reviewModalMode,
-              fileCount: payload.files.length,
+              fileCount: attemptedPhotos,
+              attemptedUploads: attemptedPhotos,
               usedPreUploadedUrl: usedPreUpload,
             });
             if (!interpreted.ok) {
@@ -937,23 +943,33 @@ export function FilmDetailMobileToolbar({
               return { success: false };
             }
             const uploadSucceeded = interpreted.uploaded > 0;
-            if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
+            if ((attemptedPhotos > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
               window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
             }
             if (interpreted.reviewSaved) {
               window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
             }
+            const uploadedCount = interpreted.uploaded;
+            if (outcome.clientUploadFailures?.length) {
+              showToastViaEvent(
+                formatClientUploadFailuresForToast(
+                  outcome.clientUploadFailures,
+                  uploadedCount,
+                  attemptedPhotos
+                )
+              );
+            }
             if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
               showToastViaEvent(
-                `${interpreted.uploaded} photo(s) saved; ${interpreted.uploadFailed} could not be saved. Try again from your profile if needed.`
+                `${uploadedCount} photo(s) saved; ${interpreted.uploadFailed} could not be saved to your gallery. Try again from your profile if needed.`
               );
             } else if (reviewModalMode === "upload") {
-              if (payload.uploadedImageUrl || payload.files.length > 0) {
+              if (payload.uploadedImageUrl || attemptedPhotos > 0) {
                 showToastViaEvent("Thanks! Your roll has been published.");
               } else {
                 showToastViaEvent("Done.");
               }
-            } else if (payload.files.length > 0) {
+            } else if (attemptedPhotos > 0) {
               showToastViaEvent("Thanks! Your photos and review have been submitted.");
             } else {
               showToastViaEvent("Thanks! Your review has been submitted.");
@@ -1232,9 +1248,11 @@ export function StickyLeftPane({
               return { success: false };
             }
             const data = outcome.data;
+            const attemptedPhotos = payload.files.length;
             const interpreted = interpretReviewsPostResult(data, {
               mode: reviewModalMode,
-              fileCount: payload.files.length,
+              fileCount: attemptedPhotos,
+              attemptedUploads: attemptedPhotos,
               usedPreUploadedUrl: usedPreUpload,
             });
             if (!interpreted.ok) {
@@ -1242,23 +1260,33 @@ export function StickyLeftPane({
               return { success: false };
             }
             const uploadSucceeded = interpreted.uploaded > 0;
-            if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
+            if ((attemptedPhotos > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
               window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
             }
             if (interpreted.reviewSaved) {
               window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
             }
+            const uploadedCount = interpreted.uploaded;
+            if (outcome.clientUploadFailures?.length) {
+              showToastViaEvent(
+                formatClientUploadFailuresForToast(
+                  outcome.clientUploadFailures,
+                  uploadedCount,
+                  attemptedPhotos
+                )
+              );
+            }
             if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
               showToastViaEvent(
-                `${interpreted.uploaded} photo(s) saved; ${interpreted.uploadFailed} could not be saved. Try again from your profile if needed.`
+                `${uploadedCount} photo(s) saved; ${interpreted.uploadFailed} could not be saved to your gallery. Try again from your profile if needed.`
               );
             } else if (reviewModalMode === "upload") {
-              if (payload.uploadedImageUrl || payload.files.length > 0) {
+              if (payload.uploadedImageUrl || attemptedPhotos > 0) {
                 showToastViaEvent("Thanks! Your roll has been published.");
               } else {
                 showToastViaEvent("Done.");
               }
-            } else if (payload.files.length > 0) {
+            } else if (attemptedPhotos > 0) {
               showToastViaEvent("Thanks! Your photos and review have been submitted.");
             } else {
               showToastViaEvent("Thanks! Your review has been submitted.");

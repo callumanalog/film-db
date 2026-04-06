@@ -19,6 +19,16 @@ export function networkErrorToastMessage(): string {
   return "Network error — check your connection and try again.";
 }
 
+/** Toast body when some client-side storage uploads failed but others succeeded. */
+export function formatClientUploadFailuresForToast(
+  failures: { index: number; message: string }[],
+  uploaded: number,
+  attempted: number
+): string {
+  const detail = failures.map((f) => `Photo ${f.index + 1}: ${f.message}`).join(" ");
+  return `${uploaded} of ${attempted} photos reached storage. Not uploaded: ${detail}`;
+}
+
 /**
  * Maps failed review POST/PATCH HTTP responses to a toast line (handles empty JSON on 413).
  */
@@ -47,6 +57,8 @@ export function toastMessageForReviewsHttpFailure(
 export type InterpretReviewsPostContext = {
   mode: "review" | "upload";
   fileCount: number;
+  /** Photos the user intended to send (e.g. before client-side partial upload). Defaults to fileCount. */
+  attemptedUploads?: number;
   usedPreUploadedUrl: boolean;
 };
 
@@ -60,8 +72,12 @@ export function interpretReviewsPostResult(
 ): { ok: true; uploaded: number; reviewSaved: boolean; uploadFailed?: number } | { ok: false; message: string } {
   const uploaded = Number(data.uploaded) || 0;
   const reviewSaved = Boolean(data.reviewSaved);
-  const uploadFailed = typeof data.uploadFailed === "number" ? data.uploadFailed : 0;
+  const serverReportedFailed = typeof data.uploadFailed === "number" ? data.uploadFailed : 0;
   const expectedUpload = ctx.fileCount > 0 || ctx.usedPreUploadedUrl;
+  const attempted = ctx.attemptedUploads ?? ctx.fileCount;
+  const gapFromCounts =
+    attempted > 0 && uploaded < attempted ? Math.max(0, attempted - uploaded) : 0;
+  const uploadFailed = Math.max(serverReportedFailed, gapFromCounts);
 
   if (expectedUpload && uploaded === 0) {
     return {

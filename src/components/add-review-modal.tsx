@@ -84,6 +84,7 @@ import {
   prepareShareRollImageFile,
   type PreparedShareRollImage,
 } from "@/lib/share-roll-image";
+import { humanizeImageDecodeError, humanizeImagePrepareError } from "@/lib/share-roll-image-errors";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
@@ -318,6 +319,13 @@ const BEST_FOR_OPTIONS: BestFor[] = [
   "sports", "travel", "weddings", "studio", "bright_sun", "golden_hour", "low_light",
   "artificial_light", "experimental",
 ];
+
+/** Lets React paint between sequential scan imports so progress UI updates. */
+function yieldToNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
 
 export interface AddReviewModalPayload {
   rating: number;
@@ -639,6 +647,13 @@ export function AddReviewModal({
   const [uploadScanOrderIds, setUploadScanOrderIds] = useState<string[]>([]);
   /** Parallels `files` after decode + share-roll encode; avoids re-encoding on submit. */
   const [preparedShareRollScans, setPreparedShareRollScans] = useState<PreparedShareRollImage[]>([]);
+  /** Sequential add from picker: which file is being read/compressed (one at a time). */
+  const [scanImportJob, setScanImportJob] = useState<{
+    current: number;
+    total: number;
+    phase: "read" | "compress";
+    fileName: string;
+  } | null>(null);
   const uploadScanOrderIdsRef = useRef<string[]>([]);
   /** Prevents reset when `resetAll` churns (e.g. inline `stock={{…}}` on parent re-renders during submit). */
   const createModalWasOpenRef = useRef(false);
@@ -701,6 +716,7 @@ export function AddReviewModal({
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
     setPreparedShareRollScans([]);
+    setScanImportJob(null);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -792,6 +808,7 @@ export function AddReviewModal({
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
     setPreparedShareRollScans([]);
+    setScanImportJob(null);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -916,58 +933,78 @@ export function AddReviewModal({
 
     setIsUploading(true);
     setUploadError(null);
-    const decodeOk: File[] = [];
-    let decodeFail = 0;
+    const problemLines: string[] = [];
+    let addedCount = 0;
+
     try {
-      for (const f of kept) {
+      for (let i = 0; i < kept.length; i++) {
+        const f = kept[i]!;
+        const step = i + 1;
+
+        setScanImportJob({
+          current: step,
+          total: kept.length,
+          phase: "read",
+          fileName: f.name,
+        });
+        await yieldToNextPaint();
+
         try {
           await assertFileDecodesAsImage(f);
-          decodeOk.push(f);
-        } catch {
-          decodeFail++;
-        }
-      }
-
-      if (decodeOk.length === 0) {
-        setUploadError(
-          decodeFail > 0
-            ? "Photo(s) could not be read or are too large. Try different files (PNG, JPG, or WebP)."
-            : "No files were added. Use PNG, JPG, or WebP under 50MB."
-        );
-        return;
-      }
-
-      const newPrepared: PreparedShareRollImage[] = [];
-      for (const f of decodeOk) {
-        try {
-          newPrepared.push(await prepareShareRollImageFile(f));
         } catch (err) {
-          const raw = err instanceof Error ? err.message.trim() : "";
-          setUploadError(
-            raw
-              ? raw
-              : "This photo could not be processed for upload. Try a different file (JPEG or PNG)."
-          );
-          return;
+          problemLines.push(`${f.name}: ${humanizeImageDecodeError(err, f.name)}`);
+          continue;
+        }
+
+        setScanImportJob({
+          current: step,
+          total: kept.length,
+          phase: "compress",
+          fileName: f.name,
+        });
+        await yieldToNextPaint();
+
+        try {
+          const prepared = await prepareShareRollImageFile(f);
+          const url = URL.createObjectURL(f);
+          setFiles((prev) => [...prev, f]);
+          setPreparedShareRollScans((prev) => [...prev, prepared]);
+          setPreviewUrls((prev) => [...prev, url]);
+          setScanIntrinsicSizes((prev) => [...prev, null]);
+          addedCount++;
+        } catch (err) {
+          problemLines.push(`${f.name}: ${humanizeImagePrepareError(err, f.name)}`);
         }
       }
 
-      const next = [...files, ...decodeOk];
-      const parts: string[] = [];
-      if (invalidCount > 0) parts.push(`${invalidCount} invalid file${invalidCount > 1 ? "s were" : " was"} skipped`);
-      if (droppedForLimit > 0) parts.push(`${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 max)`);
-      if (decodeFail > 0) parts.push(`${decodeFail} file${decodeFail > 1 ? "s could" : " could"} not be read`);
-      if (parts.length > 0) setUploadError(parts.join(". ") + ".");
-      else setUploadError(null);
+      const summaryParts: string[] = [];
+      if (invalidCount > 0) {
+        summaryParts.push(
+          `${invalidCount} file${invalidCount > 1 ? "s were" : " was"} skipped (not PNG/JPEG/WebP or over 50MB).`
+        );
+      }
+      if (droppedForLimit > 0) {
+        summaryParts.push(
+          `${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 scans max).`
+        );
+      }
+      if (problemLines.length > 0) {
+        summaryParts.push(
+          addedCount > 0
+            ? `${problemLines.length} file${problemLines.length > 1 ? "s" : ""} could not be added:\n${problemLines.join("\n")}`
+            : `No scans were added:\n${problemLines.join("\n")}`
+        );
+      }
 
-      setPreviewUrls((urls) => {
-        urls.forEach((u) => URL.revokeObjectURL(u));
-        return next.map((f) => URL.createObjectURL(f));
-      });
-      setFiles(next);
-      setScanIntrinsicSizes(next.map(() => null));
-      setPreparedShareRollScans((prev) => [...prev, ...newPrepared]);
+      if (addedCount === 0 && summaryParts.length === 0) {
+        setUploadError("No scans were added. Try different files (PNG, JPG, or WebP).");
+      } else if (summaryParts.length > 0) {
+        setUploadError(summaryParts.join("\n\n"));
+      } else {
+        setUploadError(null);
+      }
     } finally {
+      setScanImportJob(null);
       setIsUploading(false);
     }
   };
@@ -1254,6 +1291,26 @@ export function AddReviewModal({
                   </div>
                 </div>
 
+                {scanImportJob ? (
+                  <div
+                    className="rounded-lg border border-border/60 bg-muted/40 px-3 py-3 dark:bg-white/5"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <p className="text-sm font-semibold text-foreground">Adding your scans</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      File {scanImportJob.current} of {scanImportJob.total} —{" "}
+                      {scanImportJob.phase === "read" ? "reading image" : "compressing for upload"}
+                    </p>
+                    <p
+                      className="mt-1 truncate text-xs font-medium text-foreground/90"
+                      title={scanImportJob.fileName}
+                    >
+                      {scanImportJob.fileName}
+                    </p>
+                  </div>
+                ) : null}
+
                 {/* Upload zone */}
                 <div>
                   <input
@@ -1278,7 +1335,11 @@ export function AddReviewModal({
                       {isUploading ? (
                         <>
                           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" aria-hidden />
-                          <span className="text-sm font-medium text-muted-foreground">Checking photos…</span>
+                          <span className="text-center text-sm font-medium text-muted-foreground">
+                            {scanImportJob
+                              ? `Working on scan ${scanImportJob.current} of ${scanImportJob.total}…`
+                              : "Checking photos…"}
+                          </span>
                         </>
                       ) : (
                         <>
@@ -1382,7 +1443,9 @@ export function AddReviewModal({
                   )}
 
                   {uploadError && (
-                    <p className="mt-2 text-xs text-destructive" role="alert">{uploadError}</p>
+                    <p className="mt-2 whitespace-pre-line text-xs text-destructive" role="alert">
+                      {uploadError}
+                    </p>
                   )}
                 </div>
               </div>

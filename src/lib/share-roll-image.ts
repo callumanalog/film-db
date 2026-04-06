@@ -65,7 +65,11 @@ export async function prepareShareRollImageFile(file: File): Promise<PreparedSha
     const blob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob((b) => resolve(b), mime, quality);
     });
-    if (!blob || blob.size < 1) throw new Error("Could not encode image");
+    if (!blob || blob.size < 1) {
+      throw new Error(
+        "Browser returned an empty file after compressing the image (WebP/JPEG export produced no data)."
+      );
+    }
 
     return {
       blob,

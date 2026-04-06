@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type SyntheticEvent,
+} from "react";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import {
   collectLightboxSlidesFromGalleryImages,
@@ -82,13 +91,31 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-function FeedImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+function FeedImage({
+  src,
+  alt,
+  className,
+  /** When true, image is limited by a fixed-height carousel cell (not 85dvh). */
+  fitParent,
+  onLoad,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  fitParent?: boolean;
+  onLoad?: (e: SyntheticEvent<HTMLImageElement>) => void;
+}) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt={alt}
-      className={cn("block h-auto max-h-[85dvh] w-full object-contain", className)}
+      onLoad={onLoad}
+      className={cn(
+        "block object-contain",
+        fitParent ? "h-auto max-h-full w-full" : "h-auto max-h-[85dvh] w-full",
+        className
+      )}
       sizes="(max-width: 768px) 100vw, 720px"
       loading="lazy"
     />
@@ -110,13 +137,51 @@ function HomeFeedPost({
   const slides = group.uploads.filter((u): u is typeof u & { image_url: string } => Boolean(u.image_url));
   const isRoll = slides.length > 1;
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const carouselViewportRef = useRef<HTMLDivElement>(null);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [viewportWidthPx, setViewportWidthPx] = useState(0);
+  const [heightCapPx, setHeightCapPx] = useState(() =>
+    typeof window !== "undefined"
+      ? Math.round(
+          Math.min(
+            window.innerHeight * 0.85,
+            (window.visualViewport?.height ?? window.innerHeight) * 0.85
+          )
+        )
+      : 900
+  );
+  /** Fallback when DB dimensions are missing (legacy rows). */
+  const [naturalById, setNaturalById] = useState<Record<string, { w: number; h: number }>>({});
 
   useEffect(() => {
     setActiveSlide(0);
     const el = scrollerRef.current;
     if (el && isRoll) el.scrollTo({ left: 0 });
   }, [group.key, isRoll]);
+
+  useLayoutEffect(() => {
+    const outer = carouselViewportRef.current;
+    if (!outer || !isRoll) return;
+    const update = () => {
+      setViewportWidthPx(outer.clientWidth);
+      if (typeof window !== "undefined") {
+        const vv = window.visualViewport?.height ?? window.innerHeight;
+        setHeightCapPx(
+          Math.round(Math.min(window.innerHeight * 0.85, Math.min(vv, window.innerHeight) * 0.85))
+        );
+      }
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(outer);
+    window.addEventListener("resize", update);
+    window.visualViewport?.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+      window.visualViewport?.removeEventListener("resize", update);
+    };
+  }, [isRoll, group.key]);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -137,27 +202,71 @@ function HomeFeedPost({
     };
   }, [isRoll, slides.length, group.key]);
 
+  const activeUpload = slides[activeSlide]!;
+  const dbW =
+    typeof activeUpload.image_width === "number" && activeUpload.image_width > 0
+      ? activeUpload.image_width
+      : null;
+  const dbH =
+    typeof activeUpload.image_height === "number" && activeUpload.image_height > 0
+      ? activeUpload.image_height
+      : null;
+  const nat = naturalById[activeUpload.id];
+  const dimW = dbW ?? nat?.w ?? null;
+  const dimH = dbH ?? nat?.h ?? null;
+  const hasDims = dimW != null && dimH != null && dimW > 0 && dimH > 0;
+
+  const rollFrameHeightPx =
+    hasDims && viewportWidthPx > 0
+      ? Math.min((viewportWidthPx * dimH) / dimW, heightCapPx)
+      : null;
+
+  const rollViewportStyle: CSSProperties = hasDims
+    ? viewportWidthPx > 0 && rollFrameHeightPx != null
+      ? { height: rollFrameHeightPx }
+      : { aspectRatio: `${dimW} / ${dimH}`, maxHeight: "85dvh" }
+    : { aspectRatio: "3 / 4", maxHeight: "85dvh" };
+
+  const onRollImageLoad = useCallback((uploadId: string, e: SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth < 1 || img.naturalHeight < 1) return;
+    setNaturalById((prev) => {
+      if (prev[uploadId]) return prev;
+      return { ...prev, [uploadId]: { w: img.naturalWidth, h: img.naturalHeight } };
+    });
+  }, []);
+
   return (
     <article className="pb-12 last:pb-0">
       {isRoll ? (
-        <div className="relative w-full">
+        <div
+          ref={carouselViewportRef}
+          className="relative w-full max-h-[85dvh] overflow-hidden"
+          style={rollViewportStyle}
+        >
           <div
             ref={scrollerRef}
-            className="flex w-full snap-x snap-mandatory overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex h-full w-full snap-x snap-mandatory overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="Photos from this roll"
           >
             {slides.map((u) => (
               <div
                 key={u.id}
-                className="shrink-0 grow-0 basis-full snap-start"
+                className="flex h-full w-full shrink-0 grow-0 basis-full snap-start items-center justify-center"
               >
                 <button
                   type="button"
-                  className="block w-full cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex h-full w-full cursor-pointer items-center justify-center text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   onClick={() => onOpenImage(u.id)}
                   aria-label={`View scan: ${stockLabel}`}
                 >
-                  <FeedImage src={u.image_url} alt="" className="pointer-events-none" />
+                  <FeedImage
+                    src={u.image_url}
+                    alt=""
+                    fitParent
+                    className="pointer-events-none"
+                    onLoad={(e) => onRollImageLoad(u.id, e)}
+                  />
                 </button>
               </div>
             ))}
