@@ -31,7 +31,8 @@
     "replace:single-film-image": "tsx scripts/replace-single-film-image.ts",
     "replace:normalized-film-images": "npm run replace:film-images -- public/films-normalized",
     "refresh:film-images": "npm run normalize:film-images && npm run replace:normalized-film-images && npm run check:film-image-urls",
-    "open:mobile": "node scripts/open-mobile-preview.mjs"
+    "open:mobile": "node scripts/open-mobile-preview.mjs",
+    "seed:film-labs": "tsx scripts/generate-film-lab-seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

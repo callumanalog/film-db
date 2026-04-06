@@ -29,7 +29,6 @@ const FIELD_LABELS: Record<AddRollFieldKey, string> = {
   camera: "Camera",
   location: "Location",
   lens: "Lens",
-  filter: "Filter",
   lab: "Lab",
   scanner: "Scanner",
   iso: "Shot at ISO",
@@ -40,7 +39,6 @@ const FIELD_PLACEHOLDERS: Partial<Record<AddRollFieldKey, string>> = {
   camera: "e.g. Canon AE-1",
   location: "e.g. Wellington",
   lens: "e.g. 50mm f/1.8",
-  filter: "e.g. Yellow #8",
   lab: "e.g. Home dev, The Lab",
   scanner: "e.g. Epson V600",
 };

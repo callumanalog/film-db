@@ -2,7 +2,7 @@
 
 import { ShareRollMetadataTextSheet } from "@/components/share-roll-metadata-text-sheet";
 
-type ShareRollLocationSheetProps = {
+type ShareRollLensSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   value: string;
@@ -11,17 +11,17 @@ type ShareRollLocationSheetProps = {
   userId: string | null;
 };
 
-export function ShareRollLocationSheet(props: ShareRollLocationSheetProps) {
+export function ShareRollLensSheet(props: ShareRollLensSheetProps) {
   return (
     <ShareRollMetadataTextSheet
       {...props}
-      title="Location"
-      placeholder="City, country or place name"
-      ariaLabel="City, country or place name"
-      buttonLabel="Add location"
-      mruKind="location"
-      recentSectionTitle="Recent locations"
-      autoComplete="street-address"
+      title="Lens"
+      placeholder="Canon 50mm f/1.8"
+      ariaLabel="Lens"
+      buttonLabel="Add lens"
+      mruKind="lens"
+      recentSectionTitle="Recent lenses"
+      autoComplete="off"
     />
   );
 }

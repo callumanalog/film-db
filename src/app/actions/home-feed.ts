@@ -6,7 +6,7 @@ import { fetchMemberPublicFieldsByUserIds } from "@/lib/supabase/fetch-display-n
 import type { FilmUploadRow } from "@/app/actions/uploads";
 
 const HOME_FEED_SELECT =
-  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
 
 const PER_SOURCE_LIMIT = 120;
 

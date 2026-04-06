@@ -85,7 +85,6 @@ export async function PATCH(
   const shotIso = (formData.get("shot_iso") as string) || null;
   const lens = (formData.get("lens") as string) || null;
   const lab = (formData.get("lab") as string) || null;
-  const filter = (formData.get("filter") as string) || null;
   const scanner = (formData.get("scanner") as string) || null;
   const shotDate = shotDateForUserUploadDb(formData.get("shot_date") as string);
   const tagsTrim = ((formData.get("tags") as string) || "").trim().slice(0, 500);
@@ -233,7 +232,6 @@ export async function PATCH(
     shot_iso: shotIso || null,
     lens: lens || null,
     lab: lab || null,
-    filter: filter || null,
     scanner: scanner || null,
     push_pull: pushPull || null,
     format: format || null,

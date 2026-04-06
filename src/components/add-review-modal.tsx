@@ -29,7 +29,6 @@ import {
   Strikethrough,
   MapPin,
   Aperture,
-  Filter as FilterIcon,
   Building2,
   ScanLine,
   Gauge,
@@ -73,11 +72,16 @@ import {
 } from "@/components/ui/sheet";
 import { ShotDateCalendarDrawerContent } from "@/components/shot-date-calendar-drawer-content";
 import { ShareRollLocationSheet } from "@/components/share-roll-location-sheet";
+import { ShareRollLensSheet } from "@/components/share-roll-lens-sheet";
 import { ShareRollFormatSheet } from "@/components/share-roll-format-sheet";
 import { ShareRollIsoSheet } from "@/components/share-roll-iso-sheet";
 import type { LucideIcon } from "lucide-react";
 import { nearestPresetIso } from "@/components/shot-iso-controls";
 import { ShareRollCameraPicker } from "@/components/share-roll-camera-picker";
+import { ShareRollLabPicker } from "@/components/share-roll-lab-picker";
+import { ShareRollScannerPicker } from "@/components/share-roll-scanner-picker";
+import { ShareRollTagsPicker } from "@/components/share-roll-tags-picker";
+import { scanUploadDashedSurfaceClassName } from "@/components/share-roll-picker-primitives";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import {
   assertFileDecodesAsImage,
@@ -86,12 +90,14 @@ import {
 } from "@/lib/share-roll-image";
 import { humanizeImageDecodeError, humanizeImagePrepareError } from "@/lib/share-roll-image-errors";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
+import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
 import { BEST_FOR_ICONS } from "@/components/best-for-section";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapPlaceholder from "@tiptap/extension-placeholder";
+import { useAuth } from "@/context/auth-context";
 
 interface TrackFilmModalStock {
   slug: string;
@@ -256,13 +262,13 @@ function Step3MetadataNavRow({
   );
 }
 
-type Step3MetadataSubpage = "tags" | "camera" | "lens" | "processing";
+type Step3MetadataSubpage = "tags" | "camera" | "lab" | "scanner";
 
 const STEP3_METADATA_SUBPAGE_LABELS: Record<Step3MetadataSubpage, string> = {
   tags: "Tags",
   camera: "Camera",
-  lens: "Lens",
-  processing: "Processing",
+  lab: "Lab",
+  scanner: "Scanner",
 };
 
 function Step3CompactNavBar({
@@ -346,7 +352,6 @@ export interface AddReviewModalPayload {
   tags?: string;
   shotIso?: string;
   lab?: string;
-  filter?: string;
   scanner?: string;
   uploadedImageUrl?: string;
   uploadedStoragePath?: string;
@@ -473,12 +478,6 @@ function HalfStarRating({
   );
 }
 
-/** Dashed “upload” look shared by empty state and in-grid add tile. */
-const scanUploadDashedSurfaceClassName = cn(
-  "rounded-[7px] border-2 border-dashed border-border/60 bg-muted/20 transition-colors",
-  "hover:border-primary/40 hover:bg-primary/5 active:bg-primary/10"
-);
-
 function ScanReviewThumb({
   url,
   onRemove,
@@ -491,14 +490,18 @@ function ScanReviewThumb({
   onIntrinsicSize?: (width: number, height: number) => void;
 }) {
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     setDims(null);
+    setLoadError(false);
   }, [url]);
 
-  const frameStyle: CSSProperties | undefined = dims
-    ? { aspectRatio: `${dims.w} / ${dims.h}` }
-    : { minHeight: "6rem" };
+  const frameStyle: CSSProperties | undefined = loadError
+    ? { minHeight: "6rem", aspectRatio: "3 / 2" }
+    : dims
+      ? { aspectRatio: `${dims.w} / ${dims.h}` }
+      : { minHeight: "6rem" };
 
   const handleImgLoad = (e: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
@@ -519,11 +522,17 @@ function ScanReviewThumb({
           <img
             src={url}
             alt=""
-            className="h-full w-full object-contain"
+            className={cn("h-full w-full object-contain", loadError && "opacity-0")}
             draggable={false}
             onLoad={handleImgLoad}
+            onError={() => setLoadError(true)}
           />
         </button>
+        {loadError ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted px-2 text-center text-[11px] leading-snug text-muted-foreground">
+            Couldn&apos;t show preview — file is still queued for upload. Open to verify.
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={(e) => {
@@ -545,6 +554,19 @@ function mapPreviewIndexAfterReorder(i: number, from: number, to: number): numbe
   if (from < to && i > from && i <= to) return i - 1;
   if (from > to && i >= to && i < from) return i + 1;
   return i;
+}
+
+function setScanIntrinsicAtIndex(
+  i: number,
+  w: number,
+  h: number
+): (prev: ({ w: number; h: number } | null)[]) => ({ w: number; h: number } | null)[] {
+  return (sizes) => {
+    const next = [...sizes];
+    while (next.length <= i) next.push(null);
+    next[i] = { w, h };
+    return next;
+  };
 }
 
 /** Step 3 grid: press-and-hold then drag to reorder (no handle icon). */
@@ -599,6 +621,7 @@ export function AddReviewModal({
 }: AddReviewModalProps) {
   const isEdit = !!edit;
   const enteredViaUpload = mode === "upload" && !isEdit;
+  const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3>(enteredViaUpload ? 2 : 1);
 
   // Step 1 fields
@@ -682,7 +705,6 @@ export function AddReviewModal({
   const [shotDate, setShotDate] = useState("");
   const [tags, setTags] = useState("");
   const [lab, setLab] = useState("");
-  const [filter, setFilter] = useState("");
   const [scanner, setScanner] = useState("");
   const [caption, setCaption] = useState("");
   /** Step 2 / 3: full-bleed preview when tapping a scan thumbnail. */
@@ -699,6 +721,7 @@ export function AddReviewModal({
   const [step3MetadataSubpage, setStep3MetadataSubpage] = useState<Step3MetadataSubpage | null>(null);
   const [dateShotSheetOpen, setDateShotSheetOpen] = useState(false);
   const [locationSheetOpen, setLocationSheetOpen] = useState(false);
+  const [lensSheetOpen, setLensSheetOpen] = useState(false);
   const [formatSheetOpen, setFormatSheetOpen] = useState(false);
   const [isoSheetOpen, setIsoSheetOpen] = useState(false);
 
@@ -729,7 +752,6 @@ export function AddReviewModal({
     setShotDate("");
     setTags("");
     setLab("");
-    setFilter("");
     setScanner("");
     setStep2ScanPreviewIndex(null);
     setStep3ImagePreviewIndex(null);
@@ -739,6 +761,7 @@ export function AddReviewModal({
     setStep3MetadataSubpage(null);
     setDateShotSheetOpen(false);
     setLocationSheetOpen(false);
+    setLensSheetOpen(false);
     setFormatSheetOpen(false);
     setIsoSheetOpen(false);
   }, [enteredViaUpload, initialRating, editor, stock]);
@@ -747,6 +770,7 @@ export function AddReviewModal({
     if (!open) {
       setDateShotSheetOpen(false);
       setLocationSheetOpen(false);
+      setLensSheetOpen(false);
       setFormatSheetOpen(false);
       setIsoSheetOpen(false);
     }
@@ -776,11 +800,6 @@ export function AddReviewModal({
       prev && formatOptions.includes(prev) ? prev : defaultFormatSelection(formatOptions)
     );
   }, [formatOptions]);
-
-  const step3ProcessingSummary = useMemo(
-    () => [lab.trim(), scanner.trim()].filter(Boolean).join(" · "),
-    [lab, scanner]
-  );
 
   useEffect(() => {
     if (edit) {
@@ -821,7 +840,6 @@ export function AddReviewModal({
     setShotDate("");
     setTags("");
     setLab("");
-    setFilter("");
     setScanner("");
     setStep2ScanPreviewIndex(null);
     setStep3ImagePreviewIndex(null);
@@ -829,6 +847,11 @@ export function AddReviewModal({
     setUploadError(null);
     setSubmitting(false);
     setStep3MetadataSubpage(null);
+    setDateShotSheetOpen(false);
+    setLocationSheetOpen(false);
+    setLensSheetOpen(false);
+    setFormatSheetOpen(false);
+    setIsoSheetOpen(false);
   }, [open, edit?.id, edit, stock]);
 
   const syncStep3CaptionTextareaHeight = useCallback(() => {
@@ -882,7 +905,6 @@ export function AddReviewModal({
     caption: caption.trim() ? caption.trim() : undefined,
     shotIso: shotIso || undefined,
     lab: lab || undefined,
-    filter: filter || undefined,
     scanner: scanner || undefined,
     preparedShareRollScans:
       files.length > 0 && files.length === preparedShareRollScans.length
@@ -966,7 +988,8 @@ export function AddReviewModal({
 
         try {
           const prepared = await prepareShareRollImageFile(f);
-          const url = URL.createObjectURL(f);
+          /** Preview the encoded blob (WebP/JPEG), not the raw `File` — some mobile browsers serve broken `blob:` URLs for certain originals after decode/canvas work. */
+          const url = URL.createObjectURL(prepared.blob);
           setFiles((prev) => [...prev, f]);
           setPreparedShareRollScans((prev) => [...prev, prepared]);
           setPreviewUrls((prev) => [...prev, url]);
@@ -1077,6 +1100,8 @@ export function AddReviewModal({
     if (step !== 3) {
       setStep3ImagePreviewIndex(null);
       setStep3MetadataSubpage(null);
+      setLocationSheetOpen(false);
+      setLensSheetOpen(false);
     }
   }, [step]);
 
@@ -1106,6 +1131,10 @@ export function AddReviewModal({
       prev.length === files.length ? prev : files.map(() => crypto.randomUUID())
     );
   }, [files]);
+
+  useLayoutEffect(() => {
+    setScanIntrinsicSizes((s) => (s.length > files.length ? s.slice(0, files.length) : s));
+  }, [files.length]);
 
   const hasReviewContent =
     rating > 0 || !editorIsEmpty || bestFor.length > 0;
@@ -1364,11 +1393,7 @@ export function AddReviewModal({
                                   setStep2ScanPreviewIndex(i);
                                 }}
                                 onIntrinsicSize={(w, h) => {
-                                  setScanIntrinsicSizes((sizes) => {
-                                    const next = files.map((_, idx) => sizes[idx] ?? null);
-                                    next[i] = { w, h };
-                                    return next;
-                                  });
+                                  setScanIntrinsicSizes(setScanIntrinsicAtIndex(i, w, h));
                                 }}
                               />
                             ) : null
@@ -1407,11 +1432,7 @@ export function AddReviewModal({
                                   setStep2ScanPreviewIndex(i);
                                 }}
                                 onIntrinsicSize={(w, h) => {
-                                  setScanIntrinsicSizes((sizes) => {
-                                    const next = files.map((_, idx) => sizes[idx] ?? null);
-                                    next[i] = { w, h };
-                                    return next;
-                                  });
+                                  setScanIntrinsicSizes(setScanIntrinsicAtIndex(i, w, h));
                                 }}
                               />
                             ) : null
@@ -1576,12 +1597,6 @@ export function AddReviewModal({
                           onNavigate={() => setLocationSheetOpen(true)}
                         />
                         <Step3MetadataNavRow
-                          icon={Tags}
-                          placeholderLabel="Tags"
-                          value={tags}
-                          onNavigate={() => setStep3MetadataSubpage("tags")}
-                        />
-                        <Step3MetadataNavRow
                           icon={Camera}
                           fixedLeftLabel="Camera"
                           value={camera}
@@ -1592,7 +1607,7 @@ export function AddReviewModal({
                           icon={Aperture}
                           placeholderLabel="Lens"
                           value={lens}
-                          onNavigate={() => setStep3MetadataSubpage("lens")}
+                          onNavigate={() => setLensSheetOpen(true)}
                         />
                         {formatOptions.length > 0 ? (
                           <Step3MetadataNavRow
@@ -1611,9 +1626,21 @@ export function AddReviewModal({
                         />
                         <Step3MetadataNavRow
                           icon={FlaskConical}
-                          placeholderLabel="Processing"
-                          value={step3ProcessingSummary}
-                          onNavigate={() => setStep3MetadataSubpage("processing")}
+                          placeholderLabel="Lab"
+                          value={filmLabPublicLabel(lab)}
+                          onNavigate={() => setStep3MetadataSubpage("lab")}
+                        />
+                        <Step3MetadataNavRow
+                          icon={ScanLine}
+                          placeholderLabel="Scanner"
+                          value={scanner}
+                          onNavigate={() => setStep3MetadataSubpage("scanner")}
+                        />
+                        <Step3MetadataNavRow
+                          icon={Tags}
+                          placeholderLabel="Tags"
+                          value={tags}
+                          onNavigate={() => setStep3MetadataSubpage("tags")}
                         />
                       </div>
                     </div>
@@ -1636,78 +1663,52 @@ export function AddReviewModal({
                   <div
                     className={cn(
                       "min-h-0 flex-1 px-4 pb-4 pt-4",
-                      step3MetadataSubpage === "camera"
+                      step3MetadataSubpage === "camera" ||
+                      step3MetadataSubpage === "lab" ||
+                      step3MetadataSubpage === "scanner" ||
+                      step3MetadataSubpage === "tags"
                         ? "flex flex-col overflow-hidden"
                         : "no-scrollbar overflow-y-auto"
                     )}
                   >
                     {step3MetadataSubpage === "tags" ? (
-                      <TextField
-                        id="step3-inline-tags"
-                        label="Tags"
-                        type="text"
-                        value={tags}
-                        maxLength={TAGS_MAX_LENGTH}
-                        onChange={(e) => setTags(e.target.value)}
-                        placeholder="Comma-separated, e.g. street, summer, Paris"
-                      />
+                      <ShareRollTagsPicker tags={tags} onTagsChange={setTags} maxLength={TAGS_MAX_LENGTH} />
                     ) : null}
                     {step3MetadataSubpage === "camera" ? (
                       <ShareRollCameraPicker
                         camera={camera}
                         onCameraChange={setCamera}
                         onPicked={() => setStep3MetadataSubpage(null)}
+                        userId={user?.id ?? null}
                       />
                     ) : null}
-                    {step3MetadataSubpage === "lens" ? (
-                      <div className="space-y-4">
-                        <TextField
-                          id="step3-inline-lens"
-                          label="Lens"
-                          type="text"
-                          value={lens}
-                          onChange={(e) => setLens(e.target.value)}
-                          placeholder="e.g. 50mm f/1.8"
-                        />
-                        <TextField
-                          id="step3-inline-filter"
-                          label="Filter"
-                          type="text"
-                          value={filter}
-                          onChange={(e) => setFilter(e.target.value)}
-                          placeholder="e.g. Yellow #8"
-                        />
-                      </div>
+                    {step3MetadataSubpage === "lab" ? (
+                      <ShareRollLabPicker
+                        lab={lab}
+                        onLabChange={setLab}
+                        onPicked={() => setStep3MetadataSubpage(null)}
+                        userId={user?.id ?? null}
+                      />
                     ) : null}
-                    {step3MetadataSubpage === "processing" ? (
-                      <div className="space-y-4">
-                        <TextField
-                          id="step3-inline-lab"
-                          label="Lab / Processing"
-                          type="text"
-                          value={lab}
-                          onChange={(e) => setLab(e.target.value)}
-                          placeholder="e.g. Home dev"
-                        />
-                        <TextField
-                          id="step3-inline-scanner"
-                          label="Scanner"
-                          type="text"
-                          value={scanner}
-                          onChange={(e) => setScanner(e.target.value)}
-                          placeholder="e.g. Epson V600"
-                        />
-                      </div>
+                    {step3MetadataSubpage === "scanner" ? (
+                      <ShareRollScannerPicker
+                        scanner={scanner}
+                        onScannerChange={setScanner}
+                        onPicked={() => setStep3MetadataSubpage(null)}
+                        userId={user?.id ?? null}
+                      />
                     ) : null}
                   </div>
-                  {step3MetadataSubpage !== "camera" ? (
+                  {step3MetadataSubpage !== "camera" &&
+                  step3MetadataSubpage !== "lab" &&
+                  step3MetadataSubpage !== "scanner" ? (
                     <div className="mobile-safe-bottom-footer shrink-0 px-4 py-4">
                       <button
                         type="button"
                         onClick={() => setStep3MetadataSubpage(null)}
                         className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90"
                       >
-                        Done
+                        Save
                       </button>
                     </div>
                   ) : null}
@@ -1768,6 +1769,18 @@ export function AddReviewModal({
       }}
       value={location}
       onChange={setLocation}
+      userId={user?.id ?? null}
+    />
+
+    <ShareRollLensSheet
+      open={open && lensSheetOpen}
+      onOpenChange={(next) => {
+        if (!open) return;
+        setLensSheetOpen(next);
+      }}
+      value={lens}
+      onChange={setLens}
+      userId={user?.id ?? null}
     />
 
     <ShareRollFormatSheet

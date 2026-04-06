@@ -5,7 +5,6 @@ export const ADD_ROLL_FIELD_KEYS = [
   "camera",
   "location",
   "lens",
-  "filter",
   "lab",
   "scanner",
   "iso",
@@ -17,7 +16,6 @@ export type AddRollMetadataDraft = {
   camera: string;
   location: string;
   lens: string;
-  filter: string;
   lab: string;
   scanner: string;
   rollName: string;
@@ -49,7 +47,6 @@ export function defaultAddRollMetadataDraft(): AddRollMetadataDraft {
     camera: "",
     location: "",
     lens: "",
-    filter: "",
     lab: "",
     scanner: "",
     rollName: "",

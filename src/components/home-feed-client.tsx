@@ -20,6 +20,7 @@ import {
 } from "@/lib/lightbox-group";
 import type { GalleryImage } from "@/lib/sample-images";
 import { cn } from "@/lib/utils";
+import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 import type { HomeFeedGroup } from "@/app/actions/home-feed";
 
 function buildFeedGalleryPool(
@@ -42,9 +43,8 @@ function buildFeedGalleryPool(
         u.tags,
         u.shot_iso,
         u.lens,
-        u.lab,
+        u.lab?.trim() ? filmLabPublicLabel(u.lab) : "",
         u.push_pull,
-        u.filter,
         u.scanner,
       ].filter(Boolean);
       out.push({
@@ -68,7 +68,6 @@ function buildFeedGalleryPool(
         shot_iso: u.shot_iso,
         lens: u.lens,
         lab: u.lab,
-        filter: u.filter,
         scanner: u.scanner,
         push_pull: u.push_pull,
         format: u.format ?? null,

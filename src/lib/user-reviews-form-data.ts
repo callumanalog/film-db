@@ -17,7 +17,6 @@ export function appendReviewsPayloadFields(
   if (payload.caption) formData.set("caption", payload.caption);
   if (payload.shotIso) formData.set("shot_iso", payload.shotIso);
   if (payload.lab) formData.set("lab", payload.lab);
-  if (payload.filter) formData.set("filter", payload.filter);
   if (payload.scanner) formData.set("scanner", payload.scanner);
   if (payload.format) formData.set("format", payload.format);
   if (payload.location) formData.set("location", payload.location);

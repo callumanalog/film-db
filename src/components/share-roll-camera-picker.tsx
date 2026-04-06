@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { getCameras } from "@/lib/camera-queries";
+import { getRollCameraRecents, recordRollCameraRecent } from "@/lib/roll-camera-recents";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
+import {
+  SHARE_ROLL_PICKER_ROW_HEIGHT,
+  ShareRollPickerAddCustomEmptyState,
+  ShareRollPickerOptionRow,
+  shareRollPickerSectionLabelClassName,
+} from "@/components/share-roll-picker-primitives";
 import { cn } from "@/lib/utils";
-
-const ROW_HEIGHT = 48;
 
 /** Same word-split filter as `MobileStockPickerPanel` / `filterStocks`. */
 export function filterCamerasForPicker(
@@ -39,17 +44,23 @@ export function ShareRollCameraPicker({
   camera,
   onCameraChange,
   onPicked,
+  userId,
 }: {
   camera: string;
   onCameraChange: (value: string) => void;
-  /** Called after a list row is chosen (e.g. close drill-in). */
   onPicked?: () => void;
+  userId: string | null;
 }) {
   const [query, setQuery] = useState("");
   const [allRows, setAllRows] = useState<{ id: string; displayName: string }[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [recentList, setRecentList] = useState<string[]>([]);
 
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const refreshRecents = useCallback(() => {
+    setRecentList(getRollCameraRecents(userId, 3));
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,14 +84,34 @@ export function ShareRollCameraPicker({
     };
   }, []);
 
+  useEffect(() => {
+    if (status === "ready") refreshRecents();
+  }, [status, refreshRecents]);
+
+  useEffect(() => {
+    if (query.trim() === "") refreshRecents();
+  }, [query, refreshRecents]);
+
   const filtered = useMemo(() => filterCamerasForPicker(allRows, query), [allRows, query]);
+
+  const splitLayout = query.trim() === "" && status === "ready";
 
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: () => SHARE_ROLL_PICKER_ROW_HEIGHT,
     overscan: 12,
   });
+
+  const pickCamera = useCallback(
+    (displayName: string) => {
+      recordRollCameraRecent(userId, displayName);
+      onCameraChange(displayName);
+      refreshRecents();
+      onPicked?.();
+    },
+    [userId, onCameraChange, onPicked, refreshRecents]
+  );
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
@@ -90,6 +121,7 @@ export function ShareRollCameraPicker({
         onClear={() => setQuery("")}
         placeholder="Find your film camera..."
         ariaLabel="Find your film camera"
+        showSearchIcon
       />
 
       <div
@@ -109,48 +141,80 @@ export function ShareRollCameraPicker({
           <div className="px-4 py-16 text-center text-sm text-muted-foreground">
             Could not load cameras. Try again later.
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filtered.length === 0 && !query.trim() ? (
           <div className="px-4 py-16 text-center">
             <p className="font-sans text-base font-semibold text-foreground">No matching cameras</p>
             <p className="mt-1 text-sm text-muted-foreground">Try a different name or brand.</p>
           </div>
-        ) : (
-          <div
-            className="relative w-full"
-            style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const row = filtered[virtualRow.index];
-              const selected = camera.trim() === row.displayName;
-              return (
-                <div
-                  key={row.id}
-                  className="absolute left-0 top-0 w-full border-b border-border/40 dark:border-white/10"
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                >
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => {
-                      onCameraChange(row.displayName);
-                      onPicked?.();
-                    }}
-                    className={cn(
-                      "flex h-full w-full items-center px-3 py-2.5 text-left text-sm font-medium transition-colors",
-                      "hover:bg-secondary/60 active:bg-secondary dark:hover:bg-secondary/50",
-                      selected && "bg-primary/10"
-                    )}
-                  >
-                    {row.displayName}
-                  </button>
-                </div>
-              );
-            })}
+        ) : filtered.length === 0 ? (
+          <div className="px-3 pt-2">
+            <ShareRollPickerAddCustomEmptyState
+              term={query.trim()}
+              entityLabel="camera"
+              onPick={() => pickCamera(query.trim())}
+            />
           </div>
+        ) : (
+          <>
+            {splitLayout ? (
+              <div className="shrink-0 bg-background">
+                {recentList.length > 0 ? (
+                  <>
+                    <p className={cn(shareRollPickerSectionLabelClassName, "pt-1")}>Recent cameras</p>
+                    <div>
+                      {recentList.map((name, i) => (
+                        <ShareRollPickerOptionRow
+                          key={name}
+                          label={name}
+                          selected={camera.trim() === name}
+                          onPick={() => pickCamera(name)}
+                          showBottomBorder={i < recentList.length - 1}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+                <p
+                  className={cn(
+                    shareRollPickerSectionLabelClassName,
+                    recentList.length > 0 ? "pt-8" : "pt-1"
+                  )}
+                >
+                  All cameras
+                </p>
+              </div>
+            ) : null}
+
+            <div className="relative w-full" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = filtered[virtualRow.index];
+                const selected = camera.trim() === row.displayName;
+                return (
+                  <div
+                    key={row.id}
+                    className="absolute left-0 top-0 w-full border-b border-border/40 dark:border-white/10"
+                    style={{
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => pickCamera(row.displayName)}
+                      className={cn(
+                        "flex h-full w-full items-center px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                        "hover:bg-secondary/60 active:bg-secondary dark:hover:bg-secondary/50"
+                      )}
+                    >
+                      {row.displayName}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/sheet";
 import { FilmNativeMasonryGrid, type FilmNativeMasonryItem } from "@/components/film-native-grid";
 import { isSameLightboxSlide } from "@/lib/lightbox-group";
+import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 
 export type ImageLightboxMetadata = {
   camera?: string | null;
@@ -58,7 +59,6 @@ export type ImageLightboxMetadata = {
   format?: string | null;
   lens?: string | null;
   lab?: string | null;
-  filter?: string | null;
   scanner?: string | null;
   push_pull?: string | null;
   /** `user_uploads.shot_date` as `YYYY-MM-DD`. */
@@ -533,7 +533,6 @@ export function ImageLightbox({
       current.metadata.format?.trim() ||
       current.metadata.lens ||
       current.metadata.lab ||
-      current.metadata.filter ||
       current.metadata.scanner ||
       current.metadata.push_pull ||
       current.metadata.shot_date?.trim() ||
@@ -981,7 +980,9 @@ export function ImageLightbox({
                       <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         Lab / processing
                       </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.lab}</dd>
+                      <dd className="mt-0.5 text-foreground">
+                        {filmLabPublicLabel(current.metadata!.lab)}
+                      </dd>
                     </div>
                   ) : null}
                   {current.metadata!.push_pull ? (
@@ -990,14 +991,6 @@ export function ImageLightbox({
                         Push / pull
                       </dt>
                       <dd className="mt-0.5 text-foreground">{current.metadata!.push_pull}</dd>
-                    </div>
-                  ) : null}
-                  {current.metadata!.filter ? (
-                    <div>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Filter
-                      </dt>
-                      <dd className="mt-0.5 text-foreground">{current.metadata!.filter}</dd>
                     </div>
                   ) : null}
                   {current.metadata!.scanner ? (

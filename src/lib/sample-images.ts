@@ -72,7 +72,6 @@ export interface GalleryImage extends SampleImage {
   shot_iso?: string | null;
   lens?: string | null;
   lab?: string | null;
-  filter?: string | null;
   scanner?: string | null;
   push_pull?: string | null;
   /** From `user_uploads.format` when present. */

@@ -1,7 +1,8 @@
 "use client";
 
-import { Search, X } from "lucide-react";
-import { Settings2 } from "lucide-react";
+import { Search, Settings2, X } from "lucide-react";
+import type { KeyboardEvent } from "react";
+import { cn } from "@/lib/utils";
 
 interface SearchPageHeaderFormProps {
   /** Controlled value for instant-as-you-type filtering. */
@@ -9,9 +10,13 @@ interface SearchPageHeaderFormProps {
   onChange: (value: string) => void;
   onClear?: () => void;
   onFocus?: () => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
   autoFocus?: boolean;
+  autoComplete?: string;
   placeholder?: string;
   ariaLabel?: string;
+  /** Leading magnifier; use for catalog search (e.g. cameras, labs), not free-text metadata fields. */
+  showSearchIcon?: boolean;
 }
 
 /** Search input only — instant filter on change (debounced by parent). No Enter required. */
@@ -20,27 +25,36 @@ export function SearchPageHeaderForm({
   onChange,
   onClear,
   onFocus,
+  onKeyDown,
   autoFocus = false,
+  autoComplete = "off",
   placeholder = "Search film stocks",
   ariaLabel = "Search film stocks",
+  showSearchIcon = false,
 }: SearchPageHeaderFormProps) {
   const showClear = value.trim() !== "";
 
   return (
     <div
       role="search"
-      className="flex h-[52px] min-h-[52px] w-full min-w-0 shrink-0 items-center gap-2 rounded-card border border-border bg-background pl-3 pr-2"
+      className={cn(
+        "flex h-[52px] min-h-[52px] w-full min-w-0 shrink-0 items-center rounded-card border border-border bg-background pr-2",
+        showSearchIcon ? "gap-2 pl-3" : "pl-4"
+      )}
     >
-      <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      {showSearchIcon ? (
+        <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      ) : null}
       <input
         type="search"
         inputMode="search"
         enterKeyHint="search"
-        autoComplete="off"
+        autoComplete={autoComplete}
         autoFocus={autoFocus}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={onFocus}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
         className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 [&::-webkit-search-cancel-button]:appearance-none"
         aria-label={ariaLabel}

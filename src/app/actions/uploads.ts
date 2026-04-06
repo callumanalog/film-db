@@ -3,9 +3,10 @@
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-batch";
 import type { FilmBrand, FilmStock } from "@/lib/types";
+import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 
 const USER_UPLOAD_ROW_SELECT =
-  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, filter, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
 
 export interface FilmUploadRow {
   id: string;
@@ -19,7 +20,6 @@ export interface FilmUploadRow {
   shot_iso?: string | null;
   lens?: string | null;
   lab?: string | null;
-  filter?: string | null;
   scanner?: string | null;
   push_pull?: string | null;
   format?: string | null;
@@ -57,7 +57,6 @@ export interface CommunityGalleryUpload {
   shot_iso?: string | null;
   lens?: string | null;
   lab?: string | null;
-  filter?: string | null;
   scanner?: string | null;
   push_pull?: string | null;
   format?: string | null;
@@ -87,13 +86,13 @@ export async function getAllCommunityUploadsForGallery(
   const slugFilter = matchingStockSlugs?.length ? matchingStockSlugs : [];
   if (term && slugFilter.length > 0) {
     const pattern = `%${term}%`;
-    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`;
+    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`;
     const slugIn = `film_stock_slug.in.(${slugFilter.map((s) => `"${s.replace(/"/g, '\\"')}"`).join(",")})`;
     query = query.or(`${textOr},${slugIn}`);
   } else if (term) {
     const pattern = `%${term}%`;
     query = query.or(
-      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},filter.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`
+      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`
     );
   } else if (slugFilter.length > 0) {
     query = query.in("film_stock_slug", slugFilter);
@@ -123,9 +122,8 @@ export async function getAllCommunityUploadsForGallery(
       r.location,
       r.shot_iso,
       r.lens,
-      r.lab,
+      r.lab?.trim() ? filmLabPublicLabel(r.lab) : "",
       r.push_pull,
-      r.filter,
       r.scanner,
     ].filter(Boolean);
     const display = nameByUserId.get(r.user_id);
@@ -148,7 +146,6 @@ export async function getAllCommunityUploadsForGallery(
       shot_iso: r.shot_iso,
       lens: r.lens,
       lab: r.lab,
-      filter: r.filter,
       scanner: r.scanner,
       push_pull: r.push_pull,
       format: r.format ?? null,

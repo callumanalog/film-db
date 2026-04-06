@@ -202,7 +202,6 @@ export function GalleryPreview({
           shot_iso: u.shot_iso,
           lens: u.lens,
           lab: u.lab,
-          filter: u.filter,
           scanner: u.scanner,
           push_pull: u.push_pull,
         },
