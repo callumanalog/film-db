@@ -11,6 +11,11 @@ import {
 } from "@/lib/lightbox-group";
 import type { GalleryImage } from "@/lib/sample-images";
 import {
+  patchGalleryImagesWithRollMetadata,
+  ROLL_METADATA_UPDATED_EVENT,
+  type RollMetadataUpdatedDetail,
+} from "@/lib/roll-metadata-updated-event";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -38,6 +43,21 @@ function applyDiscoverFilters(
 export function DiscoverMobileSection({ images, brands }: DiscoverMobileSectionProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [liveImages, setLiveImages] = useState(images);
+  useEffect(() => {
+    setLiveImages(images);
+  }, [images]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<RollMetadataUpdatedDetail>).detail;
+      if (!d?.reviewId) return;
+      setLiveImages((prev) => patchGalleryImagesWithRollMetadata(prev, d));
+    };
+    window.addEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+  }, []);
+
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draftBrand, setDraftBrand] = useState("all");
   const [lightboxSession, setLightboxSession] = useState<{
@@ -51,8 +71,8 @@ export function DiscoverMobileSection({ images, brands }: DiscoverMobileSectionP
     brandParam === "all" || brands.includes(brandParam) ? brandParam : "all";
 
   const processedImages = useMemo(
-    () => applyDiscoverFilters(images, feed, validBrand),
-    [images, feed, validBrand]
+    () => applyDiscoverFilters(liveImages, feed, validBrand),
+    [liveImages, feed, validBrand]
   );
 
   const relatedStockSlides = useMemo(() => {

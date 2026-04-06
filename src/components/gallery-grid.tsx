@@ -10,6 +10,11 @@ import {
   findGalleryImageForLightboxSlide,
   relatedGalleryLightboxSlidesForStock,
 } from "@/lib/lightbox-group";
+import {
+  patchGalleryImagesWithRollMetadata,
+  ROLL_METADATA_UPDATED_EVENT,
+  type RollMetadataUpdatedDetail,
+} from "@/lib/roll-metadata-updated-event";
 
 /** Strip aperture (e.g. " f/2", " f/1.4") from camera string for display. */
 function cameraWithoutAperture(camera: string): string {
@@ -37,6 +42,21 @@ export function GalleryGrid({
   stocks,
   initialSelectedStockSlugs = [],
 }: GalleryGridProps) {
+  const [liveImages, setLiveImages] = useState(images);
+  useEffect(() => {
+    setLiveImages(images);
+  }, [images]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<RollMetadataUpdatedDetail>).detail;
+      if (!d?.reviewId) return;
+      setLiveImages((prev) => patchGalleryImagesWithRollMetadata(prev, d));
+    };
+    window.addEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+  }, []);
+
   const [brandFilter, setBrandFilter] = useState<string>("all");
   const [selectedStockSlugs, setSelectedStockSlugs] = useState<Set<string>>(
     () => new Set(initialSelectedStockSlugs)
@@ -79,7 +99,7 @@ export function GalleryGrid({
   }, [stocksForBrand]);
 
   const filteredAndSorted = useMemo(() => {
-    let list = images;
+    let list = liveImages;
     if (brandFilter !== "all") list = list.filter((img) => img.brandName === brandFilter);
     if (selectedStockSlugs.size > 0) {
       list = list.filter((img) => selectedStockSlugs.has(img.stockSlug));
@@ -91,7 +111,7 @@ export function GalleryGrid({
       list = [...list].reverse();
     }
     return list;
-  }, [images, brandFilter, selectedStockSlugs, sourceFilter, sort]);
+  }, [liveImages, brandFilter, selectedStockSlugs, sourceFilter, sort]);
 
   const relatedStockSlides = useMemo(() => {
     if (!lightboxSession || lightboxSession.slides.length !== 1) return [];

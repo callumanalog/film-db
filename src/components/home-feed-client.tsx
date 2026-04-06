@@ -22,6 +22,11 @@ import type { GalleryImage } from "@/lib/sample-images";
 import { cn } from "@/lib/utils";
 import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 import type { HomeFeedGroup } from "@/app/actions/home-feed";
+import {
+  patchHomeFeedGroups,
+  ROLL_METADATA_UPDATED_EVENT,
+  type RollMetadataUpdatedDetail,
+} from "@/lib/roll-metadata-updated-event";
 
 function buildFeedGalleryPool(
   groups: HomeFeedGroup[],
@@ -59,6 +64,7 @@ function buildFeedGalleryPool(
         userId: u.user_id,
         username: u.display_name?.trim() || "Member",
         camera: u.camera ?? "",
+        location: u.location ?? null,
         settings: settingsParts.join(" · "),
         likes: Number(u.like_count ?? 0),
         saves: Number(u.save_count ?? 0),
@@ -345,9 +351,24 @@ export function HomeFeedClient({
   stockLabelBySlug: Record<string, string>;
   lightboxStockBySlug?: Record<string, FilmStockLightboxSummary>;
 }) {
+  const [feedGroups, setFeedGroups] = useState(initialGroups);
+  useEffect(() => {
+    setFeedGroups(initialGroups);
+  }, [initialGroups]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<RollMetadataUpdatedDetail>).detail;
+      if (!d?.reviewId) return;
+      setFeedGroups((prev) => patchHomeFeedGroups(prev, d));
+    };
+    window.addEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+  }, []);
+
   const feedGalleryImages = useMemo(
-    () => buildFeedGalleryPool(initialGroups, stockLabelBySlug, lightboxStockBySlug),
-    [initialGroups, stockLabelBySlug, lightboxStockBySlug]
+    () => buildFeedGalleryPool(feedGroups, stockLabelBySlug, lightboxStockBySlug),
+    [feedGroups, stockLabelBySlug, lightboxStockBySlug]
   );
 
   const [lightboxSession, setLightboxSession] = useState<{
@@ -369,7 +390,7 @@ export function HomeFeedClient({
     [feedGalleryImages]
   );
 
-  if (initialGroups.length === 0) {
+  if (feedGroups.length === 0) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center sm:px-6">
         <p className="text-sm font-medium text-muted-foreground">
@@ -385,7 +406,7 @@ export function HomeFeedClient({
   return (
     <>
       <div className="mx-auto w-full max-w-lg px-4 pb-24 pt-8 sm:px-6 md:pb-8">
-        {initialGroups.map((group) => {
+        {feedGroups.map((group) => {
           const label =
             stockLabelBySlug[group.film_stock_slug] ?? group.film_stock_slug.replace(/-/g, " ");
           return (

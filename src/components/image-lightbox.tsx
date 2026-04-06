@@ -15,6 +15,11 @@ import {
   type TrackFilmModalStock,
 } from "@/components/add-review-modal";
 import { patchReviewModalSubmission } from "@/lib/user-reviews-client-submit";
+import {
+  dispatchRollMetadataUpdated,
+  getRollMetadataPatchForRoll,
+  type RollMetadataUpdatedDetail,
+} from "@/lib/roll-metadata-updated-event";
 import { showToastViaEvent } from "@/components/toast";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -72,6 +77,8 @@ export type ImageLightboxMetadata = {
   shot_date?: string | null;
   /** `user_uploads.tags` (comma-separated). */
   tags?: string | null;
+  /** `user_uploads.location` (free-text place name). */
+  location?: string | null;
 };
 
 export type ImageLightboxData = {
@@ -180,8 +187,10 @@ function buildEditShareRollSeed(
   if (rollSlides.length === 0) return null;
   const first = rollSlides[0]!;
   const meta = first.metadata ?? {};
-  return {
+  const batchId = first.uploadBatchId?.trim() ?? null;
+  const base: EditShareRollSeed = {
     reviewId: ridForPatch,
+    uploadBatchId: batchId,
     imageUrls: rollSlides.map((s) => s.imageUrl),
     imageWidths: rollSlides.map(() => null),
     imageHeights: rollSlides.map(() => null),
@@ -189,13 +198,29 @@ function buildEditShareRollSeed(
     caption: first.caption?.trim() ? plainCaptionFull(first.caption) : "",
     camera: meta.camera?.trim() ?? "",
     lens: meta.lens?.trim() ?? "",
-    location: first.location?.trim() ?? "",
+    location: (first.location ?? first.metadata?.location)?.trim() ?? "",
     shotDate: meta.shot_date?.trim() ?? "",
     tags: meta.tags?.trim() ?? "",
     lab: meta.lab?.trim() ?? "",
     scanner: meta.scanner?.trim() ?? "",
     shotIso: meta.shot_iso?.trim() ?? "",
     selectedFormat: meta.format?.trim() ?? "",
+  };
+  const patch = getRollMetadataPatchForRoll(ridForPatch, batchId);
+  if (!patch) return base;
+  return {
+    ...base,
+    rollName: patch.reviewTitle ?? "",
+    caption: patch.caption ?? "",
+    camera: patch.camera ?? "",
+    lens: patch.lens ?? "",
+    location: patch.location ?? "",
+    shotDate: patch.shot_date ?? "",
+    tags: patch.tags ?? "",
+    lab: patch.lab ?? "",
+    scanner: patch.scanner ?? "",
+    shotIso: patch.shot_iso ?? "",
+    selectedFormat: patch.format ?? "",
   };
 }
 
@@ -622,10 +647,29 @@ export function ImageLightbox({
         showToastViaEvent(outcome.toast);
         return { success: false as const };
       }
-      showToastViaEvent("Roll updated.");
+      const metaDetail: RollMetadataUpdatedDetail = {
+        reviewId: editRollSeed.reviewId,
+        uploadBatchId: editRollSeed.uploadBatchId ?? null,
+        reviewTitle: payload.reviewTitle?.trim() ? payload.reviewTitle.trim() : null,
+        caption: payload.caption?.trim() ? payload.caption.trim() : null,
+        camera: payload.camera?.trim() || null,
+        shot_iso: payload.shotIso?.trim() || null,
+        lens: payload.lens?.trim() || null,
+        lab: payload.lab?.trim() || null,
+        scanner: payload.scanner?.trim() || null,
+        format: payload.format?.trim() || null,
+        location: payload.location?.trim() || null,
+        shot_date: payload.shotDate?.trim() || null,
+        tags: payload.tags?.trim() || null,
+      };
+      dispatchRollMetadataUpdated(metaDetail);
+      window.dispatchEvent(
+        new CustomEvent("film-upload-complete", { detail: { slug: resolvedFilmStockSlug } })
+      );
       window.dispatchEvent(
         new CustomEvent("review-submitted", { detail: { slug: resolvedFilmStockSlug } })
       );
+      showToastViaEvent("Roll updated.");
       setEditRollOpen(false);
       setEditRollSeed(null);
       onClose();
@@ -725,17 +769,29 @@ export function ImageLightbox({
 
   const current = safeSlides[active] ?? safeSlides[0];
 
+  const rollMetaPatch = getRollMetadataPatchForRoll(current.reviewId, current.uploadBatchId);
+
   const name = current.username?.trim() || "Member";
   const profileUserId = current.userId?.trim() ?? "";
   const profileHref = profileUserId ? `/users/${profileUserId}` : null;
   const filmStockName = current.stockCard?.name ?? current.context?.label ?? null;
   const filmStockHref = current.stockCard?.href ?? current.context?.href ?? null;
   const showFilmMetaRow = !!(filmStockName && filmStockHref);
-  const cameraValue = current.metadata?.camera?.trim() ?? "";
-  const shotIsoValue = current.metadata?.shot_iso?.trim() ?? "";
-  const formatValue = current.metadata?.format?.trim() ?? "";
-  const shotDateValue = current.metadata?.shot_date?.trim() ?? "";
-  const tagsValue = current.metadata?.tags?.trim() ?? "";
+  const cameraValue = rollMetaPatch
+    ? (rollMetaPatch.camera ?? "").trim()
+    : current.metadata?.camera?.trim() ?? "";
+  const shotIsoValue = rollMetaPatch
+    ? (rollMetaPatch.shot_iso ?? "").trim()
+    : current.metadata?.shot_iso?.trim() ?? "";
+  const formatValue = rollMetaPatch
+    ? (rollMetaPatch.format ?? "").trim()
+    : current.metadata?.format?.trim() ?? "";
+  const shotDateValue = rollMetaPatch
+    ? (rollMetaPatch.shot_date ?? "").trim()
+    : current.metadata?.shot_date?.trim() ?? "";
+  const tagsValue = rollMetaPatch
+    ? (rollMetaPatch.tags ?? "").trim()
+    : current.metadata?.tags?.trim() ?? "";
   const hasMetadataTable =
     showFilmMetaRow ||
     !!cameraValue ||
@@ -743,7 +799,14 @@ export function ImageLightbox({
     !!formatValue ||
     !!shotDateValue ||
     !!tagsValue;
-  const captionPlain = current.caption?.trim() ? plainCaptionFull(current.caption) : "";
+  const captionPlain = rollMetaPatch
+    ? (rollMetaPatch.caption?.trim() ? rollMetaPatch.caption.trim() : "")
+    : current.caption?.trim()
+      ? plainCaptionFull(current.caption)
+      : "";
+  const showCaptionBlock = rollMetaPatch
+    ? (rollMetaPatch.caption?.trim()?.length ?? 0) > 0
+    : !!current.caption?.trim();
 
   const comments = current.commentCount ?? null;
 
@@ -923,7 +986,7 @@ export function ImageLightbox({
               </div>
 
               <div className="space-y-2 px-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+12px))]">
-                {current.caption?.trim() ? (
+                {showCaptionBlock ? (
                   <div className="relative text-sm leading-relaxed">
                     {!captionExpanded ? (
                       <>
@@ -945,10 +1008,12 @@ export function ImageLightbox({
                           </span>
                         ) : null}
                       </>
+                    ) : rollMetaPatch ? (
+                      <p className="text-neutral-900 dark:text-neutral-100 break-words">{captionPlain}</p>
                     ) : (
                       <div
                         className="text-neutral-900 [&_a]:text-blue-600 [&_a]:underline dark:text-neutral-100 dark:[&_a]:text-blue-400 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-neutral-300 [&_blockquote]:pl-2 dark:[&_blockquote]:border-white/25 [&_p]:m-0 [&_p]:mb-2 [&_p:last-child]:mb-0"
-                        dangerouslySetInnerHTML={{ __html: sanitizeReviewLikeHtml(current.caption) }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeReviewLikeHtml(current.caption!) }}
                       />
                     )}
                   </div>

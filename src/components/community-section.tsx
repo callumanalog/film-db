@@ -10,6 +10,11 @@ import {
   getMyUploadsForFilmStock,
   type FilmUploadRow,
 } from "@/app/actions/uploads";
+import {
+  patchFilmUploadRowsWithRollMetadata,
+  ROLL_METADATA_UPDATED_EVENT,
+  type RollMetadataUpdatedDetail,
+} from "@/lib/roll-metadata-updated-event";
 import { plainTextFromPossibleHtml } from "@/lib/sanitize-review-like-html";
 import {
   Camera,
@@ -296,6 +301,17 @@ export function CommunityGallery({
     window.addEventListener("film-upload-complete", handler as EventListener);
     return () => window.removeEventListener("film-upload-complete", handler as EventListener);
   }, [slug]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent<RollMetadataUpdatedDetail>).detail;
+      if (!d?.reviewId) return;
+      setCommunityUploads((prev) => patchFilmUploadRowsWithRollMetadata(prev, d));
+      setMyUploads((prev) => patchFilmUploadRowsWithRollMetadata(prev, d));
+    };
+    window.addEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
+  }, []);
 
   const isTab = variant === "tab";
   const communityItemsCount = slug ? communityUploads.length : EXAMPLE_TAB_PLACEHOLDERS.length + SAMPLE_GALLERY.length;

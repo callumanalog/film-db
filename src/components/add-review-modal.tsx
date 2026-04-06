@@ -367,6 +367,8 @@ export interface AddReviewModalPayload {
 /** Open share-roll step 3 to edit an existing roll (same `review_id` on all scans). */
 export type EditShareRollSeed = {
   reviewId: string;
+  /** Present when the roll was grouped by batch in the feed; used to sync patches when `review_id` is missing on rows. */
+  uploadBatchId?: string | null;
   imageUrls: string[];
   imageWidths: (number | null)[];
   imageHeights: (number | null)[];
@@ -649,6 +651,8 @@ export function AddReviewModal({
   const isEdit = !!edit;
   const isEditShareRoll = !!editShareRoll;
   const enteredViaUpload = mode === "upload" && !isEdit && !isEditShareRoll;
+  /** Upload + edit-roll use step 2/3 UI; only pure review / text-review edit uses step 1. */
+  const showFilmStockTextReview = !enteredViaUpload && !isEditShareRoll;
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3>(() =>
     isEditShareRoll ? 3 : enteredViaUpload ? 2 : 1
@@ -759,7 +763,7 @@ export function AddReviewModal({
   const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
 
   const resetAll = useCallback(() => {
-    setStep(enteredViaUpload ? 2 : 1);
+    setStep(isEditShareRoll ? 3 : enteredViaUpload ? 2 : 1);
     setRating(initialRating);
     editor?.commands.clearContent();
     setCamera("");
@@ -796,7 +800,7 @@ export function AddReviewModal({
     setLensSheetOpen(false);
     setFormatSheetOpen(false);
     setIsoSheetOpen(false);
-  }, [enteredViaUpload, initialRating, editor, stock]);
+  }, [enteredViaUpload, isEditShareRoll, initialRating, editor, stock]);
 
   useEffect(() => {
     if (!open) {
@@ -1241,16 +1245,18 @@ export function AddReviewModal({
         )}
       >
         <SheetTitle className="sr-only">
-          {!enteredViaUpload
+          {showFilmStockTextReview
             ? isEdit
               ? `Edit review — ${stock.name}`
               : `Review ${stock.name}`
-            : step === 2
-              ? `Add a roll — ${stock.name}`
-              : `Share your roll — ${stock.name}`}
+            : isEditShareRoll
+              ? `Edit roll — ${stock.name}`
+              : step === 2
+                ? `Add a roll — ${stock.name}`
+                : `Share your roll — ${stock.name}`}
         </SheetTitle>
 
-        {!enteredViaUpload ? (
+        {showFilmStockTextReview ? (
           /* ──────────── STEP 1: REVIEW ──────────── */
           <div className="flex h-full flex-col">
             {/* Top bar */}
@@ -1842,7 +1848,7 @@ export function AddReviewModal({
                   {submitting
                     ? shareRollSubmitHint?.trim() || (isEditShareRoll ? "Saving…" : "Sharing…")
                     : isEditShareRoll
-                      ? "Save changes"
+                      ? "Save roll"
                       : "Share roll"}
                 </button>
               </div>
@@ -1924,7 +1930,7 @@ export function AddReviewModal({
     />
 
     {typeof document !== "undefined" &&
-      enteredViaUpload &&
+      (enteredViaUpload || isEditShareRoll) &&
       scanPreviewIndex !== null &&
       previewUrls[scanPreviewIndex] &&
       createPortal(

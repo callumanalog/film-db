@@ -62,6 +62,7 @@ export interface CommunityGalleryUpload {
   format?: string | null;
   shot_date?: string | null;
   tags?: string | null;
+  location?: string | null;
   reviewId?: string | null;
   uploadBatchId?: string | null;
   stockIso?: number | null;
@@ -151,6 +152,7 @@ export async function getAllCommunityUploadsForGallery(
       format: r.format ?? null,
       shot_date: r.shot_date ?? null,
       tags: r.tags ?? null,
+      location: r.location ?? null,
       reviewId: r.review_id ?? null,
       uploadBatchId: r.upload_batch_id ?? null,
       stockIso: stock.iso ?? null,

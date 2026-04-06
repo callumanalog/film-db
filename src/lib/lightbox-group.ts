@@ -172,6 +172,7 @@ export function galleryImageToLightbox(img: GalleryImage): ImageLightboxData | u
     likeCount: img.likes ?? null,
     context: { label: img.stockName, href: `/films/${img.stockSlug}` },
     stockCard: stockCardFromGalleryImage(img),
+    location: img.location?.trim() || null,
     metadata: {
       camera: img.camera || null,
       shot_iso: img.shot_iso || null,
@@ -187,6 +188,7 @@ export function galleryImageToLightbox(img: GalleryImage): ImageLightboxData | u
       push_pull: img.push_pull || null,
       shot_date: img.shot_date?.trim() || null,
       tags: img.tags?.trim() || null,
+      location: img.location?.trim() || null,
     },
   };
 }
@@ -202,6 +204,7 @@ function metadataFromUpload(u: FilmUploadRow) {
     push_pull: u.push_pull ?? null,
     shot_date: u.shot_date?.trim() || null,
     tags: u.tags?.trim() || null,
+    location: u.location?.trim() || null,
   };
 }
 

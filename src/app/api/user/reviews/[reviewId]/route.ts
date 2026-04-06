@@ -129,18 +129,26 @@ export async function PATCH(
       }
     }
 
-    const { error: metaErr } = await supabase
+    const { data: updatedUploads, error: metaErr } = await supabase
       .from("user_uploads")
       .update({
         ...metadata,
         caption: captionToUse,
       })
       .eq("review_id", reviewId)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .select("id");
 
     if (metaErr) {
       console.error("[reviews PATCH] user_uploads share-roll metadata:", metaErr);
       return NextResponse.json({ error: "Failed to update roll metadata" }, { status: 500 });
+    }
+    if (!updatedUploads?.length) {
+      console.error("[reviews PATCH] share-roll metadata: zero rows matched review_id", reviewId);
+      return NextResponse.json(
+        { error: "No photos found for this roll to update." },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({

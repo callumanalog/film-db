@@ -78,6 +78,8 @@ export interface GalleryImage extends SampleImage {
   format?: string | null;
   shot_date?: string | null;
   tags?: string | null;
+  /** `user_uploads.location` when loaded (feed / discover). */
+  location?: string | null;
   /** `reviews.review_title` when loaded (e.g. home feed) for roll edit lightbox. */
   reviewTitle?: string | null;
   reviewId?: string | null;
