@@ -6,6 +6,7 @@ import {
   validateClientStoredImageRows,
   type ClientStoredImageInput,
 } from "@/lib/client-stored-image-validation";
+import { performDeleteUserReview } from "@/lib/user-review-delete-server";
 
 const BUCKET = "user-uploads";
 const MAX_FILES = 10;
@@ -16,13 +17,6 @@ function supabaseProjectUrl(): string {
     process.env.SUPABASE_URL ??
     ""
   ).trim();
-}
-
-function storagePathFromPublicUrl(url: string): string | null {
-  const marker = "/object/public/user-uploads/";
-  const i = url.indexOf(marker);
-  if (i === -1) return null;
-  return decodeURIComponent(url.slice(i + marker.length).split("?")[0]);
 }
 
 export async function PATCH(
@@ -331,68 +325,9 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("reviews")
-    .select("id, user_id, film_stock_slug")
-    .eq("id", reviewId)
-    .maybeSingle();
-
-  if (fetchError || !existing) {
-    return NextResponse.json({ error: "Review not found" }, { status: 404 });
+  const result = await performDeleteUserReview(supabase, user.id, reviewId);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
-  if (existing.user_id !== user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const { data: uploads, error: uploadsError } = await supabase
-    .from("user_uploads")
-    .select("id, image_url")
-    .eq("review_id", reviewId)
-    .eq("user_id", user.id);
-
-  if (uploadsError) {
-    console.error("[reviews DELETE] list uploads:", uploadsError);
-    return NextResponse.json({ error: "Failed to prepare delete" }, { status: 500 });
-  }
-
-  const paths: string[] = [];
-  for (const u of uploads ?? []) {
-    const url = u.image_url as string | null;
-    if (!url) continue;
-    const path = storagePathFromPublicUrl(url);
-    if (path) paths.push(path);
-  }
-
-  if (paths.length > 0) {
-    const { error: rmError } = await supabase.storage.from(BUCKET).remove(paths);
-    if (rmError) {
-      console.error("[reviews DELETE] storage remove:", rmError);
-      /* continue — still remove DB rows */
-    }
-  }
-
-  if (uploads?.length) {
-    const { error: delUploadsError } = await supabase
-      .from("user_uploads")
-      .delete()
-      .eq("review_id", reviewId)
-      .eq("user_id", user.id);
-    if (delUploadsError) {
-      console.error("[reviews DELETE] user_uploads delete:", delUploadsError);
-      return NextResponse.json({ error: "Failed to delete review images" }, { status: 500 });
-    }
-  }
-
-  const { error: delReviewError } = await supabase
-    .from("reviews")
-    .delete()
-    .eq("id", reviewId)
-    .eq("user_id", user.id);
-
-  if (delReviewError) {
-    console.error("[reviews DELETE] review delete:", delReviewError);
-    return NextResponse.json({ error: "Failed to delete review" }, { status: 500 });
-  }
-
   return NextResponse.json({ ok: true });
 }

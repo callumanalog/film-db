@@ -80,6 +80,8 @@ export type ImageLightboxData = {
   uploadId?: string | null;
   /** `reviews.id` when this slide is part of a shared roll (same id for all frames in the roll). */
   reviewId?: string | null;
+  /** `user_uploads.upload_batch_id` when part of a multi-scan batch (may exist without `review_id` on legacy rows). */
+  uploadBatchId?: string | null;
   /** `reviews.review_title` when known (e.g. own profile lightbox). */
   rollTitle?: string | null;
   /** When set, header avatar/name link to `/users/{userId}`. */
@@ -153,16 +155,33 @@ function plainCaptionFull(html: string): string {
 
 function buildEditShareRollSeed(
   slides: ImageLightboxData[],
-  reviewId: string
+  reviewIdForPatch: string,
+  match: {
+    priorReviewId?: string | null;
+    uploadBatchId?: string | null;
+    uploadId?: string | null;
+  }
 ): EditShareRollSeed | null {
-  const rid = reviewId.trim();
-  if (!rid) return null;
-  const rollSlides = slides.filter((s) => (s.reviewId?.trim() ?? "") === rid);
+  const ridForPatch = reviewIdForPatch.trim();
+  if (!ridForPatch) return null;
+  const pr = match.priorReviewId?.trim();
+  const bid = match.uploadBatchId?.trim();
+  const uid = match.uploadId?.trim();
+  let rollSlides: ImageLightboxData[];
+  if (pr) {
+    rollSlides = slides.filter((s) => (s.reviewId?.trim() ?? "") === pr);
+  } else if (bid) {
+    rollSlides = slides.filter((s) => (s.uploadBatchId?.trim() ?? "") === bid);
+  } else if (uid) {
+    rollSlides = slides.filter((s) => (s.uploadId?.trim() ?? "") === uid);
+  } else {
+    return null;
+  }
   if (rollSlides.length === 0) return null;
   const first = rollSlides[0]!;
   const meta = first.metadata ?? {};
   return {
-    reviewId: rid,
+    reviewId: ridForPatch,
     imageUrls: rollSlides.map((s) => s.imageUrl),
     imageWidths: rollSlides.map(() => null),
     imageHeights: rollSlides.map(() => null),
@@ -227,7 +246,11 @@ export function ImageLightbox({
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const [rollOwnerSheetOpen, setRollOwnerSheetOpen] = useState(false);
   const [rollDeleteSheetOpen, setRollDeleteSheetOpen] = useState(false);
-  const [deleteRollReviewId, setDeleteRollReviewId] = useState<string | null>(null);
+  const [deleteRollTarget, setDeleteRollTarget] = useState<{
+    reviewId?: string;
+    uploadBatchId?: string;
+    uploadId?: string;
+  } | null>(null);
   const [deleteRollPending, setDeleteRollPending] = useState(false);
   const [editRollOpen, setEditRollOpen] = useState(false);
   const [editRollSeed, setEditRollSeed] = useState<EditShareRollSeed | null>(null);
@@ -550,10 +573,9 @@ export function ImageLightbox({
     !!profileUserIdForRoll &&
     authId.toLowerCase() === profileUserIdForRoll.toLowerCase();
 
+  const ownUploadIdForRoll = currentForHooks?.uploadId?.trim() ?? "";
   const canOwnerManageRoll =
-    isOwnLightboxUpload &&
-    !!currentForHooks?.reviewId?.trim() &&
-    !!resolvedFilmStockSlug;
+    isOwnLightboxUpload && !!resolvedFilmStockSlug && !!ownUploadIdForRoll;
 
   const editRollModalStock: TrackFilmModalStock = useMemo(() => {
     if (!currentForHooks) {
@@ -614,11 +636,23 @@ export function ImageLightbox({
   );
 
   const confirmDeleteOwnRoll = useCallback(async () => {
-    const id = deleteRollReviewId?.trim();
-    if (!id || !user) return;
+    if (!user || !deleteRollTarget) return;
     setDeleteRollPending(true);
     try {
-      const res = await fetch(`/api/user/reviews/${id}`, { method: "DELETE" });
+      let res: Response;
+      const rid = deleteRollTarget.reviewId?.trim();
+      if (rid) {
+        res = await fetch(`/api/user/reviews/${encodeURIComponent(rid)}`, { method: "DELETE" });
+      } else {
+        res = await fetch("/api/user/uploads/delete-own-roll", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            upload_batch_id: deleteRollTarget.uploadBatchId?.trim() || undefined,
+            upload_id: deleteRollTarget.uploadId?.trim() || undefined,
+          }),
+        });
+      }
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
         showToastViaEvent(data.error || "Could not delete roll");
@@ -631,13 +665,59 @@ export function ImageLightbox({
         );
       }
       setRollDeleteSheetOpen(false);
-      setDeleteRollReviewId(null);
+      setDeleteRollTarget(null);
       onClose();
       router.refresh();
     } finally {
       setDeleteRollPending(false);
     }
-  }, [user, deleteRollReviewId, resolvedFilmStockSlug, onClose, router]);
+  }, [user, deleteRollTarget, resolvedFilmStockSlug, onClose, router]);
+
+  const openEditRollFlow = useCallback(async () => {
+    const slide = safeSlides[active] ?? safeSlides[0];
+    if (!slide?.uploadId?.trim()) {
+      showToastViaEvent("This photo cannot be edited here.");
+      return;
+    }
+    setRollOwnerSheetOpen(false);
+    let reviewIdForPatch = slide.reviewId?.trim() ?? "";
+    if (!reviewIdForPatch) {
+      try {
+        const body = slide.uploadBatchId?.trim()
+          ? { upload_batch_id: slide.uploadBatchId.trim() }
+          : { upload_id: slide.uploadId.trim() };
+        const res = await fetch("/api/user/uploads/claim-review", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = (await res.json().catch(() => ({}))) as { reviewId?: string; error?: string };
+        if (!res.ok) {
+          showToastViaEvent(data.error || "Could not open editor for this roll.");
+          return;
+        }
+        reviewIdForPatch = (data.reviewId ?? "").trim();
+        if (!reviewIdForPatch) {
+          showToastViaEvent("Could not open editor for this roll.");
+          return;
+        }
+      } catch {
+        showToastViaEvent("Could not open editor for this roll.");
+        return;
+      }
+    }
+    const seed = buildEditShareRollSeed(safeSlides, reviewIdForPatch, {
+      priorReviewId: slide.reviewId,
+      uploadBatchId: slide.uploadBatchId,
+      uploadId: slide.uploadId,
+    });
+    if (!seed) {
+      showToastViaEvent("Could not load roll for editing.");
+      return;
+    }
+    setEditRollSeed(seed);
+    setEditRollOpen(true);
+  }, [safeSlides, active]);
 
   if (safeSlides.length === 0) {
     return null;
@@ -1081,15 +1161,7 @@ export function ImageLightbox({
           <div className="flex flex-col px-4">
             <button
               type="button"
-              onClick={() => {
-                const rid = current.reviewId?.trim();
-                if (!rid) return;
-                const seed = buildEditShareRollSeed(safeSlides, rid);
-                if (!seed) return;
-                setRollOwnerSheetOpen(false);
-                setEditRollSeed(seed);
-                setEditRollOpen(true);
-              }}
+              onClick={() => void openEditRollFlow()}
               className="w-full py-4 text-left text-sm font-medium text-foreground transition-colors hover:text-primary"
             >
               Edit roll
@@ -1097,9 +1169,13 @@ export function ImageLightbox({
             <button
               type="button"
               onClick={() => {
-                const rid = current.reviewId?.trim() ?? null;
                 setRollOwnerSheetOpen(false);
-                if (rid) setDeleteRollReviewId(rid);
+                const rid = current.reviewId?.trim();
+                const bid = current.uploadBatchId?.trim();
+                const uid = current.uploadId?.trim();
+                if (rid) setDeleteRollTarget({ reviewId: rid });
+                else if (bid) setDeleteRollTarget({ uploadBatchId: bid });
+                else if (uid) setDeleteRollTarget({ uploadId: uid });
                 setRollDeleteSheetOpen(true);
               }}
               className="w-full border-t border-border/50 py-4 text-left text-sm font-medium text-destructive transition-colors hover:text-destructive/90"
@@ -1122,7 +1198,7 @@ export function ImageLightbox({
         onOpenChange={(o) => {
           if (!o && !deleteRollPending) {
             setRollDeleteSheetOpen(false);
-            setDeleteRollReviewId(null);
+            setDeleteRollTarget(null);
           }
         }}
       >
@@ -1142,7 +1218,7 @@ export function ImageLightbox({
               onClick={() => {
                 if (!deleteRollPending) {
                   setRollDeleteSheetOpen(false);
-                  setDeleteRollReviewId(null);
+                  setDeleteRollTarget(null);
                 }
               }}
               disabled={deleteRollPending}

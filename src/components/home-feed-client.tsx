@@ -75,7 +75,7 @@ function buildFeedGalleryPool(
         tags: u.tags ?? null,
         reviewId: u.review_id ?? null,
         reviewTitle: u.review_title ?? null,
-        uploadBatchId: u.upload_batch_id ?? null,
+        uploadBatchId: u.upload_batch_id?.trim() ? u.upload_batch_id : null,
         uploadId: u.id,
         avatarUrl: u.avatar_url ?? null,
       });

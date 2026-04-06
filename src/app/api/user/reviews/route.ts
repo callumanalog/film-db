@@ -200,13 +200,8 @@ export async function POST(request: Request) {
         reviewTextTrim.length > 0 ||
         shootingTipTrim.length > 0 ||
         bestFor.length > 0)) ||
-    (mode === "upload" &&
-      uploadedRows.length > 0 &&
-      (reviewTitleTrim.length > 0 ||
-        rating > 0 ||
-        reviewTextTrim.length > 0 ||
-        shootingTipTrim.length > 0 ||
-        bestFor.length > 0));
+    /** Share-roll / scan posts: always attach a `reviews` row so `user_uploads.review_id` is set (enables edit/delete in lightbox). */
+    (mode === "upload" && uploadedRows.length > 0);
 
   let newReviewId: string | null = null;
   if (shouldSaveReview) {
