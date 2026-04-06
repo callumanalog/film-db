@@ -79,7 +79,11 @@ import type { LucideIcon } from "lucide-react";
 import { nearestPresetIso } from "@/components/shot-iso-controls";
 import { ShareRollCameraPicker } from "@/components/share-roll-camera-picker";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
-import { assertFileDecodesAsImage } from "@/lib/share-roll-image";
+import {
+  assertFileDecodesAsImage,
+  prepareShareRollImageFile,
+  type PreparedShareRollImage,
+} from "@/lib/share-roll-image";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
@@ -338,6 +342,11 @@ export interface AddReviewModalPayload {
   scanner?: string;
   uploadedImageUrl?: string;
   uploadedStoragePath?: string;
+  /**
+   * When length matches `files`, upload uses these blobs (already encoded at pick time)
+   * so share does not re-run canvas encode and failures surface during upload step.
+   */
+  preparedShareRollScans?: PreparedShareRollImage[];
 }
 
 /** Pre-fill when editing an existing review (text-only flow). */
@@ -628,7 +637,11 @@ export function AddReviewModal({
   >([]);
   /** Stable row ids for step 3 drag-reorder (aligned with files / previewUrls). */
   const [uploadScanOrderIds, setUploadScanOrderIds] = useState<string[]>([]);
+  /** Parallels `files` after decode + share-roll encode; avoids re-encoding on submit. */
+  const [preparedShareRollScans, setPreparedShareRollScans] = useState<PreparedShareRollImage[]>([]);
   const uploadScanOrderIdsRef = useRef<string[]>([]);
+  /** Prevents reset when `resetAll` churns (e.g. inline `stock={{…}}` on parent re-renders during submit). */
+  const createModalWasOpenRef = useRef(false);
   uploadScanOrderIdsRef.current = uploadScanOrderIds;
   const step3SortSensors = useSensors(
     useSensor(PointerSensor, {
@@ -687,6 +700,7 @@ export function AddReviewModal({
     setFiles([]);
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
+    setPreparedShareRollScans([]);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -753,9 +767,19 @@ export function AddReviewModal({
   );
 
   useEffect(() => {
-    if (!open || edit) return;
-    resetAll();
-  }, [open, edit?.id, resetAll, edit]);
+    if (edit) {
+      createModalWasOpenRef.current = open;
+      return;
+    }
+    if (!open) {
+      createModalWasOpenRef.current = false;
+      return;
+    }
+    if (!createModalWasOpenRef.current) {
+      resetAll();
+    }
+    createModalWasOpenRef.current = true;
+  }, [open, edit, resetAll]);
 
   useEffect(() => {
     if (!open || !edit) return;
@@ -767,6 +791,7 @@ export function AddReviewModal({
     setFiles([]);
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
+    setPreparedShareRollScans([]);
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return [];
@@ -842,6 +867,10 @@ export function AddReviewModal({
     lab: lab || undefined,
     filter: filter || undefined,
     scanner: scanner || undefined,
+    preparedShareRollScans:
+      files.length > 0 && files.length === preparedShareRollScans.length
+        ? preparedShareRollScans
+        : undefined,
   });
 
   const handleLogSubmit = async () => {
@@ -898,33 +927,49 @@ export function AddReviewModal({
           decodeFail++;
         }
       }
+
+      if (decodeOk.length === 0) {
+        setUploadError(
+          decodeFail > 0
+            ? "Photo(s) could not be read or are too large. Try different files (PNG, JPG, or WebP)."
+            : "No files were added. Use PNG, JPG, or WebP under 50MB."
+        );
+        return;
+      }
+
+      const newPrepared: PreparedShareRollImage[] = [];
+      for (const f of decodeOk) {
+        try {
+          newPrepared.push(await prepareShareRollImageFile(f));
+        } catch (err) {
+          const raw = err instanceof Error ? err.message.trim() : "";
+          setUploadError(
+            raw
+              ? raw
+              : "This photo could not be processed for upload. Try a different file (JPEG or PNG)."
+          );
+          return;
+        }
+      }
+
+      const next = [...files, ...decodeOk];
+      const parts: string[] = [];
+      if (invalidCount > 0) parts.push(`${invalidCount} invalid file${invalidCount > 1 ? "s were" : " was"} skipped`);
+      if (droppedForLimit > 0) parts.push(`${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 max)`);
+      if (decodeFail > 0) parts.push(`${decodeFail} file${decodeFail > 1 ? "s could" : " could"} not be read`);
+      if (parts.length > 0) setUploadError(parts.join(". ") + ".");
+      else setUploadError(null);
+
+      setPreviewUrls((urls) => {
+        urls.forEach((u) => URL.revokeObjectURL(u));
+        return next.map((f) => URL.createObjectURL(f));
+      });
+      setFiles(next);
+      setScanIntrinsicSizes(next.map(() => null));
+      setPreparedShareRollScans((prev) => [...prev, ...newPrepared]);
     } finally {
       setIsUploading(false);
     }
-
-    if (decodeOk.length === 0) {
-      setUploadError(
-        decodeFail > 0
-          ? "Photo(s) could not be read or are too large. Try different files (PNG, JPG, or WebP)."
-          : "No files were added. Use PNG, JPG, or WebP under 50MB."
-      );
-      return;
-    }
-
-    const next = [...files, ...decodeOk];
-    const parts: string[] = [];
-    if (invalidCount > 0) parts.push(`${invalidCount} invalid file${invalidCount > 1 ? "s were" : " was"} skipped`);
-    if (droppedForLimit > 0) parts.push(`${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 max)`);
-    if (decodeFail > 0) parts.push(`${decodeFail} file${decodeFail > 1 ? "s could" : " could"} not be read`);
-    if (parts.length > 0) setUploadError(parts.join(". ") + ".");
-    else setUploadError(null);
-
-    setPreviewUrls((urls) => {
-      urls.forEach((u) => URL.revokeObjectURL(u));
-      return next.map((f) => URL.createObjectURL(f));
-    });
-    setFiles(next);
-    setScanIntrinsicSizes(next.map(() => null));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -945,6 +990,7 @@ export function AddReviewModal({
     setFiles((f) => arrayMove(f, oldIndex, newIndex));
     setPreviewUrls((u) => arrayMove(u, oldIndex, newIndex));
     setScanIntrinsicSizes((s) => arrayMove(s, oldIndex, newIndex));
+    setPreparedShareRollScans((p) => arrayMove(p, oldIndex, newIndex));
     setStep3ImagePreviewIndex((prev) =>
       prev === null ? null : mapPreviewIndexAfterReorder(prev, oldIndex, newIndex)
     );
@@ -972,6 +1018,7 @@ export function AddReviewModal({
     });
     setFiles((prev) => prev.filter((_, i) => i !== index));
     setScanIntrinsicSizes((prev) => prev.filter((_, i) => i !== index));
+    setPreparedShareRollScans((prev) => prev.filter((_, i) => i !== index));
     setUploadScanOrderIds((prev) => prev.filter((_, i) => i !== index));
   };
 

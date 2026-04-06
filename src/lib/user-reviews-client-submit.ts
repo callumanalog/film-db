@@ -1,6 +1,6 @@
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import { createClient } from "@/lib/supabase/client";
-import { prepareShareRollImageFile } from "@/lib/share-roll-image";
+import { prepareShareRollImageFile, type PreparedShareRollImage } from "@/lib/share-roll-image";
 import { appendReviewsPayloadFields } from "@/lib/user-reviews-form-data";
 import {
   networkErrorToastMessage,
@@ -34,7 +34,9 @@ export async function fetchReviewsResponse(
 export async function clientUploadReviewImages(
   filmStockSlug: string,
   files: File[],
-  onProgress?: (label: string) => void
+  onProgress?: (label: string) => void,
+  /** When length matches `files`, skips canvas re-encode (already done at pick time). */
+  preparedRows?: PreparedShareRollImage[] | null
 ): Promise<{ url: string; width: number; height: number }[]> {
   const supabase = createClient();
   const {
@@ -49,8 +51,16 @@ export async function clientUploadReviewImages(
   const out: { url: string; width: number; height: number }[] = [];
 
   for (let i = 0; i < files.length; i++) {
-    onProgress?.(`Optimizing photo ${i + 1} of ${files.length}…`);
-    const prepared = await prepareShareRollImageFile(files[i]);
+    const hasPrepared =
+      preparedRows &&
+      preparedRows.length === files.length &&
+      preparedRows[i]?.blob &&
+      preparedRows[i]!.blob.size > 0;
+
+    if (!hasPrepared) {
+      onProgress?.(`Optimizing photo ${i + 1} of ${files.length}…`);
+    }
+    const prepared = hasPrepared ? preparedRows[i]! : await prepareShareRollImageFile(files[i]);
     onProgress?.(`Uploading photo ${i + 1} of ${files.length}…`);
     const objectPath = `${prefix}/${Date.now()}-${i}.${prepared.fileExtension}`;
     const { error: upErr } = await supabase.storage.from(BUCKET).upload(objectPath, prepared.blob, {
@@ -105,8 +115,19 @@ export async function buildUserReviewsFormData(
   }
 
   if (payload.files.length > 0) {
-    onProgress?.("Preparing photos…");
-    const rows = await clientUploadReviewImages(filmStockSlug, payload.files, onProgress);
+    const preparedArg =
+      payload.preparedShareRollScans?.length === payload.files.length
+        ? payload.preparedShareRollScans
+        : null;
+    if (!preparedArg) {
+      onProgress?.("Preparing photos…");
+    }
+    const rows = await clientUploadReviewImages(
+      filmStockSlug,
+      payload.files,
+      onProgress,
+      preparedArg
+    );
     formData.set(
       "client_stored_images",
       JSON.stringify(rows.map((r) => ({ url: r.url, width: r.width, height: r.height })))

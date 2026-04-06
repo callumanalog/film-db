@@ -46,6 +46,8 @@ const nextConfig: NextConfig = {
   images: {
     /** Keep optimized images longer at the edge to cut repeat origin (Supabase) fetches. */
     minimumCacheTTL: 60 * 60 * 24 * 7,
+    /** `LazyImage` uses quality 82; Next 16 defaults to [75] only — edge optimizer can fail without this. */
+    qualities: [75, 82],
     remotePatterns: [
       {
         protocol: "https",

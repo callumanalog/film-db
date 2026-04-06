@@ -7,9 +7,9 @@ import { cn } from "@/lib/utils";
 const BLUR_PLACEHOLDER =
   "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgdmlld0JveD0iMCAwIDEwIDEwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTVlN2ViIi8+PC9zdmc+";
 
-/** Remote width hint for Vercel Image Optimization (actual display follows CSS). */
-const SUPABASE_REMOTE_WIDTH = 1600;
-const SUPABASE_REMOTE_HEIGHT = 1200;
+/** Remote width hint for Vercel Image Optimization (must align with `images.deviceSizes`; display follows CSS). */
+const SUPABASE_REMOTE_WIDTH = 1920;
+const SUPABASE_REMOTE_HEIGHT = 1440;
 const DEFAULT_SIZES = "(max-width: 768px) 100vw, 50vw";
 const DEFAULT_QUALITY = 82;
 
