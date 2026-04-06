@@ -79,6 +79,7 @@ import type { LucideIcon } from "lucide-react";
 import { nearestPresetIso } from "@/components/shot-iso-controls";
 import { ShareRollCameraPicker } from "@/components/share-roll-camera-picker";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
+import { assertFileDecodesAsImage } from "@/lib/share-roll-image";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
@@ -358,6 +359,8 @@ interface AddReviewModalProps {
   /** When set, modal opens in edit mode (same flow as create, pre-filled). */
   edit?: EditReviewSeed | null;
   onBackToStockPicker?: () => void;
+  /** Overrides footer “Sharing…” while `submitting` (upload flow) — e.g. per-photo progress from parent. */
+  shareRollSubmitHint?: string | null;
 }
 
 function StockThumbnail({
@@ -575,6 +578,7 @@ export function AddReviewModal({
   mode = "review",
   edit = null,
   onBackToStockPicker,
+  shareRollSubmitHint = null,
 }: AddReviewModalProps) {
   const isEdit = !!edit;
   const enteredViaUpload = mode === "upload" && !isEdit;
@@ -866,11 +870,7 @@ export function AddReviewModal({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (selected.length === 0) return;
-
+  const processSelectedScanFiles = async (selected: File[]) => {
     const maxFiles = 10;
     const valid = selected.filter(
       (f) => ALLOWED_IMAGE_TYPES.includes(f.type) && f.size <= MAX_SHOT_SIZE_BYTES
@@ -885,21 +885,53 @@ export function AddReviewModal({
       return;
     }
 
-    const next = [...files, ...kept];
-    if (invalidCount > 0 || droppedForLimit > 0) {
-      const parts: string[] = [];
-      if (invalidCount > 0) parts.push(`${invalidCount} invalid file${invalidCount > 1 ? "s were" : " was"} skipped`);
-      if (droppedForLimit > 0) parts.push(`${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 max)`);
-      setUploadError(parts.join(". ") + ".");
-    } else {
-      setUploadError(null);
+    setIsUploading(true);
+    setUploadError(null);
+    const decodeOk: File[] = [];
+    let decodeFail = 0;
+    try {
+      for (const f of kept) {
+        try {
+          await assertFileDecodesAsImage(f);
+          decodeOk.push(f);
+        } catch {
+          decodeFail++;
+        }
+      }
+    } finally {
+      setIsUploading(false);
     }
+
+    if (decodeOk.length === 0) {
+      setUploadError(
+        decodeFail > 0
+          ? "Photo(s) could not be read or are too large. Try different files (PNG, JPG, or WebP)."
+          : "No files were added. Use PNG, JPG, or WebP under 50MB."
+      );
+      return;
+    }
+
+    const next = [...files, ...decodeOk];
+    const parts: string[] = [];
+    if (invalidCount > 0) parts.push(`${invalidCount} invalid file${invalidCount > 1 ? "s were" : " was"} skipped`);
+    if (droppedForLimit > 0) parts.push(`${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 max)`);
+    if (decodeFail > 0) parts.push(`${decodeFail} file${decodeFail > 1 ? "s could" : " could"} not be read`);
+    if (parts.length > 0) setUploadError(parts.join(". ") + ".");
+    else setUploadError(null);
+
     setPreviewUrls((urls) => {
       urls.forEach((u) => URL.revokeObjectURL(u));
       return next.map((f) => URL.createObjectURL(f));
     });
     setFiles(next);
     setScanIntrinsicSizes(next.map(() => null));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (selected.length === 0) return;
+    void processSelectedScanFiles(selected);
   };
 
   const handleStep3DragEnd = useCallback((event: DragEndEvent) => {
@@ -1190,13 +1222,23 @@ export function AddReviewModal({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
                       className={cn(
                         scanUploadDashedSurfaceClassName,
-                        "flex w-full flex-col items-center justify-center gap-3 py-12"
+                        "flex w-full flex-col items-center justify-center gap-3 py-12 disabled:opacity-50"
                       )}
                     >
-                      <Plus className="h-10 w-10 text-muted-foreground" />
-                      <span className="text-sm font-medium text-muted-foreground">Upload up to 10 scans</span>
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" aria-hidden />
+                          <span className="text-sm font-medium text-muted-foreground">Checking photos…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-10 w-10 text-muted-foreground" />
+                          <span className="text-sm font-medium text-muted-foreground">Upload up to 10 scans</span>
+                        </>
+                      )}
                     </button>
                   ) : (
                     <div>
@@ -1228,14 +1270,19 @@ export function AddReviewModal({
                               <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
                                 className={cn(
                                   scanUploadDashedSurfaceClassName,
-                                  "flex w-full touch-manipulation items-center justify-center"
+                                  "flex w-full touch-manipulation items-center justify-center disabled:opacity-50"
                                 )}
                                 style={{ aspectRatio: scanAddTileAspectRatio }}
                                 aria-label="Add more scans from this roll"
                               >
-                                <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
+                                {isUploading ? (
+                                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
+                                ) : (
+                                  <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
+                                )}
                               </button>
                             </div>
                           )}
@@ -1266,14 +1313,19 @@ export function AddReviewModal({
                               <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
+                                disabled={isUploading}
                                 className={cn(
                                   scanUploadDashedSurfaceClassName,
-                                  "flex w-full touch-manipulation items-center justify-center"
+                                  "flex w-full touch-manipulation items-center justify-center disabled:opacity-50"
                                 )}
                                 style={{ aspectRatio: scanAddTileAspectRatio }}
                                 aria-label="Add more scans from this roll"
                               >
-                                <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
+                                {isUploading ? (
+                                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
+                                ) : (
+                                  <Plus className="h-8 w-8 text-muted-foreground" strokeWidth={2} aria-hidden />
+                                )}
                               </button>
                             </div>
                           )}
@@ -1295,10 +1347,10 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  disabled={submitting || !canAdvanceUploadFlow}
+                  disabled={submitting || !canAdvanceUploadFlow || isUploading}
                   className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
                 >
-                  {submitting ? "Saving..." : "Next"}
+                  {submitting ? "Saving..." : isUploading ? "Checking photos…" : "Next"}
                 </button>
               </div>
             )}
@@ -1558,10 +1610,10 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={handlePostScans}
-                  disabled={submitting || !files.length}
+                  disabled={submitting || !files.length || isUploading}
                   className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
                 >
-                  {submitting ? "Sharing..." : "Share roll"}
+                  {submitting ? (shareRollSubmitHint?.trim() || "Sharing…") : "Share roll"}
                 </button>
               </div>
             ) : null}

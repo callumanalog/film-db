@@ -2,9 +2,21 @@ import { NextResponse } from "next/server";
 import imageSize from "image-size";
 import { createClient } from "@/lib/supabase/server";
 import { shotDateForUserUploadDb } from "@/lib/user-upload-shot-date";
+import {
+  validateClientStoredImageRows,
+  type ClientStoredImageInput,
+} from "@/lib/client-stored-image-validation";
 
 const BUCKET = "user-uploads";
 const MAX_FILES = 10;
+
+function supabaseProjectUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??
+    process.env.SUPABASE_URL ??
+    ""
+  ).trim();
+}
 
 function storagePathFromPublicUrl(url: string): string | null {
   const marker = "/object/public/user-uploads/";
@@ -128,13 +140,41 @@ export async function PATCH(
       .eq("film_stock_slug", slug);
   }
 
-  const preUploadedImageUrl = (formData.get("image_url") as string) || null;
+  const clientStoredRaw = (formData.get("client_stored_images") as string) || null;
   type UploadedRow = { url: string; image_width: number | null; image_height: number | null };
   let uploadedRows: UploadedRow[] = [];
 
-  if (mode === "upload" && preUploadedImageUrl && preUploadedImageUrl.trim().length > 0) {
+  if (clientStoredRaw && clientStoredRaw.trim().length > 0) {
+    let items: ClientStoredImageInput[] = [];
+    try {
+      const parsed = JSON.parse(clientStoredRaw) as unknown;
+      if (!Array.isArray(parsed)) throw new Error("not array");
+      items = parsed as ClientStoredImageInput[];
+    } catch {
+      return NextResponse.json({ error: "Invalid client_stored_images JSON." }, { status: 400 });
+    }
+    const validated = validateClientStoredImageRows(
+      supabaseProjectUrl(),
+      user.id,
+      slug,
+      items,
+      MAX_FILES
+    );
+    if (!validated.ok) {
+      return NextResponse.json({ error: validated.message }, { status: 400 });
+    }
+    uploadedRows = validated.rows.map((r) => ({
+      url: r.url,
+      image_width: r.image_width,
+      image_height: r.image_height,
+    }));
+  }
+
+  const preUploadedImageUrl = (formData.get("image_url") as string) || null;
+
+  if (uploadedRows.length === 0 && mode === "upload" && preUploadedImageUrl && preUploadedImageUrl.trim().length > 0) {
     uploadedRows = [{ url: preUploadedImageUrl.trim(), image_width: null, image_height: null }];
-  } else if (mode === "upload") {
+  } else if (uploadedRows.length === 0 && mode === "upload") {
     const files: File[] = [];
     for (let i = 0; i < MAX_FILES; i++) {
       const f = formData.get(`file_${i}`) ?? formData.get("files");
@@ -204,18 +244,22 @@ export async function PATCH(
 
   const uploadBatchId = uploadedRows.length > 0 ? crypto.randomUUID() : null;
   let uploadInsertErrors = 0;
-  for (const row of uploadedRows) {
-    const { error: insertError } = await supabase.from("user_uploads").insert({
-      user_id: user.id,
-      film_stock_slug: slug,
-      image_url: row.url,
-      caption: captionToUse,
-      image_width: row.image_width,
-      image_height: row.image_height,
-      review_id: reviewId,
-      upload_batch_id: uploadBatchId,
-      ...metadata,
-    });
+  const patchInsertResults = await Promise.all(
+    uploadedRows.map((row) =>
+      supabase.from("user_uploads").insert({
+        user_id: user.id,
+        film_stock_slug: slug,
+        image_url: row.url,
+        caption: captionToUse,
+        image_width: row.image_width,
+        image_height: row.image_height,
+        review_id: reviewId,
+        upload_batch_id: uploadBatchId,
+        ...metadata,
+      })
+    )
+  );
+  for (const { error: insertError } of patchInsertResults) {
     if (insertError) {
       console.error("[reviews PATCH] user_uploads insert error:", insertError);
       uploadInsertErrors++;

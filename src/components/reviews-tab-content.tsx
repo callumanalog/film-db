@@ -37,7 +37,7 @@ import {
   type AddReviewModalPayload,
   type EditReviewSeed,
 } from "@/components/add-review-modal";
-import { apiErrorMessageForToast, networkErrorToastMessage } from "@/lib/review-submit-feedback";
+import { patchReviewModalSubmission } from "@/lib/user-reviews-client-submit";
 
 function sanitizeReviewHtml(html: string): string {
   return sanitizeReviewLikeHtml(html);
@@ -259,8 +259,10 @@ export function ReviewCard({
                 <LazyImage
                   src={url}
                   alt=""
+                  fill
                   wrapperClassName="block h-[4.5rem] w-[4.5rem] sm:h-[5rem] sm:w-[5rem]"
-                  className="h-full w-full object-cover"
+                  className="object-cover"
+                  sizes="(max-width: 640px) 4.5rem, 5rem"
                 />
               </a>
             ))}
@@ -352,51 +354,23 @@ export function ReviewsTabContent({
   const handleEditSubmit = useCallback(
     async (payload: AddReviewModalPayload) => {
       if (!user || !editingReview) return;
-      const formData = new FormData();
-      formData.set("film_stock_slug", modalStock.slug);
-      formData.set("mode", "review");
-      formData.set("rating", String(payload.rating));
-      if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
-      if (payload.reviewText) formData.set("review_text", payload.reviewText);
-      if (payload.camera) formData.set("camera", payload.camera);
-      if (payload.lens) formData.set("lens", payload.lens);
-      if (payload.developedAt) formData.set("developed_at", payload.developedAt);
-      if (payload.caption) formData.set("caption", payload.caption);
-      if (payload.shotIso) formData.set("shot_iso", payload.shotIso);
-      if (payload.lab) formData.set("lab", payload.lab);
-      if (payload.filter) formData.set("filter", payload.filter);
-      if (payload.scanner) formData.set("scanner", payload.scanner);
-      if (payload.format) formData.set("format", payload.format);
-      if (payload.location) formData.set("location", payload.location);
-      if (payload.shotDate) formData.set("shot_date", payload.shotDate);
-      if (payload.tags) formData.set("tags", payload.tags);
-      if (payload.iso) formData.set("iso", payload.iso);
-      if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
-      if (payload.uploadedImageUrl) formData.set("image_url", payload.uploadedImageUrl);
-      payload.files.forEach((file, i) => formData.append(`file_${i}`, file));
-
-      try {
-        const res = await fetch(`/api/user/reviews/${editingReview.id}`, {
-          method: "PATCH",
-          body: formData,
-        });
-        const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-        if (!res.ok) {
-          showToastViaEvent(apiErrorMessageForToast(data));
-          return { success: false };
-        }
-        showToastViaEvent("Review updated.");
-        window.dispatchEvent(
-          new CustomEvent("review-submitted", { detail: { slug: modalStock.slug } })
-        );
-        setEditModalOpen(false);
-        setEditingReview(null);
-        refetch();
-        return { success: true };
-      } catch {
-        showToastViaEvent(networkErrorToastMessage());
+      const outcome = await patchReviewModalSubmission({
+        reviewId: editingReview.id,
+        filmStockSlug: modalStock.slug,
+        payload,
+      });
+      if (!outcome.ok) {
+        showToastViaEvent(outcome.toast);
         return { success: false };
       }
+      showToastViaEvent("Review updated.");
+      window.dispatchEvent(
+        new CustomEvent("review-submitted", { detail: { slug: modalStock.slug } })
+      );
+      setEditModalOpen(false);
+      setEditingReview(null);
+      refetch();
+      return { success: true };
     },
     [user, editingReview, modalStock.slug, refetch]
   );

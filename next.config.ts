@@ -44,6 +44,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? envLocal.NEXT_PUBLIC_APP_URL,
   },
   images: {
+    /** Keep optimized images longer at the edge to cut repeat origin (Supabase) fetches. */
+    minimumCacheTTL: 60 * 60 * 24 * 7,
     remotePatterns: [
       {
         protocol: "https",

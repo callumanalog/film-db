@@ -17,11 +17,8 @@ import { getSuggestedStocks, type SearchStocksResult } from "@/app/actions/searc
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
 import { FilmStockListCardButton } from "@/components/film-stock-list-card";
 import { MobileStockPickerPanel } from "@/components/mobile-stock-picker-panel";
-import {
-  apiErrorMessageForToast,
-  interpretReviewsPostResult,
-  networkErrorToastMessage,
-} from "@/lib/review-submit-feedback";
+import { interpretReviewsPostResult } from "@/lib/review-submit-feedback";
+import { postReviewModalSubmission } from "@/lib/user-reviews-client-submit";
 import { cn } from "@/lib/utils";
 
 const EVENT_OPEN = "plus-action-sheet:open";
@@ -47,6 +44,7 @@ export function PlusActionSheet() {
   const [searchQuery, setSearchQuery] = useState("");
   const [suggested, setSuggested] = useState<{ stocks: SearchStocksResult[]; allStocks: SearchStocksResult[] } | null>(null);
   const [selectedStock, setSelectedStock] = useState<SearchStocksResult | null>(null);
+  const [shareRollSubmitHint, setShareRollSubmitHint] = useState<string | null>(null);
   const { user } = useAuth();
   const { setRating: persistRating } = useUserActions();
   const router = useRouter();
@@ -227,6 +225,7 @@ export function PlusActionSheet() {
             setReviewModalOpen(o);
             if (!o) {
               setSelectedStock(null);
+              setShareRollSubmitHint(null);
             }
           }}
           onBackToStockPicker={() => {
@@ -247,81 +246,58 @@ export function PlusActionSheet() {
             image_url: selectedStock.imageUrl ?? null,
             iso: selectedStock.iso ?? undefined,
           }}
+          shareRollSubmitHint={shareRollSubmitHint}
           onSubmit={async (payload: AddReviewModalPayload) => {
             if (user) {
-              const formData = new FormData();
-              formData.set("film_stock_slug", selectedStock.slug);
-              formData.set("mode", reviewModalMode);
-              formData.set("rating", String(payload.rating));
-              if (payload.reviewTitle) formData.set("review_title", payload.reviewTitle);
-              if (payload.reviewText) formData.set("review_text", payload.reviewText);
-              if (payload.camera) formData.set("camera", payload.camera);
-              if (payload.lens) formData.set("lens", payload.lens);
-              if (payload.developedAt) formData.set("developed_at", payload.developedAt);
-              if (payload.caption) formData.set("caption", payload.caption);
-              if (payload.shotIso) formData.set("shot_iso", payload.shotIso);
-              if (payload.lab) formData.set("lab", payload.lab);
-              if (payload.filter) formData.set("filter", payload.filter);
-              if (payload.scanner) formData.set("scanner", payload.scanner);
-              if (payload.format) formData.set("format", payload.format);
-              if (payload.location) formData.set("location", payload.location);
-              if (payload.shotDate) formData.set("shot_date", payload.shotDate);
-              if (payload.tags) formData.set("tags", payload.tags);
-              if (payload.iso) formData.set("iso", payload.iso);
-              if (payload.bestFor?.length) formData.set("best_for", JSON.stringify(payload.bestFor));
               const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
-              if (usedPreUpload) {
-                formData.set("image_url", payload.uploadedImageUrl!);
-              } else {
-                payload.files.forEach((file, i) => formData.append(`file_${i}`, file));
-              }
-              try {
-                const res = await fetch("/api/user/reviews", { method: "POST", body: formData });
-                const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-                if (!res.ok) {
-                  showToastViaEvent(apiErrorMessageForToast(data));
-                  return { success: false };
-                }
-                const interpreted = interpretReviewsPostResult(data, {
-                  mode: reviewModalMode,
-                  fileCount: payload.files.length,
-                  usedPreUploadedUrl: usedPreUpload,
-                });
-                if (!interpreted.ok) {
-                  showToastViaEvent(interpreted.message);
-                  return { success: false };
-                }
-                const uploadSucceeded = interpreted.uploaded > 0;
-                if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
-                  window.dispatchEvent(
-                    new CustomEvent("film-upload-complete", { detail: { slug: selectedStock.slug } })
-                  );
-                }
-                if (interpreted.reviewSaved) {
-                  window.dispatchEvent(
-                    new CustomEvent("review-submitted", { detail: { slug: selectedStock.slug } })
-                  );
-                }
-                if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
-                  showToastViaEvent(
-                    `${interpreted.uploaded} photo(s) saved; ${interpreted.uploadFailed} could not be saved. Try again from your profile if needed.`
-                  );
-                } else if (reviewModalMode === "upload") {
-                  if (payload.uploadedImageUrl || payload.files.length > 0) {
-                    showToastViaEvent("Thanks! Your roll has been published.");
-                  } else {
-                    showToastViaEvent("Done.");
-                  }
-                } else if (payload.files.length > 0) {
-                  showToastViaEvent("Thanks! Your photos and review have been submitted.");
-                } else {
-                  showToastViaEvent("Thanks! Your review has been submitted.");
-                }
-                return { success: true };
-              } catch {
-                showToastViaEvent(networkErrorToastMessage());
+              const outcome = await postReviewModalSubmission({
+                filmStockSlug: selectedStock.slug,
+                mode: reviewModalMode,
+                payload,
+                onProgress:
+                  payload.files.length > 0 ? (label) => setShareRollSubmitHint(label) : undefined,
+              });
+              if (!outcome.ok) {
+                showToastViaEvent(outcome.toast);
                 return { success: false };
               }
+              const data = outcome.data;
+              const interpreted = interpretReviewsPostResult(data, {
+                mode: reviewModalMode,
+                fileCount: payload.files.length,
+                usedPreUploadedUrl: usedPreUpload,
+              });
+              if (!interpreted.ok) {
+                showToastViaEvent(interpreted.message);
+                return { success: false };
+              }
+              const uploadSucceeded = interpreted.uploaded > 0;
+              if ((payload.files.length > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
+                window.dispatchEvent(
+                  new CustomEvent("film-upload-complete", { detail: { slug: selectedStock.slug } })
+                );
+              }
+              if (interpreted.reviewSaved) {
+                window.dispatchEvent(
+                  new CustomEvent("review-submitted", { detail: { slug: selectedStock.slug } })
+                );
+              }
+              if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
+                showToastViaEvent(
+                  `${interpreted.uploaded} photo(s) saved; ${interpreted.uploadFailed} could not be saved. Try again from your profile if needed.`
+                );
+              } else if (reviewModalMode === "upload") {
+                if (payload.uploadedImageUrl || payload.files.length > 0) {
+                  showToastViaEvent("Thanks! Your roll has been published.");
+                } else {
+                  showToastViaEvent("Done.");
+                }
+              } else if (payload.files.length > 0) {
+                showToastViaEvent("Thanks! Your photos and review have been submitted.");
+              } else {
+                showToastViaEvent("Thanks! Your review has been submitted.");
+              }
+              return { success: true };
             } else {
               if (payload.rating > 0) persistRating(selectedStock.slug, payload.rating);
               showToastViaEvent(

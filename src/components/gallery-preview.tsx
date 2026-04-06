@@ -359,8 +359,9 @@ export function GalleryPreview({
                 <LazyImage
                   src={img.imageUrl}
                   alt={img.alt}
-                  wrapperClassName="h-full w-full"
-                  className="!h-full !w-full !max-h-none object-cover"
+                  fill
+                  wrapperClassName="h-full w-full min-h-0"
+                  className="object-cover"
                   sizes="100vw"
                 />
               </button>

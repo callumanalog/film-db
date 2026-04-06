@@ -1,5 +1,9 @@
 const MAX_TOAST_DETAIL_LEN = 280;
 
+/** Vercel / CDN 413 or body limit failures (response may be non-JSON). */
+export const REVIEWS_PAYLOAD_TOO_LARGE_TOAST =
+  "Upload was too large for the server. Try again with fewer photos — they are optimized automatically before upload.";
+
 /** User-facing line from API JSON (`error` + optional `detail`), truncated. */
 export function apiErrorMessageForToast(data: Record<string, unknown>): string {
   const err = typeof data.error === "string" ? data.error.trim() : "";
@@ -13,6 +17,31 @@ export function apiErrorMessageForToast(data: Record<string, unknown>): string {
 
 export function networkErrorToastMessage(): string {
   return "Network error — check your connection and try again.";
+}
+
+/**
+ * Maps failed review POST/PATCH HTTP responses to a toast line (handles empty JSON on 413).
+ */
+export function toastMessageForReviewsHttpFailure(
+  res: Response,
+  data: Record<string, unknown>,
+  rawBody: string
+): string {
+  if (res.status === 413) return REVIEWS_PAYLOAD_TOO_LARGE_TOAST;
+  const combined = `${rawBody} ${typeof data.error === "string" ? data.error : ""} ${
+    typeof data.detail === "string" ? data.detail : ""
+  }`.toLowerCase();
+  if (
+    res.status >= 400 &&
+    (/payload too large|function_payload_too_large|body exceeded|request entity too large/i.test(combined) ||
+      /413/.test(combined))
+  ) {
+    return REVIEWS_PAYLOAD_TOO_LARGE_TOAST;
+  }
+  const fromJson = apiErrorMessageForToast(data);
+  if (fromJson !== "Something went wrong. Please try again.") return fromJson;
+  if (res.status >= 500) return "Server error — please try again in a moment.";
+  return fromJson;
 }
 
 export type InterpretReviewsPostContext = {
