@@ -672,11 +672,10 @@ export function ImageLightbox({
       showToastViaEvent("Roll updated.");
       setEditRollOpen(false);
       setEditRollSeed(null);
-      onClose();
       router.refresh();
       return { success: true as const };
     },
-    [user, editRollSeed, resolvedFilmStockSlug, onClose, router]
+    [user, editRollSeed, resolvedFilmStockSlug, router]
   );
 
   const confirmDeleteOwnRoll = useCallback(async () => {
@@ -710,8 +709,8 @@ export function ImageLightbox({
       }
       setRollDeleteSheetOpen(false);
       setDeleteRollTarget(null);
-      onClose();
       router.refresh();
+      onClose();
     } finally {
       setDeleteRollPending(false);
     }
@@ -1295,7 +1294,7 @@ export function ImageLightbox({
               type="button"
               onClick={() => void confirmDeleteOwnRoll()}
               disabled={deleteRollPending}
-              className="order-1 rounded-[7px] bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50 sm:order-2"
+              className="order-1 rounded-[7px] bg-destructive px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-destructive/90 disabled:opacity-50 sm:order-2"
             >
               {deleteRollPending ? "Deleting…" : "Delete"}
             </button>

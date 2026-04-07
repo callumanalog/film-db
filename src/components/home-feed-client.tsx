@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -351,6 +352,7 @@ export function HomeFeedClient({
   stockLabelBySlug: Record<string, string>;
   lightboxStockBySlug?: Record<string, FilmStockLightboxSummary>;
 }) {
+  const router = useRouter();
   const [feedGroups, setFeedGroups] = useState(initialGroups);
   useEffect(() => {
     setFeedGroups(initialGroups);
@@ -365,6 +367,16 @@ export function HomeFeedClient({
     window.addEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
     return () => window.removeEventListener(ROLL_METADATA_UPDATED_EVENT, handler);
   }, []);
+
+  useEffect(() => {
+    const refreshHomeFeed = () => router.refresh();
+    window.addEventListener("film-upload-complete", refreshHomeFeed);
+    window.addEventListener("review-submitted", refreshHomeFeed);
+    return () => {
+      window.removeEventListener("film-upload-complete", refreshHomeFeed);
+      window.removeEventListener("review-submitted", refreshHomeFeed);
+    };
+  }, [router]);
 
   const feedGalleryImages = useMemo(
     () => buildFeedGalleryPool(feedGroups, stockLabelBySlug, lightboxStockBySlug),

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import imageSize from "image-size";
 import { createClient } from "@/lib/supabase/server";
 import { shotDateForUserUploadDb } from "@/lib/user-upload-shot-date";
@@ -302,13 +303,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error: "Photos uploaded, but they could not be saved to your gallery.",
+        error: "Images uploaded, but they could not be saved to your gallery.",
         detail,
       },
       { status: 500 }
     );
   }
 
+  revalidatePath("/");
   return NextResponse.json({
     ok: true,
     uploaded: uploadInserted,

@@ -44,6 +44,7 @@ export function PlusActionSheet() {
   const [searchStep, setSearchStep] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggested, setSuggested] = useState<{ stocks: SearchStocksResult[]; allStocks: SearchStocksResult[] } | null>(null);
+  const [stocksLoading, setStocksLoading] = useState(false);
   const [selectedStock, setSelectedStock] = useState<SearchStocksResult | null>(null);
   const [shareRollSubmitHint, setShareRollSubmitHint] = useState<string | null>(null);
   const { user } = useAuth();
@@ -64,10 +65,26 @@ export function PlusActionSheet() {
     return () => window.removeEventListener(EVENT_OPEN, handleOpen);
   }, []);
 
+  const loadSuggestedStocks = useCallback(async () => {
+    if (suggested || stocksLoading) return;
+    setStocksLoading(true);
+    try {
+      const next = await getSuggestedStocks();
+      setSuggested(next);
+    } finally {
+      setStocksLoading(false);
+    }
+  }, [stocksLoading, suggested]);
+
+  useEffect(() => {
+    if (!open) return;
+    void loadSuggestedStocks();
+  }, [open, loadSuggestedStocks]);
+
   useEffect(() => {
     if (!searchStep) return;
-    getSuggestedStocks().then(setSuggested);
-  }, [searchStep]);
+    void loadSuggestedStocks();
+  }, [searchStep, loadSuggestedStocks]);
 
   const filteredStocks = suggested?.allStocks
     ? searchQuery.trim()
@@ -144,6 +161,7 @@ export function PlusActionSheet() {
                 }}
                 onSelectStock={handleSelectStock}
                 stocks={suggested?.allStocks ?? []}
+                isLoading={stocksLoading || suggested == null}
                 userId={user?.id ?? null}
               />
 
@@ -310,6 +328,10 @@ export function PlusActionSheet() {
               showToastViaEvent("Roll shared!");
             } else {
               showToastViaEvent("Review posted!");
+            }
+            if (reviewModalMode === "upload" && attemptedPhotos > 0) {
+              router.push("/");
+              router.refresh();
             }
             return { success: true };
           }}

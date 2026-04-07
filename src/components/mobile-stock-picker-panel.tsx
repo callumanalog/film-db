@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { ChevronLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { FilmStockListCardButton } from "@/components/film-stock-list-card";
 import { shareRollPickerSectionLabelClassName } from "@/components/share-roll-picker-primitives";
@@ -22,6 +23,7 @@ interface MobileStockPickerPanelProps {
   onClose: () => void;
   onSelectStock: (stock: SearchStocksResult) => void;
   stocks: SearchStocksResult[];
+  isLoading?: boolean;
   /** Supabase user id — used for per-user recent stocks (share-a-roll only). */
   userId: string | null;
 }
@@ -43,12 +45,15 @@ export function MobileStockPickerPanel({
   onClose,
   onSelectStock,
   stocks,
+  isLoading = false,
   userId,
 }: MobileStockPickerPanelProps) {
   const prompt =
     mode === "upload" ? "Find the film stock you shot..." : "Find a film stock to review...";
 
   const filteredStocks = useMemo(() => filterStocks(stocks, query), [query, stocks]);
+  const hasQuery = query.trim().length > 0;
+  const showLoadingState = isLoading || (!hasQuery && filteredStocks.length === 0);
 
   const splitLayout = mode === "upload" && query.trim() === "";
 
@@ -137,6 +142,10 @@ export function MobileStockPickerPanel({
                 ))}
               </div>
             </section>
+          </div>
+        ) : showLoadingState ? (
+          <div className="flex items-center justify-center px-4 py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
           </div>
         ) : (
           <div className="px-4 py-16 text-center">

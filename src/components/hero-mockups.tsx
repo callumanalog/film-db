@@ -971,6 +971,10 @@ export function FilmDetailMobileToolbar({
           } else {
             showToastViaEvent("Review posted!");
           }
+          if (reviewModalMode === "upload" && attemptedPhotos > 0) {
+            router.push("/");
+            router.refresh();
+          }
           return { success: true };
         }}
       />
@@ -1272,6 +1276,10 @@ export function StickyLeftPane({
             showToastViaEvent("Roll shared!");
           } else {
             showToastViaEvent("Review posted!");
+          }
+          if (reviewModalMode === "upload" && attemptedPhotos > 0) {
+            router.push("/");
+            router.refresh();
           }
           return { success: true };
         }}

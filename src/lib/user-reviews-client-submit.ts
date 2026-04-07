@@ -122,7 +122,7 @@ export async function submitNewUserReview(opts: {
     mode: opts.mode,
     payload: opts.payload,
   });
-  opts.onProgress?.("Saving…");
+  opts.onProgress?.(opts.mode === "upload" ? "Sharing…" : "Saving…");
   return fetchReviewsResponse("/api/user/reviews", "POST", formData, opts.signal);
 }
 
