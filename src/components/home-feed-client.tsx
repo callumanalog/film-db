@@ -333,7 +333,7 @@ function HomeFeedPost({
             </Link>
             <Link
               href={`/films/${group.film_stock_slug}`}
-              className="min-w-0 max-w-[min(50%,11rem)] shrink truncate text-right text-xs font-normal text-[#8A8A8A] outline-none ring-offset-2 hover:text-neutral-600 focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-neutral-300"
+              className="min-w-0 max-w-[min(50%,11rem)] shrink truncate text-right text-xs font-normal text-muted-foreground outline-none ring-offset-2 hover:text-neutral-600 focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-neutral-300"
             >
               {stockLabel}
             </Link>

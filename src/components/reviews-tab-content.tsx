@@ -224,13 +224,17 @@ export function ReviewCard({
           aria-label={review.liked_by_me ? "Unlike review" : "Like review"}
           className={cn(
             "inline-flex shrink-0 items-center justify-center gap-1 rounded-full py-0.5 text-sm font-medium leading-relaxed transition-colors disabled:opacity-50",
-            review.liked_by_me ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            review.liked_by_me
+              ? "text-black dark:text-white"
+              : "text-muted-foreground hover:text-foreground"
           )}
         >
           <Heart
             className={cn(
               "h-4 w-4",
-              review.liked_by_me ? "fill-primary text-primary" : "text-muted-foreground"
+              review.liked_by_me
+                ? "fill-black text-black dark:fill-white dark:text-white"
+                : "text-muted-foreground"
             )}
           />
           {review.liked_by_me && review.like_count > 0 ? (
@@ -621,7 +625,7 @@ export function ReviewsTabContent({
               type="button"
               onClick={confirmDeleteReview}
               disabled={deletePending}
-              className="order-1 rounded-[7px] bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50 sm:order-2"
+              className="order-1 rounded-[7px] bg-destructive px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-destructive/90 disabled:opacity-50 sm:order-2"
             >
               {deletePending ? "Deleting…" : "Delete"}
             </button>

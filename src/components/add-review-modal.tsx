@@ -628,7 +628,7 @@ export function AddReviewModal({
   const [rollName, setRollName] = useState("");
 
   const REVIEW_MAX_LENGTH = 10_000;
-  const CAPTION_MAX_LENGTH = 500;
+  const CAPTION_MAX_LENGTH = 10000;
   const TAGS_MAX_LENGTH = 500;
 
   const editor = useEditor({

@@ -27,6 +27,7 @@ import { showToastViaEvent } from "@/components/toast";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Aperture,
   Bookmark,
   Camera,
   CalendarDays,
@@ -34,10 +35,14 @@ import {
   ChevronRight,
   Clock,
   Film,
+  FlaskConical,
+  Gauge,
   Heart,
+  MapPin,
   MessageCircle,
   MoreHorizontal,
   RectangleHorizontal,
+  ScanLine,
   Tags,
 } from "lucide-react";
 import { getSavedUploadIdsAmong, toggleSaveUpload } from "@/app/actions/saved-uploads";
@@ -57,7 +62,7 @@ import {
 } from "@/lib/top-left-nav-icon";
 import { mobileHeaderRowClassName, mobileHeaderSafeAreaStyle } from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
-import { sanitizeReviewLikeHtml } from "@/lib/sanitize-review-like-html";
+import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 import {
   Sheet,
   SheetContent,
@@ -162,7 +167,16 @@ function getInitials(name: string): string {
 }
 
 function plainCaptionFull(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const withLineBreaks = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
+    .replace(/<\/div>\s*<div[^>]*>/gi, "\n");
+  const stripped = withLineBreaks.replace(/<[^>]+>/g, "");
+  return stripped
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[ \t\f\v]+/g, " ").trim())
+    .join("\n")
+    .trim();
 }
 
 function buildEditShareRollSeed(
@@ -260,7 +274,7 @@ export function ImageLightbox({
     Math.min(Math.max(0, initialIndex), Math.max(0, safeSlides.length - 1))
   );
   const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [captionOverflowsTwoLines, setCaptionOverflowsTwoLines] = useState(false);
+  const [captionOverflowsFiveLines, setCaptionOverflowsFiveLines] = useState(false);
   const captionClampedRef = useRef<HTMLParagraphElement>(null);
   const [savedUploadIds, setSavedUploadIds] = useState<Set<string>>(() => new Set());
   const [savePending, setSavePending] = useState(false);
@@ -345,7 +359,7 @@ export function ImageLightbox({
       if (overflowTimeout != null) clearTimeout(overflowTimeout);
       overflowTimeout = setTimeout(() => {
         overflowTimeout = null;
-        setCaptionOverflowsTwoLines(value);
+        setCaptionOverflowsFiveLines(value);
       }, 0);
     };
 
@@ -356,7 +370,12 @@ export function ImageLightbox({
       };
     }
     const slide = safeSlides[active] ?? safeSlides[0];
-    const plain = slide?.caption?.trim() ? plainCaptionFull(slide.caption) : "";
+    const patch = getRollMetadataPatchForRoll(slide?.reviewId, slide?.uploadBatchId);
+    const plain = patch
+      ? (patch.caption?.trim() ? patch.caption.trim() : "")
+      : slide?.caption?.trim()
+        ? plainCaptionFull(slide.caption)
+        : "";
     if (!plain) {
       scheduleCaptionOverflow(false);
       return () => {
@@ -827,9 +846,25 @@ export function ImageLightbox({
   const filmStockName = current.stockCard?.name ?? current.context?.label ?? null;
   const filmStockHref = current.stockCard?.href ?? current.context?.href ?? null;
   const showFilmMetaRow = !!(filmStockName && filmStockHref);
+  const rollTitleValue = rollMetaPatch
+    ? (rollMetaPatch.reviewTitle ?? "").trim()
+    : current.rollTitle?.trim() ?? "";
   const cameraValue = rollMetaPatch
     ? (rollMetaPatch.camera ?? "").trim()
     : current.metadata?.camera?.trim() ?? "";
+  const lensValue = rollMetaPatch
+    ? (rollMetaPatch.lens ?? "").trim()
+    : current.metadata?.lens?.trim() ?? "";
+  const labValue = rollMetaPatch
+    ? (rollMetaPatch.lab ?? "").trim()
+    : current.metadata?.lab?.trim() ?? "";
+  const scannerValue = rollMetaPatch
+    ? (rollMetaPatch.scanner ?? "").trim()
+    : current.metadata?.scanner?.trim() ?? "";
+  const pushPullValue = current.metadata?.push_pull?.trim() ?? "";
+  const locationValue = rollMetaPatch
+    ? (rollMetaPatch.location ?? "").trim()
+    : (current.location ?? current.metadata?.location)?.trim() ?? "";
   const shotIsoValue = rollMetaPatch
     ? (rollMetaPatch.shot_iso ?? "").trim()
     : current.metadata?.shot_iso?.trim() ?? "";
@@ -845,6 +880,11 @@ export function ImageLightbox({
   const hasMetadataTable =
     showFilmMetaRow ||
     !!cameraValue ||
+    !!lensValue ||
+    !!labValue ||
+    !!scannerValue ||
+    !!pushPullValue ||
+    !!locationValue ||
     !!shotIsoValue ||
     !!formatValue ||
     !!shotDateValue ||
@@ -854,11 +894,17 @@ export function ImageLightbox({
     : current.caption?.trim()
       ? plainCaptionFull(current.caption)
       : "";
+  const shouldShowCaptionMore =
+    !captionExpanded && (captionOverflowsFiveLines || captionPlain.length > 180);
+  const captionCollapsedText = shouldShowCaptionMore
+    ? `${captionPlain.slice(0, 180).trimEnd()}`
+    : captionPlain;
   const showCaptionBlock = rollMetaPatch
     ? (rollMetaPatch.caption?.trim()?.length ?? 0) > 0
     : !!current.caption?.trim();
 
   const comments = current.commentCount ?? null;
+  const moreFromRollHeading = rollTitleValue ? `More from ${rollTitleValue}` : "More from this roll";
 
   const currentUploadId = current.uploadId?.trim() ?? null;
   const canSave = !!currentUploadId;
@@ -994,7 +1040,7 @@ export function ImageLightbox({
                       aria-pressed={isLiked}
                     >
                       <Heart
-                        className={`h-5 w-5 stroke-[1.5] ${isLiked ? "fill-primary text-primary" : ""}`}
+                        className={`h-5 w-5 stroke-[1.5] ${isLiked ? "fill-black text-black dark:fill-white dark:text-white" : ""}`}
                       />
                     </button>
                     {currentUploadId && displayLikes > 0 ? (
@@ -1036,41 +1082,42 @@ export function ImageLightbox({
               </div>
 
               <div className="space-y-2 px-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+12px))]">
+                {rollTitleValue ? (
+                  <p className="text-sm font-medium leading-relaxed text-neutral-900 break-words dark:text-neutral-100">
+                    {rollTitleValue}
+                  </p>
+                ) : null}
                 {showCaptionBlock ? (
                   <div className="relative text-sm leading-relaxed">
                     {!captionExpanded ? (
-                      <>
-                        <p
-                          ref={captionClampedRef}
-                          className="text-neutral-900 dark:text-neutral-100 line-clamp-2 break-words"
-                        >
-                          {captionPlain}
-                        </p>
-                        {captionOverflowsTwoLines ? (
-                          <span className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-l from-white from-40% to-transparent pl-10 dark:from-black">
+                      <p
+                        ref={captionClampedRef}
+                        className="whitespace-pre-wrap text-neutral-900 dark:text-neutral-100 break-words"
+                      >
+                        {captionCollapsedText}
+                        {shouldShowCaptionMore ? (
+                          <>
+                            {" "}
                             <button
                               type="button"
                               onClick={() => setCaptionExpanded(true)}
-                              className="pointer-events-auto text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400"
+                              className="text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400"
                             >
-                              more
+                              ... more
                             </button>
-                          </span>
+                          </>
                         ) : null}
-                      </>
-                    ) : rollMetaPatch ? (
-                      <p className="text-neutral-900 dark:text-neutral-100 break-words">{captionPlain}</p>
+                      </p>
                     ) : (
-                      <div
-                        className="text-neutral-900 [&_a]:text-blue-600 [&_a]:underline dark:text-neutral-100 dark:[&_a]:text-blue-400 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-neutral-300 [&_blockquote]:pl-2 dark:[&_blockquote]:border-white/25 [&_p]:m-0 [&_p]:mb-2 [&_p:last-child]:mb-0"
-                        dangerouslySetInnerHTML={{ __html: sanitizeReviewLikeHtml(current.caption!) }}
-                      />
+                      <p className="whitespace-pre-wrap text-neutral-900 dark:text-neutral-100 break-words">
+                        {captionPlain}
+                      </p>
                     )}
                   </div>
                 ) : null}
 
                 {hasMetadataTable ? (
-                  <div className="-mx-4 flex flex-col">
+                  <div className="-mx-4 mt-[22px] flex flex-col">
                     {showFilmMetaRow ? (
                       <Link
                         href={filmStockHref!}
@@ -1102,6 +1149,46 @@ export function ImageLightbox({
                         </span>
                         <ChevronRight className={cn(lightboxMetaChevronClass, "ml-2 shrink-0")} aria-hidden />
                       </Link>
+                    ) : null}
+                    {lensValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <Aperture className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {lensValue}
+                        </span>
+                      </div>
+                    ) : null}
+                    {labValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <FlaskConical className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {filmLabPublicLabel(labValue)}
+                        </span>
+                      </div>
+                    ) : null}
+                    {scannerValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <ScanLine className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {scannerValue}
+                        </span>
+                      </div>
+                    ) : null}
+                    {pushPullValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <Gauge className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {pushPullValue}
+                        </span>
+                      </div>
+                    ) : null}
+                    {locationValue ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                        <MapPin className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                          {locationValue}
+                        </span>
+                      </div>
                     ) : null}
                     {shotIsoValue ? (
                       <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
@@ -1146,26 +1233,13 @@ export function ImageLightbox({
 
                 {moreRollItems.length > 0 ? (
                   <div className="space-y-2 pt-6">
-                    <h3 className="text-xs font-medium uppercase tracking-wider text-foreground">
-                      More from this roll
+                    <h3 className="text-sm font-medium leading-relaxed text-neutral-900 dark:text-neutral-100">
+                      {moreFromRollHeading}
                     </h3>
                     <div className="min-w-0 -mx-4 w-[calc(100%+2rem)]">
                       <FilmNativeMasonryGrid
                         items={moreRollItems}
                         ariaLabel="More from this roll"
-                        frameClassName="border-neutral-200 bg-white dark:border-white"
-                      />
-                    </div>
-                  </div>
-                ) : moreFromStockItems.length > 0 ? (
-                  <div className="space-y-2 pt-6">
-                    <h3 className="text-xs font-medium uppercase tracking-wider text-foreground">
-                      More from this stock
-                    </h3>
-                    <div className="min-w-0 -mx-4 w-[calc(100%+2rem)]">
-                      <FilmNativeMasonryGrid
-                        items={moreFromStockItems}
-                        ariaLabel="More from this stock"
                         frameClassName="border-neutral-200 bg-white dark:border-white"
                       />
                     </div>
