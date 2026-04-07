@@ -28,6 +28,18 @@ export function filterCamerasForPicker(
   });
 }
 
+function titleCaseCameraFreeText(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      if (!/[a-z]/i.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
 /** Avoid "Agfa Agfa Isolette" when the model name already includes the brand. */
 export function cameraPickerDisplayName(brandName: string, modelName: string): string {
   const b = brandName.trim();
@@ -93,6 +105,7 @@ export function ShareRollCameraPicker({
   }, [query, refreshRecents]);
 
   const filtered = useMemo(() => filterCamerasForPicker(allRows, query), [allRows, query]);
+  const customCameraLabel = useMemo(() => titleCaseCameraFreeText(query), [query]);
 
   const splitLayout = query.trim() === "" && status === "ready";
 
@@ -149,9 +162,9 @@ export function ShareRollCameraPicker({
         ) : filtered.length === 0 ? (
           <div className="px-3 pt-2">
             <ShareRollPickerAddCustomEmptyState
-              term={query.trim()}
+              term={customCameraLabel}
               entityLabel="camera"
-              onPick={() => pickCamera(query.trim())}
+              onPick={() => pickCamera(customCameraLabel)}
             />
           </div>
         ) : (

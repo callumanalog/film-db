@@ -25,6 +25,8 @@ export type ShareRollMetadataTextSheetProps = {
   /** e.g. "Recent locations" — shown with uppercase styling. */
   recentSectionTitle: string;
   autoComplete?: string;
+  suggestionSectionTitle?: string;
+  getSuggestions?: (input: string, limit?: number) => string[];
 };
 
 /**
@@ -44,6 +46,8 @@ export function ShareRollMetadataTextSheet({
   mruKind,
   recentSectionTitle,
   autoComplete = "off",
+  suggestionSectionTitle = "Suggestions",
+  getSuggestions,
 }: ShareRollMetadataTextSheetProps) {
   const ksv = useKeyboardSafeViewport(open);
   const bottomInset = ksv?.bottomInset ?? 0;
@@ -77,6 +81,10 @@ export function ShareRollMetadataTextSheet({
 
   const canSave = draft.trim().length > 0;
   const splitLayout = draft.trim() === "";
+  const suggestions =
+    draft.trim().length > 0 && getSuggestions
+      ? getSuggestions(draft.trim(), 3).filter((s) => s.trim() !== draft.trim())
+      : [];
 
   const applyValue = useCallback(
     (trimmed: string) => {
@@ -139,6 +147,22 @@ export function ShareRollMetadataTextSheet({
           </div>
 
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto bg-background px-4">
+            {suggestions.length > 0 ? (
+              <div className="pb-2">
+                <p className={cn(shareRollPickerSectionLabelClassName, "pt-1")}>{suggestionSectionTitle}</p>
+                <div>
+                  {suggestions.map((s, i) => (
+                    <ShareRollPickerOptionRow
+                      key={s}
+                      label={s}
+                      selected={value.trim() === s}
+                      onPick={() => applyValue(s)}
+                      showBottomBorder={i < suggestions.length - 1}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {splitLayout && recentList.length > 0 ? (
               <div className="pb-2">
                 <p className={cn(shareRollPickerSectionLabelClassName, "pt-1")}>{recentSectionTitle}</p>

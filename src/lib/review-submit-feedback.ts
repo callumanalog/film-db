@@ -1,10 +1,28 @@
 const MAX_TOAST_DETAIL_LEN = 280;
 
-/** Vercel / CDN 413 or body limit failures (response may be non-JSON). */
-export const REVIEWS_PAYLOAD_TOO_LARGE_TOAST =
-  "Upload was too large for the server. Try again with fewer photos — they are optimized automatically before upload.";
+/** Toast when share-a-roll submit fails (HTTP, network, timeout, or client guard). */
+export const SHARE_ROLL_SUBMIT_ERROR_TOAST =
+  "We couldn't share your roll at this time. Please try again.";
 
-/** User-facing line from API JSON (`error` + optional `detail`), truncated. */
+/** Toast when text review submit fails (HTTP, network, timeout, or client guard). */
+export const REVIEW_POST_ERROR_TOAST =
+  "We couldn't post your review at this time. Please try again.";
+
+/** Toast when edit-roll PATCH fails (lightbox / metadata update). */
+export const ROLL_UPDATE_ERROR_TOAST =
+  "We couldn't update your roll at this time. Please try again.";
+
+export function reviewsModalSubmitErrorToast(
+  mode: "review" | "upload",
+  method: "POST" | "PATCH"
+): string {
+  if (mode === "upload") {
+    return method === "PATCH" ? ROLL_UPDATE_ERROR_TOAST : SHARE_ROLL_SUBMIT_ERROR_TOAST;
+  }
+  return REVIEW_POST_ERROR_TOAST;
+}
+
+/** User-facing line from API JSON (`error` + optional `detail`), truncated. Used outside modal submit. */
 export function apiErrorMessageForToast(data: Record<string, unknown>): string {
   const err = typeof data.error === "string" ? data.error.trim() : "";
   const det = typeof data.detail === "string" ? data.detail.trim() : "";
@@ -19,52 +37,30 @@ export function networkErrorToastMessage(): string {
   return "Network error — check your connection and try again.";
 }
 
-/** Toast body when some client-side storage uploads failed but others succeeded. */
-export function formatClientUploadFailuresForToast(
-  failures: { index: number; message: string }[],
-  uploaded: number,
-  attempted: number
-): string {
-  const detail = failures.map((f) => `Photo ${f.index + 1}: ${f.message}`).join(" ");
-  return `${uploaded} of ${attempted} photos reached storage. Not uploaded: ${detail}`;
-}
-
 /**
- * Maps failed review POST/PATCH HTTP responses to a toast line (handles empty JSON on 413).
+ * Maps failed review POST/PATCH from the add-review modal to a short, mode-specific toast.
  */
 export function toastMessageForReviewsHttpFailure(
-  res: Response,
-  data: Record<string, unknown>,
-  rawBody: string
+  _res: Response,
+  _data: Record<string, unknown>,
+  _rawBody: string,
+  mode: "review" | "upload",
+  method: "POST" | "PATCH"
 ): string {
-  if (res.status === 413) return REVIEWS_PAYLOAD_TOO_LARGE_TOAST;
-  const combined = `${rawBody} ${typeof data.error === "string" ? data.error : ""} ${
-    typeof data.detail === "string" ? data.detail : ""
-  }`.toLowerCase();
-  if (
-    res.status >= 400 &&
-    (/payload too large|function_payload_too_large|body exceeded|request entity too large/i.test(combined) ||
-      /413/.test(combined))
-  ) {
-    return REVIEWS_PAYLOAD_TOO_LARGE_TOAST;
-  }
-  const fromJson = apiErrorMessageForToast(data);
-  if (fromJson !== "Something went wrong. Please try again.") return fromJson;
-  if (res.status >= 500) return "Server error — please try again in a moment.";
-  return fromJson;
+  return reviewsModalSubmitErrorToast(mode, method);
 }
 
 export type InterpretReviewsPostContext = {
   mode: "review" | "upload";
+  /** Pre-uploaded scans sent as `client_stored_images` (share-a-roll). */
   fileCount: number;
-  /** Photos the user intended to send (e.g. before client-side partial upload). Defaults to fileCount. */
+  /** Images the user intended to attach (defaults to fileCount). */
   attemptedUploads?: number;
-  usedPreUploadedUrl: boolean;
 };
 
 /**
  * Interprets POST `/api/user/reviews` JSON after a successful HTTP status.
- * Fails closed when files were sent but `uploaded` is 0.
+ * Fails closed when uploads were expected but `uploaded` is 0.
  */
 export function interpretReviewsPostResult(
   data: Record<string, unknown>,
@@ -73,7 +69,7 @@ export function interpretReviewsPostResult(
   const uploaded = Number(data.uploaded) || 0;
   const reviewSaved = Boolean(data.reviewSaved);
   const serverReportedFailed = typeof data.uploadFailed === "number" ? data.uploadFailed : 0;
-  const expectedUpload = ctx.fileCount > 0 || ctx.usedPreUploadedUrl;
+  const expectedUpload = ctx.fileCount > 0;
   const attempted = ctx.attemptedUploads ?? ctx.fileCount;
   const gapFromCounts =
     attempted > 0 && uploaded < attempted ? Math.max(0, attempted - uploaded) : 0;
@@ -82,8 +78,7 @@ export function interpretReviewsPostResult(
   if (expectedUpload && uploaded === 0) {
     return {
       ok: false,
-      message:
-        "Your photos could not be saved after uploading. Try again, or contact support if this continues.",
+      message: reviewsModalSubmitErrorToast(ctx.mode, "POST"),
     };
   }
 

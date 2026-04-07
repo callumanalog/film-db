@@ -69,11 +69,8 @@ import { useAuth } from "@/context/auth-context";
 import { listMyStockListsForPicker } from "@/app/actions/stock-lists";
 import { AddToListsSheet } from "@/components/add-to-lists-sheet";
 import type { AddReviewModalPayload } from "@/components/add-review-modal";
-import {
-  formatClientUploadFailuresForToast,
-  interpretReviewsPostResult,
-  networkErrorToastMessage,
-} from "@/lib/review-submit-feedback";
+import { interpretReviewsPostResult } from "@/lib/review-submit-feedback";
+import { recordRollFilmStockRecent } from "@/lib/roll-film-stock-recents";
 import { postReviewModalSubmission } from "@/lib/user-reviews-client-submit";
 import type { BestFor } from "@/lib/types";
 import { BEST_FOR_LABELS } from "@/lib/types";
@@ -825,6 +822,11 @@ export function FilmDetailMobileToolbar({
               className="flex w-full items-center gap-3 px-6 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
               onClick={() => {
                 setMoreSheetOpen(false);
+                if (!user) {
+                  const next = pathname ?? `/films/${slug}`;
+                  router.push(`/auth/sign-in?next=${encodeURIComponent(next)}`);
+                  return;
+                }
                 setReviewModalMode("upload");
                 setReviewModalOpen(true);
               }}
@@ -917,74 +919,59 @@ export function FilmDetailMobileToolbar({
           iso: stock.iso,
         }}
         onSubmit={async (payload: AddReviewModalPayload) => {
-          if (user) {
-            const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
-            const outcome = await postReviewModalSubmission({
-              filmStockSlug: slug,
-              mode: reviewModalMode,
-              payload,
-              onProgress:
-                payload.files.length > 0 ? (label) => setShareRollSubmitHint(label) : undefined,
-            });
-            if (!outcome.ok) {
-              showToastViaEvent(outcome.toast);
-              return { success: false };
-            }
-            const data = outcome.data;
-            const attemptedPhotos = payload.files.length;
-            const interpreted = interpretReviewsPostResult(data, {
-              mode: reviewModalMode,
-              fileCount: attemptedPhotos,
-              attemptedUploads: attemptedPhotos,
-              usedPreUploadedUrl: usedPreUpload,
-            });
-            if (!interpreted.ok) {
-              showToastViaEvent(interpreted.message);
-              return { success: false };
-            }
-            const uploadSucceeded = interpreted.uploaded > 0;
-            if ((attemptedPhotos > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
-              window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
-            }
-            if (interpreted.reviewSaved) {
-              window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
-            }
-            const uploadedCount = interpreted.uploaded;
-            if (outcome.clientUploadFailures?.length) {
-              showToastViaEvent(
-                formatClientUploadFailuresForToast(
-                  outcome.clientUploadFailures,
-                  uploadedCount,
-                  attemptedPhotos
-                )
-              );
-            }
-            if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
-              showToastViaEvent(
-                `${uploadedCount} photo(s) saved; ${interpreted.uploadFailed} could not be saved to your gallery. Try again from your profile if needed.`
-              );
-            } else if (reviewModalMode === "upload") {
-              if (payload.uploadedImageUrl || attemptedPhotos > 0) {
-                showToastViaEvent("Thanks! Your roll has been published.");
-              } else {
-                showToastViaEvent("Done.");
-              }
-            } else if (attemptedPhotos > 0) {
-              showToastViaEvent("Thanks! Your photos and review have been submitted.");
-            } else {
-              showToastViaEvent("Thanks! Your review has been submitted.");
-            }
-            return { success: true };
-          } else {
+          if (!user) {
             if (payload.rating > 0) persistRating(slug, payload.rating);
+            const hasRollPhotos = (payload.clientStoredScanImages?.length ?? 0) > 0;
             showToastViaEvent(
-              reviewModalMode === "upload"
-                ? (payload.files.length > 0 ? "Log in to save your roll." : "Done.")
-                : payload.files.length > 0
-                  ? "Log in to save your photos and review."
-                  : "Your rating was saved locally. Log in to save reviews and uploads."
+              hasRollPhotos
+                ? "Log in to save your images and review."
+                : "Your rating was saved locally. Log in to save reviews and uploads."
             );
+            return undefined;
           }
+          const attemptedPhotos = payload.clientStoredScanImages?.length ?? 0;
+          const outcome = await postReviewModalSubmission({
+            filmStockSlug: slug,
+            mode: reviewModalMode,
+            payload,
+            onProgress:
+              attemptedPhotos > 0 ? (label) => setShareRollSubmitHint(label) : undefined,
+          });
+          if (!outcome.ok) {
+            showToastViaEvent(outcome.toast);
+            return { success: false };
+          }
+          const data = outcome.data;
+          const interpreted = interpretReviewsPostResult(data, {
+            mode: reviewModalMode,
+            fileCount: attemptedPhotos,
+            attemptedUploads: attemptedPhotos,
+          });
+          if (!interpreted.ok) {
+            showToastViaEvent(interpreted.message);
+            return { success: false };
+          }
+          if (reviewModalMode === "upload" && attemptedPhotos > 0) {
+            recordRollFilmStockRecent(user.id, slug);
+          }
+          const uploadSucceeded = interpreted.uploaded > 0;
+          if (attemptedPhotos > 0 && uploadSucceeded) {
+            window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
+          }
+          if (interpreted.reviewSaved) {
+            window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
+          }
+          const uploadedCount = interpreted.uploaded;
+          if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
+            showToastViaEvent(
+              `${uploadedCount} image(s) saved; ${interpreted.uploadFailed} could not be saved to your gallery. Try again from your profile if needed.`
+            );
+          } else if (reviewModalMode === "upload") {
+            showToastViaEvent("Roll shared!");
+          } else {
+            showToastViaEvent("Review posted!");
+          }
+          return { success: true };
         }}
       />
     </>
@@ -1234,74 +1221,59 @@ export function StickyLeftPane({
           iso: stock.iso,
         }}
         onSubmit={async (payload: AddReviewModalPayload) => {
-          if (user) {
-            const usedPreUpload = reviewModalMode === "upload" && !!payload.uploadedImageUrl;
-            const outcome = await postReviewModalSubmission({
-              filmStockSlug: slug,
-              mode: reviewModalMode,
-              payload,
-              onProgress:
-                payload.files.length > 0 ? (label) => setShareRollSubmitHint(label) : undefined,
-            });
-            if (!outcome.ok) {
-              showToastViaEvent(outcome.toast);
-              return { success: false };
-            }
-            const data = outcome.data;
-            const attemptedPhotos = payload.files.length;
-            const interpreted = interpretReviewsPostResult(data, {
-              mode: reviewModalMode,
-              fileCount: attemptedPhotos,
-              attemptedUploads: attemptedPhotos,
-              usedPreUploadedUrl: usedPreUpload,
-            });
-            if (!interpreted.ok) {
-              showToastViaEvent(interpreted.message);
-              return { success: false };
-            }
-            const uploadSucceeded = interpreted.uploaded > 0;
-            if ((attemptedPhotos > 0 || payload.uploadedImageUrl) && uploadSucceeded) {
-              window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
-            }
-            if (interpreted.reviewSaved) {
-              window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
-            }
-            const uploadedCount = interpreted.uploaded;
-            if (outcome.clientUploadFailures?.length) {
-              showToastViaEvent(
-                formatClientUploadFailuresForToast(
-                  outcome.clientUploadFailures,
-                  uploadedCount,
-                  attemptedPhotos
-                )
-              );
-            }
-            if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
-              showToastViaEvent(
-                `${uploadedCount} photo(s) saved; ${interpreted.uploadFailed} could not be saved to your gallery. Try again from your profile if needed.`
-              );
-            } else if (reviewModalMode === "upload") {
-              if (payload.uploadedImageUrl || attemptedPhotos > 0) {
-                showToastViaEvent("Thanks! Your roll has been published.");
-              } else {
-                showToastViaEvent("Done.");
-              }
-            } else if (attemptedPhotos > 0) {
-              showToastViaEvent("Thanks! Your photos and review have been submitted.");
-            } else {
-              showToastViaEvent("Thanks! Your review has been submitted.");
-            }
-            return { success: true };
-          } else {
+          if (!user) {
             if (payload.rating > 0) persistRating(slug, payload.rating);
+            const hasRollPhotos = (payload.clientStoredScanImages?.length ?? 0) > 0;
             showToastViaEvent(
-              reviewModalMode === "upload"
-                ? (payload.files.length > 0 ? "Log in to save your roll." : "Done.")
-                : payload.files.length > 0
-                  ? "Log in to save your photos and review."
-                  : "Your rating was saved locally. Log in to save reviews and uploads."
+              hasRollPhotos
+                ? "Log in to save your images and review."
+                : "Your rating was saved locally. Log in to save reviews and uploads."
             );
+            return undefined;
           }
+          const attemptedPhotos = payload.clientStoredScanImages?.length ?? 0;
+          const outcome = await postReviewModalSubmission({
+            filmStockSlug: slug,
+            mode: reviewModalMode,
+            payload,
+            onProgress:
+              attemptedPhotos > 0 ? (label) => setShareRollSubmitHint(label) : undefined,
+          });
+          if (!outcome.ok) {
+            showToastViaEvent(outcome.toast);
+            return { success: false };
+          }
+          const data = outcome.data;
+          const interpreted = interpretReviewsPostResult(data, {
+            mode: reviewModalMode,
+            fileCount: attemptedPhotos,
+            attemptedUploads: attemptedPhotos,
+          });
+          if (!interpreted.ok) {
+            showToastViaEvent(interpreted.message);
+            return { success: false };
+          }
+          if (reviewModalMode === "upload" && attemptedPhotos > 0) {
+            recordRollFilmStockRecent(user.id, slug);
+          }
+          const uploadSucceeded = interpreted.uploaded > 0;
+          if (attemptedPhotos > 0 && uploadSucceeded) {
+            window.dispatchEvent(new CustomEvent("film-upload-complete", { detail: { slug } }));
+          }
+          if (interpreted.reviewSaved) {
+            window.dispatchEvent(new CustomEvent("review-submitted", { detail: { slug } }));
+          }
+          const uploadedCount = interpreted.uploaded;
+          if (interpreted.uploadFailed && interpreted.uploadFailed > 0) {
+            showToastViaEvent(
+              `${uploadedCount} image(s) saved; ${interpreted.uploadFailed} could not be saved to your gallery. Try again from your profile if needed.`
+            );
+          } else if (reviewModalMode === "upload") {
+            showToastViaEvent("Roll shared!");
+          } else {
+            showToastViaEvent("Review posted!");
+          }
+          return { success: true };
         }}
       />
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { ShareRollMetadataTextSheet } from "@/components/share-roll-metadata-text-sheet";
+import { suggestNormalizedLocations } from "@/lib/location-normalization-cities";
 
 type ShareRollLocationSheetProps = {
   open: boolean;
@@ -21,6 +22,8 @@ export function ShareRollLocationSheet(props: ShareRollLocationSheetProps) {
       buttonLabel="Add location"
       mruKind="location"
       recentSectionTitle="Recent locations"
+      suggestionSectionTitle="Suggestions"
+      getSuggestions={suggestNormalizedLocations}
       autoComplete="street-address"
     />
   );

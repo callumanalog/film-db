@@ -4,12 +4,14 @@ import { useMemo } from "react";
 import { ChevronLeft } from "lucide-react";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { FilmStockListCardButton } from "@/components/film-stock-list-card";
+import { shareRollPickerSectionLabelClassName } from "@/components/share-roll-picker-primitives";
 import { topLeftNavChevronIconClassName, topLeftNavIconButtonClassName } from "@/lib/top-left-nav-icon";
 import {
   mobileHeaderLeadingRowClassName,
   mobileHeaderSafeAreaStyle,
   mobileHeaderShellClassName,
 } from "@/lib/mobile-header";
+import { getRollFilmStockRecents } from "@/lib/roll-film-stock-recents";
 import { cn } from "@/lib/utils";
 import type { SearchStocksResult } from "@/app/actions/search";
 
@@ -20,6 +22,8 @@ interface MobileStockPickerPanelProps {
   onClose: () => void;
   onSelectStock: (stock: SearchStocksResult) => void;
   stocks: SearchStocksResult[];
+  /** Supabase user id — used for per-user recent stocks (share-a-roll only). */
+  userId: string | null;
 }
 
 function filterStocks(stocks: SearchStocksResult[], query: string): SearchStocksResult[] {
@@ -39,11 +43,22 @@ export function MobileStockPickerPanel({
   onClose,
   onSelectStock,
   stocks,
+  userId,
 }: MobileStockPickerPanelProps) {
   const prompt =
     mode === "upload" ? "Find the film stock you shot..." : "Find a film stock to review...";
 
   const filteredStocks = useMemo(() => filterStocks(stocks, query), [query, stocks]);
+
+  const splitLayout = mode === "upload" && query.trim() === "";
+
+  const recentStocks = useMemo(() => {
+    if (!splitLayout) return [];
+    const bySlug = new Map(stocks.map((s) => [s.slug, s]));
+    return getRollFilmStockRecents(userId, 3)
+      .map((slug) => bySlug.get(slug))
+      .filter((s): s is SearchStocksResult => s != null);
+  }, [splitLayout, stocks, userId]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden bg-white md:hidden">
@@ -87,6 +102,31 @@ export function MobileStockPickerPanel({
             style={{ ["--mobile-bottom-clearance" as string]: "4.5rem" }}
           >
             <section aria-label="Film stocks">
+              {splitLayout && recentStocks.length > 0 ? (
+                <div className="shrink-0 bg-white">
+                  <p className={cn(shareRollPickerSectionLabelClassName, "px-0 pt-1")}>Recent stocks</p>
+                  <div className="space-y-0 rounded-card overflow-hidden bg-white">
+                    {recentStocks.map((stock) => (
+                      <FilmStockListCardButton
+                        key={`recent-${stock.slug}`}
+                        stock={stock}
+                        onSelect={() => onSelectStock(stock)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {splitLayout ? (
+                <p
+                  className={cn(
+                    shareRollPickerSectionLabelClassName,
+                      "px-0",
+                    recentStocks.length > 0 ? "pt-8" : "pt-1"
+                  )}
+                >
+                  All stocks
+                </p>
+              ) : null}
               <div className="space-y-0 rounded-card overflow-hidden bg-white">
                 {filteredStocks.map((stock) => (
                   <FilmStockListCardButton

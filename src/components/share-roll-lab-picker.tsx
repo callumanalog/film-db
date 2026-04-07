@@ -51,7 +51,11 @@ export function ShareRollLabPicker({
   const parentRef = useRef<HTMLDivElement>(null);
 
   const refreshRecents = useCallback(() => {
-    setRecentList(getRollPickerMru(userId, "lab", 3));
+    setRecentList(
+      getRollPickerMru(userId, "lab", 3).filter(
+        (name) => name !== FILM_LAB_HOME_DEVELOPMENT_DISPLAY
+      )
+    );
   }, [userId]);
 
   useEffect(() => {
@@ -100,7 +104,9 @@ export function ShareRollLabPicker({
 
   const pickLab = useCallback(
     (value: string) => {
-      recordRollPickerMru(userId, "lab", value);
+      if (value !== FILM_LAB_HOME_DEVELOPMENT_DISPLAY) {
+        recordRollPickerMru(userId, "lab", value);
+      }
       onLabChange(value);
       refreshRecents();
       onPicked?.();

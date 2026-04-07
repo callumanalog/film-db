@@ -51,7 +51,11 @@ export function ShareRollScannerPicker({
   const parentRef = useRef<HTMLDivElement>(null);
 
   const refreshRecents = useCallback(() => {
-    setRecentList(getRollPickerMru(userId, "scanner", 3));
+    setRecentList(
+      getRollPickerMru(userId, "scanner", 3).filter(
+        (name) => name !== FILM_SCANNER_CAMERA_SCANNING_DISPLAY
+      )
+    );
   }, [userId]);
 
   useEffect(() => {
@@ -99,7 +103,9 @@ export function ShareRollScannerPicker({
 
   const pickScanner = useCallback(
     (value: string) => {
-      recordRollPickerMru(userId, "scanner", value);
+      if (value !== FILM_SCANNER_CAMERA_SCANNING_DISPLAY) {
+        recordRollPickerMru(userId, "scanner", value);
+      }
       onScannerChange(value);
       refreshRecents();
       onPicked?.();

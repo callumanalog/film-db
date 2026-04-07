@@ -3,10 +3,17 @@
  * Camera keeps legacy key `film-db-roll-camera-recents:`; location/lens/lab use `*-mru:` keys.
  */
 
-export type RollPickerMruKind = "camera" | "location" | "lens" | "lab" | "scanner";
+export type RollPickerMruKind =
+  | "camera"
+  | "film_stock"
+  | "location"
+  | "lens"
+  | "lab"
+  | "scanner";
 
 const PREFIX: Record<RollPickerMruKind, string> = {
   camera: "film-db-roll-camera-recents:",
+  film_stock: "film-db-roll-film-stock-mru:",
   location: "film-db-roll-location-mru:",
   lens: "film-db-roll-lens-mru:",
   lab: "film-db-roll-lab-mru:",

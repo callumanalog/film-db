@@ -8,7 +8,6 @@ import {
   useCallback,
   useMemo,
   type CSSProperties,
-  type SyntheticEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
@@ -64,6 +63,7 @@ import {
 } from "@/lib/mobile-header";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { ScanReviewThumb } from "@/components/scan-review-thumb";
 import { TextField } from "@/components/ui/text-field";
 import {
   Sheet,
@@ -89,6 +89,7 @@ import {
   type PreparedShareRollImage,
 } from "@/lib/share-roll-image";
 import { humanizeImageDecodeError, humanizeImagePrepareError } from "@/lib/share-roll-image-errors";
+import { uploadPreparedShareRollScanToStorage, type ClientStoredScanRow } from "@/lib/user-reviews-client-submit";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
 import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 import type { BestFor } from "@/lib/types";
@@ -336,6 +337,7 @@ function yieldToNextPaint(): Promise<void> {
 export interface AddReviewModalPayload {
   rating: number;
   reviewText: string;
+  /** Always `[]` from this modal; kept for typing only. Scans use `clientStoredScanImages`. */
   files: File[];
   camera?: string;
   reviewTitle?: string;
@@ -353,13 +355,10 @@ export interface AddReviewModalPayload {
   shotIso?: string;
   lab?: string;
   scanner?: string;
-  uploadedImageUrl?: string;
-  uploadedStoragePath?: string;
   /**
-   * When length matches `files`, upload uses these blobs (already encoded at pick time)
-   * so share does not re-run canvas encode and failures surface during upload step.
+   * Share-roll step 2: scans already in Supabase Storage (public URLs). The only client image path for new content.
    */
-  preparedShareRollScans?: PreparedShareRollImage[];
+  clientStoredScanImages?: { url: string; width: number; height: number }[];
   /** PATCH: update share-roll title + `user_uploads` metadata only (no new files). */
   shareRollMetadataOnly?: boolean;
 }
@@ -406,7 +405,7 @@ interface AddReviewModalProps {
   /** When set with `mode="upload"`, opens directly on share-roll step 3 for metadata edits. */
   editShareRoll?: EditShareRollSeed | null;
   onBackToStockPicker?: () => void;
-  /** Overrides footer “Sharing…” while `submitting` (upload flow) — e.g. per-photo progress from parent. */
+  /** While share-roll step 3 is submitting, overrides the default “Sharing…” / “Saving…” label (e.g. parent sets “Saving…” from `onProgress` right before `fetch`). */
   shareRollSubmitHint?: string | null;
   /** Raise sheet z-index above e.g. z-[100] full-screen lightbox. */
   stackAboveLightbox?: boolean;
@@ -505,77 +504,6 @@ function HalfStarRating({
   );
 }
 
-function ScanReviewThumb({
-  url,
-  onRemove,
-  onOpenPreview,
-  onIntrinsicSize,
-}: {
-  url: string;
-  onRemove: () => void;
-  onOpenPreview: () => void;
-  onIntrinsicSize?: (width: number, height: number) => void;
-}) {
-  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
-  const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    setDims(null);
-    setLoadError(false);
-  }, [url]);
-
-  const frameStyle: CSSProperties | undefined = loadError
-    ? { minHeight: "6rem", aspectRatio: "3 / 2" }
-    : dims
-      ? { aspectRatio: `${dims.w} / ${dims.h}` }
-      : { minHeight: "6rem" };
-
-  const handleImgLoad = (e: SyntheticEvent<HTMLImageElement>) => {
-    const { naturalWidth, naturalHeight } = e.currentTarget;
-    if (naturalWidth < 1 || naturalHeight < 1) return;
-    setDims({ w: naturalWidth, h: naturalHeight });
-    onIntrinsicSize?.(naturalWidth, naturalHeight);
-  };
-
-  return (
-    <div className="relative min-w-0 self-start">
-      <div className="relative w-full overflow-hidden" style={frameStyle}>
-        <button
-          type="button"
-          onClick={onOpenPreview}
-          className="relative block h-full min-h-0 w-full touch-manipulation"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={url}
-            alt=""
-            className={cn("h-full w-full object-contain", loadError && "opacity-0")}
-            draggable={false}
-            onLoad={handleImgLoad}
-            onError={() => setLoadError(true)}
-          />
-        </button>
-        {loadError ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted px-2 text-center text-[11px] leading-snug text-muted-foreground">
-            Couldn&apos;t show preview — file is still queued for upload. Open to verify.
-          </div>
-        ) : null}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
-          className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-          aria-label="Remove scan"
-        >
-          <XIcon className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function mapPreviewIndexAfterReorder(i: number, from: number, to: number): number {
   if (i === from) return to;
   if (from < to && i > from && i <= to) return i - 1;
@@ -601,14 +529,23 @@ function Step3SortableScanCell({
   id,
   index,
   url,
+  errorMessage,
+  fileName,
   onTapPreview,
 }: {
   id: string;
   index: number;
-  url: string;
+  url: string | null;
+  errorMessage?: string | null;
+  fileName?: string;
   onTapPreview: (index: number) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const failed = Boolean(errorMessage);
+  const ready = Boolean(url) && !failed;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !ready,
+  });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -622,15 +559,40 @@ function Step3SortableScanCell({
       style={style}
       className={cn(
         "relative aspect-square min-w-0 w-full touch-none overflow-hidden rounded-[7px] border border-border/50 bg-muted/10 p-0 text-left ring-offset-background transition-opacity hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        isDragging && "z-50 opacity-95 shadow-lg"
+        isDragging && "z-50 opacity-95 shadow-lg",
+        !ready && "opacity-100"
       )}
-      onClick={() => onTapPreview(index)}
+      onClick={() => {
+        if (ready) onTapPreview(index);
+      }}
       {...attributes}
       {...listeners}
-      aria-label={`Preview scan ${index + 1}. Press and hold to reorder.`}
+      aria-label={
+        failed
+          ? `Scan ${index + 1} failed to add`
+          : `Preview scan ${index + 1}. Press and hold to reorder.`
+      }
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" className="pointer-events-none h-full w-full object-cover" draggable={false} />
+      {failed ? (
+        <div className="flex h-full flex-col items-center justify-center gap-0.5 bg-destructive/5 p-1 text-center">
+          <span className="text-[9px] font-semibold leading-tight text-destructive">Error</span>
+          {fileName ? (
+            <span className="line-clamp-1 w-full text-[8px] text-muted-foreground">{fileName}</span>
+          ) : null}
+          {errorMessage ? (
+            <span className="line-clamp-3 w-full text-[7px] leading-snug text-muted-foreground" title={errorMessage}>
+              {errorMessage}
+            </span>
+          ) : null}
+        </div>
+      ) : url ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src={url} alt="" className="pointer-events-none h-full w-full object-cover" draggable={false} />
+      ) : (
+        <div className="flex h-full items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
+        </div>
+      )}
     </button>
   );
 }
@@ -695,22 +657,17 @@ export function AddReviewModal({
 
   // Step 2 fields
   const [files, setFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<(string | null)[]>([]);
   /** naturalWidth / naturalHeight per scan index — used to match in-grid “add” tile aspect to the neighbor shot. */
   const [scanIntrinsicSizes, setScanIntrinsicSizes] = useState<
     ({ w: number; h: number } | null)[]
   >([]);
   /** Stable row ids for step 3 drag-reorder (aligned with files / previewUrls). */
   const [uploadScanOrderIds, setUploadScanOrderIds] = useState<string[]>([]);
-  /** Parallels `files` after decode + share-roll encode; avoids re-encoding on submit. */
-  const [preparedShareRollScans, setPreparedShareRollScans] = useState<PreparedShareRollImage[]>([]);
-  /** Sequential add from picker: which file is being read/compressed (one at a time). */
-  const [scanImportJob, setScanImportJob] = useState<{
-    current: number;
-    total: number;
-    phase: "read" | "compress";
-    fileName: string;
-  } | null>(null);
+  /** Per-slot decode/prepare failure message (aligned with `files` / `previewUrls`). */
+  const [scanSlotErrors, setScanSlotErrors] = useState<(string | null)[]>([]);
+  /** Per scan: public Storage row after step-2 upload (aligned with `files`). */
+  const [storedScanRows, setStoredScanRows] = useState<(ClientStoredScanRow | null)[]>([]);
   const uploadScanOrderIdsRef = useRef<string[]>([]);
   /** Prevents reset when `resetAll` churns (e.g. inline `stock={{…}}` on parent re-renders during submit). */
   const createModalWasOpenRef = useRef(false);
@@ -772,11 +729,11 @@ export function AddReviewModal({
     setFiles([]);
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
-    setPreparedShareRollScans([]);
-    setScanImportJob(null);
+    setScanSlotErrors([]);
+    setStoredScanRows([]);
     setPreviewUrls((urls) => {
       urls.forEach((u) => {
-        if (u.startsWith("blob:")) URL.revokeObjectURL(u);
+        if (u?.startsWith("blob:")) URL.revokeObjectURL(u);
       });
       return [];
     });
@@ -873,7 +830,6 @@ export function AddReviewModal({
       setSelectedFormat(editShareRoll.selectedFormat);
     }
     setFiles([]);
-    setPreparedShareRollScans([]);
     setPreviewUrls([...editShareRoll.imageUrls]);
     setUploadScanOrderIds(editShareRoll.imageUrls.map(() => crypto.randomUUID()));
     setScanIntrinsicSizes(
@@ -887,7 +843,8 @@ export function AddReviewModal({
     setStep3ImagePreviewIndex(null);
     setStep3MetadataSubpage(null);
     setUploadError(null);
-    setScanImportJob(null);
+    setScanSlotErrors([]);
+    setStoredScanRows([]);
     setIsUploading(false);
     setSubmitting(false);
   }, [open, editShareRoll]);
@@ -902,11 +859,11 @@ export function AddReviewModal({
     setFiles([]);
     setScanIntrinsicSizes([]);
     setUploadScanOrderIds([]);
-    setPreparedShareRollScans([]);
-    setScanImportJob(null);
+    setScanSlotErrors([]);
+    setStoredScanRows([]);
     setPreviewUrls((urls) => {
       urls.forEach((u) => {
-        if (u.startsWith("blob:")) URL.revokeObjectURL(u);
+        if (u?.startsWith("blob:")) URL.revokeObjectURL(u);
       });
       return [];
     });
@@ -959,7 +916,7 @@ export function AddReviewModal({
     setStep3MetadataSubpage(null);
     setPreviewUrls((urls) => {
       urls.forEach((u) => {
-        if (u.startsWith("blob:")) URL.revokeObjectURL(u);
+        if (u?.startsWith("blob:")) URL.revokeObjectURL(u);
       });
       return [];
     });
@@ -970,32 +927,71 @@ export function AddReviewModal({
   const editorHtml = editor?.getHTML() ?? "";
   const editorIsEmpty = !editor || editor.isEmpty;
 
-  const buildPayload = (): AddReviewModalPayload => ({
-    rating,
-    reviewText: editorIsEmpty ? "" : editorHtml,
-    files,
-    camera: camera || undefined,
-    reviewTitle: isEditShareRoll
-      ? rollName.trim()
-      : mode === "upload" && rollName.trim()
+  const buildPayload = (): AddReviewModalPayload => {
+    const meta: Pick<
+      AddReviewModalPayload,
+      | "rating"
+      | "reviewText"
+      | "camera"
+      | "reviewTitle"
+      | "bestFor"
+      | "format"
+      | "location"
+      | "shotDate"
+      | "tags"
+      | "lens"
+      | "caption"
+      | "shotIso"
+      | "lab"
+      | "scanner"
+    > = {
+      rating,
+      reviewText: editorIsEmpty ? "" : editorHtml,
+      camera: camera || undefined,
+      reviewTitle: isEditShareRoll
         ? rollName.trim()
-        : undefined,
-    bestFor: bestFor.length > 0 ? bestFor : undefined,
-    format: selectedFormat || undefined,
-    location: location || undefined,
-    shotDate: shotDate.trim() ? shotDate.trim() : undefined,
-    tags: tags.trim() ? tags.trim().slice(0, TAGS_MAX_LENGTH) : undefined,
-    lens: lens || undefined,
-    caption: caption.trim() ? caption.trim() : undefined,
-    shotIso: shotIso || undefined,
-    lab: lab || undefined,
-    scanner: scanner || undefined,
-    preparedShareRollScans:
-      files.length > 0 && files.length === preparedShareRollScans.length
-        ? preparedShareRollScans
-        : undefined,
-    shareRollMetadataOnly: isEditShareRoll || undefined,
-  });
+        : mode === "upload" && rollName.trim()
+          ? rollName.trim()
+          : undefined,
+      bestFor: bestFor.length > 0 ? bestFor : undefined,
+      format: selectedFormat || undefined,
+      location: location || undefined,
+      shotDate: shotDate.trim() ? shotDate.trim() : undefined,
+      tags: tags.trim() ? tags.trim().slice(0, TAGS_MAX_LENGTH) : undefined,
+      lens: lens || undefined,
+      caption: caption.trim() ? caption.trim() : undefined,
+      shotIso: shotIso || undefined,
+      lab: lab || undefined,
+      scanner: scanner || undefined,
+    };
+
+    if (isEditShareRoll) {
+      return {
+        ...meta,
+        files: [],
+        clientStoredScanImages: undefined,
+        shareRollMetadataOnly: true,
+      };
+    }
+
+    if (enteredViaUpload && files.length > 0) {
+      const storedOk = files
+        .map((_, i) => i)
+        .filter((i) => storedScanRows[i] != null && !(scanSlotErrors[i]?.trim()))
+        .map((i) => storedScanRows[i]!);
+      return {
+        ...meta,
+        files: [],
+        clientStoredScanImages: storedOk.length > 0 ? storedOk : undefined,
+      };
+    }
+
+    return {
+      ...meta,
+      files: [],
+      clientStoredScanImages: undefined,
+    };
+  };
 
   const handleLogSubmit = async () => {
     setSubmitting(true);
@@ -1034,85 +1030,111 @@ export function AddReviewModal({
     const droppedForLimit = Math.max(0, valid.length - kept.length);
 
     if (kept.length === 0) {
-      setUploadError("No files were added. Use PNG, JPG, or WebP under 50MB.");
+      setUploadError(
+        "No images were added — please use JPG, PNG or WebP files under 50MB."
+      );
       return;
     }
 
+    const batchStart = files.length;
     setIsUploading(true);
     setUploadError(null);
-    const problemLines: string[] = [];
-    let addedCount = 0;
+
+    setFiles((prev) => [...prev, ...kept]);
+    setPreviewUrls((prev) => [...prev, ...kept.map(() => null)]);
+    setScanSlotErrors((prev) => [...prev, ...kept.map(() => null)]);
+    setStoredScanRows((prev) => [...prev, ...kept.map(() => null)]);
+    setScanIntrinsicSizes((prev) => [...prev, ...kept.map(() => null)]);
+
+    await yieldToNextPaint();
 
     try {
       for (let i = 0; i < kept.length; i++) {
         const f = kept[i]!;
-        const step = i + 1;
-
-        setScanImportJob({
-          current: step,
-          total: kept.length,
-          phase: "read",
-          fileName: f.name,
-        });
-        await yieldToNextPaint();
+        const idx = batchStart + i;
 
         try {
           await assertFileDecodesAsImage(f);
         } catch (err) {
-          problemLines.push(`${f.name}: ${humanizeImageDecodeError(err, f.name)}`);
+          setScanSlotErrors((prev) => {
+            const next = [...prev];
+            next[idx] = humanizeImageDecodeError(err, f.name);
+            return next;
+          });
           continue;
         }
 
-        setScanImportJob({
-          current: step,
-          total: kept.length,
-          phase: "compress",
-          fileName: f.name,
+        let prepared: PreparedShareRollImage;
+        try {
+          prepared = await prepareShareRollImageFile(f);
+        } catch (err) {
+          setScanSlotErrors((prev) => {
+            const next = [...prev];
+            next[idx] = humanizeImagePrepareError(err, f.name);
+            return next;
+          });
+          continue;
+        }
+
+        /** Preview the encoded blob (WebP/JPEG), not the raw `File` — some mobile browsers serve broken `blob:` URLs for certain originals after decode/canvas work. */
+        const url = URL.createObjectURL(prepared.blob);
+        setPreviewUrls((prev) => {
+          const next = [...prev];
+          next[idx] = url;
+          return next;
         });
-        await yieldToNextPaint();
 
         try {
-          const prepared = await prepareShareRollImageFile(f);
-          /** Preview the encoded blob (WebP/JPEG), not the raw `File` — some mobile browsers serve broken `blob:` URLs for certain originals after decode/canvas work. */
-          const url = URL.createObjectURL(prepared.blob);
-          setFiles((prev) => [...prev, f]);
-          setPreparedShareRollScans((prev) => [...prev, prepared]);
-          setPreviewUrls((prev) => [...prev, url]);
-          setScanIntrinsicSizes((prev) => [...prev, null]);
-          addedCount++;
-        } catch (err) {
-          problemLines.push(`${f.name}: ${humanizeImagePrepareError(err, f.name)}`);
+          const row = await uploadPreparedShareRollScanToStorage(stock.slug, prepared, idx + 1);
+          setStoredScanRows((prev) => {
+            const next = [...prev];
+            next[idx] = row;
+            return next;
+          });
+        } catch (uploadErr) {
+          const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+          setPreviewUrls((prev) => {
+            const next = [...prev];
+            const u = next[idx];
+            if (u?.startsWith("blob:")) URL.revokeObjectURL(u);
+            next[idx] = null;
+            return next;
+          });
+          setStoredScanRows((prev) => {
+            const next = [...prev];
+            next[idx] = null;
+            return next;
+          });
+          setScanSlotErrors((prev) => {
+            const next = [...prev];
+            next[idx] = msg;
+            return next;
+          });
         }
       }
 
       const summaryParts: string[] = [];
       if (invalidCount > 0) {
         summaryParts.push(
-          `${invalidCount} file${invalidCount > 1 ? "s were" : " was"} skipped (not PNG/JPEG/WebP or over 50MB).`
+          invalidCount === 1
+            ? "1 image couldn't be added — please use JPG, PNG or WebP files under 50MB."
+            : `${invalidCount} images couldn't be added — please use JPG, PNG or WebP files under 50MB.`
         );
       }
       if (droppedForLimit > 0) {
         summaryParts.push(
-          `${droppedForLimit} file${droppedForLimit > 1 ? "s were" : " was"} skipped (10 scans max).`
-        );
-      }
-      if (problemLines.length > 0) {
-        summaryParts.push(
-          addedCount > 0
-            ? `${problemLines.length} file${problemLines.length > 1 ? "s" : ""} could not be added:\n${problemLines.join("\n")}`
-            : `No scans were added:\n${problemLines.join("\n")}`
+          droppedForLimit === 1
+            ? "1 image was skipped — you've reached the 10 scan limit for this roll."
+            : `${droppedForLimit} images were skipped — you've reached the 10 scan limit for this roll.`
         );
       }
 
-      if (addedCount === 0 && summaryParts.length === 0) {
-        setUploadError("No scans were added. Try different files (PNG, JPG, or WebP).");
-      } else if (summaryParts.length > 0) {
-        setUploadError(summaryParts.join("\n\n"));
+      if (summaryParts.length > 0) {
+        setUploadError(summaryParts.join(" "));
       } else {
         setUploadError(null);
       }
     } finally {
-      setScanImportJob(null);
       setIsUploading(false);
     }
   };
@@ -1135,7 +1157,8 @@ export function AddReviewModal({
     setFiles((f) => arrayMove(f, oldIndex, newIndex));
     setPreviewUrls((u) => arrayMove(u, oldIndex, newIndex));
     setScanIntrinsicSizes((s) => arrayMove(s, oldIndex, newIndex));
-    setPreparedShareRollScans((p) => arrayMove(p, oldIndex, newIndex));
+    setStoredScanRows((r) => arrayMove(r, oldIndex, newIndex));
+    setScanSlotErrors((e) => arrayMove(e, oldIndex, newIndex));
     setStep3ImagePreviewIndex((prev) =>
       prev === null ? null : mapPreviewIndexAfterReorder(prev, oldIndex, newIndex)
     );
@@ -1164,7 +1187,8 @@ export function AddReviewModal({
     });
     setFiles((prev) => prev.filter((_, i) => i !== index));
     setScanIntrinsicSizes((prev) => prev.filter((_, i) => i !== index));
-    setPreparedShareRollScans((prev) => prev.filter((_, i) => i !== index));
+    setStoredScanRows((prev) => prev.filter((_, i) => i !== index));
+    setScanSlotErrors((prev) => prev.filter((_, i) => i !== index));
     setUploadScanOrderIds((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -1210,13 +1234,20 @@ export function AddReviewModal({
 
   useLayoutEffect(() => {
     if (files.length === 0) {
-      setUploadScanOrderIds([]);
+      if (!isEditShareRoll || previewUrls.length === 0) {
+        setUploadScanOrderIds([]);
+      }
       return;
     }
-    setUploadScanOrderIds((prev) =>
-      prev.length === files.length ? prev : files.map(() => crypto.randomUUID())
-    );
-  }, [files]);
+    setUploadScanOrderIds((prev) => {
+      if (prev.length === files.length) return prev;
+      if (prev.length < files.length) {
+        const n = files.length - prev.length;
+        return [...prev, ...Array.from({ length: n }, () => crypto.randomUUID())];
+      }
+      return prev.slice(0, files.length);
+    });
+  }, [files.length, isEditShareRoll, previewUrls.length]);
 
   useLayoutEffect(() => {
     setScanIntrinsicSizes((s) => (s.length > files.length ? s.slice(0, files.length) : s));
@@ -1226,7 +1257,35 @@ export function AddReviewModal({
     rating > 0 || !editorIsEmpty || bestFor.length > 0;
   /** Create requires rating, text, or “best for”; edit allows save even when cleared. */
   const canSubmitTextReview = isEdit || hasReviewContent;
-  const canAdvanceUploadFlow = files.length > 0;
+
+  const hasAnyFailedScanSlot = files.some((_, i) => Boolean(scanSlotErrors[i]?.trim()));
+
+  /** Share-roll step 2: still decoding, preparing, or uploading to Storage. */
+  const hasPendingShareRollWork =
+    enteredViaUpload &&
+    files.length > 0 &&
+    files.some((_, i) => {
+      if (scanSlotErrors[i]?.trim()) return false;
+      return previewUrls[i] == null || storedScanRows[i] == null;
+    });
+
+  const hasPendingScanSlots = hasPendingShareRollWork;
+
+  const hasAtLeastOneReadyScan = enteredViaUpload
+    ? files.some((_, i) => storedScanRows[i] != null && !(scanSlotErrors[i]?.trim()))
+    : files.some((_, i) => previewUrls[i] != null && !(scanSlotErrors[i]?.trim())) ||
+      (isEditShareRoll && previewUrls.some((u) => u != null));
+
+  const canAdvanceUploadFlow =
+    hasAtLeastOneReadyScan &&
+    !hasPendingScanSlots &&
+    !isUploading &&
+    !hasAnyFailedScanSlot;
+  const canPostShareRollScans =
+    !isUploading &&
+    hasAtLeastOneReadyScan &&
+    !hasPendingScanSlots &&
+    !hasAnyFailedScanSlot;
 
   return (
     <>
@@ -1416,26 +1475,6 @@ export function AddReviewModal({
                   </div>
                 </div>
 
-                {scanImportJob ? (
-                  <div
-                    className="rounded-lg border border-border/60 bg-muted/40 px-3 py-3 dark:bg-white/5"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <p className="text-sm font-semibold text-foreground">Adding your scans</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      File {scanImportJob.current} of {scanImportJob.total} —{" "}
-                      {scanImportJob.phase === "read" ? "reading image" : "compressing for upload"}
-                    </p>
-                    <p
-                      className="mt-1 truncate text-xs font-medium text-foreground/90"
-                      title={scanImportJob.fileName}
-                    >
-                      {scanImportJob.fileName}
-                    </p>
-                  </div>
-                ) : null}
-
                 {/* Upload zone */}
                 <div>
                   <input
@@ -1461,9 +1500,7 @@ export function AddReviewModal({
                         <>
                           <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" aria-hidden />
                           <span className="text-center text-sm font-medium text-muted-foreground">
-                            {scanImportJob
-                              ? `Working on scan ${scanImportJob.current} of ${scanImportJob.total}…`
-                              : "Checking photos…"}
+                            Adding scans…
                           </span>
                         </>
                       ) : (
@@ -1481,8 +1518,10 @@ export function AddReviewModal({
                           {files.map((file, i) =>
                             i % 2 === 0 ? (
                               <ScanReviewThumb
-                                key={previewUrls[i] ?? `${file.name}-${i}`}
-                                url={previewUrls[i] ?? ""}
+                                key={uploadScanOrderIds[i] ?? `${file.name}-${i}`}
+                                url={previewUrls[i] ?? null}
+                                fileName={file.name}
+                                errorMessage={scanSlotErrors[i] ?? null}
                                 onRemove={() => removeFile(i)}
                                 onOpenPreview={() => {
                                   setStep3ImagePreviewIndex(null);
@@ -1520,8 +1559,10 @@ export function AddReviewModal({
                           {files.map((file, i) =>
                             i % 2 === 1 ? (
                               <ScanReviewThumb
-                                key={previewUrls[i] ?? `${file.name}-${i}`}
-                                url={previewUrls[i] ?? ""}
+                                key={uploadScanOrderIds[i] ?? `${file.name}-${i}`}
+                                url={previewUrls[i] ?? null}
+                                fileName={file.name}
+                                errorMessage={scanSlotErrors[i] ?? null}
                                 onRemove={() => removeFile(i)}
                                 onOpenPreview={() => {
                                   setStep3ImagePreviewIndex(null);
@@ -1574,10 +1615,10 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  disabled={submitting || !canAdvanceUploadFlow || isUploading}
+                  disabled={submitting || !canAdvanceUploadFlow}
                   className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
                 >
-                  {submitting ? "Saving..." : isUploading ? "Checking photos…" : "Next"}
+                  {submitting ? "Saving..." : isUploading ? "Adding scans…" : "Next"}
                 </button>
               </div>
             )}
@@ -1612,26 +1653,28 @@ export function AddReviewModal({
                         {isEditShareRoll && previewUrls.length > 0 ? (
                           <div className="mt-5 w-full">
                             <div className="grid grid-cols-5 gap-2">
-                              {previewUrls.map((url, i) => (
-                                <button
-                                  key={`${url}-${i}`}
-                                  type="button"
-                                  onClick={() => {
-                                    setStep2ScanPreviewIndex(null);
-                                    setStep3ImagePreviewIndex(i);
-                                  }}
-                                  className="relative aspect-square min-w-0 w-full overflow-hidden rounded-[7px] border border-border/50 bg-muted/10 p-0 text-left ring-offset-background hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                  aria-label={`Preview scan ${i + 1}`}
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={url}
-                                    alt=""
-                                    className="pointer-events-none h-full w-full object-cover"
-                                    draggable={false}
-                                  />
-                                </button>
-                              ))}
+                              {previewUrls.map((url, i) =>
+                                url ? (
+                                  <button
+                                    key={`${url}-${i}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setStep2ScanPreviewIndex(null);
+                                      setStep3ImagePreviewIndex(i);
+                                    }}
+                                    className="relative aspect-square min-w-0 w-full overflow-hidden rounded-[7px] border border-border/50 bg-muted/10 p-0 text-left ring-offset-background hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label={`Preview scan ${i + 1}`}
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={url}
+                                      alt=""
+                                      className="pointer-events-none h-full w-full object-cover"
+                                      draggable={false}
+                                    />
+                                  </button>
+                                ) : null
+                              )}
                             </div>
                           </div>
                         ) : files.length > 0 && uploadScanOrderIds.length === files.length ? (
@@ -1648,7 +1691,9 @@ export function AddReviewModal({
                                       key={sortId}
                                       id={sortId}
                                       index={i}
-                                      url={previewUrls[i] ?? ""}
+                                      url={previewUrls[i] ?? null}
+                                      errorMessage={scanSlotErrors[i] ?? null}
+                                      fileName={files[i]?.name}
                                       onTapPreview={(idx) => {
                                         setStep2ScanPreviewIndex(null);
                                         setStep3ImagePreviewIndex(idx);
@@ -1842,7 +1887,7 @@ export function AddReviewModal({
                 <button
                   type="button"
                   onClick={handlePostScans}
-                  disabled={submitting || (!isEditShareRoll && !files.length) || isUploading}
+                  disabled={submitting || !canPostShareRollScans}
                   className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
                 >
                   {submitting
@@ -1932,6 +1977,7 @@ export function AddReviewModal({
     {typeof document !== "undefined" &&
       (enteredViaUpload || isEditShareRoll) &&
       scanPreviewIndex !== null &&
+      typeof previewUrls[scanPreviewIndex] === "string" &&
       previewUrls[scanPreviewIndex] &&
       createPortal(
         <div
@@ -1964,7 +2010,7 @@ export function AddReviewModal({
           <div className="flex min-h-0 flex-1 w-full items-center justify-center px-0 pb-[env(safe-area-inset-bottom)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={previewUrls[scanPreviewIndex]}
+              src={previewUrls[scanPreviewIndex]!}
               alt=""
               className="max-h-full w-full object-contain"
             />
