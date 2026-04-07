@@ -32,7 +32,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-primary: #D97706;
   --color-sidebar-primary-foreground: oklch(0.98 0.005 75);
-  --color-ring: #D97706;
+  --color-ring: oklch(0.78 0.01 70);
   --color-amber: #D97706;
   --color-chart-1: #D97706;
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -98,7 +98,7 @@
   --destructive: oklch(0.55 0.22 27);
   --border: oklch(0.88 0.01 70);
   --input: oklch(0.88 0.01 70);
-  --ring: #D97706;
+  --ring: oklch(0.78 0.01 70);
   --amber: #D97706;
   --chart-1: #D97706;
   --chart-2: oklch(0.50 0.12 35);

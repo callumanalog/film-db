@@ -51,7 +51,7 @@ export function InCameraDrawer({ open, onOpenChange, stockName, stockFormats, on
               value={camera}
               onChange={(e) => setCamera(e.target.value)}
               placeholder="e.g. Canon AE-1"
-              className="mt-1.5 w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="mt-1.5 w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30"
             />
           </div>
 
@@ -64,7 +64,7 @@ export function InCameraDrawer({ open, onOpenChange, stockName, stockFormats, on
                 id="ic-format"
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
-                className="mt-1.5 w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="mt-1.5 w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
               >
                 {stockFormats.map((f) => (
                   <option key={f} value={f}>{f}</option>

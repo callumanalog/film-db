@@ -448,7 +448,7 @@ export async function PATCH(
         image_width: row.image_width,
         image_height: row.image_height,
         review_id: reviewId,
-        roll_id: rollIdForInserts,
+        ...(rollIdForInserts ? { roll_id: rollIdForInserts } : {}),
         upload_batch_id: uploadBatchId,
         ...metadata,
       })

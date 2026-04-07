@@ -63,14 +63,14 @@ export function SearchBar({
             }
           }}
           placeholder={placeholder}
-          className={`w-full rounded-[7px] border border-border/60 bg-secondary/50 font-medium text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-primary/50 focus:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/20 ${sizeClasses}`}
+          className={`w-full rounded-[7px] border border-border/60 bg-secondary/50 font-medium text-foreground placeholder:text-muted-foreground/60 transition-all focus:border-border focus:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring/30 ${sizeClasses}`}
         />
         {showClear && (
           <button
             type="button"
             onClick={handleClear}
             aria-label="Clear search"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-0"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring/30 focus:ring-offset-0"
           >
             <X className="h-4 w-4" />
           </button>

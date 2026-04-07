@@ -211,7 +211,7 @@ export function ExpiryDateMaskedInput({
       onClick={handleClick}
       aria-label="Expiry date (MM / YYYY)"
       className={cn(
-        "w-full rounded-[7px] border border-slate-200 bg-background px-3 text-ui outline-none transition-colors placeholder:text-ui placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary md:text-sm",
+        "w-full rounded-[7px] border border-slate-200 bg-background px-3 text-ui outline-none transition-colors placeholder:text-ui placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30 focus:border-border md:text-sm",
         "font-sans tabular-nums text-foreground",
         "h-11 min-h-11",
         className

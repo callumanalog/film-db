@@ -287,10 +287,15 @@ export async function POST(request: Request) {
       .select("id")
       .single();
     if (rollErr || !insertedRoll?.id) {
-      console.error("[reviews] rolls insert error:", rollErr?.code, rollErr?.message);
-      return NextResponse.json({ error: "Could not create roll." }, { status: 500 });
+      console.warn(
+        "[reviews] rolls insert skipped; continuing without roll_id:",
+        rollErr?.code,
+        rollErr?.message
+      );
+      rollId = null;
+    } else {
+      rollId = insertedRoll.id as string;
     }
-    rollId = insertedRoll.id as string;
   }
   const insertResults = await Promise.all(
     uploadedRows.map((row) =>
@@ -303,7 +308,7 @@ export async function POST(request: Request) {
         image_height: row.image_height,
         review_id: newReviewId,
         upload_batch_id: uploadBatchId,
-        roll_id: rollId,
+        ...(rollId ? { roll_id: rollId } : {}),
         ...metadata,
       })
     )

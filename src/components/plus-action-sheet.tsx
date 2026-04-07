@@ -173,7 +173,7 @@ export function PlusActionSheet() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search film stocks..."
                   autoFocus
-                  className="w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full rounded-[7px] border border-border/50 bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/30"
                 />
                 <ul className="no-scrollbar mt-3 h-[528px] min-h-[528px] overflow-x-hidden overflow-y-auto rounded-[7px] bg-card">
                   {filteredStocks.map((stock) => (
