@@ -966,10 +966,16 @@ export function AddReviewModal({
     };
 
     if (isEditShareRoll) {
+      const editStoredRows =
+        editShareRoll?.imageUrls?.map((url, i) => ({
+          url,
+          width: editShareRoll.imageWidths[i] ?? 0,
+          height: editShareRoll.imageHeights[i] ?? 0,
+        })) ?? [];
       return {
         ...meta,
         files: [],
-        clientStoredScanImages: undefined,
+        clientStoredScanImages: editStoredRows.length > 0 ? editStoredRows : undefined,
         shareRollMetadataOnly: true,
       };
     }

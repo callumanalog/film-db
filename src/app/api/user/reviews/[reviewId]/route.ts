@@ -129,7 +129,7 @@ export async function PATCH(
       }
     }
 
-    const { data: updatedUploads, error: metaErr } = await supabase
+    let { data: updatedUploads, error: metaErr } = await supabase
       .from("user_uploads")
       .update({
         ...metadata,
@@ -143,12 +143,55 @@ export async function PATCH(
       console.error("[reviews PATCH] user_uploads share-roll metadata:", metaErr);
       return NextResponse.json({ error: "Failed to update roll metadata" }, { status: 500 });
     }
+
     if (!updatedUploads?.length) {
-      console.error("[reviews PATCH] share-roll metadata: zero rows matched review_id", reviewId);
-      return NextResponse.json(
-        { error: "No photos found for this roll to update." },
-        { status: 409 }
-      );
+      const clientStoredRaw = (formData.get("client_stored_images") as string) || null;
+      if (clientStoredRaw && clientStoredRaw.trim().length > 0) {
+        let items: ClientStoredImageInput[] = [];
+        try {
+          const parsed = JSON.parse(clientStoredRaw) as unknown;
+          if (!Array.isArray(parsed)) throw new Error("not array");
+          items = parsed as ClientStoredImageInput[];
+        } catch {
+          return NextResponse.json({ error: "Invalid client_stored_images JSON." }, { status: 400 });
+        }
+
+        const validated = validateClientStoredImageRows(
+          supabaseProjectUrl(),
+          user.id,
+          slug,
+          items,
+          MAX_FILES
+        );
+        if (!validated.ok) {
+          return NextResponse.json({ error: validated.message }, { status: 400 });
+        }
+
+        const candidateUrls = validated.rows.map((r) => r.url);
+        if (candidateUrls.length > 0) {
+          const fallback = await supabase
+            .from("user_uploads")
+            .update({
+              ...metadata,
+              caption: captionToUse,
+              review_id: reviewId,
+            })
+            .in("image_url", candidateUrls)
+            .eq("user_id", user.id)
+            .select("id");
+          updatedUploads = fallback.data ?? null;
+          metaErr = fallback.error;
+        }
+      }
+    }
+
+    if (metaErr) {
+      console.error("[reviews PATCH] user_uploads share-roll metadata fallback:", metaErr);
+      return NextResponse.json({ error: "Failed to update roll metadata" }, { status: 500 });
+    }
+    if (!updatedUploads?.length) {
+      console.error("[reviews PATCH] share-roll metadata: zero rows matched review_id and fallback", reviewId);
+      return NextResponse.json({ error: "No images found for this roll to update." }, { status: 409 });
     }
 
     return NextResponse.json({

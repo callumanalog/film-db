@@ -158,6 +158,7 @@ export function PlusActionSheet() {
                 onClose={() => {
                   setSearchQuery("");
                   setSearchStep(false);
+                  setOpen(false);
                 }}
                 onSelectStock={handleSelectStock}
                 stocks={suggested?.allStocks ?? []}
@@ -259,8 +260,8 @@ export function PlusActionSheet() {
             setReviewModalOpen(false);
             setSelectedStock(null);
             setSearchQuery("");
-            setSearchStep(true);
-            setOpen(true);
+            setSearchStep(false);
+            setOpen(false);
           }}
           mode={reviewModalMode}
           slotsUsed={reviewModalMode === "upload" ? 1 : 0}
