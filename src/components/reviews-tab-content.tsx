@@ -37,7 +37,6 @@ import {
   type AddReviewModalPayload,
   type EditReviewSeed,
 } from "@/components/add-review-modal";
-import { formatClientUploadFailuresForToast } from "@/lib/review-submit-feedback";
 import { patchReviewModalSubmission } from "@/lib/user-reviews-client-submit";
 
 function sanitizeReviewHtml(html: string): string {
@@ -363,15 +362,6 @@ export function ReviewsTabContent({
       if (!outcome.ok) {
         showToastViaEvent(outcome.toast);
         return { success: false };
-      }
-      if (outcome.clientUploadFailures?.length) {
-        showToastViaEvent(
-          formatClientUploadFailuresForToast(
-            outcome.clientUploadFailures,
-            Number(outcome.data.uploaded) || 0,
-            payload.files.length
-          )
-        );
       }
       showToastViaEvent("Review updated.");
       window.dispatchEvent(
