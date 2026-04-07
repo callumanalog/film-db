@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import imageSize from "image-size";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { shotDateForUserUploadDb } from "@/lib/user-upload-shot-date";
 import {
   validateClientStoredImageRows,
@@ -95,18 +95,17 @@ export async function PATCH(
   }
 
   const captionToUse = caption || null;
-  const metadata = {
-    camera: camera || null,
-    shot_iso: shotIso || null,
-    lens: lens || null,
-    lab: lab || null,
-    scanner: scanner || null,
-    push_pull: pushPull || null,
-    format: format || null,
-    location: location || null,
-    shot_date: shotDate,
-    tags,
-  };
+  const metadata: Record<string, string | null> = {};
+  if (formData.has("camera")) metadata.camera = camera || null;
+  if (formData.has("shot_iso")) metadata.shot_iso = shotIso || null;
+  if (formData.has("lens")) metadata.lens = lens || null;
+  if (formData.has("lab")) metadata.lab = lab || null;
+  if (formData.has("scanner")) metadata.scanner = scanner || null;
+  if (formData.has("push_pull")) metadata.push_pull = pushPull || null;
+  if (formData.has("format")) metadata.format = format || null;
+  if (formData.has("location")) metadata.location = location || null;
+  if (formData.has("shot_date")) metadata.shot_date = shotDate;
+  if (formData.has("tags")) metadata.tags = tags;
 
   const reviewTitleTrim = reviewTitle?.trim() ?? "";
   const reviewTextTrim = reviewText?.trim() ?? "";
@@ -140,8 +139,20 @@ export async function PATCH(
       .select("id");
 
     if (metaErr) {
-      console.error("[reviews PATCH] user_uploads share-roll metadata:", metaErr);
-      return NextResponse.json({ error: "Failed to update roll metadata" }, { status: 500 });
+      const sr = await createServiceRoleClient();
+      if (sr) {
+        const srAttempt = await sr
+          .from("user_uploads")
+          .update({
+            ...metadata,
+            caption: captionToUse,
+          })
+          .eq("review_id", reviewId)
+          .eq("user_id", user.id)
+          .select("id");
+        updatedUploads = srAttempt.data ?? null;
+        metaErr = srAttempt.error;
+      }
     }
 
     if (!updatedUploads?.length) {
@@ -185,6 +196,47 @@ export async function PATCH(
       }
     }
 
+    if (metaErr) {
+      const sr = await createServiceRoleClient();
+      if (sr) {
+        const clientStoredRaw = (formData.get("client_stored_images") as string) || null;
+        if (clientStoredRaw && clientStoredRaw.trim().length > 0) {
+          let items: ClientStoredImageInput[] = [];
+          try {
+            const parsed = JSON.parse(clientStoredRaw) as unknown;
+            if (!Array.isArray(parsed)) throw new Error("not array");
+            items = parsed as ClientStoredImageInput[];
+          } catch {
+            return NextResponse.json({ error: "Invalid client_stored_images JSON." }, { status: 400 });
+          }
+          const validated = validateClientStoredImageRows(
+            supabaseProjectUrl(),
+            user.id,
+            slug,
+            items,
+            MAX_FILES
+          );
+          if (!validated.ok) {
+            return NextResponse.json({ error: validated.message }, { status: 400 });
+          }
+          const candidateUrls = validated.rows.map((r) => r.url);
+          if (candidateUrls.length > 0) {
+            const srFallback = await sr
+              .from("user_uploads")
+              .update({
+                ...metadata,
+                caption: captionToUse,
+                review_id: reviewId,
+              })
+              .in("image_url", candidateUrls)
+              .eq("user_id", user.id)
+              .select("id");
+            updatedUploads = srFallback.data ?? null;
+            metaErr = srFallback.error;
+          }
+        }
+      }
+    }
     if (metaErr) {
       console.error("[reviews PATCH] user_uploads share-roll metadata fallback:", metaErr);
       return NextResponse.json({ error: "Failed to update roll metadata" }, { status: 500 });
