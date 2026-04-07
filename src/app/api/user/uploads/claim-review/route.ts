@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 /**
  * Ensures community scans have a `reviews` row so PATCH / share-roll edit works.
@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const serviceRole = await createServiceRoleClient();
   const {
     data: { user },
     error: authError,
@@ -61,6 +62,46 @@ export async function POST(request: Request) {
     return inserted.id as string;
   }
 
+  async function ensureRollForReview(
+    filmStockSlug: string,
+    reviewId: string,
+    uploadBatchId?: string | null
+  ): Promise<string | null> {
+    const byReview = await supabase
+      .from("rolls")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("film_stock_slug", filmStockSlug)
+      .eq("review_id", reviewId)
+      .maybeSingle();
+    if (byReview.data?.id) return byReview.data.id as string;
+
+    const creator = serviceRole ?? supabase;
+    const { data: inserted, error } = await creator
+      .from("rolls")
+      .insert({
+        user_id: userId,
+        film_stock_slug: filmStockSlug,
+        review_id: reviewId,
+      })
+      .select("id")
+      .single();
+    if (error || !inserted?.id) {
+      console.error("[claim-review] create roll:", error?.message);
+      return null;
+    }
+    const rollId = inserted.id as string;
+    if (uploadBatchId?.trim()) {
+      const updater = serviceRole ?? supabase;
+      await updater
+        .from("user_uploads")
+        .update({ roll_id: rollId })
+        .eq("upload_batch_id", uploadBatchId.trim())
+        .eq("user_id", userId);
+    }
+    return rollId;
+  }
+
   if (batchId) {
     const { data: rows, error: listErr } = await supabase
       .from("user_uploads")
@@ -99,7 +140,8 @@ export async function POST(request: Request) {
       if (!targetReviewId) {
         return NextResponse.json({ error: "Could not create review for this roll" }, { status: 500 });
       }
-      const { error: upErr } = await supabase
+      const uploader = serviceRole ?? supabase;
+      const { error: upErr } = await uploader
         .from("user_uploads")
         .update({ review_id: targetReviewId })
         .eq("upload_batch_id", batchId)
@@ -113,7 +155,8 @@ export async function POST(request: Request) {
         .filter((r) => !(r as { review_id: string | null }).review_id)
         .map((r) => (r as { id: string }).id);
       if (orphanIds.length > 0) {
-        const { error: upErr } = await supabase
+        const uploader = serviceRole ?? supabase;
+        const { error: upErr } = await uploader
           .from("user_uploads")
           .update({ review_id: targetReviewId })
           .in("id", orphanIds)
@@ -125,7 +168,11 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ reviewId: targetReviewId });
+    const rollId = await ensureRollForReview(slugs[0]!, targetReviewId, batchId);
+    if (!rollId) {
+      return NextResponse.json({ error: "Could not create roll for this review" }, { status: 500 });
+    }
+    return NextResponse.json({ reviewId: targetReviewId, rollId });
   }
 
   const { data: row, error: oneErr } = await supabase
@@ -154,7 +201,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not create review for this upload" }, { status: 500 });
   }
 
-  const { error: upErr } = await supabase
+  const uploader = serviceRole ?? supabase;
+  const { error: upErr } = await uploader
     .from("user_uploads")
     .update({ review_id: newRid })
     .eq("id", uploadId)
@@ -165,5 +213,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not link upload to review" }, { status: 500 });
   }
 
-  return NextResponse.json({ reviewId: newRid });
+  const rollId = await ensureRollForReview(slug, newRid, null);
+  if (!rollId) {
+    return NextResponse.json({ error: "Could not create roll for this upload" }, { status: 500 });
+  }
+  await (serviceRole ?? supabase)
+    .from("user_uploads")
+    .update({ roll_id: rollId })
+    .eq("id", uploadId)
+    .eq("user_id", userId);
+
+  return NextResponse.json({ reviewId: newRid, rollId });
 }

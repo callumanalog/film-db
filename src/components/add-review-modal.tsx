@@ -365,6 +365,7 @@ export interface AddReviewModalPayload {
 
 /** Open share-roll step 3 to edit an existing roll (same `review_id` on all scans). */
 export type EditShareRollSeed = {
+  rollId?: string | null;
   reviewId: string;
   /** Present when the roll was grouped by batch in the feed; used to sync patches when `review_id` is missing on rows. */
   uploadBatchId?: string | null;

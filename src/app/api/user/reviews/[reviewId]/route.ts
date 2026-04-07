@@ -246,6 +246,30 @@ export async function PATCH(
       return NextResponse.json({ error: "No images found for this roll to update." }, { status: 409 });
     }
 
+    const rollPatch = {
+      title: reviewTitleTrim || null,
+      caption: captionToUse,
+      camera: metadata.camera ?? null,
+      shot_iso: metadata.shot_iso ?? null,
+      lens: metadata.lens ?? null,
+      lab: metadata.lab ?? null,
+      scanner: metadata.scanner ?? null,
+      push_pull: metadata.push_pull ?? null,
+      format: metadata.format ?? null,
+      location: metadata.location ?? null,
+      shot_date: metadata.shot_date ?? null,
+      tags: metadata.tags ?? null,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: rollMetaErr } = await supabase
+      .from("rolls")
+      .update(rollPatch)
+      .eq("review_id", reviewId)
+      .eq("user_id", user.id);
+    if (rollMetaErr) {
+      console.error("[reviews PATCH] rolls metadata update:", rollMetaErr);
+    }
+
     return NextResponse.json({
       ok: true,
       reviewUpdated: true,
@@ -376,6 +400,43 @@ export async function PATCH(
   }
 
   const uploadBatchId = uploadedRows.length > 0 ? crypto.randomUUID() : null;
+  let rollIdForInserts: string | null = null;
+  if (mode === "upload") {
+    const { data: existingRoll } = await supabase
+      .from("rolls")
+      .select("id")
+      .eq("review_id", reviewId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existingRoll?.id) {
+      rollIdForInserts = existingRoll.id as string;
+    } else {
+      const { data: createdRoll, error: rollErr } = await supabase
+        .from("rolls")
+        .insert({
+          user_id: user.id,
+          film_stock_slug: slug,
+          review_id: reviewId,
+          title: reviewTitleTrim || null,
+          caption: captionToUse,
+          camera: camera || null,
+          shot_iso: shotIso || null,
+          lens: lens || null,
+          lab: lab || null,
+          scanner: scanner || null,
+          push_pull: pushPull || null,
+          format: format || null,
+          location: location || null,
+          shot_date: shotDate,
+          tags,
+        })
+        .select("id")
+        .single();
+      if (!rollErr && createdRoll?.id) {
+        rollIdForInserts = createdRoll.id as string;
+      }
+    }
+  }
   let uploadInsertErrors = 0;
   const patchInsertResults = await Promise.all(
     uploadedRows.map((row) =>
@@ -387,6 +448,7 @@ export async function PATCH(
         image_width: row.image_width,
         image_height: row.image_height,
         review_id: reviewId,
+        roll_id: rollIdForInserts,
         upload_batch_id: uploadBatchId,
         ...metadata,
       })

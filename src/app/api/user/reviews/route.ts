@@ -263,6 +263,35 @@ export async function POST(request: Request) {
     tags,
   };
   const uploadBatchId = uploadedRows.length > 1 ? crypto.randomUUID() : null;
+  let rollId: string | null = null;
+  if (mode === "upload" && uploadedRows.length > 0) {
+    const { data: insertedRoll, error: rollErr } = await supabase
+      .from("rolls")
+      .insert({
+        user_id: user.id,
+        film_stock_slug: slug,
+        review_id: newReviewId,
+        title: reviewTitleTrim || null,
+        caption: captionToUse,
+        camera: camera || null,
+        shot_iso: shotIso || null,
+        lens: lens || null,
+        lab: lab || null,
+        scanner: scanner || null,
+        push_pull: pushPull || null,
+        format: format || null,
+        location: location || null,
+        shot_date: shotDate,
+        tags,
+      })
+      .select("id")
+      .single();
+    if (rollErr || !insertedRoll?.id) {
+      console.error("[reviews] rolls insert error:", rollErr?.code, rollErr?.message);
+      return NextResponse.json({ error: "Could not create roll." }, { status: 500 });
+    }
+    rollId = insertedRoll.id as string;
+  }
   const insertResults = await Promise.all(
     uploadedRows.map((row) =>
       supabase.from("user_uploads").insert({
@@ -274,6 +303,7 @@ export async function POST(request: Request) {
         image_height: row.image_height,
         review_id: newReviewId,
         upload_batch_id: uploadBatchId,
+        roll_id: rollId,
         ...metadata,
       })
     )
@@ -316,5 +346,6 @@ export async function POST(request: Request) {
     uploaded: uploadInserted,
     uploadFailed: uploadInsertErrors > 0 ? uploadInsertErrors : undefined,
     reviewSaved: shouldSaveReview,
+    rollId: rollId ?? undefined,
   });
 }

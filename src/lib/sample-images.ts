@@ -83,6 +83,7 @@ export interface GalleryImage extends SampleImage {
   /** `reviews.review_title` when loaded (e.g. home feed) for roll edit lightbox. */
   reviewTitle?: string | null;
   reviewId?: string | null;
+  rollId?: string | null;
   uploadBatchId?: string | null;
   /** Set for real `user_uploads` rows (Discover/Community); omit for seeded sample images. */
   uploadId?: string | null;

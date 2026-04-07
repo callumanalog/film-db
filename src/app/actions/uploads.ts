@@ -6,7 +6,7 @@ import type { FilmBrand, FilmStock } from "@/lib/types";
 import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 
 const USER_UPLOAD_ROW_SELECT =
-  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, roll_id, like_count, save_count";
 
 export interface FilmUploadRow {
   id: string;
@@ -32,6 +32,7 @@ export interface FilmUploadRow {
   image_width?: number | null;
   image_height?: number | null;
   review_id?: string | null;
+  roll_id?: string | null;
   like_count?: number | null;
   save_count?: number | null;
 }

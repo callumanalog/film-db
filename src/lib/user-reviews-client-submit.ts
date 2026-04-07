@@ -207,3 +207,37 @@ export async function patchReviewModalSubmission(opts: {
     return { ok: false, toast: reviewsModalSubmitErrorToast(mode, "PATCH") };
   }
 }
+
+export async function patchRollModalSubmission(opts: {
+  rollId: string;
+  filmStockSlug: string;
+  payload: AddReviewModalPayload;
+  onProgress?: (label: string | null) => void;
+  signal?: AbortSignal;
+}): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; toast: string }> {
+  try {
+    const { formData } = await buildUserReviewsFormData({
+      filmStockSlug: opts.filmStockSlug,
+      mode: "upload",
+      payload: opts.payload,
+    });
+    opts.onProgress?.("Saving…");
+    const { res, data, rawText } = await fetchReviewsResponse(
+      `/api/user/rolls/${opts.rollId}`,
+      "PATCH",
+      formData,
+      opts.signal
+    );
+    opts.onProgress?.(null);
+    if (!res.ok) {
+      return {
+        ok: false,
+        toast: toastMessageForReviewsHttpFailure(res, data, rawText, "upload", "PATCH"),
+      };
+    }
+    return { ok: true, data };
+  } catch {
+    opts.onProgress?.(null);
+    return { ok: false, toast: reviewsModalSubmitErrorToast("upload", "PATCH") };
+  }
+}

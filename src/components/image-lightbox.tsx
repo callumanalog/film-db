@@ -14,7 +14,10 @@ import {
   type EditShareRollSeed,
   type TrackFilmModalStock,
 } from "@/components/add-review-modal";
-import { patchReviewModalSubmission } from "@/lib/user-reviews-client-submit";
+import {
+  patchReviewModalSubmission,
+  patchRollModalSubmission,
+} from "@/lib/user-reviews-client-submit";
 import {
   dispatchRollMetadataUpdated,
   getRollMetadataPatchForRoll,
@@ -89,6 +92,8 @@ export type ImageLightboxData = {
   reviewId?: string | null;
   /** `user_uploads.upload_batch_id` when part of a multi-scan batch (may exist without `review_id` on legacy rows). */
   uploadBatchId?: string | null;
+  /** Canonical roll id (`rolls.id`) when available. */
+  rollId?: string | null;
   /** `reviews.review_title` when known (e.g. own profile lightbox). */
   rollTitle?: string | null;
   /** When set, header avatar/name link to `/users/{userId}`. */
@@ -162,6 +167,7 @@ function plainCaptionFull(html: string): string {
 
 function buildEditShareRollSeed(
   slides: ImageLightboxData[],
+  rollIdForPatch: string | null,
   reviewIdForPatch: string,
   match: {
     priorReviewId?: string | null;
@@ -189,6 +195,7 @@ function buildEditShareRollSeed(
   const meta = first.metadata ?? {};
   const batchId = first.uploadBatchId?.trim() ?? null;
   const base: EditShareRollSeed = {
+    rollId: rollIdForPatch,
     reviewId: ridForPatch,
     uploadBatchId: batchId,
     imageUrls: rollSlides.map((s) => s.imageUrl),
@@ -637,12 +644,18 @@ export function ImageLightbox({
       if (!user || !editRollSeed || !resolvedFilmStockSlug) {
         return { success: false as const };
       }
-      const outcome = await patchReviewModalSubmission({
-        reviewId: editRollSeed.reviewId,
-        filmStockSlug: resolvedFilmStockSlug,
-        payload,
-        mode: "upload",
-      });
+      const outcome = editRollSeed.rollId?.trim()
+        ? await patchRollModalSubmission({
+            rollId: editRollSeed.rollId.trim(),
+            filmStockSlug: resolvedFilmStockSlug,
+            payload,
+          })
+        : await patchReviewModalSubmission({
+            reviewId: editRollSeed.reviewId,
+            filmStockSlug: resolvedFilmStockSlug,
+            payload,
+            mode: "upload",
+          });
       if (!outcome.ok) {
         showToastViaEvent(outcome.toast);
         return { success: false as const };
@@ -724,6 +737,32 @@ export function ImageLightbox({
     }
     setRollOwnerSheetOpen(false);
     let reviewIdForPatch = slide.reviewId?.trim() ?? "";
+    let rollIdForPatch = slide.rollId?.trim() ?? "";
+    try {
+      const body = reviewIdForPatch
+        ? { review_id: reviewIdForPatch }
+        : slide.uploadBatchId?.trim()
+          ? { upload_batch_id: slide.uploadBatchId.trim() }
+          : { upload_id: slide.uploadId.trim() };
+      const resolvedRes = await fetch("/api/user/rolls/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const resolvedData = (await resolvedRes.json().catch(() => ({}))) as {
+        rollId?: string;
+        reviewId?: string | null;
+        error?: string;
+      };
+      if (resolvedRes.ok) {
+        rollIdForPatch = (resolvedData.rollId ?? "").trim();
+        if (!reviewIdForPatch) {
+          reviewIdForPatch = (resolvedData.reviewId ?? "").trim();
+        }
+      }
+    } catch {
+      // Keep compatibility fallback below.
+    }
     if (!reviewIdForPatch) {
       try {
         const body = slide.uploadBatchId?.trim()
@@ -734,12 +773,19 @@ export function ImageLightbox({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        const data = (await res.json().catch(() => ({}))) as { reviewId?: string; error?: string };
+        const data = (await res.json().catch(() => ({}))) as {
+          reviewId?: string;
+          rollId?: string;
+          error?: string;
+        };
         if (!res.ok) {
           showToastViaEvent(data.error || "Could not open editor for this roll.");
           return;
         }
         reviewIdForPatch = (data.reviewId ?? "").trim();
+        if (!rollIdForPatch) {
+          rollIdForPatch = (data.rollId ?? "").trim();
+        }
         if (!reviewIdForPatch) {
           showToastViaEvent("Could not open editor for this roll.");
           return;
@@ -749,11 +795,16 @@ export function ImageLightbox({
         return;
       }
     }
-    const seed = buildEditShareRollSeed(safeSlides, reviewIdForPatch, {
-      priorReviewId: slide.reviewId,
-      uploadBatchId: slide.uploadBatchId,
-      uploadId: slide.uploadId,
-    });
+    const seed = buildEditShareRollSeed(
+      safeSlides,
+      rollIdForPatch || null,
+      reviewIdForPatch,
+      {
+        priorReviewId: slide.reviewId,
+        uploadBatchId: slide.uploadBatchId,
+        uploadId: slide.uploadId,
+      }
+    );
     if (!seed) {
       showToastViaEvent("Could not load roll for editing.");
       return;
