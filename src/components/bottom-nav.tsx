@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { preload } from "swr";
-import { Home, GalleryHorizontalEnd, Plus, Search, UserRound } from "lucide-react";
+import { Home, Plus, Search, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isStockListFormEditorPath } from "@/lib/stock-list-form-route";
 import { openPlusActionSheet } from "@/components/plus-action-sheet";
@@ -13,11 +13,10 @@ import { getSearchPageData } from "@/app/actions/nav-cache";
 
 const LEFT_ITEMS = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/explore", label: "Discover", icon: GalleryHorizontalEnd },
+  { href: "/search", label: "Discover", icon: Search },
 ] as const;
 
 const RIGHT_ITEMS = [
-  { href: "/search", label: "Search", icon: Search },
   { href: "/profile", label: "Profile", icon: UserRound },
 ] as const;
 
@@ -40,8 +39,8 @@ function slugToName(slug: string): string {
 function getActiveHref(pathname: string | null): string | null {
   if (!pathname) return null;
   if (pathname === "/" || pathname.startsWith("/films/")) return "/";
-  if (pathname === "/explore" || pathname.startsWith("/explore/")) return "/explore";
   if (pathname === "/search" || pathname.startsWith("/search")) return "/search";
+  if (pathname === "/explore" || pathname.startsWith("/explore/")) return "/search";
   if (pathname === "/profile" || pathname.startsWith("/profile/")) return "/profile";
   return null;
 }
@@ -145,7 +144,7 @@ export function BottomNav() {
     >
       {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = href === activeHref;
-        const onPrefetch = undefined;
+        const onPrefetch = href === "/search" ? () => preload(searchPageDataKey({}), () => getSearchPageData({})) : undefined;
         return (
           <Link
             key={href}
@@ -173,7 +172,7 @@ export function BottomNav() {
       </button>
       {RIGHT_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = href === activeHref;
-        const onPrefetch = href === "/search" ? () => preload(searchPageDataKey({}), () => getSearchPageData({})) : undefined;
+        const onPrefetch = undefined;
         return (
           <Link
             key={href}

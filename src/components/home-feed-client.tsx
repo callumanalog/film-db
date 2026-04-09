@@ -92,13 +92,6 @@ function buildFeedGalleryPool(
   return out;
 }
 
-function getInitials(name: string): string {
-  if (!name) return "?";
-  const parts = name.trim().split(/[.\s_]+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0]![0] + parts[1]![0]).toUpperCase().slice(0, 2);
-  return name.slice(0, 2).toUpperCase();
-}
-
 function FeedImage({
   src,
   alt,
@@ -308,36 +301,21 @@ function HomeFeedPost({
         </div>
       ) : null}
 
-      <div className="mt-2.5 flex items-start gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="mt-2.5">
+        <div className="flex min-w-0 items-center justify-between gap-2">
           <Link
             href={`/users/${group.user_id}`}
-            className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full bg-neutral-200 outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-primary dark:bg-white/15"
+            className="min-w-0 flex-1 basis-0 truncate text-xs font-medium leading-tight text-foreground outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"
             aria-label={`View ${username}'s profile`}
           >
-            {primary.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={primary.avatar_url} alt="" className="h-full w-full object-cover" width={24} height={24} />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold leading-none text-neutral-700 dark:text-white">
-                {getInitials(username)}
-              </div>
-            )}
+            {username}
           </Link>
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-            <Link
-              href={`/users/${group.user_id}`}
-              className="min-w-0 flex-1 basis-0 truncate text-xs font-medium leading-tight text-foreground outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              {username}
-            </Link>
-            <Link
-              href={`/films/${group.film_stock_slug}`}
-              className="min-w-0 max-w-[min(50%,11rem)] shrink truncate text-right text-xs font-normal text-muted-foreground outline-none ring-offset-2 hover:text-neutral-600 focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-neutral-300"
-            >
-              {stockLabel}
-            </Link>
-          </div>
+          <Link
+            href={`/films/${group.film_stock_slug}`}
+            className="min-w-0 max-w-[min(50%,11rem)] shrink truncate text-right text-xs font-normal text-muted-foreground outline-none ring-offset-2 hover:text-neutral-600 focus-visible:ring-2 focus-visible:ring-primary dark:hover:text-neutral-300"
+          >
+            {stockLabel}
+          </Link>
         </div>
       </div>
     </article>

@@ -9,7 +9,7 @@ import { showToastViaEvent } from "@/components/toast";
 import { cn } from "@/lib/utils";
 
 const BTN =
-  "inline-flex h-8 min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-border bg-background px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted/60 disabled:opacity-50 dark:border-input sm:h-9 sm:text-sm";
+  "inline-flex h-8 min-w-[4.5rem] shrink-0 items-center justify-center rounded-full border border-black bg-black px-3 text-xs font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-50 sm:h-9 sm:text-sm";
 
 export function FilmStockFollowHeaderButton({ filmStockSlug }: { filmStockSlug: string }) {
   const { user, loading } = useAuth();
@@ -75,7 +75,7 @@ export function FilmStockFollowHeaderButton({ filmStockSlug }: { filmStockSlug: 
   return (
     <button
       type="button"
-      className={cn(BTN, following && "border-border/80 bg-muted/30 hover:bg-muted/50 dark:bg-muted/20")}
+      className={cn(BTN, following && "border-black bg-white text-black hover:bg-neutral-100")}
       disabled={pending || !hydrated}
       onClick={onToggle}
       aria-pressed={following}

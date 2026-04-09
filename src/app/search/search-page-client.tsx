@@ -1,195 +1,449 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
-import type { SearchPageData, SearchPageParams } from "@/app/actions/nav-cache";
-import type { FilmStock } from "@/lib/types";
-import type { FilmBrand } from "@/lib/types";
-import { FilmStockListCard } from "@/components/film-stock-list-card";
-import { SearchConsole } from "@/components/search-console";
-import { SearchExploreCarousels } from "@/components/search-explore-carousels";
-import { useSearchPageData } from "@/lib/nav-cache-swr";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Camera as CameraIcon } from "lucide-react";
+import { SearchPageHeaderForm } from "@/components/search-page-header";
+import { FilmStockSummaryRow } from "@/components/film-stock-list-card";
+import {
+  getDiscoverSearchPayload,
+  type DiscoverSearchPayload,
+  type SearchCamerasResult,
+  type SearchShotsResult,
+  type SearchStocksResult,
+  type SearchUsersResult,
+} from "@/app/actions/search";
+import { shareRollPickerSectionLabelClassName } from "@/components/share-roll-picker-primitives";
+import { FILM_TYPE_LABELS, type FilmType } from "@/lib/types";
 
-const FILTER_PARAMS = ["brand", "type", "format", "grain", "latitude", "saturation", "bestFor", "iso"];
-const DEBOUNCE_MS = 180;
+const DEBOUNCE_MS = 220;
 
-/** True when a filter (not sort) is applied — carousel stays visible on scroll only for actual filters. */
-function hasAnyFilter(searchParams: URLSearchParams): boolean {
-  return FILTER_PARAMS.some((key) => {
-    const v = searchParams.get(key);
-    return v != null && v.trim() !== "";
-  });
-}
-
-function searchParamsToNavParams(searchParams: URLSearchParams): SearchPageParams {
-  return {
-    search: searchParams.get("search") ?? undefined,
-    sort: searchParams.get("sort") ?? undefined,
-    brand: searchParams.get("brand") ?? undefined,
-    type: searchParams.get("type") ?? undefined,
-    format: searchParams.get("format") ?? undefined,
-    grain: searchParams.get("grain") ?? undefined,
-    contrast: searchParams.get("contrast") ?? undefined,
-    latitude: searchParams.get("latitude") ?? undefined,
-    saturation: searchParams.get("saturation") ?? undefined,
-    bestFor: searchParams.get("bestFor") ?? undefined,
-    iso: searchParams.get("iso") ?? undefined,
+export interface SearchPageClientProps {
+  carousels: {
+    gold200: SearchShotsResult[];
+    portra400: SearchShotsResult[];
   };
 }
 
-/** Client-side filter: match search term against film name and brand (case-insensitive). Intersection with pills is already applied via SWR data. */
-function filterStocksBySearchTerm(
-  stocks: (FilmStock & { brand: FilmBrand })[],
-  searchTerm: string
-): (FilmStock & { brand: FilmBrand })[] {
-  const q = searchTerm.trim().toLowerCase();
-  if (!q) return stocks;
-  const words = q.split(/\s+/).filter(Boolean);
-  return stocks.filter((stock) => {
-    const name = stock.name.toLowerCase();
-    const brandName = (stock.brand?.name ?? "").toLowerCase();
-    const searchable = `${brandName} ${name}`;
-    return words.every((word) => searchable.includes(word));
-  });
+type TypingMixedRow =
+  | { key: string; kind: "stock"; name: string; href: string; imageUrl: string | null; brandInitial: string; specLine: string; scanCount: number }
+  | { key: string; kind: "camera"; name: string; href: string; specLine: "CAMERA"; scanCount: number }
+  | { key: string; kind: "user"; name: string; href: string; initial: string; specLine: "USER" };
+
+function toUpperTypeLabel(type?: string): string {
+  if (!type) return "UNKNOWN";
+  return (FILM_TYPE_LABELS[type as FilmType] ?? "Unknown").toUpperCase();
 }
 
-export interface SearchPageClientProps {
-  /** Server-passed data on first load; when navigating back, SWR cache is used so this can be undefined. */
-  fallbackData?: SearchPageData;
+function stockSpecLine(stock: SearchStocksResult): string {
+  return `FILM STOCK | ${toUpperTypeLabel(stock.type)}`;
 }
 
-export function SearchPageClient({ fallbackData }: SearchPageClientProps) {
-  const searchParams = useSearchParams();
-  const navParams = searchParamsToNavParams(searchParams);
-  const params = { ...navParams, search: undefined };
-  const { data, isLoading } = useSearchPageData({ params, fallbackData });
-  const hasActiveFilters = hasAnyFilter(searchParams);
+function rowNameMatchRank(name: string, query: string): number {
+  const n = name.trim().toLowerCase();
+  const q = query.trim().toLowerCase();
+  if (!q) return 3;
+  if (n === q) return 0;
+  if (n.startsWith(q)) return 1;
+  if (n.includes(q)) return 2;
+  return 3;
+}
 
-  const initialSearch = searchParams.get("search")?.trim() ?? "";
-  const [inputValue, setInputValue] = useState(initialSearch);
-  const [searchTerm, setSearchTerm] = useState(initialSearch);
-  const [searchActive, setSearchActive] = useState(() => !!initialSearch || hasActiveFilters);
+function cleanCameraName(camera: SearchCamerasResult): string {
+  const raw = camera.name.trim();
+  const brand = camera.brandName.trim();
+  if (!raw) return brand || "Camera";
+  if (!brand) return raw;
+  const rawLower = raw.toLowerCase();
+  const brandLower = brand.toLowerCase();
+  if (rawLower.startsWith(`${brandLower} `)) return raw;
+  return `${brand} ${raw}`;
+}
+
+function StockSearchRow({ stock }: { stock: SearchStocksResult }) {
+  return (
+    <Link
+      href={`/films/${stock.slug}`}
+      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+    >
+      <FilmStockSummaryRow
+        name={stock.name}
+        imageUrl={stock.imageUrl}
+        brandInitial={stock.brandName?.charAt(0)}
+        specLine={stockSpecLine(stock)}
+        showDivider={false}
+      />
+    </Link>
+  );
+}
+
+function CameraSearchRow({ camera }: { camera: SearchCamerasResult }) {
+  return (
+    <Link
+      href={`/cameras/${camera.slug}`}
+      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+    >
+      <FilmStockSummaryRow
+        name={cleanCameraName(camera)}
+        specLine="CAMERA"
+        showDivider={false}
+        customThumb={
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <CameraIcon className="h-5 w-5" aria-hidden />
+          </div>
+        }
+      />
+    </Link>
+  );
+}
+
+function UserSearchRow({ user }: { user: SearchUsersResult }) {
+  const displayName = user.display_name?.trim() || "Member";
+  const initial = displayName.slice(0, 2).toUpperCase();
+  return (
+    <Link
+      href={`/users/${user.id}`}
+      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+    >
+      <FilmStockSummaryRow
+        name={displayName}
+        specLine="USER"
+        showDivider={false}
+        customThumb={
+          <div className="flex h-full w-full items-center justify-center text-xs font-medium text-muted-foreground">
+            {initial}
+          </div>
+        }
+      />
+    </Link>
+  );
+}
+
+function DiscoverCarousel({
+  title,
+  shots,
+}: {
+  title: string;
+  shots: SearchShotsResult[];
+}) {
+  if (shots.length === 0) return null;
+  return (
+    <section className="pt-4" aria-label={title}>
+      <h2 className="mb-3 font-sans text-base font-semibold text-foreground">{title}</h2>
+      <div className="-mx-4 overflow-hidden">
+        <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-1">
+          {shots.map((shot, index) => (
+            <article key={shot.id} className="w-[45%] shrink-0">
+              <Link href={`/films/${shot.stockSlug}?shot=${shot.id}`} className="block overflow-hidden rounded-md border border-border/50 bg-card">
+                <div className="relative h-40 w-full bg-slate-100">
+                  {shot.imageUrl ? (
+                    <Image
+                      src={shot.imageUrl}
+                      alt={shot.stockName}
+                      fill
+                      sizes="45vw"
+                      priority={index < 4}
+                      className="object-cover"
+                    />
+                  ) : null}
+                </div>
+              </Link>
+              <Link
+                href={`/users/${shot.userId}`}
+                className="mt-1.5 block truncate text-xs font-medium leading-tight text-foreground hover:underline"
+              >
+                {shot.username}
+              </Link>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TypingSection<T>({
+  title,
+  items,
+  render,
+}: {
+  title: string;
+  items: T[];
+  render: (item: T, idx: number) => ReactNode;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section className="pt-4">
+      <p className={shareRollPickerSectionLabelClassName}>{title}</p>
+      <div className="mt-2 divide-y divide-border rounded-md bg-card">
+        {items.map((item, idx) => render(item, idx))}
+      </div>
+    </section>
+  );
+}
+
+export function SearchPageClient({ carousels }: SearchPageClientProps) {
+  const [inputValue, setInputValue] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [resultsArmed, setResultsArmed] = useState(false);
+  const [payloadState, setPayloadState] = useState<{ query: string; data: DiscoverSearchPayload } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setInputValue(initialSearch);
-    setSearchTerm(initialSearch);
-    if (initialSearch || hasActiveFilters) setSearchActive(true);
-  }, [initialSearch, hasActiveFilters]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      setSearchTerm(inputValue.trim());
+      setDebouncedQuery(inputValue.trim());
       debounceRef.current = null;
     }, DEBOUNCE_MS);
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [inputValue]);
 
-  const handleClearSearch = () => {
-    setInputValue("");
-    setSearchTerm("");
-  };
+  useEffect(() => {
+    const query = debouncedQuery.trim();
+    if (!query) {
+      return;
+    }
+    let cancelled = false;
+    getDiscoverSearchPayload(query).then((data) => {
+      if (cancelled) return;
+      setPayloadState({ query, data });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
 
-  const handleSearchActivate = useCallback(() => setSearchActive(true), []);
-  const handleSearchDeactivate = useCallback(() => {
-    setSearchActive(false);
-    window.scrollTo({ top: 0 });
-  }, []);
+  const hasQuery = debouncedQuery.length > 0;
+  const activePayload = hasQuery && payloadState?.query === debouncedQuery ? payloadState.data : null;
+  const showLoading = hasQuery && payloadState?.query !== debouncedQuery;
+  const mode: "default" | "typing" | "results" = !hasQuery
+    ? "default"
+    : resultsArmed || !searchFocused
+      ? "results"
+      : "typing";
 
-  const { brands = [], filterOptions = { types: [], isos: [], formats: [], grains: [], contrasts: [], latitudes: [], saturations: [], bestFor: [] }, stocks = [] } = data ?? {};
-
-  const filteredStocks = useMemo(
-    () => filterStocksBySearchTerm(stocks, searchTerm),
-    [stocks, searchTerm]
-  );
-
-  const noResultsFromSearch = searchTerm.length > 0 && filteredStocks.length === 0;
-
-  if (!data && isLoading) {
+  const hasAnyResults = useMemo(() => {
+    if (!activePayload) return false;
     return (
-      <div className="min-h-screen bg-white">
-        <div className="mx-auto max-w-7xl px-4 pt-4 pb-24 md:pb-8 sm:px-6 lg:px-8">
-          <div className="h-12 animate-pulse rounded-lg bg-muted/50 mb-4" />
-          <div className="space-y-2">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-lg bg-muted/30" />
-            ))}
-          </div>
-        </div>
-      </div>
+      activePayload.results.stocks.length > 0 ||
+      activePayload.results.cameras.length > 0 ||
+      activePayload.results.users.length > 0 ||
+      activePayload.results.shots.length > 0
     );
-  }
+  }, [activePayload]);
+
+  const typingRows = useMemo<TypingMixedRow[]>(() => {
+    if (!activePayload || !debouncedQuery.trim()) return [];
+    const rows: TypingMixedRow[] = [
+      ...(activePayload.typing.stocks ?? []).map((stock) => ({
+        key: `stock-${stock.slug}`,
+        kind: "stock" as const,
+        name: stock.name,
+        href: `/films/${stock.slug}`,
+        imageUrl: stock.imageUrl ?? null,
+        brandInitial: stock.brandName?.charAt(0) ?? "?",
+        specLine: stockSpecLine(stock),
+        scanCount: stock.scanCount ?? 0,
+      })),
+      ...(activePayload.typing.cameras ?? []).map((camera) => ({
+        key: `camera-${camera.slug}`,
+        kind: "camera" as const,
+        name: cleanCameraName(camera),
+        href: `/cameras/${camera.slug}`,
+        specLine: "CAMERA" as const,
+        scanCount: camera.scanCount ?? 0,
+      })),
+      ...(activePayload.typing.users ?? []).map((user) => {
+        const name = user.display_name?.trim() || "Member";
+        return {
+          key: `user-${user.id}`,
+          kind: "user" as const,
+          name,
+          href: `/users/${user.id}`,
+          initial: name.slice(0, 2).toUpperCase(),
+          specLine: "USER" as const,
+        };
+      }),
+    ];
+    const query = debouncedQuery.trim();
+    return rows.sort((a, b) => {
+      // Intermix stocks and cameras by scan volume.
+      const aScan = a.kind === "user" ? -1 : a.scanCount;
+      const bScan = b.kind === "user" ? -1 : b.scanCount;
+      if (bScan !== aScan) return bScan - aScan;
+
+      const rankDiff = rowNameMatchRank(a.name, query) - rowNameMatchRank(b.name, query);
+      if (rankDiff !== 0) return rankDiff;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+  }, [activePayload, debouncedQuery]);
 
   return (
-    <>
-      <SearchConsole
-        brands={brands}
-        filterOptions={filterOptions}
-        hasActiveFilters={hasActiveFilters}
-        searchInputValue={inputValue}
-        onSearchInputChange={setInputValue}
-        onClearSearch={handleClearSearch}
-        searchActive={searchActive}
-        onSearchActivate={handleSearchActivate}
-        onSearchDeactivate={handleSearchDeactivate}
-      />
+    <div
+      className="mobile-safe-bottom-clear-bar mx-auto max-w-7xl bg-white px-4 pb-24 pt-4 sm:px-6 lg:px-8 md:pb-8"
+      style={{ ["--mobile-bottom-clearance" as string]: "4.5rem" }}
+    >
+      <div className="mx-auto max-w-2xl">
+        <SearchPageHeaderForm
+          value={inputValue}
+          onChange={(value) => {
+            setInputValue(value);
+            setResultsArmed(false);
+          }}
+          onClear={() => {
+            setInputValue("");
+            setResultsArmed(false);
+          }}
+          onFocus={() => setSearchFocused(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              setResultsArmed(true);
+              setSearchFocused(false);
+              (e.currentTarget as HTMLInputElement).blur();
+            }
+          }}
+          placeholder="Search images, film stocks, cameras, lists, users"
+          ariaLabel="Search images, film stocks, cameras, lists, users"
+          showSearchIcon
+        />
 
-      {/* Mobile: show carousels when search is not active */}
-      {!searchActive && (
-        <div
-          className="mobile-safe-bottom-clear-bar mx-auto max-w-7xl bg-white px-4 sm:px-6 lg:px-8 md:hidden"
-          style={{ ["--mobile-bottom-clearance" as string]: "4.5rem" }}
-        >
-          <SearchExploreCarousels stocks={stocks} />
-        </div>
-      )}
+        {mode === "default" ? (
+          <div className="pt-2">
+            <DiscoverCarousel title="Shot on Kodak Gold 200" shots={carousels.gold200} />
+            <DiscoverCarousel title="Shot on Portra 400" shots={carousels.portra400} />
+          </div>
+        ) : mode === "typing" ? (
+          <div className="pt-2">
+            {showLoading ? <p className="pt-4 text-sm text-muted-foreground">Searching…</p> : null}
+            <div className="mt-2 divide-y divide-border rounded-md bg-card">
+              {typingRows.map((row) => {
+                if (row.kind === "stock") {
+                  return (
+                    <Link
+                      key={row.key}
+                      href={row.href}
+                      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                    >
+                      <FilmStockSummaryRow
+                        name={row.name}
+                        imageUrl={row.imageUrl}
+                        brandInitial={row.brandInitial}
+                        specLine={row.specLine}
+                        showDivider={false}
+                      />
+                    </Link>
+                  );
+                }
+                if (row.kind === "camera") {
+                  return (
+                    <Link
+                      key={row.key}
+                      href={row.href}
+                      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                    >
+                      <FilmStockSummaryRow
+                        name={row.name}
+                        specLine={row.specLine}
+                        showDivider={false}
+                        customThumb={
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <CameraIcon className="h-5 w-5" aria-hidden />
+                          </div>
+                        }
+                      />
+                    </Link>
+                  );
+                }
+                return (
+                  <Link
+                    key={row.key}
+                    href={row.href}
+                    className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                  >
+                    <FilmStockSummaryRow
+                      name={row.name}
+                      specLine={row.specLine}
+                      showDivider={false}
+                      customThumb={
+                        <div className="flex h-full w-full items-center justify-center text-xs font-medium text-muted-foreground">
+                          {row.initial}
+                        </div>
+                      }
+                    />
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="pt-4">
+            {showLoading ? <p className="text-sm text-muted-foreground">Loading results…</p> : null}
+            {!showLoading && activePayload?.bestResult ? (
+              <section className="mb-4 rounded-xl border border-border bg-card p-3">
+                <p className={shareRollPickerSectionLabelClassName}>Top Result</p>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {activePayload.bestResult.type === "stock"
+                    ? `${activePayload.bestResult.value.brandName} ${activePayload.bestResult.value.name}`
+                    : activePayload.bestResult.type === "camera"
+                      ? `${activePayload.bestResult.value.brandName} ${activePayload.bestResult.value.name}`
+                      : activePayload.bestResult.type === "user"
+                        ? activePayload.bestResult.value.display_name ?? "Member"
+                        : activePayload.bestResult.type === "shot"
+                          ? activePayload.bestResult.value.stockName
+                          : activePayload.bestResult.value.title}
+                </p>
+              </section>
+            ) : null}
 
-      {/* Search results list — always visible on desktop, mobile only when search active */}
-      <div
-        className={`mobile-safe-bottom-clear-bar mx-auto max-w-7xl bg-white px-4 sm:px-6 lg:px-8 md:pb-[88px] ${searchActive ? "" : "max-md:hidden"}`}
-        style={{ ["--mobile-bottom-clearance" as string]: "4.5rem" }}
-      >
-        <section aria-label="Film stocks">
-          {noResultsFromSearch ? (
-            <div className="mt-2 rounded-[7px] border border-dashed border-border bg-secondary/20 p-4 py-16 text-center">
-              <p className="font-sans text-base font-semibold text-foreground">
-                We&apos;re still developing that one...
-              </p>
-              <p className="mt-1 font-sans text-ui text-muted-foreground">
-                We couldn&apos;t find any stocks matching &ldquo;{searchTerm}&rdquo;. Try a different stock name or clear filters.
-              </p>
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                className="mt-4 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-              >
-                Clear Search
-              </button>
-            </div>
-          ) : stocks.length === 0 ? (
-            <div className="rounded-[7px] border border-dashed border-border bg-secondary/20 py-16 text-center">
-              <p className="text-sm font-medium text-muted-foreground">No film stocks match your filters.</p>
-              <p className="mt-1 text-xs text-muted-foreground">Try clearing some filters or changing your search.</p>
-            </div>
-          ) : (
-            <div className="space-y-0 rounded-card overflow-hidden bg-white">
-              {filteredStocks.map((stock, index) => (
-                <FilmStockListCard
-                  key={stock.id}
-                  stock={stock}
-                  priority={index < 8}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+            {!showLoading && !hasAnyResults ? (
+              <div className="rounded-md border border-dashed border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
+                No results for &ldquo;{debouncedQuery}&rdquo; yet.
+              </div>
+            ) : null}
+
+            {activePayload?.results.shots.length ? (
+              <section className="pt-2">
+                <p className={shareRollPickerSectionLabelClassName}>Images</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {activePayload.results.shots.map((shot) => (
+                    <Link key={shot.id} href={`/films/${shot.stockSlug}?shot=${shot.id}`} className="block overflow-hidden rounded-md bg-slate-100">
+                      <div className="relative h-24 w-full">
+                        {shot.imageUrl ? <Image src={shot.imageUrl} alt={shot.stockName} fill className="object-cover" sizes="33vw" /> : null}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <TypingSection<SearchStocksResult>
+              title="Film Stocks"
+              items={activePayload?.results.stocks ?? []}
+              render={(stock) => (
+                <StockSearchRow key={stock.slug} stock={stock} />
+              )}
+            />
+            <TypingSection<SearchCamerasResult>
+              title="Cameras"
+              items={activePayload?.results.cameras ?? []}
+              render={(camera) => (
+                <CameraSearchRow key={camera.slug} camera={camera} />
+              )}
+            />
+            <TypingSection<SearchUsersResult>
+              title="Users"
+              items={activePayload?.results.users ?? []}
+              render={(user) => (
+                <UserSearchRow key={user.id} user={user} />
+              )}
+            />
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

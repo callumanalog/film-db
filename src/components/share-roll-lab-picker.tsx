@@ -32,6 +32,18 @@ export function filterLabsForPicker(rows: FilmLabWithDisplay[], query: string): 
   });
 }
 
+function titleCaseLabFreeText(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      if (!/[a-z]/i.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
 export function ShareRollLabPicker({
   lab,
   onLabChange,
@@ -84,6 +96,7 @@ export function ShareRollLabPicker({
   }, [query, refreshRecents]);
 
   const filtered = useMemo(() => filterLabsForPicker(allRows, query), [allRows, query]);
+  const customLabLabel = useMemo(() => titleCaseLabFreeText(query), [query]);
 
   const queryTrim = query.trim();
   const queryNorm = queryTrim.toLowerCase();
@@ -173,9 +186,9 @@ export function ShareRollLabPicker({
             ) : null}
             <div className="px-3 pt-2">
               <ShareRollPickerAddCustomEmptyState
-                term={queryTrim}
+                term={customLabLabel}
                 entityLabel="lab"
-                onPick={() => pickLab(queryTrim)}
+                onPick={() => pickLab(customLabLabel)}
               />
             </div>
           </>

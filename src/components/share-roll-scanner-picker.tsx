@@ -32,6 +32,18 @@ export function filterScannersForPicker(rows: FilmScannerWithDisplay[], query: s
   });
 }
 
+function titleCaseScannerFreeText(value: string): string {
+  return value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      if (!/[a-z]/i.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
 export function ShareRollScannerPicker({
   scanner,
   onScannerChange,
@@ -84,6 +96,7 @@ export function ShareRollScannerPicker({
   }, [query, refreshRecents]);
 
   const filtered = useMemo(() => filterScannersForPicker(allRows, query), [allRows, query]);
+  const customScannerLabel = useMemo(() => titleCaseScannerFreeText(query), [query]);
 
   const queryTrim = query.trim();
   const queryNorm = queryTrim.toLowerCase();
@@ -174,9 +187,9 @@ export function ShareRollScannerPicker({
             ) : null}
             <div className="px-3 pt-2">
               <ShareRollPickerAddCustomEmptyState
-                term={queryTrim}
+                term={customScannerLabel}
                 entityLabel="scanner"
-                onPick={() => pickScanner(queryTrim)}
+                onPick={() => pickScanner(customScannerLabel)}
               />
             </div>
           </>

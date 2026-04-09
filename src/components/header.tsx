@@ -3,9 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { Menu, X, UserRound, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, Share2, CircleUser } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X, Plus, NotebookPen, ImagePlus, ListPlus, LogOut, MoreHorizontal, ChevronLeft, CircleUser } from "lucide-react";
 import { useState, useRef, useEffect, useMemo } from "react";
 import {
   topLeftNavChevronIconClassName,
@@ -18,7 +17,6 @@ import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
 import { FilmStockFollowHeaderButton } from "@/components/film-stock-follow-header-button";
 import { buttonVariants } from "@/components/ui/button";
-import { FilmsHeaderSearch } from "@/components/films-header-search";
 
 const GlobalSearchOverlay = dynamic(
   () => import("@/components/global-search-overlay").then((m) => ({ default: m.GlobalSearchOverlay })),
@@ -37,7 +35,7 @@ const PRIORITY_NAV_COUNT = 2;
 const priorityNavLinks = navLinks.slice(0, PRIORITY_NAV_COUNT);
 const moreNavLinks = navLinks.slice(PRIORITY_NAV_COUNT);
 
-const MAIN_LANDING_PATHS = ["/", "/explore", "/search", "/profile"];
+const MAIN_LANDING_PATHS = ["/", "/search", "/profile"];
 
 /** Public member profile (`/users/{uuid}`) — ProfileView provides its own sticky chrome. */
 const PUBLIC_MEMBER_PROFILE_PATH =
@@ -65,25 +63,17 @@ const FILM_HEADER_PX_PER_CHAR = 9.1;
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, loading, signOut } = useAuth();
-  const { mobileHeaderTitle, mobileHeroMeta, titleScrolledPast, filmSlug } = useMobileHeaderTitle() ?? {};
+  const { mobileHeaderTitle, titleScrolledPast, filmSlug } = useMobileHeaderTitle() ?? {};
   const isAuthPage = pathname?.startsWith("/auth/sign-in") || pathname?.startsWith("/auth/sign-up");
   const showBack = pathname != null && !MAIN_LANDING_PATHS.includes(pathname);
   const isFilmHero = showBack && mobileHeaderTitle != null;
   const isFilmsPage = pathname === "/";
   const isSearchPage = pathname === "/search";
   const isProfilePage = pathname === "/profile" || pathname?.startsWith("/profile/");
-  const isDiscoverHome = pathname === "/explore";
-  const discoverFeed = searchParams.get("feed") === "latest" ? "latest" : "popular";
-
-  const setDiscoverFeed = (f: "latest" | "popular") => {
-    const p = new URLSearchParams(searchParams.toString());
-    if (f === "popular") p.delete("feed");
-    else p.set("feed", "latest");
-    const q = p.toString();
-    router.replace(q ? `/explore?${q}` : "/explore", { scroll: false });
-  };
+  const imageFilmSlug =
+    pathname?.startsWith("/images/film/") ? (pathname.slice("/images/film/".length).split("/")[0] ?? "") : "";
+  const isImageFilmRoute = !!imageFilmSlug;
 
   /** On films mobile, show 🔍 in nav (no inline search bar on either tab). */
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
@@ -169,17 +159,21 @@ export function Header() {
       className={cn(
         "sticky top-0 z-50 font-sans transition-[background-color,border-color,backdrop-filter] duration-200",
         isFilmsPage
-          ? "border-b border-border/50 bg-background/80 backdrop-blur-xl"
+          ? "bg-background/80 backdrop-blur-xl"
           : isFilmHero
             ? cn(
                 "bg-white",
-                "md:border-b md:border-border/50 md:bg-background/80 md:backdrop-blur-xl"
+                "md:bg-background/80 md:backdrop-blur-xl"
               )
-            : "border-b border-border/50 bg-background/80 backdrop-blur-xl"
+            : "bg-background/80 backdrop-blur-xl"
       )}
       style={
         isFilmHero
-          ? { paddingTop: "env(safe-area-inset-top, 0px)" }
+          ? {
+              paddingTop: isImageFilmRoute
+                ? "max(0.5rem, env(safe-area-inset-top, 0px))"
+                : "env(safe-area-inset-top, 0px)",
+            }
           : undefined
       }
     >
@@ -187,56 +181,74 @@ export function Header() {
       {isFilmHero && (
         <div
           className={cn(
-            "relative flex w-full items-center justify-between px-0 md:hidden",
+            "relative flex w-full items-center justify-between md:hidden",
+            isImageFilmRoute ? "px-1" : "px-0",
             titleScrolledPast && "border-b border-border/50"
           )}
           style={{ minHeight: COLLAPSED_NAV_HEIGHT }}
         >
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className={cn("relative z-10", topLeftNavIconTouchClassName)}
-            aria-label="Go back"
-          >
-            <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
-          </button>
-          {/* Symmetric horizontal inset so truncated title stays visually centre-aligned in the nav. */}
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 right-0 z-0 flex min-w-0 items-center justify-center overflow-hidden"
-            style={{
-              paddingLeft: filmHeroTitleSymmetricPadPx,
-              paddingRight: filmHeroTitleSymmetricPadPx,
-            }}
-            aria-hidden={!titleScrolledPast}
-          >
-            <span
-              className={cn(
-                "block min-w-0 w-full truncate text-center font-sans text-base font-semibold tracking-tight transition-opacity duration-200",
-                titleScrolledPast ? "opacity-100 text-foreground" : "opacity-0"
-              )}
-              title={
-                mobileHeaderTitle != null && filmHeroDisplayTitle !== mobileHeaderTitle
-                  ? mobileHeaderTitle
-                  : undefined
-              }
+          <div className="relative z-10 flex min-w-0 items-center">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className={topLeftNavIconTouchClassName}
+              aria-label="Go back"
             >
-              {filmHeroDisplayTitle}
-            </span>
+              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
+            </button>
+            {isImageFilmRoute ? (
+              <span
+                className={cn(
+                  "ml-1 block min-w-0 truncate text-left font-sans text-base font-semibold tracking-tight transition-opacity duration-200",
+                  titleScrolledPast ? "opacity-100 text-foreground" : "opacity-0"
+                )}
+                title={
+                  mobileHeaderTitle != null && filmHeroDisplayTitle !== mobileHeaderTitle
+                    ? mobileHeaderTitle
+                    : undefined
+                }
+              >
+                {filmHeroDisplayTitle}
+              </span>
+            ) : (
+              <>
+                {/* Symmetric horizontal inset so truncated title stays visually centre-aligned in the nav. */}
+                <div
+                  className="pointer-events-none absolute inset-y-0 left-0 right-0 z-0 flex min-w-0 items-center justify-center overflow-hidden"
+                  style={{
+                    paddingLeft: filmHeroTitleSymmetricPadPx,
+                    paddingRight: filmHeroTitleSymmetricPadPx,
+                  }}
+                  aria-hidden={!titleScrolledPast}
+                >
+                  <span
+                    className={cn(
+                      "block min-w-0 w-full truncate text-center font-sans text-base font-semibold tracking-tight transition-opacity duration-200",
+                      titleScrolledPast ? "opacity-100 text-foreground" : "opacity-0"
+                    )}
+                    title={
+                      mobileHeaderTitle != null && filmHeroDisplayTitle !== mobileHeaderTitle
+                        ? mobileHeaderTitle
+                        : undefined
+                    }
+                  >
+                    {filmHeroDisplayTitle}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
           <div className="relative z-10 flex flex-shrink-0 items-center">
             {filmSlug != null && (
-              <div className="flex min-h-[44px] min-w-0 flex-shrink-0 items-center pr-1">
+              <div
+                className={cn(
+                  "flex min-h-[44px] min-w-0 flex-shrink-0 items-center",
+                  isImageFilmRoute ? "pr-[2px]" : "pr-1"
+                )}
+              >
                 <FilmStockFollowHeaderButton filmStockSlug={filmSlug} />
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent("film-detail-more"))}
-              className="flex min-h-[44px] min-w-[44px] flex-shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
-              aria-label="More actions"
-            >
-              <MoreHorizontal className="h-6 w-6" />
-            </button>
           </div>
         </div>
       )}
@@ -247,83 +259,41 @@ export function Header() {
       <div
         className={cn(
           "mx-auto grid items-center px-4 sm:px-6 lg:grid-cols-[1fr_1fr_1fr] lg:px-8",
-          isDiscoverHome ? "max-w-6xl md:max-w-7xl" : "max-w-7xl",
-          isDiscoverHome
-            ? "max-md:grid-cols-2 max-md:gap-0 md:grid-cols-3"
-            : "grid-cols-3",
+          "max-w-7xl",
+          "grid-cols-3",
           isFilmHero
             ? "hidden md:grid h-16"
-            : isDiscoverHome
-              ? "grid max-md:min-h-11 max-md:items-stretch max-md:py-0 md:h-16"
-              : "grid h-11 md:h-16",
+            : "grid h-11 md:h-16",
           isSearchPage && "hidden md:grid"
         )}
       >
         <div
           className={cn(
-            "flex min-w-0 items-center justify-start overflow-hidden gap-1",
-            isDiscoverHome &&
-              "max-md:col-span-2 max-md:min-h-11 max-md:w-full max-md:flex-col max-md:justify-end max-md:overflow-visible"
+            "flex min-w-0 items-center justify-start overflow-hidden gap-1"
           )}
         >
           {showBack ? (
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className={topLeftNavIconButtonClassName}
-              aria-label="Go back"
-            >
-              <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
-            </button>
+            <div className="flex min-w-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className={topLeftNavIconButtonClassName}
+                aria-label="Go back"
+              >
+                <ChevronLeft className={topLeftNavChevronIconClassName} strokeWidth={2} aria-hidden />
+              </button>
+              {imageFilmSlug && titleScrolledPast && mobileHeaderTitle ? (
+                <span className="min-w-0 truncate text-base font-semibold text-foreground">
+                  {mobileHeaderTitle}
+                </span>
+              ) : null}
+            </div>
           ) : (
             <>
-              {isDiscoverHome && (
-                <div
-                  className="flex w-full min-w-0 border-b border-border/50 p-0 md:hidden"
-                  aria-label="Discover feed sort"
-                >
-                  <nav className="flex w-full min-w-0 gap-8" role="tablist">
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={discoverFeed === "latest"}
-                      onClick={() => setDiscoverFeed("latest")}
-                      className={cn(
-                        "relative flex w-full min-w-0 justify-center px-1 pb-3 pt-1 text-center text-sm font-semibold whitespace-nowrap transition-colors",
-                        discoverFeed === "latest"
-                          ? "text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      Latest
-                      {discoverFeed === "latest" ? (
-                        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
-                      ) : null}
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={discoverFeed === "popular"}
-                      onClick={() => setDiscoverFeed("popular")}
-                      className={cn(
-                        "relative flex w-full min-w-0 justify-center px-1 pb-3 pt-1 text-center text-sm font-semibold whitespace-nowrap transition-colors",
-                        discoverFeed === "popular"
-                          ? "text-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      Popular
-                      {discoverFeed === "popular" ? (
-                        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
-                      ) : null}
-                    </button>
-                  </nav>
-                </div>
-              )}
               <button
                 className={cn(
                   "rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground hidden md:flex lg:hidden",
-                  isDiscoverHome && "max-md:hidden"
+                  "max-md:hidden"
                 )}
                 onClick={() => setMobileOpen(!mobileOpen)}
                 aria-label="Toggle menu"
@@ -445,8 +415,7 @@ export function Header() {
         {/* Center column: logo (desktop + mobile) / film title on film detail when scrolled */}
         <div
           className={cn(
-            "flex min-w-0 flex-1 items-center justify-center",
-            isDiscoverHome && "max-md:hidden"
+            "flex min-w-0 flex-1 items-center justify-center"
           )}
         >
           <Link
@@ -455,26 +424,23 @@ export function Header() {
           >
             exposure club
           </Link>
-          {!isSearchPage && !isDiscoverHome && (
+          {!isSearchPage && mobileHeaderTitle && !(imageFilmSlug && titleScrolledPast) ? (
             <Link
-              href={mobileHeaderTitle && pathname ? pathname : "/"}
-              className={cn(
-                "whitespace-nowrap font-extrabold tracking-tight transition-opacity hover:opacity-80 md:hidden",
-                mobileHeaderTitle ? "text-lg font-sans" : "text-2xl font-cabinet"
-              )}
+              href={pathname || "/"}
+              className="whitespace-nowrap font-extrabold tracking-tight transition-opacity hover:opacity-80 md:hidden text-lg font-sans"
             >
-              {mobileHeaderTitle ?? "exposure club"}
+              {mobileHeaderTitle}
             </Link>
-          )}
+          ) : null}
         </div>
 
         {/* Right column: Share when back; on profile, settings icon; else profile / sign-in */}
         <div
           className={cn(
-            "flex items-center justify-end gap-2",
-            isDiscoverHome && "max-md:hidden"
+            "flex items-center justify-end gap-2"
           )}
         >
+          {imageFilmSlug ? <FilmStockFollowHeaderButton filmStockSlug={imageFilmSlug} /> : null}
           {isProfilePage && (
             <div className="relative" ref={settingsMenuRef}>
               <button
@@ -511,15 +477,6 @@ export function Header() {
                 </div>
               )}
             </div>
-          )}
-          {showBack && (
-            <button
-              type="button"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              aria-label="Share"
-            >
-              <Share2 className="h-6 w-6" />
-            </button>
           )}
           {!showBack && !loading && !user && !isAuthPage && (
             <>

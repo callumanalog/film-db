@@ -21,6 +21,8 @@ function tagsFitMax(next: string[], maxLength: number): boolean {
   return serializeTags(next).length <= maxLength;
 }
 
+const MAX_TAG_COUNT = 5;
+
 export function ShareRollTagsPicker({
   tags,
   onTagsChange,
@@ -33,6 +35,7 @@ export function ShareRollTagsPicker({
   const [draft, setDraft] = useState("");
 
   const addedTags = useMemo(() => parseTagsString(tags), [tags]);
+  const hasReachedTagLimit = addedTags.length >= MAX_TAG_COUNT;
 
   const addedLower = useMemo(
     () => new Set(addedTags.map((t) => t.toLowerCase())),
@@ -56,6 +59,7 @@ export function ShareRollTagsPicker({
       if (addedLower.has(canonical.toLowerCase())) return;
 
       const next = [...addedTags, canonical];
+      if (next.length > MAX_TAG_COUNT) return;
       if (!tagsFitMax(next, maxLength)) return;
 
       onTagsChange(serializeTags(next));
@@ -85,7 +89,7 @@ export function ShareRollTagsPicker({
     [addCanonical, draft]
   );
 
-  const canAddDraft = draft.trim().length > 0;
+  const canAddDraft = draft.trim().length > 0 && !hasReachedTagLimit;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
@@ -99,7 +103,7 @@ export function ShareRollTagsPicker({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onInputKeyDown}
-          placeholder="Add a tag"
+          placeholder="Add up to 5 tags"
           maxLength={80}
           className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0"
           aria-label="Tag name"
@@ -127,7 +131,9 @@ export function ShareRollTagsPicker({
       >
         {addedTags.length > 0 ? (
           <section>
-            <p className={cn(shareRollPickerSectionLabelClassName, "mb-4")}>Added tags</p>
+            <p className={cn(shareRollPickerSectionLabelClassName, "mb-4", "px-0")}>
+              Added tags ({addedTags.length}/{MAX_TAG_COUNT})
+            </p>
             <div className="flex flex-wrap gap-2.5">
               {addedTags.map((tag, i) => (
                 <span
@@ -150,16 +156,18 @@ export function ShareRollTagsPicker({
         ) : null}
 
         <section className={addedTags.length > 0 ? "pt-2" : undefined}>
-          <p className={cn(shareRollPickerSectionLabelClassName, "mb-4")}>Popular tags</p>
+          <p className={cn(shareRollPickerSectionLabelClassName, "mb-4", "px-0")}>Popular tags</p>
           <div className="flex flex-wrap gap-2.5">
             {availablePopular.map((tag) => (
               <button
                 key={tag}
                 type="button"
+                disabled={hasReachedTagLimit}
                 onClick={() => addCanonical(tag)}
                 className={cn(
                   "inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-left text-sm font-medium text-foreground transition-colors",
-                  "hover:bg-muted/60 active:bg-muted dark:border-border"
+                  "hover:bg-muted/60 active:bg-muted dark:border-border",
+                  "disabled:pointer-events-none disabled:opacity-40"
                 )}
               >
                 <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={2} aria-hidden />

@@ -63,8 +63,14 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      { source: "/explore", destination: "/search", permanent: true },
       { source: "/gallery", destination: "/community", permanent: true },
       { source: "/references", destination: "/community", permanent: true },
+      {
+        source: "/ui-preview/scan-slot-states",
+        destination: "/ui-preview/share-a-roll-errors",
+        permanent: false,
+      },
     ];
   },
 };

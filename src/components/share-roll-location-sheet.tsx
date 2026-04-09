@@ -19,7 +19,6 @@ export function ShareRollLocationSheet(props: ShareRollLocationSheetProps) {
       title="Location"
       placeholder="City, country or place name"
       ariaLabel="City, country or place name"
-      buttonLabel="Add location"
       mruKind="location"
       recentSectionTitle="Recent locations"
       suggestionSectionTitle="Suggestions"

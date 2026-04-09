@@ -18,7 +18,6 @@ export function ShareRollLensSheet(props: ShareRollLensSheetProps) {
       title="Lens"
       placeholder="Canon 50mm f/1.8"
       ariaLabel="Lens"
-      buttonLabel="Add lens"
       mruKind="lens"
       recentSectionTitle="Recent lenses"
       autoComplete="off"

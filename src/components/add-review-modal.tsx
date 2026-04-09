@@ -138,6 +138,16 @@ function defaultShotIsoForStock(stock: TrackFilmModalStock): string {
   return "400";
 }
 
+function formatTagsForMetadataRow(tagsValue: string): string {
+  if (!tagsValue.trim()) return "";
+  return tagsValue
+    .split(",")
+    .map((tag) => tag.trim().toLowerCase().replace(/\s+/g, ""))
+    .filter(Boolean)
+    .map((tag) => `#${tag}`)
+    .join(" ");
+}
+
 /** `YYYY-MM-DD` → readable label for metadata row (local timezone midday avoids DST edge cases). */
 function formatShotDateRowDisplay(isoDate: string): string {
   const t = isoDate.trim();
@@ -150,6 +160,13 @@ function formatShotDateRowDisplay(isoDate: string): string {
   } catch {
     return t;
   }
+}
+
+function step3PreviewGridClassName(previewCount: number): string {
+  if (previewCount <= 2) return "grid-cols-2";
+  if (previewCount === 3) return "grid-cols-3";
+  if (previewCount === 4) return "grid-cols-4";
+  return "grid-cols-5";
 }
 
 /** Title: bottom rule only (no top line); pairs with description having no borders so one seam between them. */
@@ -428,7 +445,9 @@ function StockThumbnail({
         alt={stock.name}
         width={px}
         height={px}
-        className="h-full w-full object-cover"
+        sizes={`${px}px`}
+        quality={90}
+        className="h-full w-full object-contain"
       />
     );
   }
@@ -696,6 +715,7 @@ export function AddReviewModal({
   const [location, setLocation] = useState("");
   const [shotDate, setShotDate] = useState("");
   const [tags, setTags] = useState("");
+  const metadataTagsValue = useMemo(() => formatTagsForMetadataRow(tags), [tags]);
   const [lab, setLab] = useState("");
   const [scanner, setScanner] = useState("");
   const [caption, setCaption] = useState("");
@@ -1473,7 +1493,7 @@ export function AddReviewModal({
               <div className="space-y-5 bg-white px-4 pb-5 pt-0">
 
                 {/* Stock context */}
-                <div className="flex items-center gap-3 py-3">
+                <div className="flex items-center gap-0 py-3">
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-white">
                     <StockThumbnail stock={stock} />
                   </div>
@@ -1649,7 +1669,7 @@ export function AddReviewModal({
                   <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
                     <div className="space-y-3 px-4 pb-5 pt-0">
                       <div className="pt-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0">
                           <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-white">
                             <StockThumbnail stock={stock} size="sm" />
                           </div>
@@ -1659,7 +1679,7 @@ export function AddReviewModal({
                         </div>
                         {isEditShareRoll && previewUrls.length > 0 ? (
                           <div className="mt-5 w-full">
-                            <div className="grid grid-cols-5 gap-2">
+                            <div className={cn("grid gap-2", step3PreviewGridClassName(previewUrls.length))}>
                               {previewUrls.map((url, i) =>
                                 url ? (
                                   <button
@@ -1692,7 +1712,7 @@ export function AddReviewModal({
                               onDragEnd={handleStep3DragEnd}
                             >
                               <SortableContext items={uploadScanOrderIds} strategy={rectSortingStrategy}>
-                                <div className="grid grid-cols-5 gap-2">
+                                <div className={cn("grid gap-2", step3PreviewGridClassName(uploadScanOrderIds.length))}>
                                   {uploadScanOrderIds.map((sortId, i) => (
                                     <Step3SortableScanCell
                                       key={sortId}
@@ -1812,7 +1832,7 @@ export function AddReviewModal({
                         <Step3MetadataNavRow
                           icon={Tags}
                           placeholderLabel="Tags"
-                          value={tags}
+                          value={metadataTagsValue}
                           onNavigate={() => setStep3MetadataSubpage("tags")}
                         />
                       </div>
@@ -1912,7 +1932,7 @@ export function AddReviewModal({
 
     <Sheet
       open={open && dateShotSheetOpen}
-      modal="trap-focus"
+      modal={true}
       onOpenChange={(next) => {
         if (!open) return;
         setDateShotSheetOpen(next);
@@ -1921,10 +1941,10 @@ export function AddReviewModal({
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        overlayClassName="!z-[105] bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
+        overlayClassName="!z-[115] bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
         className={cn(
           // Intrinsic height from drawer content (tight month view); cap viewport. Year grid sets its own min height inside.
-          "!z-[110] flex min-h-0 flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl data-[side=bottom]:h-auto data-[side=bottom]:max-h-[65dvh]",
+          "!z-[120] flex min-h-0 flex-col gap-0 overflow-hidden border-0 p-0 shadow-2xl data-[side=bottom]:h-auto data-[side=bottom]:max-h-[65dvh]",
           "rounded-t-[20px] bg-background"
         )}
       >

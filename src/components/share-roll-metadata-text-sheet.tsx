@@ -20,7 +20,6 @@ export type ShareRollMetadataTextSheetProps = {
   title: string;
   placeholder: string;
   ariaLabel: string;
-  buttonLabel: string;
   mruKind: Extract<RollPickerMruKind, "location" | "lens">;
   /** e.g. "Recent locations" — shown with uppercase styling. */
   recentSectionTitle: string;
@@ -42,7 +41,6 @@ export function ShareRollMetadataTextSheet({
   title,
   placeholder,
   ariaLabel,
-  buttonLabel,
   mruKind,
   recentSectionTitle,
   autoComplete = "off",
@@ -79,7 +77,6 @@ export function ShareRollMetadataTextSheet({
     if (draft.trim() === "") refreshRecents();
   }, [draft, refreshRecents]);
 
-  const canSave = draft.trim().length > 0;
   const splitLayout = draft.trim() === "";
   const suggestions =
     draft.trim().length > 0 && getSuggestions
@@ -98,9 +95,13 @@ export function ShareRollMetadataTextSheet({
 
   const handleSave = useCallback(() => {
     const trimmed = draft.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      onChange("");
+      onOpenChange(false);
+      return;
+    }
     applyValue(trimmed);
-  }, [draft, applyValue]);
+  }, [draft, applyValue, onChange, onOpenChange]);
 
   const onSearchKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
@@ -114,13 +115,13 @@ export function ShareRollMetadataTextSheet({
   );
 
   return (
-    <Sheet open={open} modal="trap-focus" onOpenChange={onOpenChange}>
+    <Sheet open={open} modal={true} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         showCloseButton={false}
-        overlayClassName="!z-[105] bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
+        overlayClassName="!z-[115] bg-black/50 supports-backdrop-filter:backdrop-blur-sm"
         className={cn(
-          "!z-[110] flex min-h-0 flex-col gap-0 border-0 p-0 shadow-2xl",
+          "!z-[120] flex min-h-0 flex-col gap-0 border-0 p-0 shadow-2xl",
           "rounded-t-[20px] bg-background data-[side=bottom]:h-auto data-[side=bottom]:max-h-[50dvh]"
         )}
         style={{
@@ -184,11 +185,10 @@ export function ShareRollMetadataTextSheet({
           <div className="mobile-safe-bottom-footer shrink-0 border-t border-border/40 px-4 pt-3">
             <button
               type="button"
-              disabled={!canSave}
               onClick={handleSave}
               className="flex h-[52px] w-full items-center justify-center rounded-full bg-black text-sm font-semibold text-white transition-colors hover:bg-black/90 disabled:opacity-40"
             >
-              {buttonLabel}
+              Save
             </button>
           </div>
         </div>

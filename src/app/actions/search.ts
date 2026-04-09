@@ -3,6 +3,7 @@
 import { getFilmStocks, getBrands, getFeaturedFilmStocks, getFeaturedBrands } from "@/lib/supabase/queries";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { createClient } from "@/lib/supabase/server";
+import { getCameras } from "@/lib/camera-queries";
 
 export type SearchTab = "stocks" | "shots" | "notes" | "brands" | "users";
 
@@ -26,6 +27,7 @@ export interface SearchStocksResult {
   format?: string[];
   brandName: string;
   imageUrl?: string | null;
+  scanCount?: number;
 }
 
 export interface SearchBrandsResult {
@@ -58,12 +60,50 @@ export interface SearchUsersResult {
   handle?: string | null;
 }
 
+export interface SearchCamerasResult {
+  slug: string;
+  name: string;
+  brandName: string;
+  format: string;
+  scanCount?: number;
+}
+
+export interface SearchListsResult {
+  id: string;
+  title: string;
+  ownerDisplayName: string;
+}
+
 export interface SearchResult {
   stocks?: SearchStocksResult[];
   brands?: SearchBrandsResult[];
   shots?: SearchShotsResult[];
   notes?: SearchNotesResult[];
   users?: SearchUsersResult[];
+  cameras?: SearchCamerasResult[];
+  lists?: SearchListsResult[];
+}
+
+export interface DiscoverSearchPayload {
+  typing: {
+    stocks: SearchStocksResult[];
+    cameras: SearchCamerasResult[];
+    users: SearchUsersResult[];
+  };
+  results: {
+    stocks: SearchStocksResult[];
+    cameras: SearchCamerasResult[];
+    users: SearchUsersResult[];
+    shots: SearchShotsResult[];
+    lists: SearchListsResult[];
+  };
+  bestResult:
+    | { type: "stock"; value: SearchStocksResult }
+    | { type: "camera"; value: SearchCamerasResult }
+    | { type: "user"; value: SearchUsersResult }
+    | { type: "shot"; value: SearchShotsResult }
+    | { type: "list"; value: SearchListsResult }
+    | null;
 }
 
 /** Tab-aware search: returns only the active tab's results. */
@@ -117,7 +157,6 @@ export async function searchFilmsByTab(
           merged.push(u);
         }
       }
-      merged.sort((a, b) => 0); // keep order stable (uploadsByText first, then by stock name)
       return {
         shots: merged.map((u) => ({
           id: u.id,
@@ -140,7 +179,6 @@ export async function searchFilmsByTab(
         .order("created_at", { ascending: false })
         .limit(50);
       if (error || !rows?.length) return { notes: [] };
-      const slugs = [...new Set((rows as { film_stock_slug: string }[]).map((r) => r.film_stock_slug))];
       const stocks = await getFilmStocks({ sort: "alphabetical" });
       const nameBySlug = new Map(stocks.map((s) => [s.slug, s.name]));
       return {
@@ -266,5 +304,173 @@ export async function getSuggestedStocks(): Promise<SuggestedStocksResult> {
   return {
     stocks: allMapped.slice(0, 8),
     allStocks: allMapped,
+  };
+}
+
+interface DiscoverCarouselPayload {
+  gold200: SearchShotsResult[];
+  portra400: SearchShotsResult[];
+}
+
+function mapUploadsToShotResults(
+  uploads: Awaited<ReturnType<typeof getAllCommunityUploadsForGallery>>
+): SearchShotsResult[] {
+  return uploads.map((u) => ({
+    id: u.id,
+    stockSlug: u.stockSlug,
+    stockName: u.stockName,
+    brandName: u.brandName,
+    imageUrl: u.imageUrl,
+    username: u.username,
+    userId: u.userId,
+  }));
+}
+
+export async function getDiscoverCarouselPayload(): Promise<DiscoverCarouselPayload> {
+  const stocks = await getFilmStocks({ sort: "alphabetical" });
+  const [goldUploads, portraUploads] = await Promise.all([
+    getAllCommunityUploadsForGallery(stocks, undefined, ["kodak-gold-200"]),
+    getAllCommunityUploadsForGallery(stocks, undefined, ["kodak-portra-400"]),
+  ]);
+  return {
+    gold200: mapUploadsToShotResults(goldUploads),
+    portra400: mapUploadsToShotResults(portraUploads),
+  };
+}
+
+function toCameraResult(rows: Awaited<ReturnType<typeof getCameras>>): SearchCamerasResult[] {
+  return rows.map((camera) => ({
+    slug: camera.slug,
+    name: camera.name,
+    brandName: camera.brand.name,
+    format: camera.format.join(", "),
+  }));
+}
+
+export async function getDiscoverSearchPayload(query: string): Promise<DiscoverSearchPayload> {
+  const q = query.trim();
+  if (!q) {
+    return {
+      typing: { stocks: [], cameras: [], users: [] },
+      results: { stocks: [], cameras: [], users: [], shots: [], lists: [] },
+      bestResult: null,
+    };
+  }
+
+  const [stockRes, usersRes, shotsRes, cameras, listRows] = await Promise.all([
+    searchFilmsByTab(q, "stocks"),
+    searchFilmsByTab(q, "users"),
+    searchFilmsByTab(q, "shots"),
+    getCameras({ search: q }),
+    (async () => {
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("stock_lists")
+        .select("id, title, user_id")
+        .ilike("title", `%${q}%`)
+        .order("updated_at", { ascending: false })
+        .limit(12);
+      const rows = (data ?? []) as { id: string; title: string; user_id: string }[];
+      if (rows.length === 0) return [];
+      const ownerIds = [...new Set(rows.map((r) => r.user_id))];
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", ownerIds);
+      const ownerById = new Map(
+        (profiles ?? []).map((p) => [
+          (p as { id: string }).id,
+          (p as { display_name: string | null }).display_name?.trim() || "Member",
+        ])
+      );
+      return rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        ownerDisplayName: ownerById.get(r.user_id) ?? "Member",
+      }));
+    })(),
+  ]);
+
+  const stocks = stockRes.stocks ?? [];
+  const users = usersRes.users ?? [];
+  const shots = shotsRes.shots ?? [];
+  const cameraResults = toCameraResult(cameras);
+
+  // Typing-state ranking: prioritize entities with most attached scans.
+  const supabase = await createClient();
+
+  const stockSlugs = stocks.map((s) => s.slug);
+  const stockCountBySlug = new Map<string, number>();
+  if (stockSlugs.length > 0) {
+    const { data: stockUploads } = await supabase
+      .from("user_uploads")
+      .select("film_stock_slug")
+      .in("film_stock_slug", stockSlugs)
+      .not("image_url", "is", null);
+    for (const row of (stockUploads ?? []) as { film_stock_slug: string }[]) {
+      const slug = row.film_stock_slug;
+      stockCountBySlug.set(slug, (stockCountBySlug.get(slug) ?? 0) + 1);
+    }
+  }
+
+  const cameraCountBySlug = new Map<string, number>();
+  if (cameraResults.length > 0) {
+    const { data: cameraUploads } = await supabase
+      .from("user_uploads")
+      .select("camera")
+      .ilike("camera", `%${q}%`)
+      .not("image_url", "is", null);
+
+    const normalizedNames = cameraResults.map((c) => ({
+      slug: c.slug,
+      // Count scans attached by either "camera name" or "brand + camera name".
+      plain: c.name.trim().toLowerCase(),
+      branded: `${c.brandName.trim()} ${c.name.trim()}`.toLowerCase(),
+    }));
+
+    for (const row of (cameraUploads ?? []) as { camera: string | null }[]) {
+      const val = row.camera?.trim().toLowerCase();
+      if (!val) continue;
+      for (const candidate of normalizedNames) {
+        if (val === candidate.plain || val === candidate.branded) {
+          cameraCountBySlug.set(candidate.slug, (cameraCountBySlug.get(candidate.slug) ?? 0) + 1);
+        }
+      }
+    }
+  }
+
+  const stocksByScans = [...stocks]
+    .map((s) => ({ ...s, scanCount: stockCountBySlug.get(s.slug) ?? 0 }))
+    .sort((a, b) => {
+      if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+
+  const camerasByScans = [...cameraResults]
+    .map((c) => ({ ...c, scanCount: cameraCountBySlug.get(c.slug) ?? 0 }))
+    .sort((a, b) => {
+      if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
+      const nameA = `${a.brandName} ${a.name}`;
+      const nameB = `${b.brandName} ${b.name}`;
+      return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
+    });
+  const bestResult =
+    (stocks[0] ? ({ type: "stock", value: stocks[0] as SearchStocksResult } as const) : null) ??
+    (shots[0] ? ({ type: "shot", value: shots[0] as SearchShotsResult } as const) : null) ??
+    (cameraResults[0] ? ({ type: "camera", value: cameraResults[0] as SearchCamerasResult } as const) : null) ??
+    (users[0] ? ({ type: "user", value: users[0] as SearchUsersResult } as const) : null) ??
+    (listRows[0] ? ({ type: "list", value: listRows[0] as SearchListsResult } as const) : null);
+
+  return {
+    typing: {
+      stocks: stocksByScans.slice(0, 20),
+      cameras: camerasByScans.slice(0, 20),
+      users: users.slice(0, 20),
+    },
+    results: {
+      stocks: stocks.slice(0, 8),
+      cameras: cameraResults.slice(0, 8),
+      users: users.slice(0, 8),
+      shots: shots.slice(0, 12),
+      lists: listRows.slice(0, 6),
+    },
+    bestResult,
   };
 }

@@ -14,6 +14,7 @@ export interface FilmStockSummaryRowProps {
   name: string;
   imageUrl?: string | null;
   brandInitial?: string;
+  customThumb?: React.ReactNode;
   specLine: string;
   priority?: boolean;
   /** Hide chevron (e.g. lightbox @ stock row). */
@@ -29,6 +30,7 @@ export function FilmStockSummaryRow({
   name,
   imageUrl,
   brandInitial,
+  customThumb,
   specLine,
   priority = false,
   hideTrailing = false,
@@ -46,7 +48,9 @@ export function FilmStockSummaryRow({
         <div
           className={`${thumbBox} shrink-0 overflow-hidden rounded-md border border-border bg-white`}
         >
-          {imageUrl ? (
+          {customThumb ? (
+            customThumb
+          ) : imageUrl ? (
             <Image
               src={imageUrl}
               alt=""

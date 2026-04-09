@@ -6,7 +6,7 @@ import { fetchMemberPublicFieldsByUserIds } from "@/lib/supabase/fetch-display-n
 import type { FilmUploadRow } from "@/app/actions/uploads";
 
 const HOME_FEED_SELECT =
-  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, like_count, save_count";
+  "id, user_id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, image_width, image_height, review_id, roll_id, like_count, save_count";
 
 const PER_SOURCE_LIMIT = 120;
 
@@ -33,6 +33,27 @@ function mergeUniqueRows(rows: (FilmUploadRow & { created_at: string })[]): (Fil
   }
   return [...byId.values()].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+}
+
+/** Node/undici often surfaces unreachable Supabase as this message (not a SQL error). */
+function isTransportLayerError(message: string | undefined): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return (
+    m.includes("fetch failed") ||
+    m.includes("econnrefused") ||
+    m.includes("enotfound") ||
+    m.includes("etimedout") ||
+    m.includes("socket hang up")
+  );
+}
+
+function logFeedTransportFailure(context: string, err: { message?: string } | null | undefined) {
+  const detail = err?.message ?? "unknown";
+  console.warn(
+    `[getHomeFeedGroups] ${context}: ${detail}. ` +
+      "If you use local Supabase, set NEXT_PUBLIC_SUPABASE_URL to http://127.0.0.1:54321 (not `localhost`) and ensure the stack is running (`supabase start`)."
   );
 }
 
@@ -74,24 +95,66 @@ export async function getHomeFeedGroups(): Promise<HomeFeedGroup[]> {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const [{ data: followRows, error: followErr }, { data: stockFollowRows, error: stockFollowErr }] =
-    await Promise.all([
+  const loadFollowPair = () =>
+    Promise.all([
       supabase.from("user_follows").select("following_id").eq("follower_id", user.id),
       supabase.from("user_followed_film_stocks").select("film_stock_slug").eq("user_id", user.id),
     ]);
 
-  if (followErr) console.error("[getHomeFeedGroups] follows", followErr.message);
-  if (stockFollowErr) {
-    const msg = stockFollowErr.message ?? "";
-    const missingTable =
-      msg.includes("user_followed_film_stocks") &&
-      (msg.includes("schema cache") || msg.includes("does not exist"));
-    if (missingTable) {
-      console.warn(
-        "[getHomeFeedGroups] Table user_followed_film_stocks is missing. Apply supabase/migrations/056_user_followed_film_stocks.sql (e.g. supabase db push). Feed will work without stock-follow sources until then."
-      );
-    } else {
-      console.error("[getHomeFeedGroups] stock follows", msg);
+  let [{ data: followRows, error: followErr }, { data: stockFollowRows, error: stockFollowErr }] =
+    await loadFollowPair();
+
+  const followTransportFail = isTransportLayerError(followErr?.message);
+  const stockTransportFail = isTransportLayerError(stockFollowErr?.message);
+  if (followTransportFail || stockTransportFail) {
+    await new Promise((r) => setTimeout(r, 200));
+    [{ data: followRows, error: followErr }, { data: stockFollowRows, error: stockFollowErr }] =
+      await loadFollowPair();
+  }
+
+  if (
+    isTransportLayerError(followErr?.message) ||
+    isTransportLayerError(stockFollowErr?.message)
+  ) {
+    const f = await supabase.from("user_follows").select("following_id").eq("follower_id", user.id);
+    const s = await supabase
+      .from("user_followed_film_stocks")
+      .select("film_stock_slug")
+      .eq("user_id", user.id);
+    if (isTransportLayerError(followErr?.message)) {
+      followRows = f.data;
+      followErr = f.error;
+    }
+    if (isTransportLayerError(stockFollowErr?.message)) {
+      stockFollowRows = s.data;
+      stockFollowErr = s.error;
+    }
+  }
+
+  const followTransport = followErr != null && isTransportLayerError(followErr.message);
+  const stockTransport = stockFollowErr != null && isTransportLayerError(stockFollowErr.message);
+
+  if (followTransport && stockTransport) {
+    logFeedTransportFailure("follows and stock follows", followErr);
+  } else {
+    if (followErr) {
+      if (followTransport) logFeedTransportFailure("follows", followErr);
+      else console.error("[getHomeFeedGroups] follows", followErr.message);
+    }
+    if (stockFollowErr) {
+      const msg = stockFollowErr.message ?? "";
+      const missingTable =
+        msg.includes("user_followed_film_stocks") &&
+        (msg.includes("schema cache") || msg.includes("does not exist"));
+      if (stockTransport) {
+        logFeedTransportFailure("stock follows", stockFollowErr);
+      } else if (missingTable) {
+        console.warn(
+          "[getHomeFeedGroups] Table user_followed_film_stocks is missing. Apply supabase/migrations/056_user_followed_film_stocks.sql (e.g. supabase db push). Feed will work without stock-follow sources until then."
+        );
+      } else {
+        console.error("[getHomeFeedGroups] stock follows", msg);
+      }
     }
   }
 

@@ -30,20 +30,12 @@ import {
   Aperture,
   Bookmark,
   Camera,
-  CalendarDays,
   ChevronLeft,
-  ChevronRight,
-  Clock,
-  Film,
   FlaskConical,
   Gauge,
   Heart,
-  MapPin,
   MessageCircle,
   MoreHorizontal,
-  RectangleHorizontal,
-  ScanLine,
-  Tags,
 } from "lucide-react";
 import { getSavedUploadIdsAmong, toggleSaveUpload } from "@/app/actions/saved-uploads";
 import { showSavedScanBoardToast } from "@/components/saved-scan-board-toast";
@@ -136,10 +128,6 @@ const lightboxMetaHairline = "border-t border-[0.5px] border-border/40 dark:bord
 const lightboxMetaLeadingIconClass =
   "size-4 shrink-0 stroke-[1.5] text-muted-foreground/80 dark:text-muted-foreground/70";
 
-/** Trailing chevron: 14×14, muted tertiary */
-const lightboxMetaChevronClass =
-  "h-3.5 w-3.5 shrink-0 stroke-[1.5] text-muted-foreground/80 dark:text-muted-foreground/70";
-
 function formatIsoRowValue(raw: string): string {
   const t = raw.trim();
   if (!t) return "";
@@ -157,6 +145,17 @@ function formatShotDateLabel(isoDate: string): string {
   } catch {
     return t;
   }
+}
+
+function formatCaptionTags(rawTags: string): string {
+  return rawTags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .map((tag) => tag.replace(/^#+/, "").replace(/\s+/g, "").toLowerCase())
+    .filter(Boolean)
+    .map((tag) => `#${tag}`)
+    .join(" ");
 }
 
 function getInitials(name: string): string {
@@ -846,6 +845,11 @@ export function ImageLightbox({
   const filmStockName = current.stockCard?.name ?? current.context?.label ?? null;
   const filmStockHref = current.stockCard?.href ?? current.context?.href ?? null;
   const showFilmMetaRow = !!(filmStockName && filmStockHref);
+  const filmStockSlugForImages = (
+    current.filmStockSlug?.trim() ||
+    (filmStockHref?.startsWith("/films/") ? filmStockHref.slice("/films/".length).split(/[/?#]/)[0] ?? "" : "")
+  ).trim();
+  const filmStockImagesHref = filmStockSlugForImages ? `/images/film/${filmStockSlugForImages}` : null;
   const rollTitleValue = rollMetaPatch
     ? (rollMetaPatch.reviewTitle ?? "").trim()
     : current.rollTitle?.trim() ?? "";
@@ -884,11 +888,15 @@ export function ImageLightbox({
     !!labValue ||
     !!scannerValue ||
     !!pushPullValue ||
-    !!locationValue ||
     !!shotIsoValue ||
     !!formatValue ||
-    !!shotDateValue ||
     !!tagsValue;
+  const shotAtIsoValue = shotIsoValue ? `Shot at ${formatIsoRowValue(shotIsoValue)}` : "";
+  const filmStockDetailParts = [formatValue || "", shotAtIsoValue].filter(Boolean);
+  const lensIsoFormatParts = showFilmMetaRow
+    ? [lensValue || ""].filter(Boolean)
+    : [lensValue || "", shotIsoValue ? formatIsoRowValue(shotIsoValue) : "", formatValue || ""].filter(Boolean);
+  const labScannerParts = [labValue ? filmLabPublicLabel(labValue) : "", scannerValue || ""].filter(Boolean);
   const captionPlain = rollMetaPatch
     ? (rollMetaPatch.caption?.trim() ? rollMetaPatch.caption.trim() : "")
     : current.caption?.trim()
@@ -902,6 +910,13 @@ export function ImageLightbox({
   const showCaptionBlock = rollMetaPatch
     ? (rollMetaPatch.caption?.trim()?.length ?? 0) > 0
     : !!current.caption?.trim();
+  const captionMetaDate = shotDateValue ? formatShotDateLabel(shotDateValue) : "";
+  const captionTagsValue = tagsValue ? formatCaptionTags(tagsValue) : "";
+  const showUnderCaptionDetails = !showCaptionBlock || captionExpanded || !shouldShowCaptionMore;
+  const showUnderCaptionMeta =
+    (!!locationValue || !!captionMetaDate) &&
+    showUnderCaptionDetails;
+  const showUnderCaptionTags = !!captionTagsValue && showUnderCaptionDetails;
 
   const comments = current.commentCount ?? null;
   const moreFromRollHeading = rollTitleValue ? `More from ${rollTitleValue}` : "More from this roll";
@@ -1082,96 +1097,130 @@ export function ImageLightbox({
               </div>
 
               <div className="space-y-2 px-4 pb-[max(1rem,calc(env(safe-area-inset-bottom,0px)+12px))]">
-                {rollTitleValue ? (
-                  <p className="text-sm font-medium leading-relaxed text-neutral-900 break-words dark:text-neutral-100">
-                    {rollTitleValue}
-                  </p>
-                ) : null}
-                {showCaptionBlock ? (
-                  <div className="relative text-sm leading-relaxed">
-                    {!captionExpanded ? (
-                      <p
-                        ref={captionClampedRef}
-                        className="whitespace-pre-wrap text-neutral-900 dark:text-neutral-100 break-words"
-                      >
-                        {captionCollapsedText}
-                        {shouldShowCaptionMore ? (
-                          <>
-                            {" "}
-                            <button
-                              type="button"
-                              onClick={() => setCaptionExpanded(true)}
-                              className="text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400"
-                            >
-                              ... more
-                            </button>
-                          </>
-                        ) : null}
-                      </p>
-                    ) : (
-                      <p className="whitespace-pre-wrap text-neutral-900 dark:text-neutral-100 break-words">
-                        {captionPlain}
-                      </p>
-                    )}
-                  </div>
-                ) : null}
+                <div className="space-y-2">
+                  {rollTitleValue ? (
+                    <p className="text-sm font-medium leading-relaxed text-neutral-900 break-words dark:text-neutral-100">
+                      {rollTitleValue}
+                    </p>
+                  ) : null}
+                  {showCaptionBlock ? (
+                    <div className="relative text-sm leading-relaxed">
+                      {!captionExpanded ? (
+                        <p
+                          ref={captionClampedRef}
+                          className="whitespace-pre-wrap text-neutral-900 dark:text-neutral-100 break-words"
+                        >
+                          {captionCollapsedText}
+                          {shouldShowCaptionMore ? (
+                            <>
+                              {" "}
+                              <button
+                                type="button"
+                                onClick={() => setCaptionExpanded(true)}
+                                className="text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-400"
+                              >
+                                ... more
+                              </button>
+                            </>
+                          ) : null}
+                        </p>
+                      ) : (
+                        <p className="whitespace-pre-wrap text-neutral-900 dark:text-neutral-100 break-words">
+                          {captionPlain}
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                  {showUnderCaptionTags ? (
+                    <p className="break-words text-[13px] font-medium leading-tight text-muted-foreground">
+                      {captionTagsValue}
+                    </p>
+                  ) : null}
+                  {showUnderCaptionMeta ? (
+                    <div className="flex min-w-0 items-center gap-1 text-[13px] font-normal text-muted-foreground">
+                      {locationValue ? <span className="min-w-0 truncate">{locationValue}</span> : null}
+                      {locationValue && captionMetaDate ? <span aria-hidden>|</span> : null}
+                      {captionMetaDate ? <span className="min-w-0 truncate">{captionMetaDate}</span> : null}
+                    </div>
+                  ) : null}
+                </div>
 
                 {hasMetadataTable ? (
                   <div className="-mx-4 mt-[22px] flex flex-col">
                     {showFilmMetaRow ? (
                       <Link
-                        href={filmStockHref!}
+                        href={filmStockImagesHref ?? filmStockHref!}
                         onClick={onClose}
                         className={cn(
                           lightboxMetaHairline,
-                          "flex min-h-11 items-center pl-4 pr-4 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
+                          "block px-4 py-2 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
                         )}
                       >
-                        <Film className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-foreground">
-                          {filmStockName}
-                        </span>
-                        <ChevronRight className={cn(lightboxMetaChevronClass, "ml-2 shrink-0")} aria-hidden />
+                        <div className="flex items-center">
+                          <div className="mr-3 flex h-10 w-10 shrink-0 items-center justify-center">
+                            {current.stockCard?.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={current.stockCard.imageUrl}
+                                alt=""
+                                className="h-full w-full rounded-[7px] object-cover"
+                                width={40}
+                                height={40}
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center rounded-[7px] bg-muted/30">
+                                <Camera className="h-4 w-4 text-muted-foreground/40" aria-hidden />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+                              {filmStockName}
+                            </p>
+                            {filmStockDetailParts.length > 0 ? (
+                              <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
+                                {filmStockDetailParts.join(" | ")}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
                       </Link>
                     ) : null}
                     {cameraValue ? (
                       <Link
-                        href={`/cameras?search=${encodeURIComponent(cameraValue)}`}
+                        href={`/images/camera?name=${encodeURIComponent(cameraValue)}`}
                         onClick={onClose}
                         className={cn(
                           lightboxMetaHairline,
-                          "flex min-h-11 items-center pl-4 pr-4 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
+                          "flex min-h-11 items-center pl-4 pr-4 py-2 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
                         )}
                       >
                         <Camera className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-foreground">
-                          {cameraValue}
-                        </span>
-                        <ChevronRight className={cn(lightboxMetaChevronClass, "ml-2 shrink-0")} aria-hidden />
+                        <div className="min-w-0 flex-1">
+                          <p className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+                            {cameraValue}
+                          </p>
+                          {lensValue ? (
+                            <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
+                              {lensValue}
+                            </p>
+                          ) : null}
+                        </div>
                       </Link>
                     ) : null}
-                    {lensValue ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
-                        <Aperture className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {lensValue}
-                        </span>
-                      </div>
-                    ) : null}
-                    {labValue ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
+                    {labScannerParts.length > 0 ? (
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4 py-2")}>
                         <FlaskConical className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {filmLabPublicLabel(labValue)}
-                        </span>
-                      </div>
-                    ) : null}
-                    {scannerValue ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
-                        <ScanLine className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {scannerValue}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+                            {labValue ? filmLabPublicLabel(labValue) : scannerValue}
+                          </p>
+                          {labValue && scannerValue ? (
+                            <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
+                              {scannerValue}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                     ) : null}
                     {pushPullValue ? (
@@ -1182,49 +1231,11 @@ export function ImageLightbox({
                         </span>
                       </div>
                     ) : null}
-                    {locationValue ? (
+                    {lensIsoFormatParts.length > 0 && !cameraValue ? (
                       <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
-                        <MapPin className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <Aperture className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
                         <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {locationValue}
-                        </span>
-                      </div>
-                    ) : null}
-                    {shotIsoValue ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
-                        <Clock className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {formatIsoRowValue(shotIsoValue)}
-                        </span>
-                      </div>
-                    ) : null}
-                    {formatValue ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
-                        <RectangleHorizontal
-                          className={cn(lightboxMetaLeadingIconClass, "mr-3")}
-                          aria-hidden
-                        />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {formatValue}
-                        </span>
-                      </div>
-                    ) : null}
-                    {shotDateValue ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
-                        <CalendarDays
-                          className={cn(lightboxMetaLeadingIconClass, "mr-3")}
-                          aria-hidden
-                        />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {formatShotDateLabel(shotDateValue)}
-                        </span>
-                      </div>
-                    ) : null}
-                    {tagsValue ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4")}>
-                        <Tags className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                          {tagsValue}
+                          {lensIsoFormatParts.join(" | ")}
                         </span>
                       </div>
                     ) : null}

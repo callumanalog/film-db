@@ -187,6 +187,32 @@ export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRo
   }));
 }
 
+/** All uploads for a specific camera name (case-insensitive exact match). */
+export async function getUploadsForCamera(cameraName: string): Promise<FilmUploadRow[]> {
+  const name = cameraName.trim();
+  if (!name) return [];
+  const supabase = (await createServiceRoleClient()) ?? (await createClient());
+  const { data: rows, error } = await supabase
+    .from("user_uploads")
+    .select(USER_UPLOAD_ROW_SELECT)
+    .ilike("camera", name)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getUploadsForCamera]", error.message);
+    return [];
+  }
+  if (!rows?.length) return [];
+
+  const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
+  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
+
+  return (rows as (FilmUploadRow & { created_at: string })[]).map((r) => ({
+    ...r,
+    display_name: nameByUserId.get(r.user_id) ?? null,
+  }));
+}
+
 /** Current user's uploads for a film stock (for "You" tab). */
 export async function getMyUploadsForFilmStock(slug: string): Promise<FilmUploadRow[]> {
   const supabase = await createClient();
