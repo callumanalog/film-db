@@ -64,7 +64,9 @@ export interface CommunityGalleryUpload {
   shot_date?: string | null;
   tags?: string | null;
   location?: string | null;
+  reviewTitle?: string | null;
   reviewId?: string | null;
+  rollId?: string | null;
   uploadBatchId?: string | null;
   stockIso?: number | null;
   stockType?: string;
@@ -112,6 +114,28 @@ export async function getAllCommunityUploadsForGallery(
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
   const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
+  const reviewIds = [
+    ...new Set(
+      (rows as FilmUploadRow[])
+        .map((r) => r.review_id?.trim())
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const titleByReviewId = new Map<string, string | null>();
+  if (reviewIds.length > 0) {
+    const { data: reviewRows, error: reviewError } = await supabase
+      .from("reviews")
+      .select("id, review_title")
+      .in("id", reviewIds);
+    if (reviewError) {
+      console.error("[getAllCommunityUploadsForGallery] reviews titles:", reviewError.message);
+    } else {
+      for (const row of reviewRows ?? []) {
+        const id = (row as { id: string }).id;
+        titleByReviewId.set(id, (row as { review_title: string | null }).review_title ?? null);
+      }
+    }
+  }
 
   const out: CommunityGalleryUpload[] = [];
   for (const r of rows as FilmUploadRow[]) {
@@ -130,6 +154,7 @@ export async function getAllCommunityUploadsForGallery(
     ].filter(Boolean);
     const display = nameByUserId.get(r.user_id);
     const username = display?.trim() || "Member";
+    const reviewId = r.review_id?.trim() || null;
     out.push({
       id: r.id,
       galleryId: `upload-${r.id}`,
@@ -154,7 +179,9 @@ export async function getAllCommunityUploadsForGallery(
       shot_date: r.shot_date ?? null,
       tags: r.tags ?? null,
       location: r.location ?? null,
-      reviewId: r.review_id ?? null,
+      reviewTitle: reviewId ? (titleByReviewId.get(reviewId) ?? null) : null,
+      reviewId,
+      rollId: r.roll_id ?? null,
       uploadBatchId: r.upload_batch_id ?? null,
       stockIso: stock.iso ?? null,
       stockType: stock.type,

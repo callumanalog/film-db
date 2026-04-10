@@ -4,6 +4,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera as CameraIcon, Loader2 } from "lucide-react";
+import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
+import {
+  collectLightboxSlidesFromGalleryImages,
+  findGalleryImageForLightboxSlide,
+  relatedGalleryLightboxSlidesForStock,
+} from "@/lib/lightbox-group";
+import type { GalleryImage } from "@/lib/sample-images";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { FilmStockSummaryRow } from "@/components/film-stock-list-card";
 import {
@@ -18,7 +25,7 @@ import { shareRollPickerSectionLabelClassName } from "@/components/share-roll-pi
 import { FILM_TYPE_LABELS, type FilmType } from "@/lib/types";
 
 const DEBOUNCE_MS = 300;
-const RAIL_HEIGHT_MOBILE = 220;
+const RAIL_HEIGHT_MOBILE = 180;
 const RAIL_HEIGHT_TABLET = 260;
 const RAIL_HEIGHT_DESKTOP = 300;
 const FALLBACK_ASPECT_RATIO = 3 / 4;
@@ -125,16 +132,14 @@ function UserSearchRow({ user }: { user: SearchUsersResult }) {
 }
 
 function useResponsiveRailHeight(): number {
-  const getHeight = () => {
-    if (typeof window === "undefined") return RAIL_HEIGHT_TABLET;
-    if (window.innerWidth >= 1024) return RAIL_HEIGHT_DESKTOP;
-    if (window.innerWidth >= 640) return RAIL_HEIGHT_TABLET;
-    return RAIL_HEIGHT_MOBILE;
-  };
-
-  const [railHeight, setRailHeight] = useState<number>(getHeight);
+  const [railHeight, setRailHeight] = useState<number>(RAIL_HEIGHT_MOBILE);
 
   useEffect(() => {
+    const getHeight = () => {
+      if (window.innerWidth >= 1024) return RAIL_HEIGHT_DESKTOP;
+      if (window.innerWidth >= 640) return RAIL_HEIGHT_TABLET;
+      return RAIL_HEIGHT_MOBILE;
+    };
     const onResize = () => setRailHeight(getHeight());
     onResize();
     window.addEventListener("resize", onResize);
@@ -154,47 +159,104 @@ function frameWidthFromDimensions(
   return FALLBACK_ASPECT_RATIO * frameHeight;
 }
 
+function shotToGalleryImage(shot: SearchShotsResult): GalleryImage | null {
+  if (!shot.imageUrl) return null;
+  const settingsParts = [
+    shot.shot_date,
+    shot.tags,
+    shot.format,
+    shot.location,
+    shot.shot_iso,
+    shot.lens,
+    shot.lab,
+    shot.push_pull,
+    shot.scanner,
+  ].filter(Boolean);
+  return {
+    id: shot.id,
+    galleryId: `search-${shot.id}`,
+    stockSlug: shot.stockSlug,
+    stockName: shot.stockName,
+    brandName: shot.brandName,
+    username: shot.username,
+    camera: shot.camera ?? "",
+    settings: shot.settings ?? settingsParts.join(" · "),
+    likes: Number(shot.likes ?? 0),
+    saves: Number(shot.saves ?? 0),
+    source: "community",
+    imageUrl: shot.imageUrl,
+    caption: shot.caption ?? null,
+    shot_iso: shot.shot_iso ?? null,
+    lens: shot.lens ?? null,
+    lab: shot.lab ?? null,
+    scanner: shot.scanner ?? null,
+    push_pull: shot.push_pull ?? null,
+    format: shot.format ?? null,
+    shot_date: shot.shot_date ?? null,
+    tags: shot.tags ?? null,
+    location: shot.location ?? null,
+    reviewTitle: shot.reviewTitle ?? null,
+    reviewId: shot.reviewId ?? null,
+    rollId: shot.rollId ?? null,
+    uploadBatchId: shot.uploadBatchId ?? null,
+    stockIso: shot.stockIso ?? null,
+    stockType: shot.stockType,
+    stockFormat: shot.stockFormat ?? [],
+    stockImageUrl: shot.stockImageUrl ?? null,
+    uploadId: shot.id,
+    userId: shot.userId,
+  };
+}
+
 function RailShotCell({
   shot,
-  href,
   frameHeight,
   frameWidth,
   onImageLoad,
+  onOpenLightbox,
   priority = false,
 }: {
   shot: SearchShotsResult;
-  href: string;
   frameHeight: number;
   frameWidth: number;
   onImageLoad: (shotId: string, width: number, height: number) => void;
+  onOpenLightbox: () => void;
   priority?: boolean;
 }) {
+  if (!shot.imageUrl) {
+    return (
+      <div
+        className="block overflow-hidden bg-card"
+        style={{ width: `${Math.round(frameWidth)}px`, height: `${frameHeight}px` }}
+      />
+    );
+  }
+
   return (
-    <Link
-      href={href}
-      className="block overflow-hidden rounded-md border border-border/50 bg-card"
+    <button
+      type="button"
+      onClick={onOpenLightbox}
+      className="block overflow-hidden bg-card"
       style={{ width: `${Math.round(frameWidth)}px`, height: `${frameHeight}px` }}
     >
       <div className="relative h-full w-full overflow-hidden bg-slate-100">
-        {shot.imageUrl ? (
-          <Image
-            src={shot.imageUrl}
-            alt={shot.stockName}
-            width={Math.max(1, Math.round(frameWidth))}
-            height={Math.max(1, frameHeight)}
-            sizes={`${Math.max(1, Math.round(frameWidth))}px`}
-            priority={priority}
-            className="h-full w-full"
-            onLoad={(event) => {
-              const target = event.currentTarget;
-              if (target.naturalWidth > 0 && target.naturalHeight > 0) {
-                onImageLoad(shot.id, target.naturalWidth, target.naturalHeight);
-              }
-            }}
-          />
-        ) : null}
+        <Image
+          src={shot.imageUrl}
+          alt={shot.stockName}
+          width={Math.max(1, Math.round(frameWidth))}
+          height={Math.max(1, frameHeight)}
+          sizes={`${Math.max(1, Math.round(frameWidth))}px`}
+          priority={priority}
+          className="h-full w-full"
+          onLoad={(event) => {
+            const target = event.currentTarget;
+            if (target.naturalWidth > 0 && target.naturalHeight > 0) {
+              onImageLoad(shot.id, target.naturalWidth, target.naturalHeight);
+            }
+          }}
+        />
       </div>
-    </Link>
+    </button>
   );
 }
 
@@ -204,12 +266,14 @@ function DiscoverCarousel({
   railHeight,
   imageDimensionsById,
   onImageLoad,
+  onOpenShotLightbox,
 }: {
   title: string;
   shots: SearchShotsResult[];
   railHeight: number;
   imageDimensionsById: Record<string, { width: number; height: number }>;
   onImageLoad: (shotId: string, width: number, height: number) => void;
+  onOpenShotLightbox: (shots: SearchShotsResult[], shotId: string) => void;
 }) {
   if (shots.length === 0) return null;
   return (
@@ -221,10 +285,10 @@ function DiscoverCarousel({
             <article key={shot.id} className="shrink-0">
               <RailShotCell
                 shot={shot}
-                href={`/films/${shot.stockSlug}?shot=${shot.id}`}
                 frameHeight={railHeight}
                 frameWidth={frameWidthFromDimensions(imageDimensionsById[shot.id], railHeight)}
                 onImageLoad={onImageLoad}
+                onOpenLightbox={() => onOpenShotLightbox(shots, shot.id)}
                 priority={index < 4}
               />
               <Link
@@ -268,6 +332,11 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
   const [resultsArmed, setResultsArmed] = useState(false);
   const [payloadState, setPayloadState] = useState<{ query: string; data: DiscoverSearchPayload } | null>(null);
   const [imageDimensionsById, setImageDimensionsById] = useState<Record<string, { width: number; height: number }>>({});
+  const [lightboxSession, setLightboxSession] = useState<{
+    slides: ImageLightboxData[];
+    initialIndex: number;
+    galleryImages: GalleryImage[];
+  } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const railHeight = useResponsiveRailHeight();
 
@@ -281,6 +350,22 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
       };
     });
   };
+
+  const openShotLightbox = (shots: SearchShotsResult[], shotId: string) => {
+    const galleryImages = shots
+      .map((shot) => shotToGalleryImage(shot))
+      .filter((item): item is GalleryImage => item !== null);
+    if (galleryImages.length === 0) return;
+    const clicked = galleryImages.find((image) => image.id === shotId || image.uploadId === shotId);
+    if (!clicked) return;
+    const session = collectLightboxSlidesFromGalleryImages(galleryImages, clicked);
+    setLightboxSession({ ...session, galleryImages });
+  };
+
+  const relatedStockSlides = useMemo(() => {
+    if (!lightboxSession || lightboxSession.slides.length !== 1) return [];
+    return relatedGalleryLightboxSlidesForStock(lightboxSession.slides[0]!, lightboxSession.galleryImages);
+  }, [lightboxSession]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -410,6 +495,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
               railHeight={railHeight}
               imageDimensionsById={imageDimensionsById}
               onImageLoad={handleShotImageLoad}
+              onOpenShotLightbox={openShotLightbox}
             />
             <DiscoverCarousel
               title="Shot on Portra 400"
@@ -417,6 +503,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
               railHeight={railHeight}
               imageDimensionsById={imageDimensionsById}
               onImageLoad={handleShotImageLoad}
+              onOpenShotLightbox={openShotLightbox}
             />
           </div>
         ) : mode === "typing" ? (
@@ -522,10 +609,10 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
                       <div key={shot.id} className="shrink-0">
                         <RailShotCell
                           shot={shot}
-                          href={`/films/${shot.stockSlug}?shot=${shot.id}`}
                           frameHeight={railHeight}
                           frameWidth={frameWidthFromDimensions(imageDimensionsById[shot.id], railHeight)}
                           onImageLoad={handleShotImageLoad}
+                          onOpenLightbox={() => openShotLightbox(activePayload.results.shots, shot.id)}
                         />
                       </div>
                     ))}
@@ -558,6 +645,21 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
           </div>
         )}
       </div>
+      {lightboxSession ? (
+        <ImageLightbox
+          slides={lightboxSession.slides}
+          initialIndex={lightboxSession.initialIndex}
+          onClose={() => setLightboxSession(null)}
+          relatedStockSlides={relatedStockSlides}
+          onPickRelatedStock={(slide) => {
+            if (!lightboxSession) return;
+            const image = findGalleryImageForLightboxSlide(slide, lightboxSession.galleryImages);
+            if (!image) return;
+            const session = collectLightboxSlidesFromGalleryImages(lightboxSession.galleryImages, image);
+            setLightboxSession({ ...session, galleryImages: lightboxSession.galleryImages });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

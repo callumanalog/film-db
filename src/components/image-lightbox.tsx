@@ -24,6 +24,7 @@ import {
   type RollMetadataUpdatedDetail,
 } from "@/lib/roll-metadata-updated-event";
 import { showToastViaEvent } from "@/components/toast";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -127,6 +128,14 @@ const lightboxMetaHairline = "border-t border-[0.5px] border-border/40 dark:bord
 /** Leading row icons: 16×16, muted tertiary */
 const lightboxMetaLeadingIconClass =
   "size-4 shrink-0 stroke-[1.5] text-muted-foreground/80 dark:text-muted-foreground/70";
+
+/** 40×40 thumbnail shell — matches list cards (`border border-border`, rounded box). */
+const lightboxMetaThumbShell =
+  "relative mr-3 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[7px] border border-border bg-white dark:bg-card";
+
+/** Camera row: same gutter width as thumbnails, no border; icon aligned to title line. */
+const lightboxMetaCameraIconColumn =
+  "mr-3 flex w-10 shrink-0 flex-col items-center justify-start pt-px";
 
 function formatIsoRowValue(raw: string): string {
   const t = raw.trim();
@@ -1153,36 +1162,34 @@ export function ImageLightbox({
                         onClick={onClose}
                         className={cn(
                           lightboxMetaHairline,
-                          "block px-4 py-2 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
+                          "flex min-h-11 items-center px-4 py-2 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
                         )}
                       >
-                        <div className="flex items-center">
-                          <div className="mr-3 flex h-10 w-10 shrink-0 items-center justify-center">
-                            {current.stockCard?.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={current.stockCard.imageUrl}
-                                alt=""
-                                className="h-full w-full rounded-[7px] object-cover"
-                                width={40}
-                                height={40}
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center rounded-[7px] bg-muted/30">
-                                <Camera className="h-4 w-4 text-muted-foreground/40" aria-hidden />
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
-                              {filmStockName}
+                        <div className={lightboxMetaThumbShell}>
+                          {current.stockCard?.imageUrl ? (
+                            <Image
+                              src={current.stockCard.imageUrl}
+                              alt=""
+                              fill
+                              sizes="40px"
+                              className="object-contain"
+                              quality={82}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-muted/30">
+                              <Camera className="h-4 w-4 text-muted-foreground/40" aria-hidden />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+                            {filmStockName}
+                          </p>
+                          {filmStockDetailParts.length > 0 ? (
+                            <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
+                              {filmStockDetailParts.join(" | ")}
                             </p>
-                            {filmStockDetailParts.length > 0 ? (
-                              <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
-                                {filmStockDetailParts.join(" | ")}
-                              </p>
-                            ) : null}
-                          </div>
+                          ) : null}
                         </div>
                       </Link>
                     ) : null}
@@ -1192,10 +1199,12 @@ export function ImageLightbox({
                         onClick={onClose}
                         className={cn(
                           lightboxMetaHairline,
-                          "flex min-h-11 items-center pl-4 pr-4 py-2 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
+                          "flex min-h-11 items-start px-4 py-2 text-left transition-colors hover:bg-secondary/70 active:bg-secondary dark:hover:bg-secondary/50 dark:active:bg-secondary/70"
                         )}
                       >
-                        <Camera className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                        <div className={lightboxMetaCameraIconColumn}>
+                          <Camera className={lightboxMetaLeadingIconClass} aria-hidden />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
                             {cameraValue}
@@ -1209,8 +1218,10 @@ export function ImageLightbox({
                       </Link>
                     ) : null}
                     {labScannerParts.length > 0 ? (
-                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center pl-4 pr-4 py-2")}>
-                        <FlaskConical className={cn(lightboxMetaLeadingIconClass, "mr-3")} aria-hidden />
+                      <div className={cn(lightboxMetaHairline, "flex min-h-11 items-center px-4 py-2")}>
+                        <div className={lightboxMetaThumbShell}>
+                          <FlaskConical className={lightboxMetaLeadingIconClass} aria-hidden />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
                             {labValue ? filmLabPublicLabel(labValue) : scannerValue}
@@ -1252,6 +1263,7 @@ export function ImageLightbox({
                         items={moreRollItems}
                         ariaLabel="More from this roll"
                         frameClassName="border-neutral-200 bg-white dark:border-white"
+                        preserveImageAspectRatio
                       />
                     </div>
                   </div>

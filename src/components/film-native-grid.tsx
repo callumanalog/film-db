@@ -32,11 +32,14 @@ export function FilmNativeMasonryGrid({
   items,
   ariaLabel = "Community uploads",
   frameClassName,
+  preserveImageAspectRatio = false,
 }: {
   items: FilmNativeMasonryItem[];
   ariaLabel?: string;
   /** Merged onto each image frame; default matches Discover (white borders). */
   frameClassName?: string;
+  /** When true, render natural-height images instead of fixed 3:4 crops. */
+  preserveImageAspectRatio?: boolean;
 }) {
   return (
     <div className="w-full columns-2 gap-0" aria-label={ariaLabel}>
@@ -52,17 +55,29 @@ export function FilmNativeMasonryGrid({
             )}
           >
             {img.imageUrl ? (
-              <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
-                <Image
-                  src={img.imageUrl}
-                  alt=""
-                  fill
-                  sizes="50vw"
-                  loading="lazy"
-                  quality={65}
-                  className="object-cover"
-                />
-              </div>
+              preserveImageAspectRatio ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.imageUrl}
+                    alt=""
+                    loading="lazy"
+                    className="block h-auto w-full"
+                  />
+                </>
+              ) : (
+                <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
+                  <Image
+                    src={img.imageUrl}
+                    alt=""
+                    fill
+                    sizes="50vw"
+                    loading="lazy"
+                    quality={65}
+                    className="object-cover"
+                  />
+                </div>
+              )
             ) : (
               <div className="aspect-[3/2] w-full bg-gray-100" aria-hidden />
             )}

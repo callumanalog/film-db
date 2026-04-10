@@ -45,6 +45,28 @@ export interface SearchShotsResult {
   imageUrl: string | null;
   username: string;
   userId: string;
+  camera?: string;
+  settings?: string;
+  likes?: number;
+  saves?: number;
+  caption?: string | null;
+  shot_iso?: string | null;
+  lens?: string | null;
+  lab?: string | null;
+  scanner?: string | null;
+  push_pull?: string | null;
+  format?: string | null;
+  shot_date?: string | null;
+  tags?: string | null;
+  location?: string | null;
+  reviewTitle?: string | null;
+  reviewId?: string | null;
+  rollId?: string | null;
+  uploadBatchId?: string | null;
+  stockIso?: number | null;
+  stockType?: string;
+  stockFormat?: string[];
+  stockImageUrl?: string | null;
 }
 
 export interface SearchNotesResult {
@@ -167,6 +189,28 @@ export async function searchFilmsByTab(
           imageUrl: u.imageUrl,
           username: u.username,
           userId: u.userId,
+          camera: u.camera,
+          settings: u.settings,
+          likes: u.likes,
+          saves: u.saves,
+          caption: u.caption ?? null,
+          shot_iso: u.shot_iso ?? null,
+          lens: u.lens ?? null,
+          lab: u.lab ?? null,
+          scanner: u.scanner ?? null,
+          push_pull: u.push_pull ?? null,
+          format: u.format ?? null,
+          shot_date: u.shot_date ?? null,
+          tags: u.tags ?? null,
+          location: u.location ?? null,
+          reviewTitle: u.reviewTitle ?? null,
+          reviewId: u.reviewId ?? null,
+          rollId: u.rollId ?? null,
+          uploadBatchId: u.uploadBatchId ?? null,
+          stockIso: u.stockIso ?? null,
+          stockType: u.stockType,
+          stockFormat: u.stockFormat ?? [],
+          stockImageUrl: u.stockImageUrl ?? null,
         })),
       };
     }
@@ -246,6 +290,28 @@ export async function getLatestShots(): Promise<SearchShotsResult[]> {
     imageUrl: u.imageUrl,
     username: u.username,
     userId: u.userId,
+    camera: u.camera,
+    settings: u.settings,
+    likes: u.likes,
+    saves: u.saves,
+    caption: u.caption ?? null,
+    shot_iso: u.shot_iso ?? null,
+    lens: u.lens ?? null,
+    lab: u.lab ?? null,
+    scanner: u.scanner ?? null,
+    push_pull: u.push_pull ?? null,
+    format: u.format ?? null,
+    shot_date: u.shot_date ?? null,
+    tags: u.tags ?? null,
+    location: u.location ?? null,
+    reviewTitle: u.reviewTitle ?? null,
+    reviewId: u.reviewId ?? null,
+    rollId: u.rollId ?? null,
+    uploadBatchId: u.uploadBatchId ?? null,
+    stockIso: u.stockIso ?? null,
+    stockType: u.stockType,
+    stockFormat: u.stockFormat ?? [],
+    stockImageUrl: u.stockImageUrl ?? null,
   }));
 }
 
@@ -324,6 +390,28 @@ function mapUploadsToShotResults(
     imageUrl: u.imageUrl,
     username: u.username,
     userId: u.userId,
+    camera: u.camera,
+    settings: u.settings,
+    likes: u.likes,
+    saves: u.saves,
+    caption: u.caption ?? null,
+    shot_iso: u.shot_iso ?? null,
+    lens: u.lens ?? null,
+    lab: u.lab ?? null,
+    scanner: u.scanner ?? null,
+    push_pull: u.push_pull ?? null,
+    format: u.format ?? null,
+    shot_date: u.shot_date ?? null,
+    tags: u.tags ?? null,
+    location: u.location ?? null,
+    reviewTitle: u.reviewTitle ?? null,
+    reviewId: u.reviewId ?? null,
+    rollId: u.rollId ?? null,
+    uploadBatchId: u.uploadBatchId ?? null,
+    stockIso: u.stockIso ?? null,
+    stockType: u.stockType,
+    stockFormat: u.stockFormat ?? [],
+    stockImageUrl: u.stockImageUrl ?? null,
   }));
 }
 
