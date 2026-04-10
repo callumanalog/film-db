@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Camera as CameraIcon } from "lucide-react";
+import { Camera as CameraIcon, Loader2 } from "lucide-react";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { FilmStockSummaryRow } from "@/components/film-stock-list-card";
 import {
@@ -17,7 +17,11 @@ import {
 import { shareRollPickerSectionLabelClassName } from "@/components/share-roll-picker-primitives";
 import { FILM_TYPE_LABELS, type FilmType } from "@/lib/types";
 
-const DEBOUNCE_MS = 220;
+const DEBOUNCE_MS = 300;
+const RAIL_HEIGHT_MOBILE = 220;
+const RAIL_HEIGHT_TABLET = 260;
+const RAIL_HEIGHT_DESKTOP = 300;
+const FALLBACK_ASPECT_RATIO = 3 / 4;
 
 export interface SearchPageClientProps {
   carousels: {
@@ -120,12 +124,92 @@ function UserSearchRow({ user }: { user: SearchUsersResult }) {
   );
 }
 
+function useResponsiveRailHeight(): number {
+  const getHeight = () => {
+    if (typeof window === "undefined") return RAIL_HEIGHT_TABLET;
+    if (window.innerWidth >= 1024) return RAIL_HEIGHT_DESKTOP;
+    if (window.innerWidth >= 640) return RAIL_HEIGHT_TABLET;
+    return RAIL_HEIGHT_MOBILE;
+  };
+
+  const [railHeight, setRailHeight] = useState<number>(getHeight);
+
+  useEffect(() => {
+    const onResize = () => setRailHeight(getHeight());
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  return railHeight;
+}
+
+function frameWidthFromDimensions(
+  dimensions: { width: number; height: number } | undefined,
+  frameHeight: number,
+): number {
+  if (dimensions && dimensions.width > 0 && dimensions.height > 0) {
+    return (dimensions.width / dimensions.height) * frameHeight;
+  }
+  return FALLBACK_ASPECT_RATIO * frameHeight;
+}
+
+function RailShotCell({
+  shot,
+  href,
+  frameHeight,
+  frameWidth,
+  onImageLoad,
+  priority = false,
+}: {
+  shot: SearchShotsResult;
+  href: string;
+  frameHeight: number;
+  frameWidth: number;
+  onImageLoad: (shotId: string, width: number, height: number) => void;
+  priority?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className="block overflow-hidden rounded-md border border-border/50 bg-card"
+      style={{ width: `${Math.round(frameWidth)}px`, height: `${frameHeight}px` }}
+    >
+      <div className="relative h-full w-full overflow-hidden bg-slate-100">
+        {shot.imageUrl ? (
+          <Image
+            src={shot.imageUrl}
+            alt={shot.stockName}
+            width={Math.max(1, Math.round(frameWidth))}
+            height={Math.max(1, frameHeight)}
+            sizes={`${Math.max(1, Math.round(frameWidth))}px`}
+            priority={priority}
+            className="h-full w-full"
+            onLoad={(event) => {
+              const target = event.currentTarget;
+              if (target.naturalWidth > 0 && target.naturalHeight > 0) {
+                onImageLoad(shot.id, target.naturalWidth, target.naturalHeight);
+              }
+            }}
+          />
+        ) : null}
+      </div>
+    </Link>
+  );
+}
+
 function DiscoverCarousel({
   title,
   shots,
+  railHeight,
+  imageDimensionsById,
+  onImageLoad,
 }: {
   title: string;
   shots: SearchShotsResult[];
+  railHeight: number;
+  imageDimensionsById: Record<string, { width: number; height: number }>;
+  onImageLoad: (shotId: string, width: number, height: number) => void;
 }) {
   if (shots.length === 0) return null;
   return (
@@ -134,21 +218,15 @@ function DiscoverCarousel({
       <div className="-mx-4 overflow-hidden">
         <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-1">
           {shots.map((shot, index) => (
-            <article key={shot.id} className="w-[45%] shrink-0">
-              <Link href={`/films/${shot.stockSlug}?shot=${shot.id}`} className="block overflow-hidden rounded-md border border-border/50 bg-card">
-                <div className="relative h-40 w-full bg-slate-100">
-                  {shot.imageUrl ? (
-                    <Image
-                      src={shot.imageUrl}
-                      alt={shot.stockName}
-                      fill
-                      sizes="45vw"
-                      priority={index < 4}
-                      className="object-cover"
-                    />
-                  ) : null}
-                </div>
-              </Link>
+            <article key={shot.id} className="shrink-0">
+              <RailShotCell
+                shot={shot}
+                href={`/films/${shot.stockSlug}?shot=${shot.id}`}
+                frameHeight={railHeight}
+                frameWidth={frameWidthFromDimensions(imageDimensionsById[shot.id], railHeight)}
+                onImageLoad={onImageLoad}
+                priority={index < 4}
+              />
               <Link
                 href={`/users/${shot.userId}`}
                 className="mt-1.5 block truncate text-xs font-medium leading-tight text-foreground hover:underline"
@@ -189,7 +267,20 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [resultsArmed, setResultsArmed] = useState(false);
   const [payloadState, setPayloadState] = useState<{ query: string; data: DiscoverSearchPayload } | null>(null);
+  const [imageDimensionsById, setImageDimensionsById] = useState<Record<string, { width: number; height: number }>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const railHeight = useResponsiveRailHeight();
+
+  const handleShotImageLoad = (shotId: string, width: number, height: number) => {
+    setImageDimensionsById((prev) => {
+      const current = prev[shotId];
+      if (current && current.width === width && current.height === height) return prev;
+      return {
+        ...prev,
+        [shotId]: { width, height },
+      };
+    });
+  };
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -313,32 +404,67 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
 
         {mode === "default" ? (
           <div className="pt-2">
-            <DiscoverCarousel title="Shot on Kodak Gold 200" shots={carousels.gold200} />
-            <DiscoverCarousel title="Shot on Portra 400" shots={carousels.portra400} />
+            <DiscoverCarousel
+              title="Shot on Kodak Gold 200"
+              shots={carousels.gold200}
+              railHeight={railHeight}
+              imageDimensionsById={imageDimensionsById}
+              onImageLoad={handleShotImageLoad}
+            />
+            <DiscoverCarousel
+              title="Shot on Portra 400"
+              shots={carousels.portra400}
+              railHeight={railHeight}
+              imageDimensionsById={imageDimensionsById}
+              onImageLoad={handleShotImageLoad}
+            />
           </div>
         ) : mode === "typing" ? (
           <div className="pt-2">
-            {showLoading ? <p className="pt-4 text-sm text-muted-foreground">Searching…</p> : null}
-            <div className="mt-2 divide-y divide-border rounded-md bg-card">
-              {typingRows.map((row) => {
-                if (row.kind === "stock") {
-                  return (
-                    <Link
-                      key={row.key}
-                      href={row.href}
-                      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
-                    >
-                      <FilmStockSummaryRow
-                        name={row.name}
-                        imageUrl={row.imageUrl}
-                        brandInitial={row.brandInitial}
-                        specLine={row.specLine}
-                        showDivider={false}
-                      />
-                    </Link>
-                  );
-                }
-                if (row.kind === "camera") {
+            {showLoading ? (
+              <div className="flex min-h-[55vh] items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
+              </div>
+            ) : (
+              <div className="mt-2 divide-y divide-border rounded-md bg-card">
+                {typingRows.map((row) => {
+                  if (row.kind === "stock") {
+                    return (
+                      <Link
+                        key={row.key}
+                        href={row.href}
+                        className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                      >
+                        <FilmStockSummaryRow
+                          name={row.name}
+                          imageUrl={row.imageUrl}
+                          brandInitial={row.brandInitial}
+                          specLine={row.specLine}
+                          showDivider={false}
+                        />
+                      </Link>
+                    );
+                  }
+                  if (row.kind === "camera") {
+                    return (
+                      <Link
+                        key={row.key}
+                        href={row.href}
+                        className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                      >
+                        <FilmStockSummaryRow
+                          name={row.name}
+                          specLine={row.specLine}
+                          showDivider={false}
+                          customThumb={
+                            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                              <CameraIcon className="h-5 w-5" aria-hidden />
+                            </div>
+                          }
+                        />
+                      </Link>
+                    );
+                  }
                   return (
                     <Link
                       key={row.key}
@@ -350,34 +476,16 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
                         specLine={row.specLine}
                         showDivider={false}
                         customThumb={
-                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                            <CameraIcon className="h-5 w-5" aria-hidden />
+                          <div className="flex h-full w-full items-center justify-center text-xs font-medium text-muted-foreground">
+                            {row.initial}
                           </div>
                         }
                       />
                     </Link>
                   );
-                }
-                return (
-                  <Link
-                    key={row.key}
-                    href={row.href}
-                    className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
-                  >
-                    <FilmStockSummaryRow
-                      name={row.name}
-                      specLine={row.specLine}
-                      showDivider={false}
-                      customThumb={
-                        <div className="flex h-full w-full items-center justify-center text-xs font-medium text-muted-foreground">
-                          {row.initial}
-                        </div>
-                      }
-                    />
-                  </Link>
-                );
-              })}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         ) : (
           <div className="pt-4">
@@ -408,14 +516,20 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
             {activePayload?.results.shots.length ? (
               <section className="pt-2">
                 <p className={shareRollPickerSectionLabelClassName}>Images</p>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  {activePayload.results.shots.map((shot) => (
-                    <Link key={shot.id} href={`/films/${shot.stockSlug}?shot=${shot.id}`} className="block overflow-hidden rounded-md bg-slate-100">
-                      <div className="relative h-24 w-full">
-                        {shot.imageUrl ? <Image src={shot.imageUrl} alt={shot.stockName} fill className="object-cover" sizes="33vw" /> : null}
+                <div className="-mx-4 mt-2 overflow-hidden">
+                  <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-1">
+                    {activePayload.results.shots.map((shot) => (
+                      <div key={shot.id} className="shrink-0">
+                        <RailShotCell
+                          shot={shot}
+                          href={`/films/${shot.stockSlug}?shot=${shot.id}`}
+                          frameHeight={railHeight}
+                          frameWidth={frameWidthFromDimensions(imageDimensionsById[shot.id], railHeight)}
+                          onImageLoad={handleShotImageLoad}
+                        />
                       </div>
-                    </Link>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </section>
             ) : null}

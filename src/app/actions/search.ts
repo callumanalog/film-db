@@ -1,6 +1,7 @@
 "use server";
 
 import { getFilmStocks, getBrands, getFeaturedFilmStocks, getFeaturedBrands } from "@/lib/supabase/queries";
+import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { createClient } from "@/lib/supabase/server";
 import { getCameras } from "@/lib/camera-queries";
@@ -347,6 +348,16 @@ function toCameraResult(rows: Awaited<ReturnType<typeof getCameras>>): SearchCam
   }));
 }
 
+function getNameMatchTier(name: string, query: string): number {
+  const normalizedName = name.trim().toLowerCase();
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return 3;
+  if (normalizedName === normalizedQuery) return 0;
+  if (normalizedName.startsWith(normalizedQuery)) return 1;
+  if (normalizedName.includes(normalizedQuery)) return 2;
+  return 3;
+}
+
 export async function getDiscoverSearchPayload(query: string): Promise<DiscoverSearchPayload> {
   const q = query.trim();
   if (!q) {
@@ -397,18 +408,11 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
   const supabase = await createClient();
 
   const stockSlugs = stocks.map((s) => s.slug);
-  const stockCountBySlug = new Map<string, number>();
-  if (stockSlugs.length > 0) {
-    const { data: stockUploads } = await supabase
-      .from("user_uploads")
-      .select("film_stock_slug")
-      .in("film_stock_slug", stockSlugs)
-      .not("image_url", "is", null);
-    for (const row of (stockUploads ?? []) as { film_stock_slug: string }[]) {
-      const slug = row.film_stock_slug;
-      stockCountBySlug.set(slug, (stockCountBySlug.get(slug) ?? 0) + 1);
-    }
-  }
+  const stockStatsBySlug =
+    stockSlugs.length > 0 ? await getFilmStockStatsForSlugs(stockSlugs) : {};
+  const stockCountBySlug = new Map<string, number>(
+    stockSlugs.map((slug) => [slug, stockStatsBySlug[slug]?.shotsCount ?? 0])
+  );
 
   const cameraCountBySlug = new Map<string, number>();
   if (cameraResults.length > 0) {
@@ -439,6 +443,8 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
   const stocksByScans = [...stocks]
     .map((s) => ({ ...s, scanCount: stockCountBySlug.get(s.slug) ?? 0 }))
     .sort((a, b) => {
+      const tierDiff = getNameMatchTier(a.name, q) - getNameMatchTier(b.name, q);
+      if (tierDiff !== 0) return tierDiff;
       if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
       return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
     });
@@ -446,9 +452,11 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
   const camerasByScans = [...cameraResults]
     .map((c) => ({ ...c, scanCount: cameraCountBySlug.get(c.slug) ?? 0 }))
     .sort((a, b) => {
+      const nameA = `${a.brandName} ${a.name}`.trim();
+      const nameB = `${b.brandName} ${b.name}`.trim();
+      const tierDiff = getNameMatchTier(nameA, q) - getNameMatchTier(nameB, q);
+      if (tierDiff !== 0) return tierDiff;
       if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
-      const nameA = `${a.brandName} ${a.name}`;
-      const nameB = `${b.brandName} ${b.name}`;
       return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
     });
   const bestResult =

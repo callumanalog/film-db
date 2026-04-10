@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Camera, Heart, Bookmark, ChevronDown, X } from "lucide-react";
 import type { GalleryImage, SampleImageSource } from "@/lib/sample-images";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
@@ -64,6 +65,7 @@ export function GalleryGrid({
   const [stockDropdownOpen, setStockDropdownOpen] = useState(false);
   const stockDropdownRef = useRef<HTMLDivElement>(null);
   const [sourceFilter, setSourceFilter] = useState<SampleImageSource | "all">("all");
+  const [visibleCount, setVisibleCount] = useState(24);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -123,16 +125,19 @@ export function GalleryGrid({
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
+      setVisibleCount(24);
       return next;
     });
   };
 
   const selectAllStocks = () => {
     setSelectedStockSlugs(new Set(stocksForBrand.map((s) => s.slug)));
+    setVisibleCount(24);
   };
 
   const clearStocks = () => {
     setSelectedStockSlugs(new Set());
+    setVisibleCount(24);
   };
 
   return (
@@ -145,6 +150,7 @@ export function GalleryGrid({
           onChange={(e) => {
             setBrandFilter(e.target.value);
             setSelectedStockSlugs(new Set());
+            setVisibleCount(24);
           }}
           className="rounded-card border border-border/50 bg-card px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
         >
@@ -254,7 +260,10 @@ export function GalleryGrid({
           {(["all", "flickr", "community"] as const).map((value) => (
             <button
               key={value}
-              onClick={() => setSourceFilter(value)}
+              onClick={() => {
+                setSourceFilter(value);
+                setVisibleCount(24);
+              }}
               className={`rounded-card border px-3 py-1.5 text-sm font-medium transition-colors ${
                 sourceFilter === value
                   ? "border-primary bg-primary/10 text-primary"
@@ -273,7 +282,10 @@ export function GalleryGrid({
           {(["most-liked", "newest"] as const).map((value) => (
             <button
               key={value}
-              onClick={() => setSort(value)}
+              onClick={() => {
+                setSort(value);
+                setVisibleCount(24);
+              }}
               className={`rounded-card border px-3 py-1.5 text-sm font-medium transition-colors ${
                 sort === value
                   ? "border-primary bg-primary/10 text-primary"
@@ -288,7 +300,7 @@ export function GalleryGrid({
 
       {/* Grid */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {filteredAndSorted.map((img) => (
+        {filteredAndSorted.slice(0, visibleCount).map((img) => (
           <div
             key={img.galleryId}
             className="group overflow-hidden border border-border/50 bg-card transition-all hover:border-primary/30"
@@ -304,12 +316,13 @@ export function GalleryGrid({
                     }
                     aria-label={`View full size: ${img.stockName}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={img.imageUrl}
                       alt=""
-                      className="pointer-events-none h-full w-full object-cover"
+                      fill
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className="pointer-events-none object-cover"
+                      quality={65}
                     />
                   </button>
                   {/* Bottom gradient + username on image */}
@@ -377,6 +390,17 @@ export function GalleryGrid({
           </div>
         ))}
       </div>
+      {filteredAndSorted.length > visibleCount && (
+        <div className="pt-6 text-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((v) => v + 24)}
+            className="rounded-card border border-border/50 bg-card px-4 py-2 text-sm font-medium text-foreground hover:border-primary/30"
+          >
+            Load more
+          </button>
+        </div>
+      )}
 
       {filteredAndSorted.length === 0 && (
         <p className="py-12 text-center text-sm text-muted-foreground">

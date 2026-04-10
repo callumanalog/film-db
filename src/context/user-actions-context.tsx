@@ -5,7 +5,7 @@
  *
  * When logged in:
  *   - Source of truth is Supabase (user_shot, user_favourites, user_in_camera, user_ratings).
- *   - Context is hydrated from getProfileFromSupabase() on load and after each action.
+ *   - Context is hydrated from a lightweight user-actions query on load and after each action.
  *
  * When not logged in:
  *   - No actions are saved. Tapping any action redirects to sign-in with ?next= current path.
@@ -16,14 +16,12 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { getProfileFromSupabase } from "@/app/actions/get-profile";
-import type { ProfileFromDb } from "@/app/actions/get-profile";
+import { getUserActionsProfileFromSupabase } from "@/app/actions/get-profile";
 import {
   toggleShotInSupabase,
   toggleFavouriteInSupabase,
@@ -38,7 +36,12 @@ interface UserProfile {
   ratings: Record<string, number>;
 }
 
-function toUserProfile(p: ProfileFromDb): UserProfile {
+function fromActionsProfile(p: {
+  shotSlugs: string[];
+  favouriteSlugs: string[];
+  inCameraEntries: { film_stock_slug: string }[];
+  ratings: Record<string, number>;
+}): UserProfile {
   return {
     shotSlugs: p.shotSlugs,
     favouriteSlugs: p.favouriteSlugs,
@@ -71,8 +74,8 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
 
   const refetchProfile = useCallback(() => {
-    getProfileFromSupabase().then((p) => {
-      if (p) setProfile(toUserProfile(p));
+    getUserActionsProfileFromSupabase().then((p) => {
+      if (p) setProfile(fromActionsProfile(p));
     });
   }, []);
 
@@ -91,14 +94,14 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
       setProfile(EMPTY_PROFILE);
       return;
     }
-    getProfileFromSupabase().then((p) => {
+    getUserActionsProfileFromSupabase().then((p) => {
       if (cancelled || !p) return;
-      setProfile(toUserProfile(p));
+      setProfile(fromActionsProfile(p));
     });
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user]);
 
   const toggleShot = useCallback((slug: string) => {
     if (user) {
@@ -164,8 +167,9 @@ export function UserActionsProvider({ children }: { children: ReactNode }) {
     if (user) {
       setProfile((prev) => {
         if (rating <= 0) {
-          const { [slug]: _, ...rest } = prev.ratings;
-          return { ...prev, ratings: rest };
+          const nextRatings = { ...prev.ratings };
+          delete nextRatings[slug];
+          return { ...prev, ratings: nextRatings };
         }
         return { ...prev, ratings: { ...prev.ratings, [slug]: rating } };
       });

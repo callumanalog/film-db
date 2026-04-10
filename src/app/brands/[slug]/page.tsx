@@ -35,11 +35,12 @@ export default async function BrandDetailPage({
   params,
 }: BrandDetailPageProps) {
   const { slug } = await params;
-  const brand = await getBrandBySlug(slug);
+  const [brand, stocks] = await Promise.all([
+    getBrandBySlug(slug),
+    getFilmStocksByBrand(slug),
+  ]);
 
   if (!brand) notFound();
-
-  const stocks = await getFilmStocksByBrand(slug);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

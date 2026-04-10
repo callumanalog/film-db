@@ -176,6 +176,9 @@ interface ProfileViewProps {
   /** `member` = viewing someone else’s profile (follow + report; no account sheet). */
   mode?: ProfileViewMode;
   memberActions?: ProfileMemberActions;
+  activeTabId?: string;
+  onTabChange?: (id: string) => void;
+  loadingTabs?: Partial<Record<"boards" | "lists", boolean>>;
 }
 
 function StockGrid({ slugs, stocksBySlug }: { slugs: string[]; stocksBySlug: Map<string, StockWithBrand> }) {
@@ -1008,6 +1011,9 @@ export function ProfileView({
   onProfileUpdated,
   mode = "self",
   memberActions,
+  activeTabId,
+  onTabChange,
+  loadingTabs,
 }: ProfileViewProps) {
   const router = useRouter();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1214,6 +1220,8 @@ export function ProfileView({
       {/* Tabs */}
       <FilmDetailTabs
         defaultId="scans"
+        activeId={activeTabId}
+        onTabChange={onTabChange}
         fullWidthTabBar
         pinTabPanelOnMobile
         pinTabBarClassName="px-4 sm:px-0"
@@ -1245,12 +1253,19 @@ export function ProfileView({
             label: "Boards",
             content: (
               <ProfileSection className="px-0" emptyMessage="" isEmpty={false}>
-                <ProfileBoardsContent
-                  savedUploads={profile.savedUploads ?? []}
-                  boards={profile.boards ?? []}
-                  onBoardsChanged={onProfileUpdated}
-                  boardsVariant={isMember ? "member" : "self"}
-                />
+                {loadingTabs?.boards ? (
+                  <div className="space-y-2 px-4 sm:px-0">
+                    <div className="h-32 animate-pulse rounded-card bg-muted" />
+                    <div className="h-32 animate-pulse rounded-card bg-muted" />
+                  </div>
+                ) : (
+                  <ProfileBoardsContent
+                    savedUploads={profile.savedUploads ?? []}
+                    boards={profile.boards ?? []}
+                    onBoardsChanged={onProfileUpdated}
+                    boardsVariant={isMember ? "member" : "self"}
+                  />
+                )}
               </ProfileSection>
             ),
           },
@@ -1259,13 +1274,20 @@ export function ProfileView({
             label: "Lists",
             content: (
               <ProfileSection className="px-0" emptyMessage="" isEmpty={false}>
-                <ProfileListsContent
-                  created={profile.createdStockLists ?? []}
-                  saved={profile.savedStockLists ?? []}
-                  viewerHeadline={headline}
-                  viewerAvatarUrl={profile.avatarUrl}
-                  listsVariant={isMember ? "member" : "self"}
-                />
+                {loadingTabs?.lists ? (
+                  <div className="space-y-2 px-4 sm:px-0">
+                    <div className="h-20 animate-pulse rounded-card bg-muted" />
+                    <div className="h-20 animate-pulse rounded-card bg-muted" />
+                  </div>
+                ) : (
+                  <ProfileListsContent
+                    created={profile.createdStockLists ?? []}
+                    saved={profile.savedStockLists ?? []}
+                    viewerHeadline={headline}
+                    viewerAvatarUrl={profile.avatarUrl}
+                    listsVariant={isMember ? "member" : "self"}
+                  />
+                )}
               </ProfileSection>
             ),
           },

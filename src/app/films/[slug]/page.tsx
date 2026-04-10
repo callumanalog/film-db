@@ -4,9 +4,8 @@ import type { Metadata } from "next";
 import { getFilmStockBySlug, getRelatedStocks, getFilmStocks, getMoreFromBrand } from "@/lib/supabase/queries";
 import { getFilmStockStats, getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getFlickrSampleImagesForStock } from "@/lib/flickr";
-import { getUploadsForFilmStock } from "@/app/actions/uploads";
+import { getReviewsForFilmStock } from "@/app/actions/reviews";
 import { fetchStockListsForFilmPage } from "@/app/actions/stock-lists";
-import { FilmStockListsTab } from "@/components/film-stock-lists-tab";
 import { SimilarStocksGrid } from "@/components/similar-stocks-grid";
 import { FILM_TYPE_LABELS, FILM_TYPE_COLORS, BEST_FOR_LABELS, GRAIN_LABELS, CONTRAST_LABELS, LATITUDE_LABELS, SATURATION_LABELS, DEVELOPMENT_PROCESS_LABELS, COLOR_BALANCE_LABELS, COLOR_SENSITIVITY_LABELS, isBlackAndWhiteFilm } from "@/lib/types";
 import type { DevelopmentProcess } from "@/lib/types";
@@ -14,17 +13,13 @@ import { ChevronRight } from "lucide-react";
 import {
   StickyLeftPane,
   PageTitleHeader,
-  FilmDetailMobileStockImage,
   FilmDetailMobileToolbar,
 } from "@/components/hero-mockups";
 import { cn } from "@/lib/utils";
 import { OverviewTabContent } from "@/components/overview-tab-content";
 import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
 import { SetFilmMobileHeader } from "@/components/set-film-mobile-header";
-import { FilmMobileTabProvider } from "@/context/film-mobile-tab-context";
 import { FilmMobileTabContent } from "@/components/film-mobile-tab-content";
-import { GalleryPreview } from "@/components/gallery-preview";
-import { CommunityReviews } from "@/components/community-section";
 import { filmStockToLightboxSummary } from "@/lib/lightbox-group";
 
 /** Display order for Where to Buy: Amazon, Adorama, Analogue Wonderland, B&H Photo. */
@@ -77,14 +72,14 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
 
   if (!stock) notFound();
 
-  const [stats, relatedStocks, moreFromBrandStocks, flickrImages, communityUploads, filmListRows] =
+  const [stats, relatedStocks, moreFromBrandStocks, flickrImages, filmListRows, reviewRows] =
     await Promise.all([
       getFilmStockStats(slug),
       getRelatedStocks(stock, 6),
       getMoreFromBrand(stock, 8),
       getFlickrSampleImagesForStock(slug).catch(() => []),
-      getUploadsForFilmStock(slug),
       fetchStockListsForFilmPage(slug, 21),
+      getReviewsForFilmStock(slug),
     ]);
 
   const filmListPreview = filmListRows.slice(0, 20);
@@ -242,81 +237,66 @@ export default async function FilmDetailPage({ params }: FilmDetailPageProps) {
         format={stock.format ?? []}
       />
       <ScrollToTopOnRouteChange />
-      {/* Mobile: stock image + toolbar in one sheet (no sticky banner strip). Desktop: sheet chrome disabled at md+. */}
-      <FilmMobileTabProvider>
-        <div className="flex flex-col items-start md:contents">
-          <div
-            className={cn(
-              "relative z-20 mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 lg:px-8",
-              "overflow-hidden bg-background pt-0",
-              "md:overflow-visible md:rounded-none md:bg-transparent md:pt-8 md:shadow-none"
-            )}
-          >
-            <FilmDetailMobileStockImage stock={stockProps.stock} />
-            <FilmDetailMobileToolbar stock={stockProps.stock} stats={stockProps.stats} />
-            <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
-              <Link href="/search" className="transition-colors hover:text-foreground">Browse stocks</Link>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
-              <ChevronRight className="h-3.5 w-3.5" />
-              <span className="font-medium text-foreground">{stock.name}</span>
-            </nav>
+      {/* Mobile: toolbar in-flow with page content. Desktop: sheet chrome disabled at md+. */}
+      <div className="flex flex-col items-start md:contents">
+        <div
+          className={cn(
+            "relative z-20 mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 lg:px-8",
+            "overflow-hidden bg-background pt-0",
+            "md:overflow-visible md:rounded-none md:bg-transparent md:pt-8 md:shadow-none"
+          )}
+        >
+          <FilmDetailMobileToolbar stock={stockProps.stock} stats={stockProps.stats} />
+          <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
+            <Link href="/search" className="transition-colors hover:text-foreground">Browse stocks</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <Link href={`/brands/${stock.brand.slug}`} className="transition-colors hover:text-foreground">{stock.brand.name}</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="font-medium text-foreground">{stock.name}</span>
+          </nav>
 
-            <div className="grid grid-cols-1 gap-0 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
-              <div className="order-2 min-w-0 md:order-1 md:row-span-2">
-                <StickyLeftPane {...stockProps} />
-              </div>
-              <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
-                <PageTitleHeader {...stockProps} />
-              </div>
-              <div className="order-3 min-w-0 pt-6 md:pt-0">
-                <FilmMobileTabContent
-                  overview={
-                    <OverviewTabContent
-                      description={stock.description}
-                      filmSlug={slug}
-                      shootingNotes={stock.shooting_notes}
-                      purchaseLinks={sortedLinks}
-                      stockName={stock.name}
-                      bestFor={stock.best_for ?? []}
-                      specs={overviewSpecsFlat}
-                      useCaseSpec={useCaseSpec}
-                      characterScales={{
-                        grain: stock.grain ?? undefined,
-                        contrast: stock.contrast ?? undefined,
-                        saturation: stock.saturation ?? undefined,
-                        latitude: stock.latitude ?? undefined,
-                      }}
-                      filmType={stock.type}
-                      flickrImages={flickrImages}
-                      lightboxStockSummary={lightboxStockSummary}
-                    />
-                  }
-                  scans={
-                    <GalleryPreview
-                      slug={slug}
-                      stockName={stock.name}
-                      flickrImages={flickrImages}
-                      layout="masonry"
-                      lightboxStockSummary={lightboxStockSummary}
-                    />
-                  }
-                  reviews={
-                    <CommunityReviews slug={slug} filmStock={reviewFilmStock} />
-                  }
-                  lists={
-                    <FilmStockListsTab
-                      filmSlug={slug}
-                      rows={filmListPreview}
-                      hasMore={filmListHasMore}
-                    />
-                  }
-                />
-              </div>
+          <div className="grid grid-cols-1 gap-0 md:grid-cols-[auto_1fr] md:items-start md:gap-8">
+            <div className="order-2 min-w-0 md:order-1 md:row-span-2">
+              <StickyLeftPane {...stockProps} />
+            </div>
+            <div className="order-1 hidden min-w-0 pt-0 md:order-2 md:block md:pt-8">
+              <PageTitleHeader {...stockProps} />
+            </div>
+            <div className="order-3 min-w-0 pt-6 md:pt-0">
+              <FilmMobileTabContent
+                overview={
+                  <OverviewTabContent
+                    description={stock.description}
+                    filmSlug={slug}
+                    shootingNotes={stock.shooting_notes}
+                    purchaseLinks={sortedLinks}
+                    stockName={stock.name}
+                    bestFor={stock.best_for ?? []}
+                    specs={overviewSpecsFlat}
+                    useCaseSpec={useCaseSpec}
+                    characterScales={{
+                      grain: stock.grain ?? undefined,
+                      contrast: stock.contrast ?? undefined,
+                      saturation: stock.saturation ?? undefined,
+                      latitude: stock.latitude ?? undefined,
+                    }}
+                    filmType={stock.type}
+                    flickrImages={flickrImages}
+                    lightboxStockSummary={lightboxStockSummary}
+                    reviewFilmStock={reviewFilmStock}
+                    reviewPreviewRows={reviewRows}
+                    listPreviewRows={filmListPreview}
+                    listHasMore={filmListHasMore}
+                  />
+                }
+                scans={null}
+                reviews={null}
+                lists={null}
+              />
             </div>
           </div>
         </div>
-      </FilmMobileTabProvider>
+      </div>
 
       {allDiscoveryStocks.length > 0 && (
         <section className="w-full border-t border-border/50 bg-secondary/30 pt-12 pb-6">

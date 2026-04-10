@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useFilmMobileTab } from "@/context/film-mobile-tab-context";
 
 interface FilmMobileTabContentProps {
   overview: ReactNode;
@@ -12,21 +11,12 @@ interface FilmMobileTabContentProps {
 
 export function FilmMobileTabContent({
   overview,
-  scans,
-  reviews,
-  lists,
 }: FilmMobileTabContentProps) {
-  const ctx = useFilmMobileTab();
-  const activeTab = ctx?.activeTab ?? "overview";
-
   return (
     <>
-      {/* Mobile: show only the active tab */}
+      {/* Mobile: all sections are composed inside overview in fixed order. */}
       <div className="md:hidden">
-        {activeTab === "overview" && overview}
-        {activeTab === "scans" && scans}
-        {activeTab === "reviews" && reviews}
-        {activeTab === "lists" && lists}
+        {overview}
       </div>
       {/* Desktop: show everything (overview handles its own layout) */}
       <div className="hidden md:block">

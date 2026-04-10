@@ -242,11 +242,21 @@ export function Header() {
             {filmSlug != null && (
               <div
                 className={cn(
-                  "flex min-h-[44px] min-w-0 flex-shrink-0 items-center",
+                  "flex min-h-[44px] min-w-0 flex-shrink-0 items-center gap-1",
                   isImageFilmRoute ? "pr-[2px]" : "pr-1"
                 )}
               >
                 <FilmStockFollowHeaderButton filmStockSlug={filmSlug} />
+                {!isImageFilmRoute ? (
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent("film-detail-more"))}
+                    className="inline-flex h-9 w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label="More film actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" aria-hidden />
+                  </button>
+                ) : null}
               </div>
             )}
           </div>

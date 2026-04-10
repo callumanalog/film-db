@@ -104,6 +104,476 @@ export interface ProfileFromDb {
   }[];
 }
 
+export interface ProfileCriticalFromDb {
+  displayName: string;
+  fullName: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  instagramUrl: string | null;
+  websiteUrl: string | null;
+  followersCount: number;
+  followingCount: number;
+  shotSlugs: string[];
+  favouriteSlugs: string[];
+  inCameraEntries: InCameraEntry[];
+  ratings: Record<string, number>;
+  reviewCount: number;
+  uploadCount: number;
+  reviews: { id: string; film_stock_slug: string; review_title: string | null; created_at: string; rating: number | null }[];
+  uploads: {
+    id: string;
+    film_stock_slug: string;
+    image_url: string | null;
+    caption: string | null;
+    created_at: string;
+    upload_batch_id?: string | null;
+    review_id?: string | null;
+    camera?: string | null;
+    shot_iso?: string | null;
+    lens?: string | null;
+    lab?: string | null;
+    scanner?: string | null;
+    push_pull?: string | null;
+    format?: string | null;
+    location?: string | null;
+    shot_date?: string | null;
+    tags?: string | null;
+    image_width?: number | null;
+    image_height?: number | null;
+    like_count?: number | null;
+  }[];
+}
+
+export interface ProfileDeferredFromDb {
+  likedReviews: ProfileFromDb["likedReviews"];
+  savedUploads: ProfileFromDb["savedUploads"];
+  boards: ProfileFromDb["boards"];
+  likedUploads: ProfileFromDb["likedUploads"];
+  createdStockLists: ProfileFromDb["createdStockLists"];
+  savedStockLists: ProfileFromDb["savedStockLists"];
+}
+
+export interface UserActionsProfileFromDb {
+  shotSlugs: string[];
+  favouriteSlugs: string[];
+  inCameraEntries: InCameraEntry[];
+  ratings: Record<string, number>;
+}
+
+function buildProfileIdentity(
+  profileRow: {
+    display_name?: string | null;
+    full_name?: string | null;
+    bio?: string | null;
+    avatar_url?: string | null;
+    instagram_url?: string | null;
+    website_url?: string | null;
+    followers_count?: number | null;
+    following_count?: number | null;
+  } | null,
+  user: {
+    email?: string | null;
+    user_metadata?: Record<string, unknown>;
+  }
+) {
+  const displayName =
+    profileRow?.display_name?.trim() ||
+    (user.user_metadata?.display_name as string)?.trim() ||
+    (user.user_metadata?.full_name as string) ||
+    (user.user_metadata?.name as string) ||
+    user.email?.split("@")[0] ||
+    "Member";
+  return {
+    displayName,
+    fullName: profileRow?.full_name?.trim() ? profileRow.full_name.trim() : null,
+    bio: profileRow?.bio?.trim() ? profileRow.bio.trim() : null,
+    avatarUrl: profileRow?.avatar_url?.trim() ? profileRow.avatar_url.trim() : null,
+    instagramUrl: profileRow?.instagram_url?.trim() ? profileRow.instagram_url.trim() : null,
+    websiteUrl: profileRow?.website_url?.trim() ? profileRow.website_url.trim() : null,
+    followersCount: Math.max(0, Number(profileRow?.followers_count ?? 0)),
+    followingCount: Math.max(0, Number(profileRow?.following_count ?? 0)),
+  };
+}
+
+export async function getUserActionsProfileFromSupabase(): Promise<UserActionsProfileFromDb | null> {
+  const timer = `[get-profile:user-actions] ${Date.now()}`;
+  console.time(timer);
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) return null;
+    const [shotRes, favRes, inCameraRes, ratingsRes] = await Promise.all([
+      supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
+      supabase.from("user_favourites").select("film_stock_slug").eq("user_id", user.id),
+      supabase
+        .from("user_in_camera")
+        .select("film_stock_slug, camera, format, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("user_ratings").select("film_stock_slug, rating").eq("user_id", user.id),
+    ]);
+    const ratings: Record<string, number> = {};
+    for (const r of ratingsRes.data ?? []) ratings[r.film_stock_slug] = Number(r.rating);
+    return {
+      shotSlugs: (shotRes.data ?? []).map((r) => r.film_stock_slug),
+      favouriteSlugs: (favRes.data ?? []).map((r) => r.film_stock_slug),
+      inCameraEntries: (inCameraRes.data ?? []).map((r) => ({
+        film_stock_slug: r.film_stock_slug,
+        camera: r.camera ?? null,
+        format: r.format ?? null,
+        created_at: r.created_at,
+      })),
+      ratings,
+    };
+  } finally {
+    console.timeEnd(timer);
+  }
+}
+
+export async function getProfileCriticalFromSupabase(): Promise<ProfileCriticalFromDb | null> {
+  const timer = `[get-profile:critical] ${Date.now()}`;
+  console.time(timer);
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) return null;
+    const [
+      profileRes,
+      shotRes,
+      favRes,
+      inCameraRes,
+      ratingsRes,
+      reviewsRes,
+      uploadsRes,
+      reviewsListRes,
+      uploadsListRes,
+    ] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select(
+          "display_name, full_name, bio, avatar_url, instagram_url, website_url, followers_count, following_count"
+        )
+        .eq("id", user.id)
+        .single(),
+      supabase.from("user_shot").select("film_stock_slug").eq("user_id", user.id),
+      supabase.from("user_favourites").select("film_stock_slug").eq("user_id", user.id),
+      supabase
+        .from("user_in_camera")
+        .select("film_stock_slug, camera, format, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("user_ratings").select("film_stock_slug, rating").eq("user_id", user.id),
+      supabase.from("reviews").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("user_uploads").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase
+        .from("reviews")
+        .select("id, film_stock_slug, review_title, created_at, rating")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("user_uploads")
+        .select(
+          "id, film_stock_slug, image_url, caption, created_at, camera, shot_iso, lens, lab, scanner, push_pull, format, location, shot_date, tags, upload_batch_id, review_id, image_width, image_height, like_count"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+    ]);
+    const profileRow = profileRes.error
+      ? null
+      : (profileRes.data as {
+          display_name?: string | null;
+          full_name?: string | null;
+          bio?: string | null;
+          avatar_url?: string | null;
+          instagram_url?: string | null;
+          website_url?: string | null;
+          followers_count?: number | null;
+          following_count?: number | null;
+        } | null);
+    const identity = buildProfileIdentity(profileRow, user);
+    const ratings: Record<string, number> = {};
+    for (const r of ratingsRes.data ?? []) ratings[r.film_stock_slug] = Number(r.rating);
+    return {
+      ...identity,
+      shotSlugs: (shotRes.data ?? []).map((r) => r.film_stock_slug),
+      favouriteSlugs: (favRes.data ?? []).map((r) => r.film_stock_slug),
+      inCameraEntries: (inCameraRes.data ?? []).map((r) => ({
+        film_stock_slug: r.film_stock_slug,
+        camera: r.camera ?? null,
+        format: r.format ?? null,
+        created_at: r.created_at,
+      })),
+      ratings,
+      reviewCount: reviewsRes.count ?? 0,
+      uploadCount: uploadsRes.count ?? 0,
+      reviews: (reviewsListRes.data ?? []).map((r) => ({
+        id: r.id,
+        film_stock_slug: r.film_stock_slug,
+        review_title: r.review_title,
+        created_at: r.created_at,
+        rating: r.rating != null ? Number(r.rating) : null,
+      })),
+      uploads: (uploadsListRes.data ?? []).map((u) => ({
+        id: u.id,
+        film_stock_slug: u.film_stock_slug,
+        image_url: u.image_url,
+        caption: u.caption,
+        created_at: u.created_at,
+        upload_batch_id: u.upload_batch_id ?? null,
+        review_id: (u as { review_id?: string | null }).review_id ?? null,
+        camera: (u as { camera?: string | null }).camera ?? null,
+        shot_iso: (u as { shot_iso?: string | null }).shot_iso ?? null,
+        lens: (u as { lens?: string | null }).lens ?? null,
+        lab: (u as { lab?: string | null }).lab ?? null,
+        scanner: (u as { scanner?: string | null }).scanner ?? null,
+        push_pull: (u as { push_pull?: string | null }).push_pull ?? null,
+        format: (u as { format?: string | null }).format ?? null,
+        location: (u as { location?: string | null }).location ?? null,
+        shot_date: (u as { shot_date?: string | null }).shot_date ?? null,
+        tags: (u as { tags?: string | null }).tags ?? null,
+        image_width: (u as { image_width?: number | null }).image_width ?? null,
+        image_height: (u as { image_height?: number | null }).image_height ?? null,
+        like_count: (u as { like_count?: number | null }).like_count ?? null,
+      })),
+    };
+  } finally {
+    console.timeEnd(timer);
+  }
+}
+
+export async function getProfileDeferredFromSupabase(): Promise<ProfileDeferredFromDb | null> {
+  const timer = `[get-profile:deferred] ${Date.now()}`;
+  console.time(timer);
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) return null;
+    const [
+      likedReviewsRes,
+      savedUploadsRes,
+      boardSummariesRes,
+      likedUploadsRes,
+      stockListSummariesRes,
+      savedStockListsRes,
+    ] = await Promise.all([
+      supabase
+        .from("review_likes")
+        .select("created_at, reviews ( id, film_stock_slug, review_title, rating, created_at )")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("saved_uploads")
+        .select("id, created_at, user_uploads ( id, film_stock_slug, image_url, caption, user_id )")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase.rpc("board_summaries_for_user"),
+      supabase
+        .from("upload_likes")
+        .select("created_at, user_uploads ( id, film_stock_slug, image_url, caption )")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      supabase.rpc("stock_list_summaries_for_user"),
+      supabase
+        .from("saved_stock_lists")
+        .select("created_at, stock_lists ( id, title, updated_at, user_id )")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+    ]);
+    const likedReviews: ProfileFromDb["likedReviews"] = [];
+    for (const row of (likedReviewsRes.error ? [] : likedReviewsRes.data ?? []) as {
+      created_at: string;
+      reviews:
+        | { id: string; film_stock_slug: string; review_title: string | null; rating: number | string | null; created_at: string }
+        | { id: string; film_stock_slug: string; review_title: string | null; rating: number | string | null; created_at: string }[]
+        | null;
+    }[]) {
+      const rev = Array.isArray(row.reviews) ? row.reviews[0] : row.reviews;
+      if (!rev) continue;
+      likedReviews.push({
+        review_id: rev.id,
+        film_stock_slug: rev.film_stock_slug,
+        review_title: rev.review_title,
+        rating: rev.rating != null ? Number(rev.rating) : null,
+        review_created_at: rev.created_at,
+        liked_at: row.created_at,
+      });
+    }
+    type SavedUp = { id: string; film_stock_slug: string; image_url: string | null; caption: string | null; user_id: string };
+    const savedPending: { savedUploadId: string; saved_at: string; upload: SavedUp }[] = [];
+    for (const row of (savedUploadsRes.error ? [] : savedUploadsRes.data ?? []) as {
+      id: string;
+      created_at: string;
+      user_uploads: SavedUp | SavedUp[] | null;
+    }[]) {
+      const up = Array.isArray(row.user_uploads) ? row.user_uploads[0] : row.user_uploads;
+      if (!up) continue;
+      savedPending.push({ savedUploadId: row.id, saved_at: row.created_at, upload: up });
+    }
+    const uploaderIds = [...new Set(savedPending.map((p) => p.upload.user_id).filter(Boolean))];
+    const uploaderNames = await fetchDisplayNamesByUserIds(uploaderIds);
+    const savedUploads: ProfileFromDb["savedUploads"] = savedPending.map((p) => ({
+      savedUploadId: p.savedUploadId,
+      upload_id: p.upload.id,
+      film_stock_slug: p.upload.film_stock_slug,
+      image_url: p.upload.image_url,
+      caption: p.upload.caption,
+      saved_at: p.saved_at,
+      uploaderUserId: p.upload.user_id,
+      uploaderDisplayName: uploaderNames.get(p.upload.user_id) ?? null,
+    }));
+    let boards: ProfileFromDb["boards"] = [];
+    if (!boardSummariesRes.error) {
+      boards = ((boardSummariesRes.data ?? []) as {
+        board_id: string;
+        board_name: string;
+        board_description: string | null;
+        updated_at: string;
+        item_count: number | string;
+        cover_url: string | null;
+        cover_url_2: string | null;
+        cover_url_3: string | null;
+      }[]).map((r) => ({
+        id: r.board_id,
+        name: r.board_name,
+        description: r.board_description,
+        updatedAt: r.updated_at,
+        itemCount: Number(r.item_count),
+        coverUrl: r.cover_url,
+        coverUrl2: r.cover_url_2,
+        coverUrl3: r.cover_url_3,
+      }));
+    }
+    const likedUploads: ProfileFromDb["likedUploads"] = [];
+    for (const row of (likedUploadsRes.error ? [] : likedUploadsRes.data ?? []) as {
+      created_at: string;
+      user_uploads:
+        | { id: string; film_stock_slug: string; image_url: string | null; caption: string | null }
+        | { id: string; film_stock_slug: string; image_url: string | null; caption: string | null }[]
+        | null;
+    }[]) {
+      const up = Array.isArray(row.user_uploads) ? row.user_uploads[0] : row.user_uploads;
+      if (!up) continue;
+      likedUploads.push({
+        upload_id: up.id,
+        film_stock_slug: up.film_stock_slug,
+        image_url: up.image_url,
+        caption: up.caption,
+        liked_at: row.created_at,
+      });
+    }
+    let createdStockLists: ProfileFromDb["createdStockLists"] = [];
+    if (!stockListSummariesRes.error && stockListSummariesRes.data) {
+      createdStockLists = (stockListSummariesRes.data as {
+        list_id: string;
+        list_title: string;
+        updated_at: string;
+        item_count: number | string;
+        preview_urls: (string | null)[] | null;
+      }[]).map((r) => {
+        const raw = (r.preview_urls ?? []).slice(0, 5).map((u) => (u?.trim() ? u.trim() : null));
+        while (raw.length < 5) raw.push(null);
+        return {
+          id: r.list_id,
+          title: r.list_title,
+          updatedAt: r.updated_at,
+          itemCount: Number(r.item_count),
+          previewUrls: raw,
+        };
+      });
+    }
+    const savedParsed: { listId: string; title: string; updatedAt: string; savedAt: string; ownerUserId: string }[] = [];
+    for (const row of (savedStockListsRes.error ? [] : savedStockListsRes.data ?? []) as {
+      created_at: string;
+      stock_lists:
+        | { id: string; title: string; updated_at: string; user_id: string }
+        | { id: string; title: string; updated_at: string; user_id: string }[]
+        | null;
+    }[]) {
+      const sl = Array.isArray(row.stock_lists) ? row.stock_lists[0] : row.stock_lists;
+      if (!sl) continue;
+      savedParsed.push({
+        listId: sl.id,
+        title: sl.title,
+        updatedAt: sl.updated_at,
+        savedAt: row.created_at,
+        ownerUserId: sl.user_id,
+      });
+    }
+    const savedListIds = savedParsed.map((s) => s.listId);
+    const previewUrlsByListId = new Map<string, (string | null)[]>();
+    const countByListId = new Map<string, number>();
+    if (savedListIds.length > 0) {
+      const { data: itemRows } = await supabase
+        .from("stock_list_items")
+        .select("list_id, sort_order, film_stock_slug")
+        .in("list_id", savedListIds);
+      const sorted = [...((itemRows ?? []) as { list_id: string; sort_order: number; film_stock_slug: string }[])];
+      sorted.sort((a, b) => (a.list_id !== b.list_id ? a.list_id.localeCompare(b.list_id) : a.sort_order - b.sort_order));
+      const slugsByList = new Map<string, string[]>();
+      const slugSet = new Set<string>();
+      for (const r of sorted) {
+        countByListId.set(r.list_id, (countByListId.get(r.list_id) ?? 0) + 1);
+        const arr = slugsByList.get(r.list_id) ?? [];
+        if (arr.length < 5) {
+          arr.push(r.film_stock_slug);
+          slugsByList.set(r.list_id, arr);
+          slugSet.add(r.film_stock_slug);
+        }
+      }
+      if (slugSet.size > 0) {
+        const { data: stocks } = await supabase.from("film_stocks").select("slug, image_url").in("slug", [...slugSet]);
+        const imgBySlug = new Map<string, string | null>();
+        for (const st of stocks ?? []) imgBySlug.set((st as { slug: string }).slug, (st as { image_url: string | null }).image_url);
+        for (const [lid, slugs] of slugsByList) {
+          const urls = slugs.map((slug) => {
+            const u = imgBySlug.get(slug);
+            return u?.trim() ? u.trim() : null;
+          });
+          while (urls.length < 5) urls.push(null);
+          previewUrlsByListId.set(lid, urls);
+        }
+      }
+    }
+    const savedOwnerIds = [...new Set(savedParsed.map((s) => s.ownerUserId))];
+    const savedOwnerNames = new Map<string, string>();
+    const savedOwnerAvatars = new Map<string, string | null>();
+    if (savedOwnerIds.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", savedOwnerIds);
+      for (const p of profs ?? []) {
+        const id = (p as { id: string }).id;
+        const dn = (p as { display_name: string | null }).display_name?.trim();
+        const av = (p as { avatar_url: string | null }).avatar_url?.trim();
+        savedOwnerNames.set(id, dn || "Member");
+        savedOwnerAvatars.set(id, av || null);
+      }
+    }
+    const emptyPreviews = (): (string | null)[] => [null, null, null, null, null];
+    const savedStockLists: ProfileFromDb["savedStockLists"] = savedParsed.map((s) => ({
+      listId: s.listId,
+      title: s.title,
+      updatedAt: s.updatedAt,
+      savedAt: s.savedAt,
+      ownerUserId: s.ownerUserId,
+      ownerDisplayName: savedOwnerNames.get(s.ownerUserId) ?? "Member",
+      ownerAvatarUrl: savedOwnerAvatars.get(s.ownerUserId) ?? null,
+      itemCount: countByListId.get(s.listId) ?? 0,
+      previewUrls: previewUrlsByListId.get(s.listId) ?? emptyPreviews(),
+    }));
+    return { likedReviews, savedUploads, boards, likedUploads, createdStockLists, savedStockLists };
+  } finally {
+    console.timeEnd(timer);
+  }
+}
+
 export async function getProfileFromSupabase(): Promise<ProfileFromDb | null> {
   try {
     const supabase = await createClient();

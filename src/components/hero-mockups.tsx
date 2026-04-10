@@ -64,7 +64,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useUserActions } from "@/context/user-actions-context";
-import { useFilmMobileTab, type FilmMobileTab } from "@/context/film-mobile-tab-context";
 import { useAuth } from "@/context/auth-context";
 import { listMyStockListsForPicker } from "@/app/actions/stock-lists";
 import { AddToListsSheet } from "@/components/add-to-lists-sheet";
@@ -466,70 +465,6 @@ export function FilmDetailMobileStockImage({
   );
 }
 
-const MOBILE_TABS: { id: FilmMobileTab; label: string }[] = [
-  { id: "overview", label: "Overview" },
-  { id: "scans", label: "Scans" },
-  { id: "reviews", label: "Reviews" },
-  { id: "lists", label: "Lists" },
-];
-
-const HEADER_HEIGHT = 52;
-
-function FilmMobileTabBar() {
-  const ctx = useFilmMobileTab();
-  const headerCtx = useMobileHeaderTitle();
-  const navRef = useRef<HTMLElement>(null);
-  const activeTabForHeader = ctx?.activeTab ?? null;
-
-  useEffect(() => {
-    if (!headerCtx) return;
-    if (activeTabForHeader == null) {
-      headerCtx.setFilmMobileActiveTab(null);
-      return;
-    }
-    headerCtx.setFilmMobileActiveTab(activeTabForHeader);
-    return () => headerCtx.setFilmMobileActiveTab(null);
-  }, [activeTabForHeader, headerCtx]);
-
-  if (!ctx) return null;
-  const { activeTab, setActiveTab } = ctx;
-
-  const handleTabClick = (tab: FilmMobileTab) => {
-    setActiveTab(tab);
-    if (tab !== "overview" && navRef.current) {
-      const top = navRef.current.getBoundingClientRect().top + window.scrollY - HEADER_HEIGHT;
-      window.scrollTo({ top, behavior: "smooth" });
-    }
-  };
-
-  return (
-    <nav ref={navRef} className="mt-4 w-full border-b border-border/50" aria-label="Film detail tabs">
-      <div
-        className="grid w-full"
-        style={{ gridTemplateColumns: `repeat(${MOBILE_TABS.length}, minmax(0, 1fr))` }}
-      >
-        {MOBILE_TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => handleTabClick(t.id)}
-            className={`relative py-3 text-center text-sm font-semibold transition-colors ${
-              t.id === activeTab
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-            {t.id === activeTab && (
-              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" />
-            )}
-          </button>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
 /**
  * Mobile title / meta / Shot It row + modals. Render inside the same sheet container as overview (film page).
  * Horizontal padding comes from the parent `max-w-6xl` wrapper.
@@ -625,76 +560,45 @@ export function FilmDetailMobileToolbar({
   }, [ctx]);
 
   const mobileStatsDisplay = {
-    shotByCount: stats?.shotByCount ?? 0,
     avgRating: stats?.avgRating ?? null,
-    /** Community scan uploads (`user_uploads`); same as desktop “Shots” stat. */
-    scansCount: stats?.shotsCount ?? 0,
   };
 
   return (
     <>
       <div className="w-full min-w-0 bg-background md:hidden">
-        <div className="mb-1 flex w-full min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[13px] leading-relaxed text-muted-foreground">
-          <span className="min-w-0 shrink-0 text-foreground">{stock.typeLabel}</span>
-          <span className="shrink-0 select-none text-foreground" aria-hidden>
-            ·
-          </span>
-          <span className="min-w-0 shrink-0 tabular-nums text-foreground">
-            ISO {stock.iso != null ? stock.iso : "—"}
-          </span>
-          <span className="shrink-0 select-none text-foreground" aria-hidden>
-            ·
-          </span>
-          <span className="min-w-0 max-w-full text-foreground">
-            {(stock.format ?? []).length > 0 ? (stock.format ?? []).join(", ") : "—"}
-          </span>
-        </div>
-
-        <h1
-          ref={titleRef}
-          className="w-full min-w-0 text-center font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
-        >
-          {stock.name}
-        </h1>
-
-        <div
-          className="mt-3 flex w-full min-w-0 justify-center gap-6 py-3"
-          aria-label="Community stats"
-        >
-          <div className="flex min-w-0 shrink-0 flex-col items-center gap-0.5 text-center">
-            <div className="flex items-center justify-center">
-              <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
-                {mobileStatsDisplay.shotByCount}
-              </span>
-            </div>
-            <span className="text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
-              Shot it
-            </span>
+        <div className="flex items-start gap-3 py-1">
+          <div className="relative mt-0.5 h-16 w-16 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-card">
+            <FilmImage stock={stock} size={64} width={64} height={64} priority />
           </div>
-          <div className="flex min-w-0 shrink-0 flex-col items-center gap-0.5 text-center">
-            <div className="flex items-center justify-center gap-1">
-              <Star className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
-                {mobileStatsDisplay.avgRating != null ? mobileStatsDisplay.avgRating.toFixed(1) : "—"}
+          <div className="min-w-0 flex-1">
+            <h1
+              ref={titleRef}
+              className="min-w-0 text-left font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
+            >
+              {stock.name}
+            </h1>
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] leading-relaxed text-muted-foreground">
+              <span className="min-w-0 shrink-0 text-foreground">{stock.typeLabel}</span>
+              <span className="shrink-0 select-none text-foreground" aria-hidden>
+                ·
+              </span>
+              <span className="min-w-0 shrink-0 tabular-nums text-foreground">
+                ISO {stock.iso != null ? stock.iso : "—"}
+              </span>
+              <span className="shrink-0 select-none text-foreground" aria-hidden>
+                ·
+              </span>
+              <span className="min-w-0 max-w-full text-foreground">
+                {(stock.format ?? []).length > 0 ? (stock.format ?? []).join(", ") : "—"}
               </span>
             </div>
-            <span className="text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
-              Avg. rating
-            </span>
-          </div>
-          <div className="flex min-w-0 shrink-0 flex-col items-center gap-0.5 text-center">
-            <div className="flex items-center justify-center">
-              <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
-                {mobileStatsDisplay.scansCount}
-              </span>
-            </div>
-            <span className="text-[10px] font-medium uppercase leading-tight tracking-wider text-muted-foreground">
-              Scans
-            </span>
+            {mobileStatsDisplay.avgRating != null ? (
+              <div className="mt-1.5">
+                <AvgRatingStar rating={mobileStatsDisplay.avgRating} />
+              </div>
+            ) : null}
           </div>
         </div>
-
-        <FilmMobileTabBar />
       </div>
 
       <Sheet open={moreSheetOpen} onOpenChange={setMoreSheetOpen}>

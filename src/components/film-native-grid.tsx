@@ -2,6 +2,7 @@
 
 import type * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { GalleryImage } from "@/lib/sample-images";
 import { cn } from "@/lib/utils";
 export { galleryImageToLightbox } from "@/lib/lightbox-group";
@@ -51,14 +52,17 @@ export function FilmNativeMasonryGrid({
             )}
           >
             {img.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={img.imageUrl}
-                alt=""
-                className="block h-auto w-full"
-                sizes="50vw"
-                loading="lazy"
-              />
+              <div className="relative w-full" style={{ aspectRatio: "3/4" }}>
+                <Image
+                  src={img.imageUrl}
+                  alt=""
+                  fill
+                  sizes="50vw"
+                  loading="lazy"
+                  quality={65}
+                  className="object-cover"
+                />
+              </div>
             ) : (
               <div className="aspect-[3/2] w-full bg-gray-100" aria-hidden />
             )}
