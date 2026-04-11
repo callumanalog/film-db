@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lightbox metadata — design mockups</title>
+    <style>
+      :root {
+        --bg: #f5f5f5;
+        --sheet: #ffffff;
+        --fg: #191919;
+        --muted: #737373;
+        --border: rgba(0, 0, 0, 0.12);
+        --card-border: rgba(0, 0, 0, 0.14);
+        --secondary: rgba(0, 0, 0, 0.06);
+        --radius-card: 7px;
+        --thumb: linear-gradient(135deg, #e8dcc8 0%, #c4a574 45%, #8b6914 100%);
+        --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+
+      html.dark {
+        --bg: #0a0a0a;
+        --sheet: #000000;
+        --fg: #f5f5f5;
+        --muted: #a3a3a3;
+        --border: rgba(255, 255, 255, 0.12);
+        --card-border: rgba(255, 255, 255, 0.14);
+        --secondary: rgba(255, 255, 255, 0.08);
+        --thumb: linear-gradient(135deg, #3d3428 0%, #5c4d3a 50%, #2a2218 100%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--fg);
+        line-height: 1.35;
+        padding: 1.5rem 1rem 4rem;
+      }
+
+      .page-header {
+        max-width: 56rem;
+        margin: 0 auto 1.5rem;
+      }
+
+      .page-header h1 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem;
+      }
+
+      .page-header p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+        max-width: 42rem;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        margin-top: 0.75rem;
+      }
+
+      .toolbar button {
+        font: inherit;
+        font-size: 0.8125rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        background: var(--sheet);
+        color: var(--fg);
+        cursor: pointer;
+      }
+
+      .toolbar button:hover {
+        background: var(--secondary);
+      }
+
+      .mockups {
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+        max-width: 56rem;
+        margin: 0 auto;
+      }
+
+      .direction {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .direction-label {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+
+      .direction h2 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .phone {
+        width: 100%;
+        max-width: 392px;
+        margin: 0;
+        background: var(--sheet);
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+      }
+
+      html.dark .phone {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+      }
+
+      .photo {
+        height: 140px;
+        background: linear-gradient(160deg, #404040 0%, #1a1a1a 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #737373;
+        font-size: 0.75rem;
+      }
+
+      .likes-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.65rem 1rem 0.35rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+
+      .likes-row .dots {
+        color: var(--muted);
+        letter-spacing: 0.15em;
+      }
+
+      .caption-block {
+        padding: 0 1rem 0.5rem;
+        font-size: 0.875rem;
+        color: var(--fg);
+      }
+
+      .sheet-body {
+        padding: 0 1rem 1.25rem;
+      }
+
+      /* Film thumb + text row (shared pieces) */
+      .film-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-card);
+        border: 1px solid var(--card-border);
+        background: var(--thumb);
+        flex-shrink: 0;
+      }
+
+      .film-thumb.lg {
+        width: 52px;
+        height: 52px;
+      }
+
+      .film-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--fg);
+        margin: 0;
+        line-height: 1.2;
+      }
+
+      .film-sub {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        margin: 0.2rem 0 0;
+        line-height: 1.2;
+      }
+
+      .film-card {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-card);
+        border: 1px solid var(--card-border);
+        background: var(--sheet);
+      }
+
+      html.dark .film-card {
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .hairline {
+        border-top: 0.5px solid var(--border);
+      }
+
+      .row-tap {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 0.5rem 1rem;
+        min-height: 44px;
+      }
+
+      .row-tap:hover {
+        background: var(--secondary);
+      }
+
+      .meta-label {
+        font-size: 0.625rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        width: 3.25rem;
+        flex-shrink: 0;
+        padding-top: 0.15rem;
+      }
+
+      .meta-value {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--fg);
+      }
+
+      .meta-sub {
+        font-size: 0.8125rem;
+        color: var(--muted);
+        margin-top: 0.15rem;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-top: 0.35rem;
+      }
+
+      .chip {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 999px;
+        background: var(--secondary);
+        color: var(--fg);
+        border: 1px solid var(--border);
+      }
+
+      .footnote {
+        font-size: 0.6875rem;
+        line-height: 1.45;
+        color: var(--muted);
+        margin-top: 0.35rem;
+      }
+
+      .footnote a {
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      .gear-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 0.35rem;
+        padding: 0.4rem 0.25rem;
+        font-size: 0.8125rem;
+        color: var(--muted);
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-card);
+        cursor: pointer;
+        font-family: inherit;
+        text-align: left;
+      }
+
+      .gear-summary:hover {
+        background: var(--secondary);
+      }
+
+      .gear-summary strong {
+        font-weight: 500;
+        color: var(--fg);
+      }
+
+      .gear-expanded {
+        display: none;
+        margin-top: 0.25rem;
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+
+      .gear-expanded.is-open {
+        display: block;
+      }
+
+      .icon-strip {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-top: 0.35rem;
+        padding: 0.35rem 0;
+      }
+
+      .icon-strip svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        color: var(--muted);
+        margin-top: 0.1rem;
+      }
+
+      .icon-strip .seg {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.75rem;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+
+      .icon-strip .seg strong {
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--fg);
+        margin-bottom: 0.1rem;
+      }
+
+      .mt-gap {
+        margin-top: 0.65rem;
+      }
+
+      .mt-sm {
+        margin-top: 0.35rem;
+      }
+
+      .inner-divider {
+        height: 0;
+        border: 0;
+        border-top: 0.5px solid var(--border);
+        margin: 0.5rem 0;
+      }
+
+      .spec-grid {
+        display: grid;
+        grid-template-columns: 3.5rem 1fr;
+        gap: 0.35rem 0.5rem;
+        align-items: baseline;
+        margin-top: 0.5rem;
+      }
+
+      .spec-grid .lab {
+        grid-column: 2;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>Lightbox metadata — visual mockups</h1>
+      <p>
+        Static previews of directions A–F from
+        <a href="./lightbox-metadata-design.md">lightbox-metadata-design.md</a>. Phone width ≈ 392px. Not production code—layout and
+        weight only.
+      </p>
+      <p
+        style="
+          margin: 0.5rem 0 0;
+          padding: 0.5rem 0.65rem;
+          font-size: 0.8125rem;
+          border-radius: 7px;
+          border: 1px solid var(--border);
+          background: var(--secondary);
+          color: var(--fg);
+        "
+      >
+        The in-app lightbox metadata is a <strong>flat list</strong> (no card, no rounded row tiles): one stack with <strong>top and bottom
+        hairlines</strong> plus dividers between rows. Film, camera, lab/scanner, then optional push/pull and lens/ISO. Rows use a subtle
+        <strong>full-width strip hover</strong>; film thumb has <strong>no border or fill</strong>.
+      </p>
+      <div class="toolbar">
+        <button type="button" id="themeToggle" aria-pressed="false">Toggle dark mode</button>
+        <span style="font-size: 0.75rem; color: var(--muted)">Open this file in a browser (e.g. drag onto a window or <code>open docs/lightbox-metadata-mockups.html</code>).</span>
+      </div>
+    </header>
+
+    <div class="mockups">
+      <!-- A -->
+      <section class="direction" aria-labelledby="dir-a">
+        <div class="direction-label">Direction A</div>
+        <h2 id="dir-a">Single quiet card</h2>
+        <div class="phone" aria-label="Mockup A">
+          <div class="photo">Photo</div>
+          <div class="likes-row"><span>@callum</span><span class="dots">♡ · ·</span></div>
+          <div class="caption-block">Late afternoon light by the river.</div>
+          <div class="sheet-body">
+            <div class="film-card" style="flex-direction: column; align-items: stretch; gap: 0">
+              <div style="display: flex; align-items: center; gap: 0.65rem">
+                <div class="film-thumb" aria-hidden="true"></div>
+                <div style="min-width: 0">
+                  <p class="film-title">Kodak Portra 400</p>
+                  <p class="film-sub">35mm · Shot at ISO 200</p>
+                </div>
+              </div>
+              <hr class="inner-divider" />
+              <div style="display: grid; gap: 0.45rem; padding-bottom: 0.15rem">
+                <div style="display: flex; gap: 0.5rem">
+                  <span class="meta-label">Camera</span>
+                  <div>
+                    <div class="meta-value">Leica M6</div>
+                    <div class="meta-sub">Voigtländer 35mm f/1.4</div>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem">
+                  <span class="meta-label">Lab</span>
+                  <div>
+                    <div class="meta-value">The Darkroom</div>
+                    <div class="meta-sub">Epson V850</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- B -->
+      <section class="direction" aria-labelledby="dir-b">
+        <div class="direction-label">Direction B</div>
+        <h2 id="dir-b">Film card + chips / footnote</h2>
+        <div class="phone" aria-label="Mockup B">
+          <div class="photo">Photo</div>
+          <div class="likes-row"><span>@callum</span><span class="dots">♡ · ·</span></div>
+          <div class="caption-block">Late afternoon light by the river.</div>
+          <div class="sheet-body">
+            <div class="film-card">
+              <div class="film-thumb" aria-hidden="true"></div>
+              <div style="min-width: 0">
+                <p class="film-title">Kodak Portra 400</p>
+                <p class="film-sub">35mm · Shot at ISO 200</p>
+              </div>
+            </div>
+            <p class="footnote mt-gap" title="Alternative: same content as a single muted line with middots">
+              Leica M6 · Voigtländer 35mm f/1.4 · The Darkroom · V850
+            </p>
+            <div class="chips" aria-label="Alternative chip layout">
+              <span class="chip">Leica M6</span>
+              <span class="chip">The Darkroom</span>
+              <span class="chip">V850</span>
+            </div>
+            <p class="footnote" style="margin-top: 0.25rem; font-size: 0.625rem">Showing both footnote line and chips for comparison—pick one in product.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- C -->
+      <section class="direction" aria-labelledby="dir-c">
+        <div class="direction-label">Direction C</div>
+        <h2 id="dir-c">Film hero + collapsible gear</h2>
+        <div class="phone" aria-label="Mockup C">
+          <div class="photo">Photo</div>
+          <div class="likes-row"><span>@callum</span><span class="dots">♡ · ·</span></div>
+          <div class="caption-block">Late afternoon light by the river.</div>
+          <div class="sheet-body">
+            <div class="film-card">
+              <div class="film-thumb" aria-hidden="true"></div>
+              <div style="min-width: 0">
+                <p class="film-title">Kodak Portra 400</p>
+                <p class="film-sub">35mm · Shot at ISO 200</p>
+              </div>
+            </div>
+            <button type="button" class="gear-summary" id="gearToggle" aria-expanded="false" aria-controls="gearPanel">
+              <span><strong>Gear</strong> — Leica M6 · The Darkroom</span>
+              <span id="gearChevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="gear-expanded" id="gearPanel">
+              <div class="row-tap hairline">
+                <div class="film-thumb" style="width: 36px; height: 36px; opacity: 0.35; background: var(--secondary)"></div>
+                <div style="min-width: 0">
+                  <div class="meta-value">Leica M6</div>
+                  <div class="meta-sub">Voigtländer 35mm f/1.4</div>
+                </div>
+              </div>
+              <div class="row-tap hairline">
+                <div class="film-thumb" style="width: 36px; height: 36px; opacity: 0.35; background: var(--secondary)"></div>
+                <div style="min-width: 0">
+                  <div class="meta-value">The Darkroom</div>
+                  <div class="meta-sub">Epson V850</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- D -->
+      <section class="direction" aria-labelledby="dir-d">
+        <div class="direction-label">Direction D</div>
+        <h2 id="dir-d">Larger thumb + spec block</h2>
+        <div class="phone" aria-label="Mockup D">
+          <div class="photo">Photo</div>
+          <div class="likes-row"><span>@callum</span><span class="dots">♡ · ·</span></div>
+          <div class="caption-block">Late afternoon light by the river.</div>
+          <div class="sheet-body">
+            <div class="film-card" style="flex-direction: column; align-items: stretch">
+              <div style="display: flex; align-items: flex-start; gap: 0.75rem">
+                <div class="film-thumb lg" aria-hidden="true"></div>
+                <div style="min-width: 0">
+                  <p class="film-title">Kodak Portra 400</p>
+                  <p class="film-sub">35mm · Shot at ISO 200</p>
+                </div>
+              </div>
+              <div class="spec-grid">
+                <span class="meta-label">Camera</span>
+                <div>
+                  <div class="meta-value">Leica M6</div>
+                </div>
+                <span class="meta-label">Lens</span>
+                <div class="meta-sub" style="margin: 0">Voigtländer 35mm f/1.4</div>
+                <span class="meta-label">Lab</span>
+                <div class="lab">
+                  <div class="meta-value">The Darkroom</div>
+                  <div class="meta-sub">Epson V850</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- E -->
+      <section class="direction" aria-labelledby="dir-e">
+        <div class="direction-label">Direction E</div>
+        <h2 id="dir-e">Icon strip</h2>
+        <div class="phone" aria-label="Mockup E">
+          <div class="photo">Photo</div>
+          <div class="likes-row"><span>@callum</span><span class="dots">♡ · ·</span></div>
+          <div class="caption-block">Late afternoon light by the river.</div>
+          <div class="sheet-body">
+            <div class="film-card">
+              <div class="film-thumb" aria-hidden="true"></div>
+              <div style="min-width: 0">
+                <p class="film-title">Kodak Portra 400</p>
+                <p class="film-sub">35mm · Shot at ISO 200</p>
+              </div>
+            </div>
+            <div class="icon-strip" role="presentation">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                <circle cx="12" cy="13" r="3" />
+              </svg>
+              <div class="seg">
+                <strong>Leica M6</strong>
+                Voigtländer 35mm f/1.4
+              </div>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M9 3h6v2H9V3zM6 8h12v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8zM10 12h4" />
+              </svg>
+              <div class="seg">
+                <strong>The Darkroom</strong>
+                Epson V850
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- F -->
+      <section class="direction" aria-labelledby="dir-f">
+        <div class="direction-label">Direction F</div>
+        <h2 id="dir-f">Footer caption style</h2>
+        <div class="phone" aria-label="Mockup F">
+          <div class="photo">Photo</div>
+          <div class="likes-row"><span>@callum</span><span class="dots">♡ · ·</span></div>
+          <div class="caption-block">Late afternoon light by the river.</div>
+          <div class="sheet-body">
+            <div class="film-card">
+              <div class="film-thumb" aria-hidden="true"></div>
+              <div style="min-width: 0">
+                <p class="film-title">Kodak Portra 400</p>
+                <p class="film-sub">35mm · Shot at ISO 200</p>
+              </div>
+            </div>
+            <div class="footnote mt-gap">
+              <a href="#">Leica M6</a><br />
+              Voigtländer 35mm f/1.4 Nokton<br />
+              The Darkroom · Epson V850
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      (function () {
+        var btn = document.getElementById("themeToggle");
+        if (btn) {
+          btn.addEventListener("click", function () {
+            var dark = document.documentElement.classList.toggle("dark");
+            btn.setAttribute("aria-pressed", dark ? "true" : "false");
+          });
+        }
+
+        var gearBtn = document.getElementById("gearToggle");
+        var gearPanel = document.getElementById("gearPanel");
+        var chevron = document.getElementById("gearChevron");
+        if (gearBtn && gearPanel) {
+          gearBtn.addEventListener("click", function () {
+            var open = gearPanel.classList.toggle("is-open");
+            gearBtn.setAttribute("aria-expanded", open ? "true" : "false");
+            if (chevron) chevron.textContent = open ? "⌃" : "⌄";
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
