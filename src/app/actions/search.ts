@@ -4,7 +4,10 @@ import { getFilmStocks, getBrands, getFeaturedFilmStocks, getFeaturedBrands } fr
 import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
 import { createClient } from "@/lib/supabase/server";
-import { getCameras } from "@/lib/camera-queries";
+import { getCameras, getCameraBrands } from "@/lib/camera-queries";
+import type { CameraBrand, FilmBrand, FilmStock } from "@/lib/types";
+import { buildCameraSlugToFilmSlugMap, resolveRelatedCameraBrandSlugs } from "@/lib/film-brand-camera-brand-slugs";
+import { brandCatalogMatchRank, matchRank } from "@/lib/search-entity-match-rank";
 
 export type SearchTab = "stocks" | "shots" | "notes" | "brands" | "users";
 
@@ -35,6 +38,11 @@ export interface SearchBrandsResult {
   slug: string;
   name: string;
   subMeta: string;
+  /**
+   * `catalog` = unified hub at `/brands/{slug}` (film + linked cameras).
+   * `cameras_only` = camera maker with no linked film row → `/cameras?brand={slug}`.
+   */
+  kind?: "catalog" | "cameras_only";
 }
 
 export interface SearchShotsResult {
@@ -107,11 +115,14 @@ export interface SearchResult {
   lists?: SearchListsResult[];
 }
 
+export type DiscoverTypingBrand = SearchBrandsResult & { scanCount: number };
+
 export interface DiscoverSearchPayload {
   typing: {
     stocks: SearchStocksResult[];
     cameras: SearchCamerasResult[];
     users: SearchUsersResult[];
+    brands: DiscoverTypingBrand[];
   };
   results: {
     stocks: SearchStocksResult[];
@@ -119,6 +130,7 @@ export interface DiscoverSearchPayload {
     users: SearchUsersResult[];
     shots: SearchShotsResult[];
     lists: SearchListsResult[];
+    brands: SearchBrandsResult[];
   };
   bestResult:
     | { type: "stock"; value: SearchStocksResult }
@@ -126,7 +138,100 @@ export interface DiscoverSearchPayload {
     | { type: "user"; value: SearchUsersResult }
     | { type: "shot"; value: SearchShotsResult }
     | { type: "list"; value: SearchListsResult }
+    | { type: "brand"; value: SearchBrandsResult }
     | null;
+}
+
+function filmBrandsMatchingQuery(
+  q: string,
+  brands: FilmBrand[],
+  allStocks: (FilmStock & { brand: FilmBrand })[]
+): FilmBrand[] {
+  const lower = q.toLowerCase();
+  const brandSlugsWithMatchingStock = new Set(
+    allStocks.filter((s) => s.name.toLowerCase().includes(lower)).map((s) => s.brand.slug)
+  );
+  const brandSlugsWithMatchingLinkedCameraSlug = new Set<string>();
+  for (const b of brands) {
+    for (const cam of resolveRelatedCameraBrandSlugs(b)) {
+      if (cam.toLowerCase().includes(lower)) {
+        brandSlugsWithMatchingLinkedCameraSlug.add(b.slug);
+      }
+    }
+  }
+  return brands.filter(
+    (b) =>
+      b.name.toLowerCase().includes(lower) ||
+      (b.slug && b.slug.toLowerCase().includes(lower)) ||
+      brandSlugsWithMatchingStock.has(b.slug) ||
+      brandSlugsWithMatchingLinkedCameraSlug.has(b.slug)
+  );
+}
+
+function mergeUnifiedBrandDiscoverRows(params: {
+  q: string;
+  filmBrandsList: FilmBrand[];
+  matchedFilmBrands: FilmBrand[];
+  matchedCameraBrands: CameraBrand[];
+  filmScanBySlug: Map<string, number>;
+  cameraCountBySlug: Map<string, number>;
+}): DiscoverTypingBrand[] {
+  const { q, filmBrandsList, matchedFilmBrands, matchedCameraBrands, filmScanBySlug, cameraCountBySlug } = params;
+  const camToFilm = buildCameraSlugToFilmSlugMap(filmBrandsList);
+  const mergedCatalog = new Map<string, DiscoverTypingBrand>();
+  const standalone: DiscoverTypingBrand[] = [];
+
+  for (const b of matchedFilmBrands) {
+    const scan = filmScanBySlug.get(b.slug) ?? 0;
+    mergedCatalog.set(b.slug, {
+      slug: b.slug,
+      name: b.name,
+      subMeta: "Brand",
+      kind: "catalog",
+      scanCount: scan,
+    });
+  }
+
+  for (const cb of matchedCameraBrands) {
+    const filmSlug = camToFilm.get(cb.slug);
+    const camN = cameraCountBySlug.get(cb.slug) ?? 0;
+    if (filmSlug) {
+      const fb = filmBrandsList.find((x) => x.slug === filmSlug);
+      if (!fb) continue;
+      const cur = mergedCatalog.get(filmSlug);
+      if (cur) {
+        mergedCatalog.set(filmSlug, {
+          ...cur,
+          scanCount: cur.scanCount + camN,
+        });
+      } else {
+        mergedCatalog.set(filmSlug, {
+          slug: filmSlug,
+          name: fb.name,
+          subMeta: "Brand",
+          kind: "catalog",
+          scanCount: camN,
+        });
+      }
+    } else {
+      standalone.push({
+        slug: cb.slug,
+        name: cb.name,
+        subMeta: "Brand",
+        kind: "cameras_only",
+        scanCount: camN,
+      });
+    }
+  }
+
+  const sortDiscoverBrandEntries = (a: DiscoverTypingBrand, b: DiscoverTypingBrand) => {
+    const tierDiff = brandCatalogMatchRank(a.name, q) - brandCatalogMatchRank(b.name, q);
+    if (tierDiff !== 0) return tierDiff;
+    if (b.scanCount !== a.scanCount) return b.scanCount - a.scanCount;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  };
+
+  return [...mergedCatalog.values(), ...standalone].sort(sortDiscoverBrandEntries);
 }
 
 /** Tab-aware search: returns only the active tab's results. */
@@ -143,22 +248,47 @@ export async function searchFilmsByTab(
       return { stocks: stocks.map(stockToSearchResult) };
     }
     case "brands": {
-      const [brands, allStocks] = await Promise.all([getBrands(), getFilmStocks({ sort: "alphabetical" })]);
+      const [brands, allStocks, cameraBrandsList, allCameras] = await Promise.all([
+        getBrands(),
+        getFilmStocks({ sort: "alphabetical" }),
+        getCameraBrands(),
+        getCameras(),
+      ]);
       const lower = q.toLowerCase();
-      const brandSlugsWithMatchingStock = new Set(
-        allStocks.filter((s) => s.name.toLowerCase().includes(lower)).map((s) => s.brand.slug)
+      const matchedFilm = filmBrandsMatchingQuery(q, brands, allStocks);
+      const matchedCamera = cameraBrandsList.filter(
+        (b) => b.name.toLowerCase().includes(lower) || b.slug.toLowerCase().includes(lower)
       );
-      const filtered = brands.filter(
-        (b) =>
-          b.name.toLowerCase().includes(lower) ||
-          (b.slug && b.slug.toLowerCase().includes(lower)) ||
-          brandSlugsWithMatchingStock.has(b.slug)
-      );
+      const cameraCountBySlug = new Map<string, number>();
+      for (const c of allCameras) {
+        cameraCountBySlug.set(c.brand.slug, (cameraCountBySlug.get(c.brand.slug) ?? 0) + 1);
+      }
+      const filmScanBySlug = new Map<string, number>();
+      for (const b of matchedFilm) {
+        const slugs = allStocks
+          .filter((s) => s.brand.slug === b.slug)
+          .map((s) => s.slug)
+          .slice(0, 120);
+        const stats = slugs.length > 0 ? await getFilmStockStatsForSlugs(slugs) : {};
+        filmScanBySlug.set(
+          b.slug,
+          Object.values(stats).reduce((sum, row) => sum + (row.shotsCount ?? 0), 0)
+        );
+      }
+      const merged = mergeUnifiedBrandDiscoverRows({
+        q,
+        filmBrandsList: brands,
+        matchedFilmBrands: matchedFilm,
+        matchedCameraBrands: matchedCamera,
+        filmScanBySlug,
+        cameraCountBySlug,
+      });
       return {
-        brands: filtered.map((b) => ({
-          slug: b.slug,
-          name: b.name,
-          subMeta: "Brand",
+        brands: merged.map((e) => ({
+          slug: e.slug,
+          name: e.name,
+          subMeta: e.subMeta,
+          kind: e.kind,
         })),
       };
     }
@@ -275,6 +405,7 @@ export async function getTrendingBrands(): Promise<SearchBrandsResult[]> {
     slug: b.slug,
     name: b.name,
     subMeta: "Brand",
+    kind: "catalog" as const,
   }));
 }
 
@@ -436,27 +567,18 @@ function toCameraResult(rows: Awaited<ReturnType<typeof getCameras>>): SearchCam
   }));
 }
 
-function getNameMatchTier(name: string, query: string): number {
-  const normalizedName = name.trim().toLowerCase();
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) return 3;
-  if (normalizedName === normalizedQuery) return 0;
-  if (normalizedName.startsWith(normalizedQuery)) return 1;
-  if (normalizedName.includes(normalizedQuery)) return 2;
-  return 3;
-}
-
 export async function getDiscoverSearchPayload(query: string): Promise<DiscoverSearchPayload> {
   const q = query.trim();
   if (!q) {
     return {
-      typing: { stocks: [], cameras: [], users: [] },
-      results: { stocks: [], cameras: [], users: [], shots: [], lists: [] },
+      typing: { stocks: [], cameras: [], users: [], brands: [] },
+      results: { stocks: [], cameras: [], users: [], shots: [], lists: [], brands: [] },
       bestResult: null,
     };
   }
 
-  const [stockRes, usersRes, shotsRes, cameras, listRows] = await Promise.all([
+  const [stockRes, usersRes, shotsRes, cameras, listRows, allStocksAlbum, filmBrandsList, cameraBrandsList, allCamerasCatalog] =
+    await Promise.all([
     searchFilmsByTab(q, "stocks"),
     searchFilmsByTab(q, "users"),
     searchFilmsByTab(q, "shots"),
@@ -485,12 +607,60 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
         ownerDisplayName: ownerById.get(r.user_id) ?? "Member",
       }));
     })(),
+    getFilmStocks({ sort: "alphabetical" }),
+    getBrands(),
+    getCameraBrands(),
+    getCameras(),
   ]);
 
   const stocks = stockRes.stocks ?? [];
   const users = usersRes.users ?? [];
   const shots = shotsRes.shots ?? [];
   const cameraResults = toCameraResult(cameras);
+
+  const lower = q.toLowerCase();
+  const matchedFilmBrands = filmBrandsMatchingQuery(q, filmBrandsList, allStocksAlbum);
+  const matchedCameraBrands = cameraBrandsList.filter(
+    (b) => b.name.toLowerCase().includes(lower) || b.slug.toLowerCase().includes(lower)
+  );
+
+  const cameraCountByBrandSlug = new Map<string, number>();
+  for (const c of allCamerasCatalog) {
+    cameraCountByBrandSlug.set(c.brand.slug, (cameraCountByBrandSlug.get(c.brand.slug) ?? 0) + 1);
+  }
+
+  const filmScanBySlug = new Map<string, number>();
+  for (const b of matchedFilmBrands) {
+    const slugs = allStocksAlbum
+      .filter((s) => s.brand.slug === b.slug)
+      .map((s) => s.slug)
+      .slice(0, 120);
+    const stats = slugs.length > 0 ? await getFilmStockStatsForSlugs(slugs) : {};
+    filmScanBySlug.set(
+      b.slug,
+      Object.values(stats).reduce((sum, row) => sum + (row.shotsCount ?? 0), 0)
+    );
+  }
+
+  const mergedBrandRows = mergeUnifiedBrandDiscoverRows({
+    q,
+    filmBrandsList: filmBrandsList,
+    matchedFilmBrands,
+    matchedCameraBrands,
+    filmScanBySlug,
+    cameraCountBySlug: cameraCountByBrandSlug,
+  });
+
+  const typingBrandsMerged = mergedBrandRows.slice(0, 20);
+
+  const toBrandResult = (e: DiscoverTypingBrand): SearchBrandsResult => ({
+    slug: e.slug,
+    name: e.name,
+    subMeta: e.subMeta,
+    kind: e.kind,
+  });
+
+  const resultsBrands = mergedBrandRows.slice(0, 8).map(toBrandResult);
 
   // Typing-state ranking: prioritize entities with most attached scans.
   const supabase = await createClient();
@@ -502,7 +672,7 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
     stockSlugs.map((slug) => [slug, stockStatsBySlug[slug]?.shotsCount ?? 0])
   );
 
-  const cameraCountBySlug = new Map<string, number>();
+  const cameraUploadMatchCountBySlug = new Map<string, number>();
   if (cameraResults.length > 0) {
     const { data: cameraUploads } = await supabase
       .from("user_uploads")
@@ -522,7 +692,10 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
       if (!val) continue;
       for (const candidate of normalizedNames) {
         if (val === candidate.plain || val === candidate.branded) {
-          cameraCountBySlug.set(candidate.slug, (cameraCountBySlug.get(candidate.slug) ?? 0) + 1);
+          cameraUploadMatchCountBySlug.set(
+            candidate.slug,
+            (cameraUploadMatchCountBySlug.get(candidate.slug) ?? 0) + 1
+          );
         }
       }
     }
@@ -531,26 +704,32 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
   const stocksByScans = [...stocks]
     .map((s) => ({ ...s, scanCount: stockCountBySlug.get(s.slug) ?? 0 }))
     .sort((a, b) => {
-      const tierDiff = getNameMatchTier(a.name, q) - getNameMatchTier(b.name, q);
+      const tierDiff = matchRank(a.name, q) - matchRank(b.name, q);
       if (tierDiff !== 0) return tierDiff;
       if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
       return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
     });
 
   const camerasByScans = [...cameraResults]
-    .map((c) => ({ ...c, scanCount: cameraCountBySlug.get(c.slug) ?? 0 }))
+    .map((c) => ({ ...c, scanCount: cameraUploadMatchCountBySlug.get(c.slug) ?? 0 }))
     .sort((a, b) => {
       const nameA = `${a.brandName} ${a.name}`.trim();
       const nameB = `${b.brandName} ${b.name}`.trim();
-      const tierDiff = getNameMatchTier(nameA, q) - getNameMatchTier(nameB, q);
+      const tierDiff = matchRank(nameA, q) - matchRank(nameB, q);
       if (tierDiff !== 0) return tierDiff;
       if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
       return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
     });
+  const bestBrandUnion =
+    mergedBrandRows[0] != null
+      ? ({ type: "brand" as const, value: toBrandResult(mergedBrandRows[0]!) })
+      : null;
+
   const bestResult =
     (stocks[0] ? ({ type: "stock", value: stocks[0] as SearchStocksResult } as const) : null) ??
     (shots[0] ? ({ type: "shot", value: shots[0] as SearchShotsResult } as const) : null) ??
     (cameraResults[0] ? ({ type: "camera", value: cameraResults[0] as SearchCamerasResult } as const) : null) ??
+    bestBrandUnion ??
     (users[0] ? ({ type: "user", value: users[0] as SearchUsersResult } as const) : null) ??
     (listRows[0] ? ({ type: "list", value: listRows[0] as SearchListsResult } as const) : null);
 
@@ -559,6 +738,7 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
       stocks: stocksByScans.slice(0, 20),
       cameras: camerasByScans.slice(0, 20),
       users: users.slice(0, 20),
+      brands: typingBrandsMerged,
     },
     results: {
       stocks: stocks.slice(0, 8),
@@ -566,6 +746,7 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
       users: users.slice(0, 8),
       shots: shots.slice(0, 12),
       lists: listRows.slice(0, 6),
+      brands: resultsBrands,
     },
     bestResult,
   };

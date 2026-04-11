@@ -171,7 +171,11 @@ export function MobileSearchResults({ searchQuery }: MobileSearchResultsProps) {
                 {(result.brands as SearchBrandsResult[]).map((b) => (
                   <SearchListCard
                     key={b.slug}
-                    href={`/brands/${b.slug}`}
+                    href={
+                      b.kind === "cameras_only"
+                        ? `/cameras?brand=${encodeURIComponent(b.slug)}`
+                        : `/brands/${b.slug}`
+                    }
                     thumb={<div className="h-full w-full bg-slate-100" />}
                     title={b.name}
                   />

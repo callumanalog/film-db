@@ -67,7 +67,7 @@ const defaultDescription =
  * `resizes-visual`: when the OSK opens, the visual viewport shrinks (Chrome default on Android).
  * That lets `visualViewport` + bottom inset lift fixed bottom sheets above the keyboard.
  * `overlays-content` keeps both viewports full-size so inset math stays 0 and sheets sit under the OSK.
- * Bottom nav uses `visualViewport` to lift above the keyboard instead of overlapping it.
+ * Site bottom nav stays `bottom: 0` on the layout viewport so the OSK can overlay it; sheets opt into lift via hooks.
  */
 export const viewport: Viewport = {
   width: "device-width",

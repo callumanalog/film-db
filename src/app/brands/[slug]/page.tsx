@@ -5,9 +5,20 @@ import {
   getBrandBySlug,
   getFilmStocksByBrand,
   getBrands,
+  getFilmStocks,
 } from "@/lib/supabase/queries";
+import type { FilmStockStats } from "@/lib/supabase/stats";
+import { getFilmStockStatsForSlugs } from "@/lib/supabase/stats";
 import { FilmGrid } from "@/components/film-grid";
-import { ArrowLeft, Globe, ExternalLink } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { ScrollToTopOnRouteChange } from "@/components/scroll-to-top";
+import { BrandDetailHero } from "@/components/brand-detail-hero";
+import { BrandCommunityRail } from "@/components/brand-community-rail";
+import { getAllCommunityUploadsForGallery } from "@/app/actions/uploads";
+import { getCameras } from "@/lib/camera-queries";
+import { CameraGrid } from "@/components/camera-grid";
+import { resolveRelatedCameraBrandSlugs } from "@/lib/film-brand-camera-brand-slugs";
+import { cn } from "@/lib/utils";
 
 interface BrandDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -17,12 +28,30 @@ export async function generateMetadata({
   params,
 }: BrandDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const brand = await getBrandBySlug(slug);
+  const [brand, stocks] = await Promise.all([getBrandBySlug(slug), getFilmStocksByBrand(slug)]);
   if (!brand) return { title: "Brand Not Found" };
+
+  const description =
+    brand.description?.slice(0, 155) ||
+    `Browse ${stocks.length} ${brand.name} film stocks, linked cameras, and community scans.`;
+  const ogImage =
+    brand.logo_url?.startsWith("http") ? [{ url: brand.logo_url, alt: brand.name }] : undefined;
 
   return {
     title: brand.name,
-    description: brand.description || `Browse all ${brand.name} film stocks.`,
+    description,
+    openGraph: {
+      title: brand.name,
+      description,
+      type: "website",
+      images: ogImage,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: brand.name,
+      description,
+      images: ogImage?.map((i) => i.url),
+    },
   };
 }
 
@@ -31,66 +60,111 @@ export async function generateStaticParams() {
   return brands.map((brand) => ({ slug: brand.slug }));
 }
 
-export default async function BrandDetailPage({
-  params,
-}: BrandDetailPageProps) {
+export default async function BrandDetailPage({ params }: BrandDetailPageProps) {
   const { slug } = await params;
-  const [brand, stocks] = await Promise.all([
+  const [brand, stocks, allFilmStocks] = await Promise.all([
     getBrandBySlug(slug),
     getFilmStocksByBrand(slug),
+    getFilmStocks({ sort: "alphabetical" }),
   ]);
 
   if (!brand) notFound();
 
+  const cameraBrandSlugs = resolveRelatedCameraBrandSlugs(brand);
+  const cameraBlocks = await Promise.all(
+    cameraBrandSlugs.map(async (camSlug) => ({
+      camSlug,
+      cameras: await getCameras({ brand: camSlug }),
+    }))
+  );
+  const allLinkedCameras = cameraBlocks.flatMap((b) => b.cameras);
+  const cameraModelCount = allLinkedCameras.length;
+
+  const stockSlugs = stocks.map((s) => s.slug);
+  const [statsBySlug, communityUploads] = await Promise.all([
+    stockSlugs.length > 0
+      ? getFilmStockStatsForSlugs(stockSlugs)
+      : Promise.resolve({} as Record<string, FilmStockStats>),
+    stockSlugs.length > 0
+      ? getAllCommunityUploadsForGallery(allFilmStocks, undefined, stockSlugs)
+      : Promise.resolve([]),
+  ]);
+
+  const communityScanCount = Object.values(statsBySlug).reduce(
+    (sum, row: FilmStockStats) => sum + (row.shotsCount ?? 0),
+    0,
+  );
+  const railUploads = communityUploads.filter((u) => u.imageUrl).slice(0, 24);
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <Link
-        href="/brands"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+    <div className="work-sans-content">
+      <ScrollToTopOnRouteChange />
+      <div
+        className={cn(
+          "relative z-10 mx-auto w-full max-w-6xl px-4 pb-24 pt-0 sm:px-6 md:pb-8 lg:px-8",
+          "md:pt-8",
+        )}
       >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to all brands
-      </Link>
+        <nav className="mb-6 hidden items-center gap-1.5 text-sm text-muted-foreground md:flex">
+          <Link href="/search" className="transition-colors hover:text-foreground">
+            Browse stocks
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          <Link href="/brands" className="transition-colors hover:text-foreground">
+            Brands
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+          <span className="font-medium text-foreground">{brand.name}</span>
+        </nav>
 
-      <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[7px] bg-secondary text-3xl font-bold text-foreground">
-          {brand.name.charAt(0)}
-        </div>
+        <Link
+          href="/brands"
+          className="mb-4 hidden items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+        >
+          Back to all brands
+        </Link>
 
-        <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {brand.name}
-          </h1>
+        <BrandDetailHero
+          name={brand.name}
+          logoUrl={brand.logo_url}
+          description={brand.description}
+          websiteUrl={brand.website_url}
+          stockCount={stocks.length}
+          communityScanCount={communityScanCount}
+          cameraModelCount={cameraModelCount}
+        />
 
-          {brand.description && (
-            <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground">
-              {brand.description}
+        {railUploads.length > 0 ? (
+          <section className="mt-10 border-t border-border/40 pt-8 md:mt-12">
+            <BrandCommunityRail brandSlug={slug} uploads={railUploads} />
+          </section>
+        ) : null}
+
+        {allLinkedCameras.length > 0 ? (
+          <section className="mt-10 border-t border-border/40 pt-8 md:mt-12">
+            <h2 className="font-sans text-base font-semibold text-foreground">Cameras</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Film cameras in our catalog for {brand.name}.{" "}
+              <Link href="/cameras" className="font-medium text-primary hover:underline">
+                Browse all cameras
+              </Link>
             </p>
-          )}
+            <div className="mt-6">
+              <CameraGrid cameras={allLinkedCameras} emptyMessage="No cameras listed." />
+            </div>
+          </section>
+        ) : null}
 
-          {brand.website_url && (
-            <a
-              href={brand.website_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary transition-colors hover:text-primary/80"
-            >
-              <Globe className="h-3.5 w-3.5" />
-              {new URL(brand.website_url).hostname.replace("www.", "")}
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
-
-          <p className="mt-3 text-sm text-muted-foreground">
-            {stocks.length} film stock{stocks.length !== 1 ? "s" : ""} in our database
+        <section className="mt-10 border-t border-border/40 pt-8 md:mt-12">
+          <h2 className="font-sans text-base font-semibold text-foreground">Film stocks</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Every {brand.name} stock we currently list.
           </p>
-        </div>
+          <div className="mt-6">
+            <FilmGrid stocks={stocks} emptyMessage={`No ${brand.name} film stocks found.`} />
+          </div>
+        </section>
       </div>
-
-      <FilmGrid
-        stocks={stocks}
-        emptyMessage={`No ${brand.name} film stocks found.`}
-      />
     </div>
   );
 }

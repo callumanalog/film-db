@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import type { BestFor, FilmType, ShootingNote } from "@/lib/types";
-import { ExternalLink, ChevronRight, Star } from "lucide-react";
+import Image from "next/image";
+import { Star } from "lucide-react";
+import { CarouselViewAllHeader } from "@/components/carousel-view-all-header";
 import { GalleryPreview } from "@/components/gallery-preview";
 import type { FlickrPhoto } from "@/lib/flickr";
 import { CommunityGallery, CommunityReviews, type ReviewFlowFilmStock } from "@/components/community-section";
@@ -17,10 +18,42 @@ import type { FilmStockLightboxSummary } from "@/lib/lightbox-group";
 import type { FilmReviewRow } from "@/app/actions/reviews";
 import type { StockListFilmRow } from "@/app/actions/stock-lists";
 
-interface PurchaseLink {
-  id: string;
-  retailer_name: string;
-  url: string;
+function authorInitials(primary: string): string {
+  const t = primary.trim();
+  if (!t) return "?";
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
+  return t.slice(0, 2).toUpperCase();
+}
+
+/** Matches `AvgRatingStar` in `hero-mockups` (film detail header). */
+function ReviewPreviewRatingStars({ rating }: { rating: number }) {
+  const filled = Math.min(5, Math.max(0, Math.floor(rating)));
+  const empty = 5 - filled;
+  return (
+    <div className="flex items-center gap-1.5">
+      <div
+        className="flex items-center gap-0.5"
+        role="img"
+        aria-label={`${rating.toFixed(1)} out of 5`}
+      >
+        {Array.from({ length: filled }).map((_, i) => (
+          <Star key={`f-${i}`} className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
+        ))}
+        {Array.from({ length: empty }).map((_, i) => (
+          <Star
+            key={`e-${i}`}
+            className="h-4 w-4 shrink-0 fill-none text-border/50"
+            strokeWidth={1.5}
+            aria-hidden
+          />
+        ))}
+      </div>
+      <span className="font-sans text-[13px] font-medium leading-relaxed tabular-nums text-foreground">
+        {rating.toFixed(1)}
+      </span>
+    </div>
+  );
 }
 
 export interface OverviewTabContentProps {
@@ -28,7 +61,6 @@ export interface OverviewTabContentProps {
   /** Film slug for gallery/reviews and upload links. */
   filmSlug?: string;
   shootingNotes?: ShootingNote[];
-  purchaseLinks?: PurchaseLink[];
   stockName?: string;
   bestFor?: BestFor[];
   useCaseSpec?: { label: string; value: string };
@@ -53,7 +85,6 @@ export function OverviewTabContent({
   description,
   filmSlug,
   shootingNotes = [],
-  purchaseLinks = [],
   stockName,
   bestFor = [],
   useCaseSpec,
@@ -80,13 +111,13 @@ export function OverviewTabContent({
     listPreviewRows.length > 0
       ? `Appears in ${listCountDisplay} list${listPreviewRows.length === 1 && !listHasMore ? "" : "s"}${listExamples ? ` including ${listExamples}.` : "."}`
       : "Not in any public lists yet.";
-  const scansHref = filmSlug ? `/films/${filmSlug}/images` : undefined;
+  const scansHref = filmSlug ? `/images/film/${filmSlug}` : undefined;
   const reviewsHref = filmSlug ? `/films/${filmSlug}/reviews` : undefined;
   const listsHref = filmSlug ? `/films/${filmSlug}/lists` : undefined;
 
   return (
-    <div className="space-y-14">
-      <div className="min-w-0 space-y-8 md:hidden">
+    <div className="space-y-6">
+      <div className="min-w-0 space-y-6 md:hidden">
         {description ? (
           <section>
             <p className="text-sm leading-relaxed text-foreground">{description}</p>
@@ -101,18 +132,7 @@ export function OverviewTabContent({
 
         {filmSlug && scansHref ? (
           <section aria-labelledby="film-scans-heading-mobile">
-            <Link
-              href={scansHref}
-              className="mb-3 flex items-center justify-between rounded-[7px] py-1 transition-colors hover:text-foreground"
-            >
-              <h3 id="film-scans-heading-mobile" className="text-base font-semibold tracking-tight text-foreground">
-                Scans
-              </h3>
-              <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
-                View all
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </span>
-            </Link>
+            <CarouselViewAllHeader href={scansHref} title="Scans" titleId="film-scans-heading-mobile" />
             <GalleryPreview
               slug={gallerySlug}
               stockName={galleryName}
@@ -127,19 +147,8 @@ export function OverviewTabContent({
         <FilmPerformanceTabContent shootingNotes={shootingNotes} />
 
         {filmSlug && reviewsHref ? (
-          <section aria-labelledby="film-reviews-heading-mobile" className="space-y-3">
-            <Link
-              href={reviewsHref}
-              className="flex items-center justify-between rounded-[7px] py-1 transition-colors hover:text-foreground"
-            >
-              <h3 id="film-reviews-heading-mobile" className="text-base font-semibold tracking-tight text-foreground">
-                Reviews
-              </h3>
-              <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
-                View all
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </span>
-            </Link>
+          <section aria-labelledby="film-reviews-heading-mobile">
+            <CarouselViewAllHeader href={reviewsHref} title="Reviews" titleId="film-reviews-heading-mobile" />
             {reviewsPreview.length > 0 ? (
               <div className="space-y-3">
                 {reviewsPreview.map((review) => {
@@ -147,11 +156,27 @@ export function OverviewTabContent({
                   const previewText = (review.review_text ?? "").replace(/<[^>]*>/g, "").trim();
                   return (
                     <article key={review.id} className="rounded-[7px] border border-border/50 bg-card px-4 py-3">
-                      <p className="text-xs font-medium text-muted-foreground">{name}</p>
-                      {review.rating && review.rating > 0 ? (
-                        <div className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <Star className="h-3.5 w-3.5 fill-primary text-primary" aria-hidden />
-                          <span>{Number(review.rating).toFixed(1)}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="relative size-6 shrink-0 overflow-hidden rounded-full bg-muted">
+                          {review.avatar_url ? (
+                            <Image
+                              src={review.avatar_url}
+                              alt=""
+                              fill
+                              className="object-cover"
+                              sizes="24px"
+                            />
+                          ) : (
+                            <span className="flex h-full w-full items-center justify-center font-sans text-[10px] font-semibold text-muted-foreground">
+                              {authorInitials(name)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="min-w-0 truncate text-xs font-medium text-muted-foreground">{name}</p>
+                      </div>
+                      {review.rating != null && review.rating > 0 ? (
+                        <div className="mt-1">
+                          <ReviewPreviewRatingStars rating={Number(review.rating)} />
                         </div>
                       ) : null}
                       {previewText ? (
@@ -171,24 +196,13 @@ export function OverviewTabContent({
 
         {filmSlug && listsHref ? (
           <section aria-labelledby="film-lists-heading-mobile" className="space-y-2">
-            <Link
-              href={listsHref}
-              className="flex items-center justify-between rounded-[7px] py-1 transition-colors hover:text-foreground"
-            >
-              <h3 id="film-lists-heading-mobile" className="text-base font-semibold tracking-tight text-foreground">
-                Lists
-              </h3>
-              <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
-                View all
-                <ChevronRight className="h-4 w-4" aria-hidden />
-              </span>
-            </Link>
+            <CarouselViewAllHeader href={listsHref} title="Lists" titleId="film-lists-heading-mobile" />
             <p className="text-sm leading-relaxed text-muted-foreground">{listsSummary}</p>
           </section>
         ) : null}
       </div>
 
-      <div className="hidden min-w-0 space-y-8 md:block">
+      <div className="hidden min-w-0 space-y-6 md:block">
         {(description || bestFor.length > 0) && (
           <section>
             {description ? <p className="text-sm leading-relaxed text-foreground">{description}</p> : null}
@@ -204,15 +218,13 @@ export function OverviewTabContent({
         <FilmCharacteristicsTabContent characterScales={characterScales} filmType={filmType} />
         <FilmPerformanceTabContent shootingNotes={shootingNotes} />
 
-        {filmSlug ? (
+        {filmSlug && scansHref ? (
           <section aria-labelledby="film-scans-heading">
-            <div className="mb-3">
-              <div className="flex items-center justify-between">
-                <h3 id="film-scans-heading" className="text-base font-semibold tracking-tight text-foreground">
-                  {stockName ? `Shot on ${stockName}` : "Scans"}
-                </h3>
-              </div>
-            </div>
+            <CarouselViewAllHeader
+              href={scansHref}
+              title={stockName ? `Shot on ${stockName}` : "Scans"}
+              titleId="film-scans-heading"
+            />
             <CommunityGallery
               stockName={galleryName}
               slug={gallerySlug}
@@ -234,30 +246,6 @@ export function OverviewTabContent({
           </section>
         ) : null}
       </div>
-
-      {purchaseLinks.length > 0 && (
-        <section aria-labelledby="overview-buy-heading">
-          <h3 id="overview-buy-heading" className="mb-4 text-base font-semibold tracking-tight text-foreground">
-            {stockName ? `Where to buy ${stockName}` : "Where to buy"}
-          </h3>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {purchaseLinks.map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer sponsored"
-                className="flex items-center gap-3 rounded-[7px] border border-border/50 bg-card px-4 py-3 transition-colors hover:border-primary/30 hover:bg-secondary/30"
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card bg-muted text-muted-foreground">
-                  <ExternalLink className="h-4 w-4" aria-hidden />
-                </span>
-                <p className="min-w-0 truncate text-sm font-medium text-foreground/90">{link.retailer_name}</p>
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

@@ -1,7 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { fetchDisplayNamesByUserIds } from "@/lib/supabase/fetch-display-names-batch";
+import {
+  fetchMemberPublicFieldsByUserIds,
+  type MemberPublicFields,
+} from "@/lib/supabase/fetch-display-names-batch";
 
 export interface FilmReviewRow {
   id: string;
@@ -15,6 +18,8 @@ export interface FilmReviewRow {
   best_for: string[];
   created_at: string;
   display_name?: string | null;
+  /** Public profile image from `profiles.avatar_url` (service-role read where configured). */
+  avatar_url?: string | null;
   like_count: number;
   liked_by_me: boolean;
   /** Image URLs from user_uploads linked via review_id (same submission as the review). */
@@ -34,10 +39,21 @@ type ReviewRowDb = {
   created_at: string;
 };
 
+function profileFieldsForUser(
+  memberByUserId: Map<string, MemberPublicFields>,
+  userId: string
+): { display_name: string | null; avatar_url: string | null } {
+  const m = memberByUserId.get(userId);
+  return {
+    display_name: m?.displayName ?? null,
+    avatar_url: m?.avatarUrl ?? null,
+  };
+}
+
 async function attachReviewLikeData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   rows: ReviewRowDb[],
-  displayNameByUserId: Map<string, string | null>,
+  memberByUserId: Map<string, MemberPublicFields>,
   currentUserId: string | null
 ): Promise<FilmReviewRow[]> {
   if (rows.length === 0) return [];
@@ -51,13 +67,17 @@ async function attachReviewLikeData(
 
   if (likesError) {
     console.error("[reviews] review_likes read:", likesError.message);
-    const base = rows.map((r) => ({
-      ...r,
-      best_for: r.best_for ?? [],
-      display_name: displayNameByUserId.get(r.user_id) ?? null,
-      like_count: 0,
-      liked_by_me: false,
-    }));
+    const base = rows.map((r) => {
+      const { display_name, avatar_url } = profileFieldsForUser(memberByUserId, r.user_id);
+      return {
+        ...r,
+        best_for: r.best_for ?? [],
+        display_name,
+        avatar_url,
+        like_count: 0,
+        liked_by_me: false,
+      };
+    });
     return attachScanUrls(supabase, base);
   }
 
@@ -71,13 +91,17 @@ async function attachReviewLikeData(
     }
   }
 
-  const withLikes = rows.map((r) => ({
-    ...r,
-    best_for: r.best_for ?? [],
-    display_name: displayNameByUserId.get(r.user_id) ?? null,
-    like_count: countByReview.get(r.id) ?? 0,
-    liked_by_me: myLiked.has(r.id),
-  }));
+  const withLikes = rows.map((r) => {
+    const { display_name, avatar_url } = profileFieldsForUser(memberByUserId, r.user_id);
+    return {
+      ...r,
+      best_for: r.best_for ?? [],
+      display_name,
+      avatar_url,
+      like_count: countByReview.get(r.id) ?? 0,
+      liked_by_me: myLiked.has(r.id),
+    };
+  });
   return attachScanUrls(supabase, withLikes);
 }
 
@@ -133,9 +157,9 @@ export async function getReviewsForFilmStock(slug: string): Promise<FilmReviewRo
   if (!rows?.length) return [];
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
+  const memberByUserId = await fetchMemberPublicFieldsByUserIds(userIds);
 
-  return attachReviewLikeData(supabase, rows as ReviewRowDb[], nameByUserId, user?.id ?? null);
+  return attachReviewLikeData(supabase, rows as ReviewRowDb[], memberByUserId, user?.id ?? null);
 }
 
 /** Current user's reviews for a film stock (for "You" tab). */
@@ -157,12 +181,19 @@ export async function getMyReviewsForFilmStock(slug: string): Promise<FilmReview
   }
   if (!rows?.length) return [];
 
-  const displayName =
-    (await supabase.from("profiles").select("display_name").eq("id", user.id).single()).data?.display_name ?? null;
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("display_name, avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const nameByUserId = new Map<string, string | null>([[user.id, displayName]]);
+  const av =
+    typeof prof?.avatar_url === "string" && prof.avatar_url.trim() ? prof.avatar_url.trim() : null;
+  const memberByUserId = new Map<string, MemberPublicFields>([
+    [user.id, { displayName: prof?.display_name ?? null, avatarUrl: av }],
+  ]);
 
-  return attachReviewLikeData(supabase, rows as ReviewRowDb[], nameByUserId, user.id);
+  return attachReviewLikeData(supabase, rows as ReviewRowDb[], memberByUserId, user.id);
 }
 
 /** Reviews for this stock authored only by users the current user follows. */
@@ -200,7 +231,7 @@ export async function getFollowingReviewsForFilmStock(slug: string): Promise<Fil
   if (!rows?.length) return [];
 
   const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
-  const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
+  const memberByUserId = await fetchMemberPublicFieldsByUserIds(userIds);
 
-  return attachReviewLikeData(supabase, rows as ReviewRowDb[], nameByUserId, user.id);
+  return attachReviewLikeData(supabase, rows as ReviewRowDb[], memberByUserId, user.id);
 }

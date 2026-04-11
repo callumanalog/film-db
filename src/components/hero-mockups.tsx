@@ -146,12 +146,32 @@ function MiniStars({ rating, size = 16 }: { rating: number; size?: number }) {
   );
 }
 
-/** Single star + "X.X Avg. rating" (reference-style metadata) */
+/** Five stars (integer part of rating filled) + numeric score */
 function AvgRatingStar({ rating }: { rating: number }) {
+  const filled = Math.min(5, Math.max(0, Math.floor(rating)));
+  const empty = 5 - filled;
   return (
-    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-hidden />
-      <span>{rating.toFixed(1)} Avg. rating</span>
+    <div className="flex items-center gap-1.5">
+      <div
+        className="flex items-center gap-0.5"
+        role="img"
+        aria-label={`${rating.toFixed(1)} average rating out of 5`}
+      >
+        {Array.from({ length: filled }).map((_, i) => (
+          <Star key={`f-${i}`} className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
+        ))}
+        {Array.from({ length: empty }).map((_, i) => (
+          <Star
+            key={`e-${i}`}
+            className="h-4 w-4 shrink-0 fill-none text-border/50"
+            strokeWidth={1.5}
+            aria-hidden
+          />
+        ))}
+      </div>
+      <span className="font-sans text-[13px] font-medium leading-relaxed tabular-nums text-foreground">
+        {rating.toFixed(1)}
+      </span>
     </div>
   );
 }
@@ -566,14 +586,14 @@ export function FilmDetailMobileToolbar({
   return (
     <>
       <div className="w-full min-w-0 bg-background md:hidden">
-        <div className="flex items-start gap-3 py-1">
-          <div className="relative mt-0.5 h-16 w-16 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-card">
-            <FilmImage stock={stock} size={64} width={64} height={64} priority />
+        <div className="flex items-stretch gap-3 py-1">
+          <div className="relative aspect-square min-h-16 min-w-16 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-card">
+            <FilmImage stock={stock} size={128} width={128} height={128} priority />
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center">
             <h1
               ref={titleRef}
-              className="min-w-0 text-left font-sans text-2xl font-bold leading-tight tracking-tight text-foreground"
+              className="min-w-0 text-left font-sans text-2xl font-semibold leading-tight tracking-tight text-foreground"
             >
               {stock.name}
             </h1>
@@ -593,7 +613,7 @@ export function FilmDetailMobileToolbar({
               </span>
             </div>
             {mobileStatsDisplay.avgRating != null ? (
-              <div className="mt-1.5">
+              <div className="mt-3">
                 <AvgRatingStar rating={mobileStatsDisplay.avgRating} />
               </div>
             ) : null}

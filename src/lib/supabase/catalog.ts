@@ -40,6 +40,11 @@ function parseShootingNotes(value: unknown): ShootingNote[] {
 }
 
 function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
+  const rawRelated = row.related_camera_brand_slugs;
+  const related_camera_brand_slugs =
+    Array.isArray(rawRelated) && rawRelated.every((x) => typeof x === "string")
+      ? (rawRelated as string[]).map((s) => s.trim()).filter(Boolean)
+      : null;
   return {
     id: row.id as string,
     name: row.name as string,
@@ -48,6 +53,7 @@ function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
     description: (row.description as string) || null,
     website_url: (row.website_url as string) || null,
     featured: row.featured === true ? true : (row.featured === false ? false : null),
+    related_camera_brand_slugs: related_camera_brand_slugs?.length ? related_camera_brand_slugs : null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };

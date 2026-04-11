@@ -53,8 +53,6 @@ export function BottomNav() {
   const router = useRouter();
 
   const [pendingPath, setPendingPath] = useState<string | null>(null);
-  /** Pixels to lift `fixed` nav so it stays in the visual viewport above the on-screen keyboard. */
-  const [visualBottomInset, setVisualBottomInset] = useState(0);
   const resolvedActive = getActiveHref(pathname);
   const activeHref = pendingPath ?? resolvedActive;
 
@@ -63,26 +61,6 @@ export function BottomNav() {
       setPendingPath(null);
     }
   }, [pendingPath, resolvedActive]);
-
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const sync = () => {
-      const gap = window.innerHeight - vv.offsetTop - vv.height;
-      setVisualBottomInset(Math.max(0, Math.round(gap)));
-    };
-
-    sync();
-    vv.addEventListener("resize", sync);
-    vv.addEventListener("scroll", sync);
-    window.addEventListener("resize", sync);
-    return () => {
-      vv.removeEventListener("resize", sync);
-      vv.removeEventListener("scroll", sync);
-      window.removeEventListener("resize", sync);
-    };
-  }, []);
 
   const handlePlus = () => {
     const filmSlug = getFilmSlug(pathname);
@@ -106,12 +84,9 @@ export function BottomNav() {
 
   return (
     <nav
-      className="capacitor-safe-bottom fixed left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="capacitor-safe-bottom fixed bottom-0 left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
       aria-label="Bottom navigation"
-      style={{
-        bottom: visualBottomInset,
-        minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))",
-      }}
+      style={{ minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
     >
       {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = href === activeHref;

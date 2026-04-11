@@ -31,12 +31,12 @@ const TRENDING_STOCKS: SearchStocksResult[] = [
 
 /** Hardcoded trending brands for instant load (no fetch). */
 const TRENDING_BRANDS: SearchBrandsResult[] = [
-  { slug: "kodak", name: "Kodak", subMeta: "Brand" },
-  { slug: "fujifilm", name: "Fujifilm", subMeta: "Brand" },
-  { slug: "cinestill", name: "CineStill", subMeta: "Brand" },
-  { slug: "ilford", name: "Ilford", subMeta: "Brand" },
-  { slug: "harman", name: "Harman", subMeta: "Brand" },
-  { slug: "kentmere", name: "Kentmere", subMeta: "Brand" },
+  { slug: "kodak", name: "Kodak", subMeta: "Brand", kind: "catalog" },
+  { slug: "fujifilm", name: "Fujifilm", subMeta: "Brand", kind: "catalog" },
+  { slug: "cinestill", name: "CineStill", subMeta: "Brand", kind: "catalog" },
+  { slug: "ilford", name: "Ilford", subMeta: "Brand", kind: "catalog" },
+  { slug: "harman", name: "Harman", subMeta: "Brand", kind: "catalog" },
+  { slug: "kentmere", name: "Kentmere", subMeta: "Brand", kind: "catalog" },
 ];
 
 export function MobileSearchEmptyState() {

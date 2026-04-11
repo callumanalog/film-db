@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import { getBrands, getFilmStocksByBrand } from "@/lib/supabase/queries";
 import { ArrowRight, Globe } from "lucide-react";
@@ -35,8 +36,18 @@ export default async function BrandsPage() {
             className="group rounded-[7px] border border-border/50 bg-card p-6 transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
           >
             <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-secondary text-xl font-bold text-foreground transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                {brand.name.charAt(0)}
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/50 bg-secondary text-xl font-bold text-foreground transition-colors group-hover:border-primary/30">
+                {brand.logo_url ? (
+                  <Image
+                    src={brand.logo_url}
+                    alt=""
+                    fill
+                    className="object-contain p-1.5"
+                    sizes="56px"
+                  />
+                ) : (
+                  <span aria-hidden>{brand.name.charAt(0)}</span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">

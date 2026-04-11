@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Camera } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { FlickrPhoto } from "@/lib/flickr";
 import {
   getUploadsForFilmStock,
@@ -10,7 +9,10 @@ import {
   type FilmUploadRow,
 } from "@/app/actions/uploads";
 import { plainTextFromPossibleHtml } from "@/lib/sanitize-review-like-html";
-import { LazyImage } from "@/components/lazy-image";
+import {
+  DiscoverRailStrip,
+  type DiscoverRailCarouselItem,
+} from "@/components/discover-rail-carousel";
 import {
   FilmNativeMasonryGrid,
   type FilmNativeMasonryItem,
@@ -42,6 +44,8 @@ type PreviewImage = {
   imageUrl: string;
   alt: string;
   username?: string;
+  /** Set for community uploads — used for discover-rail profile links. */
+  userId?: string;
   lightbox: ImageLightboxData;
 };
 
@@ -60,6 +64,28 @@ export function GalleryPreview({
     slides: ImageLightboxData[];
     initialIndex: number;
   } | null>(null);
+  const [imageDimensionsById, setImageDimensionsById] = useState<
+    Record<string, { width: number; height: number }>
+  >({});
+
+  useEffect(() => {
+    setImageDimensionsById({});
+  }, [slug]);
+
+  useEffect(() => {
+    setImageDimensionsById((prev) => {
+      const next = { ...prev };
+      for (const u of uploads) {
+        if (next[u.id]) continue;
+        const w = u.image_width;
+        const h = u.image_height;
+        if (w != null && h != null && w > 0 && h > 0) {
+          next[u.id] = { width: w, height: h };
+        }
+      }
+      return next;
+    });
+  }, [uploads]);
 
   useEffect(() => {
     if (!slug) {
@@ -132,6 +158,14 @@ export function GalleryPreview({
     [uploads, flickrImages, stockName, slug, lightboxStockSummary]
   );
 
+  const handleRailImageLoad = useCallback((id: string, width: number, height: number) => {
+    setImageDimensionsById((prev) => {
+      const current = prev[id];
+      if (current && current.width === width && current.height === height) return prev;
+      return { ...prev, [id]: { width, height } };
+    });
+  }, []);
+
   const masonryItems: FilmNativeMasonryItem[] = useMemo(() => {
     const items: FilmNativeMasonryItem[] = [];
     for (const u of uploads) {
@@ -174,72 +208,90 @@ export function GalleryPreview({
     return items;
   }, [uploads, flickrImages, galleryHref, scansView, slug, stockName, lightboxStockSummary]);
 
-  const images: PreviewImage[] = [];
-
-  for (const u of uploads) {
-    if (images.length >= PREVIEW_COUNT) break;
-    if (!u.image_url?.trim()) continue;
-    images.push({
-      id: u.id,
-      imageUrl: u.image_url!,
-      alt: plainTextFromPossibleHtml(u.caption ?? ""),
-      username: u.display_name ?? undefined,
-      lightbox: {
+  const images: PreviewImage[] = useMemo(() => {
+    const out: PreviewImage[] = [];
+    for (const u of uploads) {
+      if (out.length >= PREVIEW_COUNT) break;
+      if (!u.image_url?.trim()) continue;
+      out.push({
+        id: u.id,
         imageUrl: u.image_url!,
-        uploadId: u.id,
+        alt: plainTextFromPossibleHtml(u.caption ?? ""),
+        username: u.display_name ?? undefined,
         userId: u.user_id,
-        alt:
-          plainTextFromPossibleHtml(u.caption ?? "").slice(0, 240) ||
-          `${stockName} · ${u.display_name ?? "Member"}`,
-        caption: u.caption,
-        username: u.display_name?.trim() || "Member",
-        location: u.location?.trim() || null,
-        createdAt: u.created_at ?? null,
-        context: { label: stockName, href: `/films/${slug}` },
-        stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
-        metadata: {
-          camera: u.camera,
-          shot_iso: u.shot_iso,
-          lens: u.lens,
-          lab: u.lab,
-          scanner: u.scanner,
-          push_pull: u.push_pull,
+        lightbox: {
+          imageUrl: u.image_url!,
+          uploadId: u.id,
+          userId: u.user_id,
+          alt:
+            plainTextFromPossibleHtml(u.caption ?? "").slice(0, 240) ||
+            `${stockName} · ${u.display_name ?? "Member"}`,
+          caption: u.caption,
+          username: u.display_name?.trim() || "Member",
+          location: u.location?.trim() || null,
+          createdAt: u.created_at ?? null,
+          context: { label: stockName, href: `/films/${slug}` },
+          stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
+          metadata: {
+            camera: u.camera,
+            shot_iso: u.shot_iso,
+            lens: u.lens,
+            lab: u.lab,
+            scanner: u.scanner,
+            push_pull: u.push_pull,
+          },
         },
-      },
-    });
-  }
+      });
+    }
 
-  for (const f of flickrImages) {
-    if (images.length >= PREVIEW_COUNT) break;
-    images.push({
-      id: f.id,
-      imageUrl: f.imageUrl,
-      alt: f.title || "",
-      username: f.ownerName,
-      lightbox: {
+    for (const f of flickrImages) {
+      if (out.length >= PREVIEW_COUNT) break;
+      out.push({
+        id: f.id,
         imageUrl: f.imageUrl,
-        alt: f.title || `${stockName} on Flickr`,
-        caption: f.title?.trim() || null,
+        alt: f.title || "",
         username: f.ownerName,
-        context: { label: stockName, href: `/films/${slug}` },
-        stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
-      },
-    });
-  }
+        lightbox: {
+          imageUrl: f.imageUrl,
+          alt: f.title || `${stockName} on Flickr`,
+          caption: f.title?.trim() || null,
+          username: f.ownerName,
+          context: { label: stockName, href: `/films/${slug}` },
+          stockCard: buildLightboxStockCard(slug, stockName, lightboxStockSummary),
+        },
+      });
+    }
+    return out;
+  }, [uploads, flickrImages, stockName, slug, lightboxStockSummary]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const railItems: DiscoverRailCarouselItem[] = useMemo(
+    () =>
+      images.map((img) => ({
+        id: img.id,
+        imageUrl: img.imageUrl,
+        imageAlt: img.alt?.trim() ? img.alt : stockName,
+        username: img.username ?? null,
+        userId: img.userId ?? null,
+      })),
+    [images, stockName]
+  );
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const scrollLeft = el.scrollLeft;
-    const childWidth = el.firstElementChild
-      ? (el.firstElementChild as HTMLElement).offsetWidth
-      : 1;
-    const index = Math.round(scrollLeft / childWidth);
-    setActiveIndex(Math.min(index, images.length - 1));
-  }, [images.length]);
+  const handleRailOpen = useCallback(
+    (id: string) => {
+      const u = uploads.find((x) => x.id === id);
+      if (u) {
+        setLightboxSession(
+          collectLightboxSlidesFromFilmUploads(uploads, u, stockName, slug, lightboxStockSummary)
+        );
+        return;
+      }
+      const img = images.find((x) => x.id === id);
+      if (img) {
+        setLightboxSession({ slides: [img.lightbox], initialIndex: 0 });
+      }
+    },
+    [uploads, images, stockName, slug, lightboxStockSummary]
+  );
 
   if (loading) {
     if (layout === "masonry") {
@@ -265,11 +317,14 @@ export function GalleryPreview({
       );
     }
     return (
-      <div className="space-y-3">
-        <div className="aspect-[3/2] animate-pulse rounded-[7px] bg-muted" />
-        <div className="flex justify-center gap-1.5">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-1.5 w-1.5 rounded-full bg-muted" />
+      <div className="-mx-4 overflow-hidden">
+        <div className="flex gap-2 overflow-x-hidden px-4 pb-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-[180px] w-[135px] shrink-0 animate-pulse bg-muted sm:h-[260px] sm:w-[195px] lg:h-[300px] lg:w-[225px]"
+              aria-hidden
+            />
           ))}
         </div>
       </div>
@@ -324,63 +379,23 @@ export function GalleryPreview({
             onPickRelatedStock={handlePickRelatedStock}
           />
         ) : null}
-
-        <UploadCTA stockName={stockName} />
       </div>
     );
   }
 
   if (images.length === 0) {
-    return <UploadCTA stockName={stockName} />;
+    return null;
   }
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto scrollbar-hide"
-        >
-          {images.map((img) => (
-            <div
-              key={img.id}
-              className="w-full shrink-0 snap-start"
-            >
-              <button
-                type="button"
-                className="aspect-[3/2] w-full cursor-zoom-in overflow-hidden rounded-[7px] border-0 p-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                onClick={() =>
-                  setLightboxSession({ slides: [img.lightbox], initialIndex: 0 })
-                }
-                aria-label={`View scan: ${img.alt || stockName}`}
-              >
-                <LazyImage
-                  src={img.imageUrl}
-                  alt={img.alt}
-                  fill
-                  wrapperClassName="h-full w-full min-h-0"
-                  className="object-cover"
-                  sizes="100vw"
-                />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {images.length > 1 && (
-          <div className="absolute inset-x-0 bottom-2.5 flex justify-center gap-1.5">
-            {images.map((img, i) => (
-              <span
-                key={img.id}
-                className={`block h-1.5 rounded-full transition-all ${
-                  i === activeIndex ? "w-4 bg-white" : "w-1.5 bg-white/40"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      <DiscoverRailStrip
+        items={railItems}
+        imageDimensionsById={imageDimensionsById}
+        onImageLoad={handleRailImageLoad}
+        onOpenItem={handleRailOpen}
+        bleedX
+      />
 
       {lightboxSession ? (
         <ImageLightbox
@@ -391,20 +406,6 @@ export function GalleryPreview({
           onPickRelatedStock={handlePickRelatedStock}
         />
       ) : null}
-
-      <UploadCTA stockName={stockName} />
     </div>
-  );
-}
-
-function UploadCTA({ stockName }: { stockName: string }) {
-  return (
-    <button
-      type="button"
-      className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 text-sm font-medium text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors hover:bg-muted/50 hover:text-primary dark:border-border dark:shadow-none"
-    >
-      <Camera className="size-5 shrink-0" aria-hidden />
-      Add your own scans
-    </button>
   );
 }

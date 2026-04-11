@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Camera as CameraIcon, Loader2 } from "lucide-react";
+import { Aperture, Camera as CameraIcon, Loader2 } from "lucide-react";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import {
   collectLightboxSlidesFromGalleryImages,
@@ -16,19 +15,22 @@ import { FilmStockSummaryRow } from "@/components/film-stock-list-card";
 import {
   getDiscoverSearchPayload,
   type DiscoverSearchPayload,
+  type SearchBrandsResult,
   type SearchCamerasResult,
   type SearchShotsResult,
   type SearchStocksResult,
   type SearchUsersResult,
 } from "@/app/actions/search";
 import { shareRollPickerSectionLabelClassName } from "@/components/share-roll-picker-primitives";
-import { FILM_TYPE_LABELS, type FilmType } from "@/lib/types";
+import { brandCatalogMatchRank, matchRank } from "@/lib/search-entity-match-rank";
+import {
+  DiscoverRailCarousel,
+  DiscoverRailCell,
+  discoverRailFrameWidth,
+  useDiscoverRailHeight,
+} from "@/components/discover-rail-carousel";
 
 const DEBOUNCE_MS = 300;
-const RAIL_HEIGHT_MOBILE = 180;
-const RAIL_HEIGHT_TABLET = 260;
-const RAIL_HEIGHT_DESKTOP = 300;
-const FALLBACK_ASPECT_RATIO = 3 / 4;
 
 export interface SearchPageClientProps {
   carousels: {
@@ -40,25 +42,16 @@ export interface SearchPageClientProps {
 type TypingMixedRow =
   | { key: string; kind: "stock"; name: string; href: string; imageUrl: string | null; brandInitial: string; specLine: string; scanCount: number }
   | { key: string; kind: "camera"; name: string; href: string; specLine: "CAMERA"; scanCount: number }
+  | { key: string; kind: "brand"; name: string; href: string; specLine: "BRAND"; scanCount: number }
   | { key: string; kind: "user"; name: string; href: string; initial: string; specLine: "USER" };
 
-function toUpperTypeLabel(type?: string): string {
-  if (!type) return "UNKNOWN";
-  return (FILM_TYPE_LABELS[type as FilmType] ?? "Unknown").toUpperCase();
+function stockSpecLine(): string {
+  return "Film stock";
 }
 
-function stockSpecLine(stock: SearchStocksResult): string {
-  return `FILM STOCK | ${toUpperTypeLabel(stock.type)}`;
-}
-
-function rowNameMatchRank(name: string, query: string): number {
-  const n = name.trim().toLowerCase();
-  const q = query.trim().toLowerCase();
-  if (!q) return 3;
-  if (n === q) return 0;
-  if (n.startsWith(q)) return 1;
-  if (n.includes(q)) return 2;
-  return 3;
+function typingRowMatchRank(row: TypingMixedRow, query: string): number {
+  if (row.kind === "brand") return brandCatalogMatchRank(row.name, query);
+  return matchRank(row.name, query);
 }
 
 function cleanCameraName(camera: SearchCamerasResult): string {
@@ -82,7 +75,7 @@ function StockSearchRow({ stock }: { stock: SearchStocksResult }) {
         name={stock.name}
         imageUrl={stock.imageUrl}
         brandInitial={stock.brandName?.charAt(0)}
-        specLine={stockSpecLine(stock)}
+        specLine={stockSpecLine()}
         showDivider={false}
       />
     </Link>
@@ -129,34 +122,6 @@ function UserSearchRow({ user }: { user: SearchUsersResult }) {
       />
     </Link>
   );
-}
-
-function useResponsiveRailHeight(): number {
-  const [railHeight, setRailHeight] = useState<number>(RAIL_HEIGHT_MOBILE);
-
-  useEffect(() => {
-    const getHeight = () => {
-      if (window.innerWidth >= 1024) return RAIL_HEIGHT_DESKTOP;
-      if (window.innerWidth >= 640) return RAIL_HEIGHT_TABLET;
-      return RAIL_HEIGHT_MOBILE;
-    };
-    const onResize = () => setRailHeight(getHeight());
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  return railHeight;
-}
-
-function frameWidthFromDimensions(
-  dimensions: { width: number; height: number } | undefined,
-  frameHeight: number,
-): number {
-  if (dimensions && dimensions.width > 0 && dimensions.height > 0) {
-    return (dimensions.width / dimensions.height) * frameHeight;
-  }
-  return FALLBACK_ASPECT_RATIO * frameHeight;
 }
 
 function shotToGalleryImage(shot: SearchShotsResult): GalleryImage | null {
@@ -208,103 +173,6 @@ function shotToGalleryImage(shot: SearchShotsResult): GalleryImage | null {
   };
 }
 
-function RailShotCell({
-  shot,
-  frameHeight,
-  frameWidth,
-  onImageLoad,
-  onOpenLightbox,
-  priority = false,
-}: {
-  shot: SearchShotsResult;
-  frameHeight: number;
-  frameWidth: number;
-  onImageLoad: (shotId: string, width: number, height: number) => void;
-  onOpenLightbox: () => void;
-  priority?: boolean;
-}) {
-  if (!shot.imageUrl) {
-    return (
-      <div
-        className="block overflow-hidden bg-card"
-        style={{ width: `${Math.round(frameWidth)}px`, height: `${frameHeight}px` }}
-      />
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onOpenLightbox}
-      className="block overflow-hidden bg-card"
-      style={{ width: `${Math.round(frameWidth)}px`, height: `${frameHeight}px` }}
-    >
-      <div className="relative h-full w-full overflow-hidden bg-slate-100">
-        <Image
-          src={shot.imageUrl}
-          alt={shot.stockName}
-          width={Math.max(1, Math.round(frameWidth))}
-          height={Math.max(1, frameHeight)}
-          sizes={`${Math.max(1, Math.round(frameWidth))}px`}
-          priority={priority}
-          className="h-full w-full"
-          onLoad={(event) => {
-            const target = event.currentTarget;
-            if (target.naturalWidth > 0 && target.naturalHeight > 0) {
-              onImageLoad(shot.id, target.naturalWidth, target.naturalHeight);
-            }
-          }}
-        />
-      </div>
-    </button>
-  );
-}
-
-function DiscoverCarousel({
-  title,
-  shots,
-  railHeight,
-  imageDimensionsById,
-  onImageLoad,
-  onOpenShotLightbox,
-}: {
-  title: string;
-  shots: SearchShotsResult[];
-  railHeight: number;
-  imageDimensionsById: Record<string, { width: number; height: number }>;
-  onImageLoad: (shotId: string, width: number, height: number) => void;
-  onOpenShotLightbox: (shots: SearchShotsResult[], shotId: string) => void;
-}) {
-  if (shots.length === 0) return null;
-  return (
-    <section className="pt-4" aria-label={title}>
-      <h2 className="mb-3 font-sans text-base font-semibold text-foreground">{title}</h2>
-      <div className="-mx-4 overflow-hidden">
-        <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-1">
-          {shots.map((shot, index) => (
-            <article key={shot.id} className="shrink-0">
-              <RailShotCell
-                shot={shot}
-                frameHeight={railHeight}
-                frameWidth={frameWidthFromDimensions(imageDimensionsById[shot.id], railHeight)}
-                onImageLoad={onImageLoad}
-                onOpenLightbox={() => onOpenShotLightbox(shots, shot.id)}
-                priority={index < 4}
-              />
-              <Link
-                href={`/users/${shot.userId}`}
-                className="mt-1.5 block truncate text-xs font-medium leading-tight text-foreground hover:underline"
-              >
-                {shot.username}
-              </Link>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function TypingSection<T>({
   title,
   items,
@@ -338,7 +206,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
     galleryImages: GalleryImage[];
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const railHeight = useResponsiveRailHeight();
+  const railHeight = useDiscoverRailHeight();
 
   const handleShotImageLoad = (shotId: string, width: number, height: number) => {
     setImageDimensionsById((prev) => {
@@ -408,7 +276,8 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
       activePayload.results.stocks.length > 0 ||
       activePayload.results.cameras.length > 0 ||
       activePayload.results.users.length > 0 ||
-      activePayload.results.shots.length > 0
+      activePayload.results.shots.length > 0 ||
+      activePayload.results.brands.length > 0
     );
   }, [activePayload]);
 
@@ -422,7 +291,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
         href: `/films/${stock.slug}`,
         imageUrl: stock.imageUrl ?? null,
         brandInitial: stock.brandName?.charAt(0) ?? "?",
-        specLine: stockSpecLine(stock),
+        specLine: stockSpecLine(),
         scanCount: stock.scanCount ?? 0,
       })),
       ...(activePayload.typing.cameras ?? []).map((camera) => ({
@@ -444,16 +313,27 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
           specLine: "USER" as const,
         };
       }),
+      ...(activePayload.typing.brands ?? []).map((b) => ({
+        key: `${b.kind ?? "catalog"}-brand-${b.slug}`,
+        kind: "brand" as const,
+        name: b.name,
+        href:
+          b.kind === "cameras_only"
+            ? `/cameras?brand=${encodeURIComponent(b.slug)}`
+            : `/brands/${b.slug}`,
+        specLine: "BRAND" as const,
+        scanCount: b.scanCount ?? 0,
+      })),
     ];
     const query = debouncedQuery.trim();
     return rows.sort((a, b) => {
-      // Intermix stocks and cameras by scan volume.
+      const rankDiff = typingRowMatchRank(a, query) - typingRowMatchRank(b, query);
+      if (rankDiff !== 0) return rankDiff;
+
       const aScan = a.kind === "user" ? -1 : a.scanCount;
       const bScan = b.kind === "user" ? -1 : b.scanCount;
       if (bScan !== aScan) return bScan - aScan;
 
-      const rankDiff = rowNameMatchRank(a.name, query) - rowNameMatchRank(b.name, query);
-      if (rankDiff !== 0) return rankDiff;
       return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
     });
   }, [activePayload, debouncedQuery]);
@@ -489,21 +369,35 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
 
         {mode === "default" ? (
           <div className="pt-2">
-            <DiscoverCarousel
+            <DiscoverRailCarousel
               title="Shot on Kodak Gold 200"
-              shots={carousels.gold200}
-              railHeight={railHeight}
+              headerHref="/images/film/kodak-gold-200"
+              headerTitleId="discover-rail-kodak-gold-200-heading"
+              items={carousels.gold200.map((s) => ({
+                id: s.id,
+                imageUrl: s.imageUrl,
+                imageAlt: s.stockName,
+                username: s.username,
+                userId: s.userId,
+              }))}
               imageDimensionsById={imageDimensionsById}
               onImageLoad={handleShotImageLoad}
-              onOpenShotLightbox={openShotLightbox}
+              onOpenItem={(id) => openShotLightbox(carousels.gold200, id)}
             />
-            <DiscoverCarousel
+            <DiscoverRailCarousel
               title="Shot on Portra 400"
-              shots={carousels.portra400}
-              railHeight={railHeight}
+              headerHref="/images/film/kodak-portra-400"
+              headerTitleId="discover-rail-kodak-portra-400-heading"
+              items={carousels.portra400.map((s) => ({
+                id: s.id,
+                imageUrl: s.imageUrl,
+                imageAlt: s.stockName,
+                username: s.username,
+                userId: s.userId,
+              }))}
               imageDimensionsById={imageDimensionsById}
               onImageLoad={handleShotImageLoad}
-              onOpenShotLightbox={openShotLightbox}
+              onOpenItem={(id) => openShotLightbox(carousels.portra400, id)}
             />
           </div>
         ) : mode === "typing" ? (
@@ -552,6 +446,26 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
                       </Link>
                     );
                   }
+                  if (row.kind === "brand") {
+                    return (
+                      <Link
+                        key={row.key}
+                        href={row.href}
+                        className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                      >
+                        <FilmStockSummaryRow
+                          name={row.name}
+                          specLine={row.specLine}
+                          showDivider={false}
+                          customThumb={
+                            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                              <Aperture className="h-5 w-5" aria-hidden />
+                            </div>
+                          }
+                        />
+                      </Link>
+                    );
+                  }
                   return (
                     <Link
                       key={row.key}
@@ -589,7 +503,9 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
                         ? activePayload.bestResult.value.display_name ?? "Member"
                         : activePayload.bestResult.type === "shot"
                           ? activePayload.bestResult.value.stockName
-                          : activePayload.bestResult.value.title}
+                          : activePayload.bestResult.type === "brand"
+                            ? activePayload.bestResult.value.name
+                            : activePayload.bestResult.value.title}
                 </p>
               </section>
             ) : null}
@@ -607,12 +523,16 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
                   <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-1">
                     {activePayload.results.shots.map((shot) => (
                       <div key={shot.id} className="shrink-0">
-                        <RailShotCell
-                          shot={shot}
+                        <DiscoverRailCell
+                          item={{
+                            id: shot.id,
+                            imageUrl: shot.imageUrl,
+                            imageAlt: shot.stockName,
+                          }}
                           frameHeight={railHeight}
-                          frameWidth={frameWidthFromDimensions(imageDimensionsById[shot.id], railHeight)}
+                          frameWidth={discoverRailFrameWidth(imageDimensionsById[shot.id], railHeight)}
                           onImageLoad={handleShotImageLoad}
-                          onOpenLightbox={() => openShotLightbox(activePayload.results.shots, shot.id)}
+                          onOpen={() => openShotLightbox(activePayload.results.shots, shot.id)}
                         />
                       </div>
                     ))}
@@ -633,6 +553,32 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
               items={activePayload?.results.cameras ?? []}
               render={(camera) => (
                 <CameraSearchRow key={camera.slug} camera={camera} />
+              )}
+            />
+            <TypingSection<SearchBrandsResult>
+              title="Brands"
+              items={activePayload?.results.brands ?? []}
+              render={(b) => (
+                <Link
+                  key={`${b.kind ?? "catalog"}-${b.slug}`}
+                  href={
+                    b.kind === "cameras_only"
+                      ? `/cameras?brand=${encodeURIComponent(b.slug)}`
+                      : `/brands/${b.slug}`
+                  }
+                  className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                >
+                  <FilmStockSummaryRow
+                    name={b.name}
+                    specLine="BRAND"
+                    showDivider={false}
+                    customThumb={
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <Aperture className="h-5 w-5" aria-hidden />
+                      </div>
+                    }
+                  />
+                </Link>
               )}
             />
             <TypingSection<SearchUsersResult>

@@ -12,6 +12,7 @@ import {
   topLeftNavIconTouchClassName,
 } from "@/lib/top-left-nav-icon";
 import { cn } from "@/lib/utils";
+import { mobileHeaderSafeAreaStyle } from "@/lib/mobile-header";
 import { isStockListFormFullscreenPath } from "@/lib/stock-list-form-route";
 import { useAuth } from "@/context/auth-context";
 import { useMobileHeaderTitle } from "@/context/mobile-header-title-context";
@@ -167,15 +168,7 @@ export function Header() {
               )
             : "bg-background/80 backdrop-blur-xl"
       )}
-      style={
-        isFilmHero
-          ? {
-              paddingTop: isImageFilmRoute
-                ? "max(0.5rem, env(safe-area-inset-top, 0px))"
-                : "env(safe-area-inset-top, 0px)",
-            }
-          : undefined
-      }
+      style={isFilmHero ? mobileHeaderSafeAreaStyle : undefined}
     >
       {/* Film hero integrated header: mobile only — compact title appears when in-page title scrolls out of view */}
       {isFilmHero && (

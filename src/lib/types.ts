@@ -222,6 +222,8 @@ export interface FilmBrand {
   website_url: string | null;
   /** When true, brand appears in mobile search Trending brands. */
   featured?: boolean | null;
+  /** Camera catalog brand slugs for `/cameras?brand=…` when set; else see `film-brand-camera-brand-slugs` defaults. */
+  related_camera_brand_slugs?: string[] | null;
   created_at: string;
   updated_at: string;
 }

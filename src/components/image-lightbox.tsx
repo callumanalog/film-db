@@ -1050,7 +1050,7 @@ export function ImageLightbox({
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
+              <div className="flex items-center justify-between gap-2 px-4 pt-1 pb-2">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                   {profileHref ? (
                     <Link
@@ -1068,48 +1068,48 @@ export function ImageLightbox({
                     <Link
                       href={profileHref}
                       onClick={onClose}
-                      className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
+                      className="inline-flex min-h-[44px] min-w-0 max-w-full items-center truncate text-[14px] font-medium leading-tight text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
                     >
                       {name}
                     </Link>
                   ) : (
-                    <span className="min-w-0 truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+                    <span className="inline-flex min-h-[44px] min-w-0 max-w-full items-center truncate text-[14px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
                       {name}
                     </span>
                   )}
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5">
-                  <span className="flex items-center">
+                <div className="-mr-2.5 flex shrink-0 items-center gap-0.5">
+                  <div className="mr-2 inline-flex items-center">
                     <button
                       type="button"
                       disabled={!currentUploadId || likePending}
                       onClick={() => void handleLikeClick()}
-                      className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
+                      className="rounded-full p-2.5 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
                       aria-label={isLiked ? "Unlike" : "Like"}
                       aria-pressed={isLiked}
                     >
                       <Heart
-                        className={`h-5 w-5 stroke-[1.5] ${isLiked ? "fill-black text-black dark:fill-white dark:text-white" : ""}`}
+                        className={`h-6 w-6 stroke-[1.5] ${isLiked ? "fill-black text-black dark:fill-white dark:text-white" : ""}`}
                       />
                     </button>
                     {currentUploadId && displayLikes > 0 ? (
                       <button
                         type="button"
                         onClick={() => openLikesSheet(currentUploadId)}
-                        className="-ml-0.5 pr-0.5 text-left text-xs font-medium tabular-nums text-neutral-800 dark:text-neutral-100"
+                        className="-ml-0.5 inline-flex items-center pr-0.5 text-left text-[14px] font-medium leading-tight tabular-nums text-neutral-900 outline-none ring-offset-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-primary dark:text-neutral-100"
                         aria-label={`${displayLikes.toLocaleString()} likes, view list`}
                       >
                         {displayLikes.toLocaleString()}
                       </button>
                     ) : null}
-                  </span>
+                  </div>
                   <span className="flex items-center">
                     <button
                       type="button"
-                      className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
+                      className="rounded-full p-2.5 text-neutral-800 hover:bg-neutral-100 dark:text-neutral-100 dark:hover:bg-white/10"
                       aria-label="Comment"
                     >
-                      <MessageCircle className="h-5 w-5 stroke-[1.5]" />
+                      <MessageCircle className="h-6 w-6 stroke-[1.5]" />
                     </button>
                     {comments != null ? (
                       <span className="-ml-0.5 pr-0.5 text-xs font-normal tabular-nums text-neutral-600 dark:text-neutral-300">
@@ -1121,11 +1121,11 @@ export function ImageLightbox({
                     type="button"
                     disabled={!canSave || savePending}
                     onClick={() => void handleSaveClick()}
-                    className="rounded-full p-2 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
+                    className="rounded-full p-2.5 text-neutral-800 hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-35 dark:text-neutral-100 dark:hover:bg-white/10 dark:disabled:opacity-35"
                     aria-label={isSaved ? "Remove from saved" : "Save"}
                     aria-pressed={isSaved}
                   >
-                    <Bookmark className={`h-5 w-5 stroke-[1.5] ${isSaved ? "fill-current" : ""}`} />
+                    <Bookmark className={`h-6 w-6 stroke-[1.5] ${isSaved ? "fill-current" : ""}`} />
                   </button>
                 </div>
               </div>
@@ -1166,14 +1166,14 @@ export function ImageLightbox({
                     </div>
                   ) : null}
                   {showUnderCaptionTags ? (
-                    <p className="break-words text-[13px] font-medium leading-tight text-muted-foreground">
+                    <p className="break-words text-[12px] font-medium leading-tight text-muted-foreground">
                       {captionTagsValue}
                     </p>
                   ) : null}
                   {showUnderCaptionMeta ? (
-                    <div className="flex min-w-0 items-center gap-1 text-[13px] font-normal text-muted-foreground">
+                    <div className="flex min-w-0 items-center gap-1 text-[12px] font-normal text-muted-foreground">
                       {locationValue ? <span className="min-w-0 truncate">{locationValue}</span> : null}
-                      {locationValue && captionMetaDate ? <span aria-hidden>|</span> : null}
+                      {locationValue && captionMetaDate ? <span aria-hidden>·</span> : null}
                       {captionMetaDate ? <span className="min-w-0 truncate">{captionMetaDate}</span> : null}
                     </div>
                   ) : null}
@@ -1221,8 +1221,8 @@ export function ImageLightbox({
                                 {filmStockName}
                               </p>
                               {filmStockDetailParts.length > 0 ? (
-                                <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
-                                  {filmStockDetailParts.join(" | ")}
+                                <p className="mt-1 min-w-0 truncate text-[12px] font-normal text-muted-foreground">
+                                  {filmStockDetailParts.join(" · ")}
                                 </p>
                               ) : null}
                             </div>
@@ -1246,7 +1246,7 @@ export function ImageLightbox({
                                 {cameraValue}
                               </p>
                               {lensValue ? (
-                                <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
+                                <p className="mt-1 min-w-0 truncate text-[12px] font-normal text-muted-foreground">
                                   {lensValue}
                                 </p>
                               ) : null}
@@ -1269,7 +1269,7 @@ export function ImageLightbox({
                                 {labValue ? filmLabPublicLabel(labValue) : scannerValue}
                               </p>
                               {labValue && scannerValue ? (
-                                <p className="mt-1 min-w-0 truncate text-[13px] font-normal text-muted-foreground">
+                                <p className="mt-1 min-w-0 truncate text-[12px] font-normal text-muted-foreground">
                                   {scannerValue}
                                 </p>
                               ) : null}
@@ -1287,7 +1287,7 @@ export function ImageLightbox({
                             <div className={lightboxMetaRowIconSlot}>
                               <Gauge className={lightboxMetaLeadingIconClass} aria-hidden />
                             </div>
-                            <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
+                            <span className="min-w-0 flex-1 truncate text-left text-[12px] font-normal text-muted-foreground">
                               {pushPullValue}
                             </span>
                           </div>
@@ -1303,8 +1303,8 @@ export function ImageLightbox({
                             <div className={lightboxMetaRowIconSlot}>
                               <Aperture className={lightboxMetaLeadingIconClass} aria-hidden />
                             </div>
-                            <span className="min-w-0 flex-1 truncate text-left text-[13px] font-normal text-muted-foreground">
-                              {lensIsoFormatParts.join(" | ")}
+                            <span className="min-w-0 flex-1 truncate text-left text-[12px] font-normal text-muted-foreground">
+                              {lensIsoFormatParts.join(" · ")}
                             </span>
                           </div>
                         ) : null}
