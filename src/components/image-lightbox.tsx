@@ -137,12 +137,12 @@ const lightboxMetaRowIconSlot = "flex h-10 w-10 shrink-0 items-center justify-ce
 /** Row layout: center text block with lead column when thumb/icons are tall. */
 const lightboxMetadataRowFlexClass = "flex min-h-11 items-center gap-2";
 
-/** Caption / title inset: `pl-12` (48px) + sheet `px-4` (16px) = 64px text start — matches `px-4` + 40px thumb + `gap-2` on film row. */
-const lightboxCaptionTextInsetClass = "pl-12";
+/** Caption / title: `-ml-2.5` pulls copy toward the left edge like action icons on the right; `pl-12` keeps text aligned with metadata rows (`pl-1.5` + 40px + `gap-2`). */
+const lightboxCaptionTextInsetClass = "-ml-2.5 pl-12";
 
-/** Metadata rows: horizontal padding matches caption (`px-4` on full-bleed stack). */
+/** Metadata rows: tighter left pad on the full-bleed stack so thumbs/icons sit closer to the edge; right pad unchanged. */
 const lightboxMetadataRowSurfaceClass =
-  "px-4 py-2 transition-colors hover:bg-neutral-100/70 active:bg-neutral-100/90 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]";
+  "pl-1.5 pr-4 py-2 transition-colors hover:bg-neutral-100/70 active:bg-neutral-100/90 dark:hover:bg-white/[0.06] dark:active:bg-white/[0.08]";
 
 /** Full-bleed within sheet `px-4` so top/bottom hairlines match inter-row dividers. */
 const lightboxMetadataStackBleedClass = "min-w-0 -mx-4 w-[calc(100%+2rem)]";
@@ -1051,7 +1051,7 @@ export function ImageLightbox({
               </div>
 
               <div className="flex items-center justify-between gap-2 px-4 pt-1 pb-2">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
+                <div className="-ml-2.5 flex min-w-0 flex-1 items-center gap-2">
                   {profileHref ? (
                     <Link
                       href={profileHref}
@@ -1315,7 +1315,7 @@ export function ImageLightbox({
 
                 {moreRollItems.length > 0 ? (
                   <div className="space-y-2 pt-6">
-                    <h3 className="text-sm font-medium leading-relaxed text-neutral-900 dark:text-neutral-100">
+                    <h3 className="-ml-2.5 text-sm font-medium leading-relaxed text-neutral-900 dark:text-neutral-100">
                       {moreFromRollHeading}
                     </h3>
                     <div className="min-w-0 -mx-4 w-[calc(100%+2rem)]">
@@ -1330,7 +1330,7 @@ export function ImageLightbox({
                 ) : null}
 
                 {!current.caption?.trim() && !(displayLikes > 0) && !hasMetadataTable ? (
-                  <p className="text-sm text-neutral-500">No caption for this shot.</p>
+                  <p className="-ml-2.5 text-sm text-neutral-500">No caption for this shot.</p>
                 ) : null}
               </div>
             </div>

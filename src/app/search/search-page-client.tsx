@@ -15,6 +15,12 @@ import type { GalleryImage } from "@/lib/sample-images";
 import { SearchPageHeaderForm } from "@/components/search-page-header";
 import { FilmStockSummaryRow } from "@/components/film-stock-list-card";
 import {
+  cleanCameraName,
+  cleanStockDisplayName,
+  StockSearchRow,
+  CameraSearchRow,
+} from "@/components/search-result-rows";
+import {
   getDiscoverSearchPayload,
   type DiscoverSearchPayload,
   type SearchBrandsResult,
@@ -26,7 +32,7 @@ import {
 } from "@/app/actions/search";
 import { brandCatalogMatchRank, matchRank } from "@/lib/search-entity-match-rank";
 import { buildFilmStockTypeSpecLine } from "@/lib/film-stock-spec-line";
-import { DiscoverRailCarousel, DiscoverRailStrip } from "@/components/discover-rail-carousel";
+import { DiscoverRailCarousel } from "@/components/discover-rail-carousel";
 import { CarouselViewAllHeader } from "@/components/carousel-view-all-header";
 import { FilmNativeMasonryGrid, type FilmNativeMasonryItem } from "@/components/film-native-grid";
 import { cn } from "@/lib/utils";
@@ -36,6 +42,8 @@ import {
 } from "@/lib/discover-search-fab-visibility";
 
 const DEBOUNCE_MS = 300;
+/** Max scan tiles in search “All” and “Scans” masonry previews. */
+const SEARCH_SCANS_MASONRY_MAX = 10;
 
 /** Empty discover / tab state: same typography as `FilmStockSummaryRow` title. */
 function DiscoverSearchNoResultsLine({ query, className }: { query: string; className?: string }) {
@@ -104,54 +112,6 @@ function typingRowMatchRank(row: TypingMixedRow, query: string): number {
     return matchRank(label, query);
   }
   return matchRank(row.name, query);
-}
-
-function cleanCameraName(camera: SearchCamerasResult): string {
-  const raw = camera.name.trim();
-  const brand = camera.brandName.trim();
-  if (!raw) return brand || "Camera";
-  if (!brand) return raw;
-  const rawLower = raw.toLowerCase();
-  const brandLower = brand.toLowerCase();
-  if (rawLower.startsWith(`${brandLower} `)) return raw;
-  return `${brand} ${raw}`;
-}
-
-function StockSearchRow({ stock }: { stock: SearchStocksResult }) {
-  return (
-    <Link
-      href={`/films/${stock.slug}`}
-      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
-    >
-      <FilmStockSummaryRow
-        name={stock.name}
-        imageUrl={stock.imageUrl}
-        brandInitial={stock.brandName?.charAt(0)}
-        specLine={buildFilmStockTypeSpecLine(stock.type, stock.iso, stock.format)}
-        showDivider={false}
-      />
-    </Link>
-  );
-}
-
-function CameraSearchRow({ camera }: { camera: SearchCamerasResult }) {
-  return (
-    <Link
-      href={`/cameras/${camera.slug}`}
-      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
-    >
-      <FilmStockSummaryRow
-        name={cleanCameraName(camera)}
-        specLine="CAMERA"
-        showDivider={false}
-        customThumb={
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <CameraIcon className="h-5 w-5" aria-hidden />
-          </div>
-        }
-      />
-    </Link>
-  );
 }
 
 function ListSearchRow({ list }: { list: SearchListsResult }) {
@@ -282,13 +242,11 @@ function formatDiscoverShotsCount(total: number, hasMore: boolean): string {
 function discoverTopResultLabel(best: NonNullable<DiscoverSearchPayload["bestResult"]>): string {
   switch (best.type) {
     case "stock":
-      return `${best.value.brandName} ${best.value.name}`.trim();
+      return cleanStockDisplayName(best.value);
     case "camera":
       return `${best.value.brandName} ${best.value.name}`.trim();
     case "user":
       return best.value.display_name ?? "Member";
-    case "shot":
-      return `${best.value.brandName} ${best.value.stockName}`.trim();
     case "brand":
       return best.value.name;
     case "list":
@@ -296,7 +254,7 @@ function discoverTopResultLabel(best: NonNullable<DiscoverSearchPayload["bestRes
   }
 }
 
-function discoverTopResultHref(best: NonNullable<DiscoverSearchPayload["bestResult"]>): string | null {
+function discoverTopResultHref(best: NonNullable<DiscoverSearchPayload["bestResult"]>): string {
   switch (best.type) {
     case "stock":
       return `/films/${best.value.slug}`;
@@ -310,8 +268,6 @@ function discoverTopResultHref(best: NonNullable<DiscoverSearchPayload["bestResu
         : `/brands/${best.value.slug}`;
     case "list":
       return `/lists/${best.value.id}`;
-    case "shot":
-      return null;
   }
 }
 
@@ -325,10 +281,8 @@ function discoverTopResultSubtitle(best: NonNullable<DiscoverSearchPayload["best
     case "brand":
       return brandDiscoverSubtitle(best.value);
     case "stock": {
-      const s = best.value as SearchStocksResult & { scanCount?: number };
-      const line = buildFilmStockTypeSpecLine(s.type, s.iso, s.format);
-      const scans = s.scanCount ?? 0;
-      return scans > 0 ? `${line} · ${scans} ${scans === 1 ? "scan" : "scans"}` : line;
+      const s = best.value;
+      return buildFilmStockTypeSpecLine(s.type, s.iso, s.format);
     }
     case "camera": {
       const c = best.value as SearchCamerasResult & { scanCount?: number };
@@ -343,12 +297,6 @@ function discoverTopResultSubtitle(best: NonNullable<DiscoverSearchPayload["best
     }
     case "list":
       return `List · ${best.value.ownerDisplayName}`;
-    case "shot": {
-      const s = best.value;
-      const u = s.username?.trim();
-      const spec = buildFilmStockTypeSpecLine(s.stockType, s.stockIso ?? null, s.stockFormat ?? []);
-      return u ? `@${u} · ${spec}` : spec;
-    }
   }
 }
 
@@ -376,31 +324,6 @@ function DiscoverTopResultThumb({ best }: { best: NonNullable<DiscoverSearchPayl
               height={thumbPx}
               sizes="56px"
               className="h-full w-full object-contain"
-              placeholder="blur"
-              blurDataURL={DISCOVER_TOP_RESULT_THUMB_BLUR}
-              unoptimized={s.imageUrl.startsWith("http")}
-            />
-          </div>
-        );
-      }
-      return (
-        <div className={box}>
-          <span className="text-xs font-medium text-muted-foreground">{s.brandName?.charAt(0) ?? "?"}</span>
-        </div>
-      );
-    }
-    case "shot": {
-      const s = best.value;
-      if (s.imageUrl) {
-        return (
-          <div className={box}>
-            <Image
-              src={s.imageUrl}
-              alt={title}
-              width={thumbPx}
-              height={thumbPx}
-              sizes="56px"
-              className="h-full w-full object-cover"
               placeholder="blur"
               blurDataURL={DISCOVER_TOP_RESULT_THUMB_BLUR}
               unoptimized={s.imageUrl.startsWith("http")}
@@ -601,23 +524,12 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
 
   const resultCounts = activePayload?.resultCounts;
 
-  const scansRailItems = useMemo(() => {
-    if (!activePayload?.results.shots.length) return [];
-    return activePayload.results.shots.slice(0, 12).map((s) => ({
-      id: s.id,
-      imageUrl: s.imageUrl,
-      imageAlt: s.stockName,
-      username: s.username,
-      userId: s.userId,
-    }));
-  }, [activePayload]);
-
   const scansMasonryItems = useMemo((): FilmNativeMasonryItem[] => {
     if (!activePayload?.results.shots.length) return [];
-    return activePayload.results.shots.map((shot) => ({
+    return activePayload.results.shots.slice(0, SEARCH_SCANS_MASONRY_MAX).map((shot) => ({
       id: shot.id,
       imageUrl: shot.imageUrl,
-      overlayLabel: shot.username?.trim() ? shot.username : shot.stockName,
+      overlayLabel: "",
       href: `/films/${shot.stockSlug}/images`,
       onActivate: () => openShotLightbox(activePayload.results.shots, shot.id),
     }));
@@ -858,7 +770,12 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
             ) : (
               <>
                 {mode === "results" && hasQuery && activePayload ? (
-                  <div className="mb-3 mt-3 w-[calc(100%+2rem)] min-w-0 -mx-4 border-b border-border/50 sm:-mx-6 sm:w-[calc(100%+3rem)] lg:-mx-8 lg:w-[calc(100%+4rem)]">
+                  <div
+                    className={cn(
+                      "mt-3 w-[calc(100%+2rem)] min-w-0 -mx-4 border-b border-border/50 sm:-mx-6 sm:w-[calc(100%+3rem)] lg:-mx-8 lg:w-[calc(100%+4rem)]",
+                      urlTab === "scans" ? "mb-0" : "mb-3"
+                    )}
+                  >
                     <nav className="min-w-0 w-full" aria-label="Search results by type">
                       <div className="flex min-w-0 flex-nowrap items-end gap-5 overflow-x-auto overscroll-x-contain px-4 pb-px [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-6 sm:px-6 lg:px-8 [&::-webkit-scrollbar]:hidden">
                         {(
@@ -901,46 +818,30 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
                 {activePayload && urlTab === "all" ? (
                   <div className="flex flex-col gap-6">
                     {activePayload.bestResult ? (
-                      (() => {
-                        const br = activePayload.bestResult;
-                        if (br.type === "shot") {
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => openShotLightbox(activePayload.results.shots, br.value.id)}
-                              className={discoverTopResultCardInteractiveClassName}
-                              aria-label={`Open scan: ${discoverTopResultLabel(br)}`}
-                            >
-                              <DiscoverTopResultCardInner best={br} />
-                            </button>
-                          );
-                        }
-                        return (
-                          <Link
-                            href={discoverTopResultHref(br) ?? "/search"}
-                            className={discoverTopResultCardInteractiveClassName}
-                          >
-                            <DiscoverTopResultCardInner best={br} />
-                          </Link>
-                        );
-                      })()
+                      <Link
+                        href={discoverTopResultHref(activePayload.bestResult)}
+                        className={discoverTopResultCardInteractiveClassName}
+                      >
+                        <DiscoverTopResultCardInner best={activePayload.bestResult} />
+                      </Link>
                     ) : null}
 
                     {!hasAnyResults ? <DiscoverSearchNoResultsLine query={debouncedQuery} /> : null}
 
-                    {scansRailItems.length > 0 ? (
+                    {scansMasonryItems.length > 0 ? (
                       <section aria-labelledby="discover-search-scans-heading">
                         <CarouselViewAllHeader
                           href={buildDiscoverSearchUrl(debouncedQuery.trim(), "scans")}
                           title={`Scans (${formatDiscoverShotsCount(activePayload.resultCounts.shots, activePayload.shotsHasMore)})`}
                           titleId="discover-search-scans-heading"
                         />
-                        <DiscoverRailStrip
-                          items={scansRailItems}
-                          imageDimensionsById={imageDimensionsById}
-                          onImageLoad={handleShotImageLoad}
-                          onOpenItem={(id) => openShotLightbox(activePayload.results.shots, id)}
-                        />
+                        <div className="-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]">
+                          <FilmNativeMasonryGrid
+                            items={scansMasonryItems}
+                            preserveImageAspectRatio
+                            ariaLabel={`Search scans for ${debouncedQuery.trim()}`}
+                          />
+                        </div>
                       </section>
                     ) : null}
 
@@ -1016,7 +917,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
                 ) : null}
 
                 {activePayload && urlTab === "scans" && scansMasonryItems.length > 0 ? (
-                  <div className="mt-4 -mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]">
+                  <div className="-mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]">
                     <FilmNativeMasonryGrid
                       items={scansMasonryItems}
                       preserveImageAspectRatio

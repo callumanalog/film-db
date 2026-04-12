@@ -64,10 +64,12 @@ export const additionalFilmBrands: FilmBrand[] = [
     id: "brand-lucky",
     name: "Lucky",
     slug: "lucky",
-    logo_url: null,
+    logo_url: "/brands/lucky.svg",
     description:
       "Lucky Film is a long-running Chinese photographic manufacturer with roots in state-backed industrial film production. The brand became internationally known for affordable black-and-white films and has recently re-entered the color market, making it one of the few companies reviving rather than shrinking a film lineup.",
     website_url: "https://luckyfilm.net/",
+    founded_year: 1958,
+    country: "China",
     featured: null,
     created_at: nowIso,
     updated_at: nowIso,

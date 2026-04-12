@@ -19,6 +19,10 @@ import { MobileStockPickerPanel } from "@/components/mobile-stock-picker-panel";
 import { interpretReviewsPostResult } from "@/lib/review-submit-feedback";
 import { recordRollFilmStockRecent } from "@/lib/roll-film-stock-recents";
 import { postReviewModalSubmission } from "@/lib/user-reviews-client-submit";
+import {
+  ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT,
+  type AddRollFlowFabVisibilityDetail,
+} from "@/lib/add-roll-flow-fab-visibility";
 import { cn } from "@/lib/utils";
 
 const EVENT_OPEN = "plus-action-sheet:open";
@@ -83,6 +87,22 @@ export function PlusActionSheet() {
     if (!open) return;
     void loadSuggestedStocks();
   }, [open, loadSuggestedStocks]);
+
+  useEffect(() => {
+    const hidden = open || reviewModalOpen;
+    window.dispatchEvent(
+      new CustomEvent<AddRollFlowFabVisibilityDetail>(ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT, {
+        detail: { source: "plus-sheet", hidden },
+      })
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<AddRollFlowFabVisibilityDetail>(ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT, {
+          detail: { source: "plus-sheet", hidden: false },
+        })
+      );
+    };
+  }, [open, reviewModalOpen]);
 
   const filteredStocks = suggested?.allStocks
     ? searchQuery.trim()

@@ -179,16 +179,17 @@ export function DiscoverRailCarousel({
   bleedX?: boolean;
 }) {
   if (items.length === 0) return null;
-  const sectionLabelledBy = headerHref && headerTitleId ? headerTitleId : undefined;
   return (
     <section
       className="pt-4"
-      {...(sectionLabelledBy ? { "aria-labelledby": sectionLabelledBy } : { "aria-label": title })}
+      {...(headerTitleId ? { "aria-labelledby": headerTitleId } : { "aria-label": title })}
     >
       {headerHref ? (
         <CarouselViewAllHeader href={headerHref} title={title} titleId={headerTitleId} />
       ) : (
-        <h2 className="font-sans text-base font-semibold text-foreground">{title}</h2>
+        <h2 id={headerTitleId} className="font-sans text-base font-semibold text-foreground">
+          {title}
+        </h2>
       )}
       <DiscoverRailStrip
         items={items}

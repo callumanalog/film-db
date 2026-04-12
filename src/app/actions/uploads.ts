@@ -74,51 +74,23 @@ export interface CommunityGalleryUpload {
   stockImageUrl?: string | null;
 }
 
-/** All community uploads for the global Community page gallery. Optional search by caption/metadata and/or by film stock slugs (e.g. match by stock name). */
-export async function getAllCommunityUploadsForGallery(
+async function mapUploadFilmRowsToGallery(
+  supabase: Awaited<ReturnType<typeof createClient>>,
   stocks: (FilmStock & { brand: FilmBrand })[],
-  search?: string,
-  matchingStockSlugs?: string[]
+  rows: FilmUploadRow[],
 ): Promise<CommunityGalleryUpload[]> {
-  const supabase = await createClient();
-  let query = supabase
-    .from("user_uploads")
-    .select(USER_UPLOAD_ROW_SELECT)
-    .not("image_url", "is", null)
-    .order("created_at", { ascending: false });
-  const term = search?.trim();
-  const slugFilter = matchingStockSlugs?.length ? matchingStockSlugs : [];
-  if (term && slugFilter.length > 0) {
-    const pattern = `%${term}%`;
-    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`;
-    const slugIn = `film_stock_slug.in.(${slugFilter.map((s) => `"${s.replace(/"/g, '\\"')}"`).join(",")})`;
-    query = query.or(`${textOr},${slugIn}`);
-  } else if (term) {
-    const pattern = `%${term}%`;
-    query = query.or(
-      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`
-    );
-  } else if (slugFilter.length > 0) {
-    query = query.in("film_stock_slug", slugFilter);
-  }
-  const { data: rows, error } = await query;
+  if (!rows.length) return [];
 
-  if (error) {
-    console.error("[getAllCommunityUploadsForGallery]", error.message);
-    return [];
-  }
-  if (!rows?.length) return [];
-
-  const slugs = [...new Set((rows as { film_stock_slug: string }[]).map((r) => r.film_stock_slug))];
+  const slugs = [...new Set(rows.map((r) => r.film_stock_slug))];
   const stockBySlug = new Map(slugs.map((slug) => [slug, stocks.find((s) => s.slug === slug)]));
 
-  const userIds = [...new Set((rows as { user_id: string }[]).map((r) => r.user_id))];
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
   const nameByUserId = await fetchDisplayNamesByUserIds(userIds);
   const reviewIds = [
     ...new Set(
-      (rows as FilmUploadRow[])
+      rows
         .map((r) => r.review_id?.trim())
-        .filter((id): id is string => Boolean(id))
+        .filter((id): id is string => Boolean(id)),
     ),
   ];
   const titleByReviewId = new Map<string, string | null>();
@@ -128,7 +100,7 @@ export async function getAllCommunityUploadsForGallery(
       .select("id, review_title")
       .in("id", reviewIds);
     if (reviewError) {
-      console.error("[getAllCommunityUploadsForGallery] reviews titles:", reviewError.message);
+      console.error("[mapUploadFilmRowsToGallery] reviews titles:", reviewError.message);
     } else {
       for (const row of reviewRows ?? []) {
         const id = (row as { id: string }).id;
@@ -138,7 +110,7 @@ export async function getAllCommunityUploadsForGallery(
   }
 
   const out: CommunityGalleryUpload[] = [];
-  for (const r of rows as FilmUploadRow[]) {
+  for (const r of rows) {
     const stock = stockBySlug.get(r.film_stock_slug);
     if (!stock) continue;
     const settingsParts = [
@@ -190,6 +162,44 @@ export async function getAllCommunityUploadsForGallery(
     });
   }
   return out;
+}
+
+/** All community uploads for the global Community page gallery. Optional search by caption/metadata and/or by film stock slugs (e.g. match by stock name). */
+export async function getAllCommunityUploadsForGallery(
+  stocks: (FilmStock & { brand: FilmBrand })[],
+  search?: string,
+  matchingStockSlugs?: string[]
+): Promise<CommunityGalleryUpload[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("user_uploads")
+    .select(USER_UPLOAD_ROW_SELECT)
+    .not("image_url", "is", null)
+    .order("created_at", { ascending: false });
+  const term = search?.trim();
+  const slugFilter = matchingStockSlugs?.length ? matchingStockSlugs : [];
+  if (term && slugFilter.length > 0) {
+    const pattern = `%${term}%`;
+    const textOr = `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`;
+    const slugIn = `film_stock_slug.in.(${slugFilter.map((s) => `"${s.replace(/"/g, '\\"')}"`).join(",")})`;
+    query = query.or(`${textOr},${slugIn}`);
+  } else if (term) {
+    const pattern = `%${term}%`;
+    query = query.or(
+      `caption.ilike.${pattern},camera.ilike.${pattern},shot_iso.ilike.${pattern},lens.ilike.${pattern},lab.ilike.${pattern},scanner.ilike.${pattern},push_pull.ilike.${pattern},format.ilike.${pattern},location.ilike.${pattern},tags.ilike.${pattern}`
+    );
+  } else if (slugFilter.length > 0) {
+    query = query.in("film_stock_slug", slugFilter);
+  }
+  const { data: rows, error } = await query;
+
+  if (error) {
+    console.error("[getAllCommunityUploadsForGallery]", error.message);
+    return [];
+  }
+  if (!rows?.length) return [];
+
+  return mapUploadFilmRowsToGallery(supabase, stocks, rows as FilmUploadRow[]);
 }
 export async function getUploadsForFilmStock(slug: string): Promise<FilmUploadRow[]> {
   const supabase = (await createServiceRoleClient()) ?? (await createClient());

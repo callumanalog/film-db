@@ -587,7 +587,7 @@ export function FilmDetailMobileToolbar({
     <>
       <div className="w-full min-w-0 bg-background md:hidden">
         <div className="flex items-stretch gap-3 py-1">
-          <div className="relative aspect-square min-h-16 min-w-16 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-card">
+          <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-[7px] border border-border/50 bg-card">
             <FilmImage stock={stock} size={128} width={128} height={128} priority />
           </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center">

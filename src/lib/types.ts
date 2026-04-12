@@ -220,6 +220,10 @@ export interface FilmBrand {
   logo_url: string | null;
   description: string | null;
   website_url: string | null;
+  /** Year founded; shown in brand page header meta when set. */
+  founded_year?: number | null;
+  /** Country of origin; shown in brand page header meta when set. */
+  country?: string | null;
   /** When true, brand appears in mobile search Trending brands. */
   featured?: boolean | null;
   /** Camera catalog brand slugs for `/cameras?brand=…` when set; else see `film-brand-camera-brand-slugs` defaults. */

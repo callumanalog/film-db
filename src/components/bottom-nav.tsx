@@ -14,6 +14,10 @@ import {
   DISCOVER_SEARCH_FAB_VISIBILITY_EVENT,
   type DiscoverSearchFabVisibilityDetail,
 } from "@/lib/discover-search-fab-visibility";
+import {
+  ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT,
+  type AddRollFlowFabVisibilityDetail,
+} from "@/lib/add-roll-flow-fab-visibility";
 
 const LEFT_ITEMS = [
   { href: "/", label: "Home", icon: Home },
@@ -50,6 +54,8 @@ export function BottomNav() {
   const router = useRouter();
 
   const [discoverSearchHidesAddRollFab, setDiscoverSearchHidesAddRollFab] = useState(false);
+  const [addRollPlusSheetHidesFab, setAddRollPlusSheetHidesFab] = useState(false);
+  const [addRollUploadModalHidesFab, setAddRollUploadModalHidesFab] = useState(false);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const resolvedActive = getActiveHref(pathname);
   const activeHref = pendingPath ?? resolvedActive;
@@ -76,6 +82,23 @@ export function BottomNav() {
       setDiscoverSearchHidesAddRollFab(false);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    const onAddRollFlowFabVisibility = (e: Event) => {
+      const detail = (e as CustomEvent<AddRollFlowFabVisibilityDetail>).detail;
+      if (detail.source === "plus-sheet") {
+        setAddRollPlusSheetHidesFab(detail.hidden);
+      } else {
+        setAddRollUploadModalHidesFab(detail.hidden);
+      }
+    };
+    window.addEventListener(ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT, onAddRollFlowFabVisibility);
+    return () => {
+      window.removeEventListener(ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT, onAddRollFlowFabVisibility);
+    };
+  }, []);
+
+  const addRollFlowHidesFab = addRollPlusSheetHidesFab || addRollUploadModalHidesFab;
 
   const handleNavPointerDown = (e: React.PointerEvent, href: string) => {
     if (e.button !== 0) return;
@@ -145,7 +168,7 @@ export function BottomNav() {
           );
         })}
       </nav>
-      {!discoverSearchHidesAddRollFab ? (
+      {!discoverSearchHidesAddRollFab && !addRollFlowHidesFab ? (
         <button
           type="button"
           onClick={handleAddRoll}

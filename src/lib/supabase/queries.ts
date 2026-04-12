@@ -17,6 +17,7 @@ import type {
 import { BEST_FOR_FILTER_ORDER, scaleToSaturationFilter } from "@/lib/types";
 import { seedBrands, seedFilmStocks, seedPurchaseLinks } from "@/lib/seed-data";
 import { getFilmStocksFromFile, normalizeFilmStockFromFile } from "@/lib/editable-film-stocks";
+import { parseCountry, parseFoundedYear } from "@/lib/brand-meta";
 import { getBrandsFromFile } from "@/lib/editable-brands";
 import {
   getBrandsFromSupabase,
@@ -408,7 +409,7 @@ async function getBrandsUncached(): Promise<FilmBrand[]> {
 }
 
 /** Cached 60s so nav, filters, and listings avoid repeated DB round-trips. */
-export const getBrands = unstable_cache(getBrandsUncached, ["brands-all"], {
+export const getBrands = unstable_cache(getBrandsUncached, ["brands-all", "film_brand_meta_v1"], {
   revalidate: 60,
   tags: ["brands"],
 });
@@ -458,9 +459,35 @@ export async function getFeaturedBrands(): Promise<FilmBrand[]> {
 export async function getBrandBySlug(
   slug: string
 ): Promise<FilmBrand | null> {
-  const fromSupabase = await getBrandBySlugFromSupabase(slug);
-  if (fromSupabase) return fromSupabase;
-  return getAllBrands().find((b) => b.slug === slug) || null;
+  const [fromRow, brandsList] = await Promise.all([
+    getBrandBySlugFromSupabase(slug),
+    getBrands(),
+  ]);
+  const fromList = brandsList.find((b) => b.slug === slug) ?? null;
+  const fromFile = getAllBrands().find((b) => b.slug === slug) ?? null;
+
+  const base = fromRow ?? fromList ?? fromFile;
+  if (!base) return null;
+
+  let founded_year: number | null = null;
+  for (const b of [fromRow, fromList, fromFile]) {
+    const p = parseFoundedYear(b?.founded_year);
+    if (p != null) {
+      founded_year = p;
+      break;
+    }
+  }
+
+  let country: string | null = null;
+  for (const b of [fromRow, fromList, fromFile]) {
+    const p = parseCountry(b?.country);
+    if (p) {
+      country = p;
+      break;
+    }
+  }
+
+  return { ...base, founded_year, country };
 }
 
 export async function getFilmStocksByBrand(

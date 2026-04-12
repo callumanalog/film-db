@@ -90,6 +90,10 @@ import {
 } from "@/lib/share-roll-image";
 import { humanizeImageDecodeError, humanizeImagePrepareError } from "@/lib/share-roll-image-errors";
 import { uploadPreparedShareRollScanToStorage, type ClientStoredScanRow } from "@/lib/user-reviews-client-submit";
+import {
+  ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT,
+  type AddRollFlowFabVisibilityDetail,
+} from "@/lib/add-roll-flow-fab-visibility";
 import { getFilmStockFormatListForSlug } from "@/app/actions/get-film-stocks";
 import { filmLabPublicLabel } from "@/lib/film-lab-queries";
 import type { BestFor } from "@/lib/types";
@@ -789,6 +793,22 @@ export function AddReviewModal({
       setIsoSheetOpen(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    const hidden = mode === "upload" && open;
+    window.dispatchEvent(
+      new CustomEvent<AddRollFlowFabVisibilityDetail>(ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT, {
+        detail: { source: "upload-modal", hidden },
+      })
+    );
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<AddRollFlowFabVisibilityDetail>(ADD_ROLL_FLOW_FAB_VISIBILITY_EVENT, {
+          detail: { source: "upload-modal", hidden: false },
+        })
+      );
+    };
+  }, [open, mode]);
 
   useEffect(() => {
     if (!open || !stock.slug) {

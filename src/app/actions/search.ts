@@ -140,7 +140,6 @@ export interface DiscoverSearchPayload {
     | { type: "stock"; value: SearchStocksResult }
     | { type: "camera"; value: SearchCamerasResult }
     | { type: "user"; value: SearchUsersResult }
-    | { type: "shot"; value: SearchShotsResult }
     | { type: "list"; value: SearchListsResult }
     | { type: "brand"; value: SearchBrandsResult }
     | null;
@@ -196,13 +195,6 @@ function scoreListForDiscoverBest(l: SearchListsResult, q: string): DiscoverMatc
   return { tier: matchRank(l.title, q), scans: 0, label: l.title };
 }
 
-function scoreShotForDiscoverBest(s: SearchShotsResult, q: string): DiscoverMatchScore {
-  const full = `${s.brandName} ${s.stockName}`.trim();
-  const tier = Math.min(matchRank(full, q), matchRank(s.stockName, q));
-  const scans = (s.likes ?? 0) + (s.saves ?? 0);
-  return { tier, scans, label: full };
-}
-
 function pickDiscoverBestResult(params: {
   q: string;
   stocksByScans: (SearchStocksResult & { scanCount?: number })[];
@@ -210,10 +202,9 @@ function pickDiscoverBestResult(params: {
   camerasByScans: (SearchCamerasResult & { scanCount?: number })[];
   users: SearchUsersResult[];
   listRows: SearchListsResult[];
-  shots: SearchShotsResult[];
   toBrandResult: (e: DiscoverTypingBrand) => SearchBrandsResult;
 }): DiscoverBestResult {
-  const { q, stocksByScans, mergedBrandRows, camerasByScans, users, listRows, shots, toBrandResult } = params;
+  const { q, stocksByScans, mergedBrandRows, camerasByScans, users, listRows, toBrandResult } = params;
 
   type Entry = { score: DiscoverMatchScore; result: NonNullable<DiscoverBestResult> };
   const entries: Entry[] = [];
@@ -254,16 +245,6 @@ function pickDiscoverBestResult(params: {
       result: { type: "list", value: listsSorted[0]! },
     });
   }
-
-  let bestShot: Entry | null = null;
-  for (const s of shots.slice(0, 32)) {
-    const score = scoreShotForDiscoverBest(s, q);
-    const result = { type: "shot" as const, value: s };
-    if (!bestShot || compareDiscoverMatchScore(score, bestShot.score) < 0) {
-      bestShot = { score, result };
-    }
-  }
-  if (bestShot) entries.push(bestShot);
 
   if (entries.length === 0) return null;
   return entries.reduce((best, cur) =>
@@ -920,7 +901,6 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
     camerasByScans,
     users,
     listRows,
-    shots,
     toBrandResult,
   });
 

@@ -13,6 +13,7 @@ import type {
   DevelopmentProcess,
   BestFor,
 } from "@/lib/types";
+import { parseCountry, parseFoundedYear } from "@/lib/brand-meta";
 import {
   scaleToGrainFilter,
   scaleToContrastFilter,
@@ -45,6 +46,9 @@ function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
     Array.isArray(rawRelated) && rawRelated.every((x) => typeof x === "string")
       ? (rawRelated as string[]).map((s) => s.trim()).filter(Boolean)
       : null;
+  const founded_year = parseFoundedYear(row.founded_year);
+  const country = parseCountry(row.country);
+
   return {
     id: row.id as string,
     name: row.name as string,
@@ -52,6 +56,8 @@ function mapRowToBrand(row: Record<string, unknown>): FilmBrand {
     logo_url: (row.logo_url as string) || null,
     description: (row.description as string) || null,
     website_url: (row.website_url as string) || null,
+    founded_year,
+    country,
     featured: row.featured === true ? true : (row.featured === false ? false : null),
     related_camera_brand_slugs: related_camera_brand_slugs?.length ? related_camera_brand_slugs : null,
     created_at: row.created_at as string,
