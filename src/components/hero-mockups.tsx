@@ -1282,7 +1282,7 @@ export function PageTitleHeader({
   const typeLabel = stock.typeLabel ?? "—";
   const isoStr = stock.iso != null ? `ISO ${stock.iso}` : "ISO —";
   const formatStr = (stock.format ?? []).join(", ") || "—";
-  const metaLine = `${typeLabel} | ${isoStr} | ${formatStr}`;
+  const metaLine = `${typeLabel} · ${isoStr} · ${formatStr}`;
 
   return (
       <div

@@ -35,7 +35,7 @@ interface GalleryPreviewProps {
   flickrImages?: FlickrPhoto[];
   /** `masonry` = same 2-col full-bleed grid as Discover; `carousel` = overview strip. */
   layout?: "carousel" | "masonry";
-  /** When set, lightbox shows @ stock row with brand | ISO | formats. */
+  /** When set, lightbox shows @ stock row with brand · ISO · formats. */
   lightboxStockSummary?: FilmStockLightboxSummary | null;
 }
 

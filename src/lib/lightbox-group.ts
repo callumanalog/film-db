@@ -122,6 +122,30 @@ export function findGalleryImageForLightboxSlide(
   });
 }
 
+/**
+ * Other uploads on the same film stock as `current` (e.g. camera image destination where rows may span stocks).
+ * Uses each row’s `film_stock_slug` and `stockBySlug` for @ stock card / labels.
+ */
+export function relatedUploadsMatchingFilmStockLightboxSlides(
+  current: ImageLightboxData,
+  uploads: FilmUploadRow[],
+  stockBySlug: Record<string, { name: string; summary: FilmStockLightboxSummary }>
+): ImageLightboxData[] {
+  const slug = current.filmStockSlug?.trim();
+  if (!slug) return [];
+  const meta = stockBySlug[slug];
+  const stockName = meta?.name?.trim() ? meta.name : slug.replace(/-/g, " ");
+  const summary = meta?.summary;
+  const out: ImageLightboxData[] = [];
+  for (const u of uploads) {
+    if (u.film_stock_slug !== slug) continue;
+    const s = filmUploadToLightboxData(u, stockName, slug, summary);
+    if (!s || isSameLightboxSlide(current, s)) continue;
+    out.push(s);
+  }
+  return out;
+}
+
 /** Other uploads + Flickr shots on the same film stock page (excludes `current`). */
 export function relatedFilmPageLightboxSlides(
   current: ImageLightboxData,

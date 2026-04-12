@@ -1,10 +1,10 @@
 "use client";
 
-/** Metadata line: TYPE LABEL | ISO N | FORMAT1, FORMAT2 (uppercase) */
+/** Metadata line: TYPE LABEL · ISO N · FORMAT1, FORMAT2 (uppercase) */
 function formatMeta(typeLabel: string, iso: number | null, format: string[]) {
   const isoStr = iso != null ? `ISO ${iso}` : "ISO —";
   const formatStr = format.length ? format.map((f) => f.toUpperCase()).join(", ") : "—";
-  return `${(typeLabel ?? "—").toUpperCase()} | ${isoStr} | ${formatStr}`;
+  return `${(typeLabel ?? "—").toUpperCase()} · ${isoStr} · ${formatStr}`;
 }
 
 interface FilmHeroTitleProps {

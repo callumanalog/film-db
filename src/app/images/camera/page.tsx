@@ -1,7 +1,9 @@
 import { Camera as CameraIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { FilmStockSummaryRow } from "@/components/film-stock-list-card";
-import { ImageDestinationGrid } from "@/components/image-destination-grid";
+import { ImageDestinationScansClient } from "@/components/image-destination-scans-client";
+import { filmStockToLightboxSummary } from "@/lib/lightbox-group";
+import { getFilmStocksBySlugs } from "@/lib/supabase/queries";
 import { getUploadsForCamera } from "@/app/actions/uploads";
 
 interface CameraImageDestinationPageProps {
@@ -32,9 +34,12 @@ export default async function CameraImageDestinationPage({ searchParams }: Camer
   }
 
   const uploads = await getUploadsForCamera(cameraName);
-  const items = uploads
-    .filter((u): u is typeof u & { image_url: string } => !!u.image_url)
-    .map((u) => ({ id: u.id, imageUrl: u.image_url }));
+  const scanCount = uploads.filter((u) => !!u.image_url).length;
+  const stockSlugs = [...new Set(uploads.map((u) => u.film_stock_slug))];
+  const stocks = await getFilmStocksBySlugs(stockSlugs);
+  const stockBySlug = Object.fromEntries(
+    stocks.map((s) => [s.slug, { name: s.name, summary: filmStockToLightboxSummary(s) }])
+  );
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 sm:px-6 md:pb-8">
@@ -52,9 +57,9 @@ export default async function CameraImageDestinationPage({ searchParams }: Camer
         />
       </header>
 
-      {items.length > 0 ? (
+      {scanCount > 0 ? (
         <div className="min-w-0 -mx-4 mt-2 w-[calc(100%+2rem)]">
-          <ImageDestinationGrid items={items} />
+          <ImageDestinationScansClient uploads={uploads} mode="camera" stockBySlug={stockBySlug} />
         </div>
       ) : (
         <div className="mt-6 rounded-[7px] border border-dashed border-border bg-secondary/20 py-10 text-center text-sm text-muted-foreground">

@@ -43,6 +43,10 @@ export interface SearchBrandsResult {
    * `cameras_only` = camera maker with no linked film row → `/cameras?brand={slug}`.
    */
   kind?: "catalog" | "cameras_only";
+  /** Discover search: film stocks in catalog for this brand (catalog rows only). */
+  filmStockCount?: number;
+  /** Discover search: camera models linked to this brand slug in the camera catalog. */
+  cameraCatalogCount?: number;
 }
 
 export interface SearchShotsResult {
@@ -140,6 +144,131 @@ export interface DiscoverSearchPayload {
     | { type: "list"; value: SearchListsResult }
     | { type: "brand"; value: SearchBrandsResult }
     | null;
+  /** True when more than `results.shots.length` uploads matched (pagination can extend later). */
+  shotsHasMore: boolean;
+  /** Total matches per category (before list truncation for display). */
+  resultCounts: {
+    stocks: number;
+    cameras: number;
+    shots: number;
+    brands: number;
+    lists: number;
+    users: number;
+  };
+}
+
+const DISCOVER_SHOTS_PAGE_SIZE = 48;
+
+type DiscoverBestResult = DiscoverSearchPayload["bestResult"];
+
+interface DiscoverMatchScore {
+  tier: number;
+  scans: number;
+  label: string;
+}
+
+function compareDiscoverMatchScore(a: DiscoverMatchScore, b: DiscoverMatchScore): number {
+  if (a.tier !== b.tier) return a.tier - b.tier;
+  if (b.scans !== a.scans) return b.scans - a.scans;
+  return a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+}
+
+function scoreStockForDiscoverBest(s: SearchStocksResult & { scanCount?: number }, q: string): DiscoverMatchScore {
+  const label = `${s.brandName} ${s.name}`.trim();
+  return { tier: matchRank(label, q), scans: s.scanCount ?? 0, label };
+}
+
+function scoreBrandForDiscoverBest(b: DiscoverTypingBrand, q: string): DiscoverMatchScore {
+  return { tier: brandCatalogMatchRank(b.name, q), scans: b.scanCount, label: b.name };
+}
+
+function scoreCameraForDiscoverBest(c: SearchCamerasResult & { scanCount?: number }, q: string): DiscoverMatchScore {
+  const label = `${c.brandName} ${c.name}`.trim();
+  return { tier: matchRank(label, q), scans: c.scanCount ?? 0, label };
+}
+
+function scoreUserForDiscoverBest(u: SearchUsersResult, q: string): DiscoverMatchScore {
+  const label = u.display_name?.trim() || "Member";
+  return { tier: matchRank(label, q), scans: 0, label };
+}
+
+function scoreListForDiscoverBest(l: SearchListsResult, q: string): DiscoverMatchScore {
+  return { tier: matchRank(l.title, q), scans: 0, label: l.title };
+}
+
+function scoreShotForDiscoverBest(s: SearchShotsResult, q: string): DiscoverMatchScore {
+  const full = `${s.brandName} ${s.stockName}`.trim();
+  const tier = Math.min(matchRank(full, q), matchRank(s.stockName, q));
+  const scans = (s.likes ?? 0) + (s.saves ?? 0);
+  return { tier, scans, label: full };
+}
+
+function pickDiscoverBestResult(params: {
+  q: string;
+  stocksByScans: (SearchStocksResult & { scanCount?: number })[];
+  mergedBrandRows: DiscoverTypingBrand[];
+  camerasByScans: (SearchCamerasResult & { scanCount?: number })[];
+  users: SearchUsersResult[];
+  listRows: SearchListsResult[];
+  shots: SearchShotsResult[];
+  toBrandResult: (e: DiscoverTypingBrand) => SearchBrandsResult;
+}): DiscoverBestResult {
+  const { q, stocksByScans, mergedBrandRows, camerasByScans, users, listRows, shots, toBrandResult } = params;
+
+  type Entry = { score: DiscoverMatchScore; result: NonNullable<DiscoverBestResult> };
+  const entries: Entry[] = [];
+
+  if (stocksByScans[0]) {
+    const v = stocksByScans[0];
+    entries.push({ score: scoreStockForDiscoverBest(v, q), result: { type: "stock", value: v } });
+  }
+  if (mergedBrandRows[0]) {
+    const b = mergedBrandRows[0];
+    entries.push({ score: scoreBrandForDiscoverBest(b, q), result: { type: "brand", value: toBrandResult(b) } });
+  }
+  if (camerasByScans[0]) {
+    const c = camerasByScans[0];
+    entries.push({ score: scoreCameraForDiscoverBest(c, q), result: { type: "camera", value: c } });
+  }
+
+  const usersSorted = [...users].sort((a, b) => {
+    const d = scoreUserForDiscoverBest(a, q).tier - scoreUserForDiscoverBest(b, q).tier;
+    if (d !== 0) return d;
+    return (a.display_name ?? "").localeCompare(b.display_name ?? "", undefined, { sensitivity: "base" });
+  });
+  if (usersSorted[0]) {
+    entries.push({
+      score: scoreUserForDiscoverBest(usersSorted[0]!, q),
+      result: { type: "user", value: usersSorted[0]! },
+    });
+  }
+
+  const listsSorted = [...listRows].sort((a, b) => {
+    const d = scoreListForDiscoverBest(a, q).tier - scoreListForDiscoverBest(b, q).tier;
+    if (d !== 0) return d;
+    return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+  });
+  if (listsSorted[0]) {
+    entries.push({
+      score: scoreListForDiscoverBest(listsSorted[0]!, q),
+      result: { type: "list", value: listsSorted[0]! },
+    });
+  }
+
+  let bestShot: Entry | null = null;
+  for (const s of shots.slice(0, 32)) {
+    const score = scoreShotForDiscoverBest(s, q);
+    const result = { type: "shot" as const, value: s };
+    if (!bestShot || compareDiscoverMatchScore(score, bestShot.score) < 0) {
+      bestShot = { score, result };
+    }
+  }
+  if (bestShot) entries.push(bestShot);
+
+  if (entries.length === 0) return null;
+  return entries.reduce((best, cur) =>
+    compareDiscoverMatchScore(cur.score, best.score) < 0 ? cur : best
+  ).result;
 }
 
 function filmBrandsMatchingQuery(
@@ -232,6 +361,37 @@ function mergeUnifiedBrandDiscoverRows(params: {
   };
 
   return [...mergedCatalog.values(), ...standalone].sort(sortDiscoverBrandEntries);
+}
+
+function augmentDiscoverBrandCatalogCounts(
+  rows: DiscoverTypingBrand[],
+  allStocksAlbum: (FilmStock & { brand: FilmBrand })[],
+  allCamerasCatalog: Awaited<ReturnType<typeof getCameras>>,
+  filmBrandsList: FilmBrand[]
+): DiscoverTypingBrand[] {
+  const camToFilm = buildCameraSlugToFilmSlugMap(filmBrandsList);
+  const camerasPerCameraBrandSlug = new Map<string, number>();
+  for (const c of allCamerasCatalog) {
+    const slug = c.brand.slug;
+    camerasPerCameraBrandSlug.set(slug, (camerasPerCameraBrandSlug.get(slug) ?? 0) + 1);
+  }
+
+  return rows.map((row) => {
+    if (row.kind === "cameras_only") {
+      return {
+        ...row,
+        filmStockCount: 0,
+        cameraCatalogCount: camerasPerCameraBrandSlug.get(row.slug) ?? 0,
+      };
+    }
+    const filmSlug = row.slug;
+    const filmStockCount = allStocksAlbum.filter((s) => s.brand.slug === filmSlug).length;
+    let cameraCatalogCount = 0;
+    for (const c of allCamerasCatalog) {
+      if (camToFilm.get(c.brand.slug) === filmSlug) cameraCatalogCount += 1;
+    }
+    return { ...row, filmStockCount, cameraCatalogCount };
+  });
 }
 
 /** Tab-aware search: returns only the active tab's results. */
@@ -373,7 +533,7 @@ export async function searchFilmsByTab(
         .from("profiles")
         .select("id, display_name")
         .ilike("display_name", pattern)
-        .limit(50);
+        .limit(500);
       if (error || !profiles?.length) return { users: [] };
       return {
         users: (profiles as { id: string; display_name: string | null }[]).map((p) => ({
@@ -574,25 +734,33 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
       typing: { stocks: [], cameras: [], users: [], brands: [] },
       results: { stocks: [], cameras: [], users: [], shots: [], lists: [], brands: [] },
       bestResult: null,
+      shotsHasMore: false,
+      resultCounts: { stocks: 0, cameras: 0, shots: 0, brands: 0, lists: 0, users: 0 },
     };
   }
 
-  const [stockRes, usersRes, shotsRes, cameras, listRows, allStocksAlbum, filmBrandsList, cameraBrandsList, allCamerasCatalog] =
+  const [stockRes, usersRes, shotsRes, cameras, listSearch, allStocksAlbum, filmBrandsList, cameraBrandsList, allCamerasCatalog] =
     await Promise.all([
     searchFilmsByTab(q, "stocks"),
     searchFilmsByTab(q, "users"),
     searchFilmsByTab(q, "shots"),
     getCameras({ search: q }),
-    (async () => {
+    (async (): Promise<{ rows: SearchListsResult[]; total: number }> => {
       const supabase = await createClient();
-      const { data } = await supabase
-        .from("stock_lists")
-        .select("id, title, user_id")
-        .ilike("title", `%${q}%`)
-        .order("updated_at", { ascending: false })
-        .limit(12);
+      const titlePattern = `%${q}%`;
+      const base = supabase.from("stock_lists").select("id", { count: "exact", head: true }).ilike("title", titlePattern);
+      const [{ count: listCount }, { data }] = await Promise.all([
+        base,
+        supabase
+          .from("stock_lists")
+          .select("id, title, user_id")
+          .ilike("title", titlePattern)
+          .order("updated_at", { ascending: false })
+          .limit(500),
+      ]);
       const rows = (data ?? []) as { id: string; title: string; user_id: string }[];
-      if (rows.length === 0) return [];
+      const total = typeof listCount === "number" ? listCount : rows.length;
+      if (rows.length === 0) return { rows: [], total };
       const ownerIds = [...new Set(rows.map((r) => r.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name").in("id", ownerIds);
       const ownerById = new Map(
@@ -601,11 +769,14 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
           (p as { display_name: string | null }).display_name?.trim() || "Member",
         ])
       );
-      return rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        ownerDisplayName: ownerById.get(r.user_id) ?? "Member",
-      }));
+      return {
+        rows: rows.map((r) => ({
+          id: r.id,
+          title: r.title,
+          ownerDisplayName: ownerById.get(r.user_id) ?? "Member",
+        })),
+        total,
+      };
     })(),
     getFilmStocks({ sort: "alphabetical" }),
     getBrands(),
@@ -617,6 +788,8 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
   const users = usersRes.users ?? [];
   const shots = shotsRes.shots ?? [];
   const cameraResults = toCameraResult(cameras);
+  const listRows = listSearch.rows;
+  const listMatchTotal = listSearch.total;
 
   const lower = q.toLowerCase();
   const matchedFilmBrands = filmBrandsMatchingQuery(q, filmBrandsList, allStocksAlbum);
@@ -651,16 +824,25 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
     cameraCountBySlug: cameraCountByBrandSlug,
   });
 
-  const typingBrandsMerged = mergedBrandRows.slice(0, 20);
+  const mergedBrandsWithCounts = augmentDiscoverBrandCatalogCounts(
+    mergedBrandRows,
+    allStocksAlbum,
+    allCamerasCatalog,
+    filmBrandsList
+  );
+
+  const typingBrandsMerged = mergedBrandsWithCounts.slice(0, 20);
 
   const toBrandResult = (e: DiscoverTypingBrand): SearchBrandsResult => ({
     slug: e.slug,
     name: e.name,
     subMeta: e.subMeta,
     kind: e.kind,
+    filmStockCount: e.filmStockCount,
+    cameraCatalogCount: e.cameraCatalogCount,
   });
 
-  const resultsBrands = mergedBrandRows.slice(0, 8).map(toBrandResult);
+  const resultsBrands = mergedBrandsWithCounts.map(toBrandResult);
 
   // Typing-state ranking: prioritize entities with most attached scans.
   const supabase = await createClient();
@@ -704,10 +886,12 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
   const stocksByScans = [...stocks]
     .map((s) => ({ ...s, scanCount: stockCountBySlug.get(s.slug) ?? 0 }))
     .sort((a, b) => {
-      const tierDiff = matchRank(a.name, q) - matchRank(b.name, q);
+      const labelA = `${a.brandName} ${a.name}`.trim();
+      const labelB = `${b.brandName} ${b.name}`.trim();
+      const tierDiff = matchRank(labelA, q) - matchRank(labelB, q);
       if (tierDiff !== 0) return tierDiff;
       if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
-      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      return labelA.localeCompare(labelB, undefined, { sensitivity: "base" });
     });
 
   const camerasByScans = [...cameraResults]
@@ -720,18 +904,30 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
       if ((b.scanCount ?? 0) !== (a.scanCount ?? 0)) return (b.scanCount ?? 0) - (a.scanCount ?? 0);
       return nameA.localeCompare(nameB, undefined, { sensitivity: "base" });
     });
-  const bestBrandUnion =
-    mergedBrandRows[0] != null
-      ? ({ type: "brand" as const, value: toBrandResult(mergedBrandRows[0]!) })
-      : null;
+  const usersByMatch = [...users].sort((a, b) => {
+    const d = scoreUserForDiscoverBest(a, q).tier - scoreUserForDiscoverBest(b, q).tier;
+    if (d !== 0) return d;
+    return (a.display_name ?? "").localeCompare(b.display_name ?? "", undefined, { sensitivity: "base" });
+  });
 
-  const bestResult =
-    (stocks[0] ? ({ type: "stock", value: stocks[0] as SearchStocksResult } as const) : null) ??
-    (shots[0] ? ({ type: "shot", value: shots[0] as SearchShotsResult } as const) : null) ??
-    (cameraResults[0] ? ({ type: "camera", value: cameraResults[0] as SearchCamerasResult } as const) : null) ??
-    bestBrandUnion ??
-    (users[0] ? ({ type: "user", value: users[0] as SearchUsersResult } as const) : null) ??
-    (listRows[0] ? ({ type: "list", value: listRows[0] as SearchListsResult } as const) : null);
+  const shotsHasMore = shots.length > DISCOVER_SHOTS_PAGE_SIZE;
+  const shotsPage = shots.slice(0, DISCOVER_SHOTS_PAGE_SIZE);
+
+  const bestResult = pickDiscoverBestResult({
+    q,
+    stocksByScans,
+    mergedBrandRows: mergedBrandsWithCounts,
+    camerasByScans,
+    users,
+    listRows,
+    shots,
+    toBrandResult,
+  });
+
+  const { count: usersMatchTotal } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .ilike("display_name", `%${q}%`);
 
   return {
     typing: {
@@ -741,13 +937,22 @@ export async function getDiscoverSearchPayload(query: string): Promise<DiscoverS
       brands: typingBrandsMerged,
     },
     results: {
-      stocks: stocks.slice(0, 8),
-      cameras: cameraResults.slice(0, 8),
-      users: users.slice(0, 8),
-      shots: shots.slice(0, 12),
-      lists: listRows.slice(0, 6),
+      stocks: stocksByScans,
+      cameras: camerasByScans,
+      users: usersByMatch,
+      shots: shotsPage,
+      lists: listRows,
       brands: resultsBrands,
     },
     bestResult,
+    shotsHasMore,
+    resultCounts: {
+      stocks: stocks.length,
+      cameras: cameraResults.length,
+      shots: shots.length,
+      brands: mergedBrandsWithCounts.length,
+      lists: listMatchTotal,
+      users: typeof usersMatchTotal === "number" ? usersMatchTotal : users.length,
+    },
   };
 }

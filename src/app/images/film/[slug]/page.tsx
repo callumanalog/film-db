@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ImageDestinationGrid } from "@/components/image-destination-grid";
+import { ImageDestinationScansClient } from "@/components/image-destination-scans-client";
+import { filmStockToLightboxSummary } from "@/lib/lightbox-group";
 import { getFilmStockBySlug, getFilmStocks } from "@/lib/supabase/queries";
 import { getUploadsForFilmStock } from "@/app/actions/uploads";
 import { SetImageDestinationMobileHeader } from "@/components/set-image-destination-mobile-header";
@@ -30,10 +31,9 @@ export default async function FilmImageDestinationPage({ params }: FilmImageDest
   if (!stock) notFound();
 
   const uploads = await getUploadsForFilmStock(slug);
-  const items = uploads
-    .filter((u): u is typeof u & { image_url: string } => !!u.image_url)
-    .map((u) => ({ id: u.id, imageUrl: u.image_url }));
-  const scanCountLabel = `${items.length.toLocaleString()} SCAN${items.length === 1 ? "" : "S"}`;
+  const scanCount = uploads.filter((u) => !!u.image_url).length;
+  const scanCountLabel = `${scanCount.toLocaleString()} SCAN${scanCount === 1 ? "" : "S"}`;
+  const stockSummary = filmStockToLightboxSummary(stock);
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-24 sm:px-6 md:pb-8">
@@ -70,9 +70,15 @@ export default async function FilmImageDestinationPage({ params }: FilmImageDest
         </div>
       </header>
 
-      {items.length > 0 ? (
+      {scanCount > 0 ? (
         <div className="min-w-0 -mx-4 mt-2 w-[calc(100%+2rem)]">
-          <ImageDestinationGrid items={items} />
+          <ImageDestinationScansClient
+            uploads={uploads}
+            mode="film"
+            stockName={stock.name}
+            stockSlug={stock.slug}
+            stockSummary={stockSummary}
+          />
         </div>
       ) : (
         <div className="mt-6 rounded-[7px] border border-dashed border-border bg-secondary/20 py-10 text-center text-sm text-muted-foreground">

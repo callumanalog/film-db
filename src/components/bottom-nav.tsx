@@ -10,6 +10,10 @@ import { isStockListFormEditorPath } from "@/lib/stock-list-form-route";
 import { openPlusActionSheet } from "@/components/plus-action-sheet";
 import { searchPageDataKey } from "@/lib/nav-cache-swr";
 import { getSearchPageData } from "@/app/actions/nav-cache";
+import {
+  DISCOVER_SEARCH_FAB_VISIBILITY_EVENT,
+  type DiscoverSearchFabVisibilityDetail,
+} from "@/lib/discover-search-fab-visibility";
 
 const LEFT_ITEMS = [
   { href: "/", label: "Home", icon: Home },
@@ -29,13 +33,6 @@ function getFilmSlug(pathname: string | null): string | null {
   return null;
 }
 
-function slugToName(slug: string): string {
-  return slug
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
 function getActiveHref(pathname: string | null): string | null {
   if (!pathname) return null;
   if (pathname === "/" || pathname.startsWith("/films/")) return "/";
@@ -52,6 +49,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
+  const [discoverSearchHidesAddRollFab, setDiscoverSearchHidesAddRollFab] = useState(false);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const resolvedActive = getActiveHref(pathname);
   const activeHref = pendingPath ?? resolvedActive;
@@ -62,14 +60,22 @@ export function BottomNav() {
     }
   }, [pendingPath, resolvedActive]);
 
-  const handlePlus = () => {
-    const filmSlug = getFilmSlug(pathname);
-    if (filmSlug) {
-      openPlusActionSheet({ filmSlug, filmName: slugToName(filmSlug) });
-    } else {
-      openPlusActionSheet();
+  useEffect(() => {
+    const onDiscoverSearchFabVisibility = (e: Event) => {
+      const detail = (e as CustomEvent<DiscoverSearchFabVisibilityDetail>).detail;
+      setDiscoverSearchHidesAddRollFab(detail.hidden);
+    };
+    window.addEventListener(DISCOVER_SEARCH_FAB_VISIBILITY_EVENT, onDiscoverSearchFabVisibility);
+    return () => {
+      window.removeEventListener(DISCOVER_SEARCH_FAB_VISIBILITY_EVENT, onDiscoverSearchFabVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pathname !== "/search") {
+      setDiscoverSearchHidesAddRollFab(false);
     }
-  };
+  }, [pathname]);
 
   const handleNavPointerDown = (e: React.PointerEvent, href: string) => {
     if (e.button !== 0) return;
@@ -82,60 +88,73 @@ export function BottomNav() {
     return null;
   }
 
+  const handleAddRoll = () => {
+    const filmSlug = getFilmSlug(pathname);
+    if (filmSlug) {
+      openPlusActionSheet({ filmSlug });
+    } else {
+      openPlusActionSheet();
+    }
+  };
+
   return (
-    <nav
-      className="capacitor-safe-bottom fixed bottom-0 left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
-      aria-label="Bottom navigation"
-      style={{ minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
-    >
-      {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
-        const isActive = href === activeHref;
-        const onPrefetch = href === "/search" ? () => preload(searchPageDataKey({}), () => getSearchPageData({})) : undefined;
-        return (
-          <Link
-            key={href}
-            href={href}
-            onMouseEnter={onPrefetch}
-            onPointerDown={(e) => handleNavPointerDown(e, href)}
-            className={cn(
-              ICON_LINK_CLASS,
-              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            )}
-            aria-current={isActive ? "page" : undefined}
-            aria-label={label}
-          >
-            <Icon className="h-6 w-6 shrink-0" aria-hidden />
-          </Link>
-        );
-      })}
-      <button
-        type="button"
-        onClick={handlePlus}
-        aria-label="Add"
-        className={cn(ICON_LINK_CLASS, "text-muted-foreground hover:text-foreground")}
+    <>
+      <nav
+        className="capacitor-safe-bottom fixed bottom-0 left-0 right-0 z-50 flex h-[72px] min-h-[64px] items-center justify-around border-t border-slate-100 bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden"
+        aria-label="Bottom navigation"
+        style={{ minHeight: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
       >
-        <Plus className="h-6 w-6 shrink-0" aria-hidden />
-      </button>
-      {RIGHT_ITEMS.map(({ href, label, icon: Icon }) => {
-        const isActive = href === activeHref;
-        const onPrefetch = undefined;
-        return (
-          <Link
-            key={href}
-            href={href}
-            onMouseEnter={onPrefetch}
-            onPointerDown={(e) => handleNavPointerDown(e, href)}
-            className={cn(
-              ICON_LINK_CLASS,
-              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
-            )}
-            aria-current={isActive ? "page" : undefined}
-            aria-label={label}
-          >
-            <Icon className="h-6 w-6 shrink-0" aria-hidden />
-          </Link>
-        );
-      })}
-    </nav>
+        {LEFT_ITEMS.map(({ href, label, icon: Icon }) => {
+          const isActive = href === activeHref;
+          const onPrefetch = href === "/search" ? () => preload(searchPageDataKey({}), () => getSearchPageData({})) : undefined;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onMouseEnter={onPrefetch}
+              onPointerDown={(e) => handleNavPointerDown(e, href)}
+              className={cn(
+                ICON_LINK_CLASS,
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={label}
+            >
+              <Icon className="h-6 w-6 shrink-0" aria-hidden />
+            </Link>
+          );
+        })}
+        {RIGHT_ITEMS.map(({ href, label, icon: Icon }) => {
+          const isActive = href === activeHref;
+          const onPrefetch = undefined;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onMouseEnter={onPrefetch}
+              onPointerDown={(e) => handleNavPointerDown(e, href)}
+              className={cn(
+                ICON_LINK_CLASS,
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={label}
+            >
+              <Icon className="h-6 w-6 shrink-0" aria-hidden />
+            </Link>
+          );
+        })}
+      </nav>
+      {!discoverSearchHidesAddRollFab ? (
+        <button
+          type="button"
+          onClick={handleAddRoll}
+          aria-label="Add a roll"
+          className="fixed bottom-[calc(72px+env(safe-area-inset-bottom,0px)+12px)] right-[max(1rem,env(safe-area-inset-right,0px))] z-[60] flex h-[44px] w-[44px] items-center justify-center rounded-full bg-black text-white shadow-lg transition-transform duration-150 ease-out hover:bg-black/90 active:scale-95 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/40 focus-visible:ring-offset-2 md:hidden"
+        >
+          <Plus className="h-6 w-6 shrink-0 stroke-[2.5]" aria-hidden />
+        </button>
+      ) : null}
+    </>
   );
 }

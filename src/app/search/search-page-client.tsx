@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Aperture, Camera as CameraIcon, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Aperture, Camera as CameraIcon, ChevronRight, List as ListIcon, Loader2 } from "lucide-react";
 import { ImageLightbox, type ImageLightboxData } from "@/components/image-lightbox";
 import {
   collectLightboxSlidesFromGalleryImages,
@@ -17,20 +19,50 @@ import {
   type DiscoverSearchPayload,
   type SearchBrandsResult,
   type SearchCamerasResult,
+  type SearchListsResult,
   type SearchShotsResult,
   type SearchStocksResult,
   type SearchUsersResult,
 } from "@/app/actions/search";
-import { shareRollPickerSectionLabelClassName } from "@/components/share-roll-picker-primitives";
 import { brandCatalogMatchRank, matchRank } from "@/lib/search-entity-match-rank";
+import { buildFilmStockTypeSpecLine } from "@/lib/film-stock-spec-line";
+import { DiscoverRailCarousel, DiscoverRailStrip } from "@/components/discover-rail-carousel";
+import { CarouselViewAllHeader } from "@/components/carousel-view-all-header";
+import { FilmNativeMasonryGrid, type FilmNativeMasonryItem } from "@/components/film-native-grid";
+import { cn } from "@/lib/utils";
 import {
-  DiscoverRailCarousel,
-  DiscoverRailCell,
-  discoverRailFrameWidth,
-  useDiscoverRailHeight,
-} from "@/components/discover-rail-carousel";
+  DISCOVER_SEARCH_FAB_VISIBILITY_EVENT,
+  type DiscoverSearchFabVisibilityDetail,
+} from "@/lib/discover-search-fab-visibility";
 
 const DEBOUNCE_MS = 300;
+
+/** Empty discover / tab state: same typography as `FilmStockSummaryRow` title. */
+function DiscoverSearchNoResultsLine({ query, className }: { query: string; className?: string }) {
+  const q = query.trim();
+  return (
+    <p className={cn("mt-6 truncate text-left font-sans text-base font-semibold text-foreground", className)}>
+      {`No results for "${q}"`}
+    </p>
+  );
+}
+
+const DISCOVER_TOP_RESULT_THUMB_BLUR =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgdmlld0JveD0iMCAwIDEwIDEwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTVlN2ViIi8+PC9zdmc+";
+
+const SEARCH_RESULT_TAB_IDS = ["all", "scans", "stocks", "cameras", "brands", "lists", "users"] as const;
+export type SearchResultsTabId = (typeof SEARCH_RESULT_TAB_IDS)[number];
+
+function isSearchResultsTabId(value: string | null): value is SearchResultsTabId {
+  return value !== null && (SEARCH_RESULT_TAB_IDS as readonly string[]).includes(value);
+}
+
+function buildDiscoverSearchUrl(query: string, tab: SearchResultsTabId): string {
+  const params = new URLSearchParams();
+  params.set("q", query);
+  if (tab !== "all") params.set("tab", tab);
+  return `/search?${params.toString()}`;
+}
 
 export interface SearchPageClientProps {
   carousels: {
@@ -40,17 +72,37 @@ export interface SearchPageClientProps {
 }
 
 type TypingMixedRow =
-  | { key: string; kind: "stock"; name: string; href: string; imageUrl: string | null; brandInitial: string; specLine: string; scanCount: number }
+  | {
+      key: string;
+      kind: "stock";
+      name: string;
+      brandName: string;
+      href: string;
+      imageUrl: string | null;
+      brandInitial: string;
+      specLine: string;
+      scanCount: number;
+    }
   | { key: string; kind: "camera"; name: string; href: string; specLine: "CAMERA"; scanCount: number }
-  | { key: string; kind: "brand"; name: string; href: string; specLine: "BRAND"; scanCount: number }
+  | { key: string; kind: "brand"; name: string; href: string; specLine: string; scanCount: number }
   | { key: string; kind: "user"; name: string; href: string; initial: string; specLine: "USER" };
 
-function stockSpecLine(): string {
-  return "Film stock";
+function brandDiscoverSubtitle(b: SearchBrandsResult): string {
+  if (b.kind === "cameras_only") {
+    const n = b.cameraCatalogCount ?? 0;
+    return `Brand · ${n} ${n === 1 ? "camera" : "cameras"}`;
+  }
+  const fs = b.filmStockCount ?? 0;
+  const cam = b.cameraCatalogCount ?? 0;
+  return `Brand · ${fs} ${fs === 1 ? "film stock" : "film stocks"} · ${cam} ${cam === 1 ? "camera" : "cameras"}`;
 }
 
 function typingRowMatchRank(row: TypingMixedRow, query: string): number {
   if (row.kind === "brand") return brandCatalogMatchRank(row.name, query);
+  if (row.kind === "stock") {
+    const label = `${row.brandName} ${row.name}`.trim();
+    return matchRank(label, query);
+  }
   return matchRank(row.name, query);
 }
 
@@ -75,7 +127,7 @@ function StockSearchRow({ stock }: { stock: SearchStocksResult }) {
         name={stock.name}
         imageUrl={stock.imageUrl}
         brandInitial={stock.brandName?.charAt(0)}
-        specLine={stockSpecLine()}
+        specLine={buildFilmStockTypeSpecLine(stock.type, stock.iso, stock.format)}
         showDivider={false}
       />
     </Link>
@@ -95,6 +147,26 @@ function CameraSearchRow({ camera }: { camera: SearchCamerasResult }) {
         customThumb={
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
             <CameraIcon className="h-5 w-5" aria-hidden />
+          </div>
+        }
+      />
+    </Link>
+  );
+}
+
+function ListSearchRow({ list }: { list: SearchListsResult }) {
+  return (
+    <Link
+      href={`/lists/${list.id}`}
+      className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+    >
+      <FilmStockSummaryRow
+        name={list.title}
+        specLine={`List · ${list.ownerDisplayName}`}
+        showDivider={false}
+        customThumb={
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <ListIcon className="h-5 w-5" aria-hidden />
           </div>
         }
       />
@@ -173,27 +245,229 @@ function shotToGalleryImage(shot: SearchShotsResult): GalleryImage | null {
   };
 }
 
-function TypingSection<T>({
+function ResultListSection<T>({
+  tabId,
+  query,
   title,
+  titleId,
+  count,
   items,
   render,
 }: {
+  tabId: SearchResultsTabId;
+  query: string;
   title: string;
+  titleId: string;
+  count: number;
   items: T[];
-  render: (item: T, idx: number) => ReactNode;
+  render: (item: T) => ReactNode;
 }) {
   if (items.length === 0) return null;
   return (
-    <section className="pt-4">
-      <p className={shareRollPickerSectionLabelClassName}>{title}</p>
-      <div className="mt-2 divide-y divide-border rounded-md bg-card">
-        {items.map((item, idx) => render(item, idx))}
-      </div>
+    <section>
+      <CarouselViewAllHeader
+        href={buildDiscoverSearchUrl(query, tabId)}
+        title={`${title} (${count})`}
+        titleId={titleId}
+      />
+      <div className="divide-y divide-border rounded-md bg-card">{items.map((item) => render(item))}</div>
     </section>
   );
 }
 
+function formatDiscoverShotsCount(total: number, hasMore: boolean): string {
+  return hasMore ? `${total}+` : String(total);
+}
+
+function discoverTopResultLabel(best: NonNullable<DiscoverSearchPayload["bestResult"]>): string {
+  switch (best.type) {
+    case "stock":
+      return `${best.value.brandName} ${best.value.name}`.trim();
+    case "camera":
+      return `${best.value.brandName} ${best.value.name}`.trim();
+    case "user":
+      return best.value.display_name ?? "Member";
+    case "shot":
+      return `${best.value.brandName} ${best.value.stockName}`.trim();
+    case "brand":
+      return best.value.name;
+    case "list":
+      return best.value.title;
+  }
+}
+
+function discoverTopResultHref(best: NonNullable<DiscoverSearchPayload["bestResult"]>): string | null {
+  switch (best.type) {
+    case "stock":
+      return `/films/${best.value.slug}`;
+    case "camera":
+      return `/cameras/${best.value.slug}`;
+    case "user":
+      return `/users/${best.value.id}`;
+    case "brand":
+      return best.value.kind === "cameras_only"
+        ? `/cameras?brand=${encodeURIComponent(best.value.slug)}`
+        : `/brands/${best.value.slug}`;
+    case "list":
+      return `/lists/${best.value.id}`;
+    case "shot":
+      return null;
+  }
+}
+
+function discoverTopResultTitle(best: NonNullable<DiscoverSearchPayload["bestResult"]>): string {
+  if (best.type === "camera") return cleanCameraName(best.value);
+  return discoverTopResultLabel(best);
+}
+
+function discoverTopResultSubtitle(best: NonNullable<DiscoverSearchPayload["bestResult"]>): string | null {
+  switch (best.type) {
+    case "brand":
+      return brandDiscoverSubtitle(best.value);
+    case "stock": {
+      const s = best.value as SearchStocksResult & { scanCount?: number };
+      const line = buildFilmStockTypeSpecLine(s.type, s.iso, s.format);
+      const scans = s.scanCount ?? 0;
+      return scans > 0 ? `${line} · ${scans} ${scans === 1 ? "scan" : "scans"}` : line;
+    }
+    case "camera": {
+      const c = best.value as SearchCamerasResult & { scanCount?: number };
+      const fmt = c.format?.trim() ? c.format.toUpperCase() : "—";
+      const scans = c.scanCount ?? 0;
+      const base = `${fmt}`;
+      return scans > 0 ? `${base} · ${scans} ${scans === 1 ? "scan" : "scans"}` : base;
+    }
+    case "user": {
+      const h = best.value.handle?.trim();
+      return h ?? null;
+    }
+    case "list":
+      return `List · ${best.value.ownerDisplayName}`;
+    case "shot": {
+      const s = best.value;
+      const u = s.username?.trim();
+      const spec = buildFilmStockTypeSpecLine(s.stockType, s.stockIso ?? null, s.stockFormat ?? []);
+      return u ? `@${u} · ${spec}` : spec;
+    }
+  }
+}
+
+const discoverTopResultCardInteractiveClassName = cn(
+  "flex w-full min-w-0 items-stretch rounded-xl border border-border bg-card p-3 text-left transition-colors",
+  "hover:bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+);
+
+function DiscoverTopResultThumb({ best }: { best: NonNullable<DiscoverSearchPayload["bestResult"]> }) {
+  const box =
+    "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white";
+  const thumbPx = 56;
+  const title = discoverTopResultTitle(best);
+
+  switch (best.type) {
+    case "stock": {
+      const s = best.value;
+      if (s.imageUrl) {
+        return (
+          <div className={box}>
+            <Image
+              src={s.imageUrl}
+              alt={title}
+              width={thumbPx}
+              height={thumbPx}
+              sizes="56px"
+              className="h-full w-full object-contain"
+              placeholder="blur"
+              blurDataURL={DISCOVER_TOP_RESULT_THUMB_BLUR}
+              unoptimized={s.imageUrl.startsWith("http")}
+            />
+          </div>
+        );
+      }
+      return (
+        <div className={box}>
+          <span className="text-xs font-medium text-muted-foreground">{s.brandName?.charAt(0) ?? "?"}</span>
+        </div>
+      );
+    }
+    case "shot": {
+      const s = best.value;
+      if (s.imageUrl) {
+        return (
+          <div className={box}>
+            <Image
+              src={s.imageUrl}
+              alt={title}
+              width={thumbPx}
+              height={thumbPx}
+              sizes="56px"
+              className="h-full w-full object-cover"
+              placeholder="blur"
+              blurDataURL={DISCOVER_TOP_RESULT_THUMB_BLUR}
+              unoptimized={s.imageUrl.startsWith("http")}
+            />
+          </div>
+        );
+      }
+      return (
+        <div className={box}>
+          <span className="text-xs font-medium text-muted-foreground">{s.brandName?.charAt(0) ?? "?"}</span>
+        </div>
+      );
+    }
+    case "brand":
+      return (
+        <div className={box}>
+          <Aperture className="h-5 w-5 text-muted-foreground" aria-hidden />
+        </div>
+      );
+    case "camera":
+      return (
+        <div className={box}>
+          <CameraIcon className="h-5 w-5 text-muted-foreground" aria-hidden />
+        </div>
+      );
+    case "list":
+      return (
+        <div className={box}>
+          <ListIcon className="h-5 w-5 text-muted-foreground" aria-hidden />
+        </div>
+      );
+    case "user": {
+      const display = best.value.display_name?.trim() || "Member";
+      const initial = display.slice(0, 2).toUpperCase();
+      return (
+        <div className={box}>
+          <span className="text-xs font-medium text-muted-foreground">{initial}</span>
+        </div>
+      );
+    }
+  }
+}
+
+function DiscoverTopResultCardInner({ best }: { best: NonNullable<DiscoverSearchPayload["bestResult"]> }) {
+  const subtitle = discoverTopResultSubtitle(best);
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <DiscoverTopResultThumb best={best} />
+      <div className="min-w-0 flex-1 py-0.5">
+        <p className="truncate font-sans text-lg font-semibold tracking-tight text-foreground">
+          {discoverTopResultTitle(best)}
+        </p>
+        {subtitle ? (
+          <p className="truncate font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {subtitle}
+          </p>
+        ) : null}
+      </div>
+      <ChevronRight className="mt-0.5 size-5 shrink-0 self-center text-muted-foreground" strokeWidth={2.5} aria-hidden />
+    </div>
+  );
+}
+
 export function SearchPageClient({ carousels }: SearchPageClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [inputValue, setInputValue] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -206,7 +480,14 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
     galleryImages: GalleryImage[];
   } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const railHeight = useDiscoverRailHeight();
+  const previousDebouncedForUrlRef = useRef<string>("");
+  const lastSearchParamsStringRef = useRef<string | null>(null);
+
+  const urlTab = useMemo<SearchResultsTabId>(() => {
+    const raw = searchParams.get("tab");
+    if (raw === "all") return "all";
+    return isSearchResultsTabId(raw) ? raw : "all";
+  }, [searchParams]);
 
   const handleShotImageLoad = (shotId: string, width: number, height: number) => {
     setImageDimensionsById((prev) => {
@@ -219,7 +500,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
     });
   };
 
-  const openShotLightbox = (shots: SearchShotsResult[], shotId: string) => {
+  const openShotLightbox = useCallback((shots: SearchShotsResult[], shotId: string) => {
     const galleryImages = shots
       .map((shot) => shotToGalleryImage(shot))
       .filter((item): item is GalleryImage => item !== null);
@@ -228,7 +509,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
     if (!clicked) return;
     const session = collectLightboxSlidesFromGalleryImages(galleryImages, clicked);
     setLightboxSession({ ...session, galleryImages });
-  };
+  }, []);
 
   const relatedStockSlides = useMemo(() => {
     if (!lightboxSession || lightboxSession.slides.length !== 1) return [];
@@ -261,6 +542,22 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
     };
   }, [debouncedQuery]);
 
+  useEffect(() => {
+    const str = searchParams.toString();
+    if (str === lastSearchParamsStringRef.current) return;
+    lastSearchParamsStringRef.current = str;
+    const q = searchParams.get("q")?.trim() ?? "";
+    if (!q) {
+      setInputValue("");
+      setDebouncedQuery("");
+      setResultsArmed(false);
+      return;
+    }
+    setInputValue(q);
+    setDebouncedQuery(q);
+    setResultsArmed(true);
+  }, [searchParams]);
+
   const hasQuery = debouncedQuery.length > 0;
   const activePayload = hasQuery && payloadState?.query === debouncedQuery ? payloadState.data : null;
   const showLoading = hasQuery && payloadState?.query !== debouncedQuery;
@@ -270,6 +567,26 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
       ? "results"
       : "typing";
 
+  useEffect(() => {
+    if (mode !== "results" || showLoading) return;
+    const q = debouncedQuery.trim();
+    if (!q) {
+      if (searchParams.toString()) router.replace("/search", { scroll: false });
+      previousDebouncedForUrlRef.current = "";
+      return;
+    }
+    const tabRaw = searchParams.get("tab");
+    const tabFromUrl: SearchResultsTabId =
+      tabRaw === "all" ? "all" : isSearchResultsTabId(tabRaw) ? tabRaw : "all";
+    const queryChanged =
+      previousDebouncedForUrlRef.current.length > 0 && previousDebouncedForUrlRef.current !== q;
+    previousDebouncedForUrlRef.current = q;
+    const effectiveTab: SearchResultsTabId = queryChanged ? "all" : tabFromUrl;
+    const next = buildDiscoverSearchUrl(q, effectiveTab);
+    const cur = `${pathname}?${searchParams.toString()}`;
+    if (next !== cur) router.replace(next, { scroll: false });
+  }, [debouncedQuery, mode, pathname, router, searchParams, showLoading]);
+
   const hasAnyResults = useMemo(() => {
     if (!activePayload) return false;
     return (
@@ -277,9 +594,50 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
       activePayload.results.cameras.length > 0 ||
       activePayload.results.users.length > 0 ||
       activePayload.results.shots.length > 0 ||
-      activePayload.results.brands.length > 0
+      activePayload.results.brands.length > 0 ||
+      activePayload.results.lists.length > 0
     );
   }, [activePayload]);
+
+  const resultCounts = activePayload?.resultCounts;
+
+  const scansRailItems = useMemo(() => {
+    if (!activePayload?.results.shots.length) return [];
+    return activePayload.results.shots.slice(0, 12).map((s) => ({
+      id: s.id,
+      imageUrl: s.imageUrl,
+      imageAlt: s.stockName,
+      username: s.username,
+      userId: s.userId,
+    }));
+  }, [activePayload]);
+
+  const scansMasonryItems = useMemo((): FilmNativeMasonryItem[] => {
+    if (!activePayload?.results.shots.length) return [];
+    return activePayload.results.shots.map((shot) => ({
+      id: shot.id,
+      imageUrl: shot.imageUrl,
+      overlayLabel: shot.username?.trim() ? shot.username : shot.stockName,
+      href: `/films/${shot.stockSlug}/images`,
+      onActivate: () => openShotLightbox(activePayload.results.shots, shot.id),
+    }));
+  }, [activePayload, openShotLightbox]);
+
+  const setResultsTab = (tab: SearchResultsTabId) => {
+    const q = debouncedQuery.trim();
+    if (!q) return;
+    router.replace(buildDiscoverSearchUrl(q, tab), { scroll: false });
+  };
+
+  useEffect(() => {
+    if (pathname !== "/search") return;
+    const hidden = inputValue.trim().length > 0 || mode !== "default";
+    window.dispatchEvent(
+      new CustomEvent<DiscoverSearchFabVisibilityDetail>(DISCOVER_SEARCH_FAB_VISIBILITY_EVENT, {
+        detail: { hidden },
+      })
+    );
+  }, [pathname, inputValue, mode]);
 
   const typingRows = useMemo<TypingMixedRow[]>(() => {
     if (!activePayload || !debouncedQuery.trim()) return [];
@@ -288,10 +646,11 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
         key: `stock-${stock.slug}`,
         kind: "stock" as const,
         name: stock.name,
+        brandName: stock.brandName ?? "",
         href: `/films/${stock.slug}`,
         imageUrl: stock.imageUrl ?? null,
         brandInitial: stock.brandName?.charAt(0) ?? "?",
-        specLine: stockSpecLine(),
+        specLine: buildFilmStockTypeSpecLine(stock.type, stock.iso, stock.format),
         scanCount: stock.scanCount ?? 0,
       })),
       ...(activePayload.typing.cameras ?? []).map((camera) => ({
@@ -321,7 +680,7 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
           b.kind === "cameras_only"
             ? `/cameras?brand=${encodeURIComponent(b.slug)}`
             : `/brands/${b.slug}`,
-        specLine: "BRAND" as const,
+        specLine: brandDiscoverSubtitle(b),
         scanCount: b.scanCount ?? 0,
       })),
     ];
@@ -406,6 +765,8 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
               <div className="flex min-h-[55vh] items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
               </div>
+            ) : typingRows.length === 0 ? (
+              <DiscoverSearchNoResultsLine query={debouncedQuery} />
             ) : (
               <div className="mt-2 divide-y divide-border rounded-md bg-card">
                 {typingRows.map((row) => {
@@ -489,105 +850,265 @@ export function SearchPageClient({ carousels }: SearchPageClientProps) {
             )}
           </div>
         ) : (
-          <div className="pt-4">
-            {showLoading ? <p className="text-sm text-muted-foreground">Loading results…</p> : null}
-            {!showLoading && activePayload?.bestResult ? (
-              <section className="mb-4 rounded-xl border border-border bg-card p-3">
-                <p className={shareRollPickerSectionLabelClassName}>Top Result</p>
-                <p className="mt-1 text-lg font-semibold text-foreground">
-                  {activePayload.bestResult.type === "stock"
-                    ? `${activePayload.bestResult.value.brandName} ${activePayload.bestResult.value.name}`
-                    : activePayload.bestResult.type === "camera"
-                      ? `${activePayload.bestResult.value.brandName} ${activePayload.bestResult.value.name}`
-                      : activePayload.bestResult.type === "user"
-                        ? activePayload.bestResult.value.display_name ?? "Member"
-                        : activePayload.bestResult.type === "shot"
-                          ? activePayload.bestResult.value.stockName
-                          : activePayload.bestResult.type === "brand"
-                            ? activePayload.bestResult.value.name
-                            : activePayload.bestResult.value.title}
-                </p>
-              </section>
-            ) : null}
-
-            {!showLoading && !hasAnyResults ? (
-              <div className="rounded-md border border-dashed border-border bg-secondary/20 p-6 text-center text-sm text-muted-foreground">
-                No results for &ldquo;{debouncedQuery}&rdquo; yet.
+          <div>
+            {showLoading ? (
+              <div className="flex min-h-[55vh] items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
               </div>
-            ) : null}
-
-            {activePayload?.results.shots.length ? (
-              <section className="pt-2">
-                <p className={shareRollPickerSectionLabelClassName}>Images</p>
-                <div className="-mx-4 mt-2 overflow-hidden">
-                  <div className="scrollbar-hide flex gap-2 overflow-x-auto px-4 pb-1">
-                    {activePayload.results.shots.map((shot) => (
-                      <div key={shot.id} className="shrink-0">
-                        <DiscoverRailCell
-                          item={{
-                            id: shot.id,
-                            imageUrl: shot.imageUrl,
-                            imageAlt: shot.stockName,
-                          }}
-                          frameHeight={railHeight}
-                          frameWidth={discoverRailFrameWidth(imageDimensionsById[shot.id], railHeight)}
-                          onImageLoad={handleShotImageLoad}
-                          onOpen={() => openShotLightbox(activePayload.results.shots, shot.id)}
-                        />
+            ) : (
+              <>
+                {mode === "results" && hasQuery && activePayload ? (
+                  <div className="mb-3 mt-3 w-[calc(100%+2rem)] min-w-0 -mx-4 border-b border-border/50 sm:-mx-6 sm:w-[calc(100%+3rem)] lg:-mx-8 lg:w-[calc(100%+4rem)]">
+                    <nav className="min-w-0 w-full" aria-label="Search results by type">
+                      <div className="flex min-w-0 flex-nowrap items-end gap-5 overflow-x-auto overscroll-x-contain px-4 pb-px [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-6 sm:px-6 lg:px-8 [&::-webkit-scrollbar]:hidden">
+                        {(
+                          [
+                            { id: "all" as const, label: "All" },
+                            { id: "scans" as const, label: "Scans" },
+                            { id: "stocks" as const, label: "Film stocks" },
+                            { id: "brands" as const, label: "Brands" },
+                            { id: "cameras" as const, label: "Cameras" },
+                            { id: "lists" as const, label: "Lists" },
+                            { id: "users" as const, label: "Users" },
+                          ] as const
+                        ).map(({ id, label }) => {
+                          const active = urlTab === id;
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => setResultsTab(id)}
+                              className={cn(
+                                "relative shrink-0 px-1.5 pb-3 pt-1 text-center text-sm font-semibold whitespace-nowrap transition-colors last:pr-4 sm:px-2.5",
+                                id === "all" && "min-w-11 sm:min-w-12",
+                                active
+                                  ? "text-foreground"
+                                  : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              {label}
+                              {active ? (
+                                <span className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" aria-hidden />
+                              ) : null}
+                            </button>
+                          );
+                        })}
                       </div>
-                    ))}
+                    </nav>
                   </div>
-                </div>
-              </section>
-            ) : null}
+                ) : null}
 
-            <TypingSection<SearchStocksResult>
-              title="Film Stocks"
-              items={activePayload?.results.stocks ?? []}
-              render={(stock) => (
-                <StockSearchRow key={stock.slug} stock={stock} />
-              )}
-            />
-            <TypingSection<SearchCamerasResult>
-              title="Cameras"
-              items={activePayload?.results.cameras ?? []}
-              render={(camera) => (
-                <CameraSearchRow key={camera.slug} camera={camera} />
-              )}
-            />
-            <TypingSection<SearchBrandsResult>
-              title="Brands"
-              items={activePayload?.results.brands ?? []}
-              render={(b) => (
-                <Link
-                  key={`${b.kind ?? "catalog"}-${b.slug}`}
-                  href={
-                    b.kind === "cameras_only"
-                      ? `/cameras?brand=${encodeURIComponent(b.slug)}`
-                      : `/brands/${b.slug}`
-                  }
-                  className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
-                >
-                  <FilmStockSummaryRow
-                    name={b.name}
-                    specLine="BRAND"
-                    showDivider={false}
-                    customThumb={
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <Aperture className="h-5 w-5" aria-hidden />
-                      </div>
-                    }
-                  />
-                </Link>
-              )}
-            />
-            <TypingSection<SearchUsersResult>
-              title="Users"
-              items={activePayload?.results.users ?? []}
-              render={(user) => (
-                <UserSearchRow key={user.id} user={user} />
-              )}
-            />
+                {activePayload && urlTab === "all" ? (
+                  <div className="flex flex-col gap-6">
+                    {activePayload.bestResult ? (
+                      (() => {
+                        const br = activePayload.bestResult;
+                        if (br.type === "shot") {
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => openShotLightbox(activePayload.results.shots, br.value.id)}
+                              className={discoverTopResultCardInteractiveClassName}
+                              aria-label={`Open scan: ${discoverTopResultLabel(br)}`}
+                            >
+                              <DiscoverTopResultCardInner best={br} />
+                            </button>
+                          );
+                        }
+                        return (
+                          <Link
+                            href={discoverTopResultHref(br) ?? "/search"}
+                            className={discoverTopResultCardInteractiveClassName}
+                          >
+                            <DiscoverTopResultCardInner best={br} />
+                          </Link>
+                        );
+                      })()
+                    ) : null}
+
+                    {!hasAnyResults ? <DiscoverSearchNoResultsLine query={debouncedQuery} /> : null}
+
+                    {scansRailItems.length > 0 ? (
+                      <section aria-labelledby="discover-search-scans-heading">
+                        <CarouselViewAllHeader
+                          href={buildDiscoverSearchUrl(debouncedQuery.trim(), "scans")}
+                          title={`Scans (${formatDiscoverShotsCount(activePayload.resultCounts.shots, activePayload.shotsHasMore)})`}
+                          titleId="discover-search-scans-heading"
+                        />
+                        <DiscoverRailStrip
+                          items={scansRailItems}
+                          imageDimensionsById={imageDimensionsById}
+                          onImageLoad={handleShotImageLoad}
+                          onOpenItem={(id) => openShotLightbox(activePayload.results.shots, id)}
+                        />
+                      </section>
+                    ) : null}
+
+                    <ResultListSection<SearchStocksResult>
+                      tabId="stocks"
+                      query={debouncedQuery.trim()}
+                      title="Film stocks"
+                      titleId="discover-search-stocks-heading"
+                      count={activePayload.resultCounts.stocks}
+                      items={activePayload.results.stocks.slice(0, 8)}
+                      render={(stock) => <StockSearchRow key={stock.slug} stock={stock} />}
+                    />
+                    <ResultListSection<SearchBrandsResult>
+                      tabId="brands"
+                      query={debouncedQuery.trim()}
+                      title="Brands"
+                      titleId="discover-search-brands-heading"
+                      count={activePayload.resultCounts.brands}
+                      items={activePayload.results.brands}
+                      render={(b) => (
+                        <Link
+                          key={`${b.kind ?? "catalog"}-${b.slug}`}
+                          href={
+                            b.kind === "cameras_only"
+                              ? `/cameras?brand=${encodeURIComponent(b.slug)}`
+                              : `/brands/${b.slug}`
+                          }
+                          className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                        >
+                          <FilmStockSummaryRow
+                            name={b.name}
+                            specLine={brandDiscoverSubtitle(b)}
+                            showDivider={false}
+                            customThumb={
+                              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                                <Aperture className="h-5 w-5" aria-hidden />
+                              </div>
+                            }
+                          />
+                        </Link>
+                      )}
+                    />
+                    <ResultListSection<SearchCamerasResult>
+                      tabId="cameras"
+                      query={debouncedQuery.trim()}
+                      title="Cameras"
+                      titleId="discover-search-cameras-heading"
+                      count={activePayload.resultCounts.cameras}
+                      items={activePayload.results.cameras}
+                      render={(camera) => <CameraSearchRow key={camera.slug} camera={camera} />}
+                    />
+                    <ResultListSection<SearchListsResult>
+                      tabId="lists"
+                      query={debouncedQuery.trim()}
+                      title="Lists"
+                      titleId="discover-search-lists-heading"
+                      count={activePayload.resultCounts.lists}
+                      items={activePayload.results.lists}
+                      render={(list) => <ListSearchRow key={list.id} list={list} />}
+                    />
+                    <ResultListSection<SearchUsersResult>
+                      tabId="users"
+                      query={debouncedQuery.trim()}
+                      title="Users"
+                      titleId="discover-search-users-heading"
+                      count={activePayload.resultCounts.users}
+                      items={activePayload.results.users}
+                      render={(user) => <UserSearchRow key={user.id} user={user} />}
+                    />
+                  </div>
+                ) : activePayload && !hasAnyResults ? (
+                  <DiscoverSearchNoResultsLine query={debouncedQuery} />
+                ) : null}
+
+                {activePayload && urlTab === "scans" && scansMasonryItems.length > 0 ? (
+                  <div className="mt-4 -mx-4 w-[calc(100%+2rem)] sm:-mx-6 sm:w-[calc(100%+3rem)]">
+                    <FilmNativeMasonryGrid
+                      items={scansMasonryItems}
+                      preserveImageAspectRatio
+                      ariaLabel={`Search scans for ${debouncedQuery}`}
+                    />
+                  </div>
+                ) : null}
+
+                {activePayload && urlTab === "scans" && scansMasonryItems.length === 0 ? (
+                  <DiscoverSearchNoResultsLine query={debouncedQuery} />
+                ) : null}
+
+                {activePayload && urlTab === "stocks" ? (
+                  activePayload.results.stocks.length === 0 ? (
+                    <DiscoverSearchNoResultsLine query={debouncedQuery} />
+                  ) : (
+                    <div className="mt-2 divide-y divide-border rounded-md bg-card">
+                      {activePayload.results.stocks.map((stock) => (
+                        <StockSearchRow key={stock.slug} stock={stock} />
+                      ))}
+                    </div>
+                  )
+                ) : null}
+
+                {activePayload && urlTab === "brands" ? (
+                  activePayload.results.brands.length === 0 ? (
+                    <DiscoverSearchNoResultsLine query={debouncedQuery} />
+                  ) : (
+                  <div className="mt-2 divide-y divide-border rounded-md bg-card">
+                    {activePayload.results.brands.map((b) => (
+                      <Link
+                        key={`${b.kind ?? "catalog"}-${b.slug}`}
+                        href={
+                          b.kind === "cameras_only"
+                            ? `/cameras?brand=${encodeURIComponent(b.slug)}`
+                            : `/brands/${b.slug}`
+                        }
+                        className="flex flex-col bg-white transition-colors hover:bg-muted/30 active:bg-muted/50"
+                      >
+                    <FilmStockSummaryRow
+                      name={b.name}
+                      specLine={brandDiscoverSubtitle(b)}
+                      showDivider={false}
+                      customThumb={
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <Aperture className="h-5 w-5" aria-hidden />
+                        </div>
+                      }
+                    />
+                  </Link>
+                ))}
+              </div>
+                  )
+                ) : null}
+
+                {activePayload && urlTab === "cameras" ? (
+                  activePayload.results.cameras.length === 0 ? (
+                    <DiscoverSearchNoResultsLine query={debouncedQuery} />
+                  ) : (
+                    <div className="mt-2 divide-y divide-border rounded-md bg-card">
+                      {activePayload.results.cameras.map((camera) => (
+                        <CameraSearchRow key={camera.slug} camera={camera} />
+                      ))}
+                    </div>
+                  )
+                ) : null}
+
+                {activePayload && urlTab === "lists" ? (
+                  activePayload.results.lists.length === 0 ? (
+                    <DiscoverSearchNoResultsLine query={debouncedQuery} />
+                  ) : (
+                    <div className="mt-2 divide-y divide-border rounded-md bg-card">
+                      {activePayload.results.lists.map((list) => (
+                        <ListSearchRow key={list.id} list={list} />
+                      ))}
+                    </div>
+                  )
+                ) : null}
+
+                {activePayload && urlTab === "users" ? (
+                  activePayload.results.users.length === 0 ? (
+                    <DiscoverSearchNoResultsLine query={debouncedQuery} />
+                  ) : (
+                    <div className="mt-2 divide-y divide-border rounded-md bg-card">
+                      {activePayload.results.users.map((user) => (
+                        <UserSearchRow key={user.id} user={user} />
+                      ))}
+                    </div>
+                  )
+                ) : null}
+              </>
+            )}
           </div>
         )}
       </div>

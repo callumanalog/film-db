@@ -1,13 +1,13 @@
 import type { FilmType } from "@/lib/types";
 import { FILM_TYPE_LABELS } from "@/lib/types";
 
-/** Second line on browse list cards: TYPE | ISO | FORMATS */
+/** Second line on browse list cards: TYPE · ISO · FORMATS */
 export function buildFilmStockTypeSpecLine(type?: string, iso?: number | null, format?: string[]): string {
   const typeStr = type ? (FILM_TYPE_LABELS[type as FilmType] ?? "—").toUpperCase() : "—";
   const isoStr = iso != null ? `ISO ${iso}` : "ISO —";
   const formats = format ?? [];
   const formatStr = formats.length ? formats.map((f) => f.toUpperCase()).join(", ") : "—";
-  return `${typeStr} | ${isoStr} | ${formatStr}`;
+  return `${typeStr} · ${isoStr} · ${formatStr}`;
 }
 
 function uniqueFormatsInOrder(formats: string[] | undefined): string[] {
@@ -23,9 +23,9 @@ function uniqueFormatsInOrder(formats: string[] | undefined): string[] {
   return out;
 }
 
-/** Upload modal / lightbox stock row: BRAND | ISO | FORMATS */
+/** Upload modal / lightbox stock row: BRAND · ISO · FORMATS */
 export function buildFilmStockBrandMetaLine(brandName: string, iso?: number | null, format?: string[]): string {
   const isoText = iso != null ? `ISO ${iso}` : "ISO —";
   const formatText = uniqueFormatsInOrder(format).map((f) => f.toUpperCase()).join(", ") || "—";
-  return `${brandName.trim().toUpperCase()} | ${isoText} | ${formatText}`;
+  return `${brandName.trim().toUpperCase()} · ${isoText} · ${formatText}`;
 }
